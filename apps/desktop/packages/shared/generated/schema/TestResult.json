@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "failed": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "failedTestNames": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "logReceiptIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "passed": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "skipped": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "total",
+    "passed",
+    "failed",
+    "skipped",
+    "failedTestNames",
+    "logReceiptIds"
+  ],
+  "title": "TestResult",
+  "type": "object"
+}

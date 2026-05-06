@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "AgentStreamFrame": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "assistantTurnStarted",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "delta": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "assistantMessageDelta",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "assistantTurnCompleted",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "input": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "toolCallStarted",
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "toolName",
+            "input"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "delta": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "toolCallProgressed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCallCompleted",
+              "type": "string"
+            },
+            "outcome": {
+              "$ref": "#/$defs/AgentToolCallOutcome"
+            }
+          },
+          "required": [
+            "kind",
+            "outcome"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "pendingStateChanged",
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/RuntimeLanePendingState"
+            }
+          },
+          "required": [
+            "kind",
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "tokenUsageUpdated",
+              "type": "string"
+            },
+            "modelContextWindow": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "totalTokens": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AgentToolCallOutcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RuntimeLanePendingState": {
+      "enum": [
+        "queued",
+        "waitingForApproval",
+        "waitingForInput"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "fragmentSequence": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "frame": {
+      "$ref": "#/$defs/AgentStreamFrame"
+    },
+    "itemId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "runId",
+    "frame"
+  ],
+  "title": "AgentStreamEvent",
+  "type": "object"
+}

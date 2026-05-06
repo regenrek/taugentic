@@ -1,0 +1,115 @@
+/*
+ * Canonical Taugentic design tokens.
+ *
+ * Single source of truth for every CSS variable used in the renderer.
+ * Any new surface, foreground, border, accent, status, typography, or radius
+ * value must be defined here and referenced by name. Do not introduce legacy
+ * or parallel token sets.
+ */
+
+/* Mission Control extension: theme-independent motion + budget vars.
+ * Consumed by the Mission Control engine and animated primitives.
+ * Particle speed is in px/s (engine multiplies by frame delta).
+ */
+:root {
+  --mc-particle-speed: 220px;
+  --mc-breath-hz: 0.6;
+  --mc-decay-ms: 400;
+  --mc-glow-window: 80px;
+  --mc-particle-budget: 400;
+  --mc-fps-cap: 60;
+}
+
+[data-theme="dark"] {
+  --bg: #0a0b0d;
+  --bg-raised: #14171b;
+  --bg-sunken: #06070a;
+  --surface-overlay: rgba(255, 255, 255, 0.04);
+
+  --fg: #ededed;
+  --fg-dim: #b5b5b5;
+  --fg-mute: #888888;
+
+  --border: #272a2e;
+  --border-strong: #3a3e44;
+
+  --accent: #e6e6e6;
+  --accent-fg: #0a0b0d;
+
+  --status-active: #9fe870;
+  --status-waiting: #f5c451;
+  --status-failed: #ff6b6b;
+  --status-completed: #7bc8ff;
+  --status-cancelled: #7a7a7a;
+  --status-idle: #a8a8a8;
+
+  --font-mono:
+    "JetBrains Mono", "Berkeley Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-mono);
+
+  --radius: 2px;
+  --radius-sm: 1px;
+
+  /* Mission Control extension: phosphor + grid + synapse (dark). */
+  --mc-phosphor: #9bff9b;
+  --mc-phosphor-amber: var(--status-waiting);
+  --mc-phosphor-red: var(--status-failed);
+  --mc-grid: #667084;
+  --mc-synapse: #8791a4;
+  --mc-field-bg: #11161f;
+
+  /* Mission Control extension: Tab + Card defaults (additive). */
+  --tabs-list-bg: var(--bg-raised);
+  --tabs-trigger-active-fg: var(--fg);
+  --tabs-trigger-inactive-fg: var(--fg-dim);
+  --tabs-indicator: var(--fg);
+  --card-bg: var(--bg-raised);
+  --card-border: var(--border);
+}
+
+[data-theme="light"] {
+  --bg: #f7f7f5;
+  --bg-raised: #ffffff;
+  --bg-sunken: #ececea;
+  --surface-overlay: rgba(0, 0, 0, 0.02);
+
+  --fg: #161618;
+  --fg-dim: #4b4b4d;
+  --fg-mute: #8b8b8e;
+
+  --border: #d7d7d3;
+  --border-strong: #b7b7b3;
+
+  --accent: #161618;
+  --accent-fg: #ffffff;
+
+  --status-active: #4fa340;
+  --status-waiting: #b98112;
+  --status-failed: #c8362f;
+  --status-completed: #2d85c7;
+  --status-cancelled: #8b8b8e;
+  --status-idle: #4b4b4d;
+
+  --font-mono:
+    "JetBrains Mono", "Berkeley Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-mono);
+
+  --radius: 2px;
+  --radius-sm: 1px;
+
+  /* Mission Control extension: phosphor + grid + synapse (light). */
+  --mc-phosphor: #4fa340;
+  --mc-phosphor-amber: var(--status-waiting);
+  --mc-phosphor-red: var(--status-failed);
+  --mc-grid: #a2a7b3;
+  --mc-synapse: #8a92a2;
+  --mc-field-bg: #edf0f5;
+
+  /* Mission Control extension: Tab + Card defaults (additive). */
+  --tabs-list-bg: var(--bg-raised);
+  --tabs-trigger-active-fg: var(--fg);
+  --tabs-trigger-inactive-fg: var(--fg-dim);
+  --tabs-indicator: var(--fg);
+  --card-bg: var(--bg-raised);
+  --card-border: var(--border);
+}

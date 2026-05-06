@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "runStatus",
+    "approvalRequested",
+    "approvalResolved",
+    "claimConflict",
+    "budgetExceeded",
+    "tokenUsage",
+    "toolCall",
+    "artifact",
+    "receipt",
+    "agentStream"
+  ],
+  "title": "RunTimelineEventKind",
+  "type": "string"
+}

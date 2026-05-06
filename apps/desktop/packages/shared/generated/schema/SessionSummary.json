@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/SessionStatus"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "status"
+  ],
+  "title": "SessionSummary",
+  "type": "object"
+}

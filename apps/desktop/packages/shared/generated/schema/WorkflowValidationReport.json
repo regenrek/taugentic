@@ -1,0 +1,37 @@
+{
+  "$defs": {
+    "WorkflowValidationError": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/WorkflowValidationError"
+      },
+      "type": "array"
+    },
+    "valid": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "valid",
+    "errors"
+  ],
+  "title": "WorkflowValidationReport",
+  "type": "object"
+}

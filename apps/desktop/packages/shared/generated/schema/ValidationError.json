@@ -1,0 +1,211 @@
+{
+  "$defs": {
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "kindMismatch",
+          "type": "string"
+        },
+        "value": {
+          "properties": {
+            "expected": {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            "got": {
+              "$ref": "#/$defs/OutputContractKind"
+            }
+          },
+          "required": [
+            "expected",
+            "got"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "confidenceOutOfRange",
+          "type": "string"
+        },
+        "value": {
+          "properties": {
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "invalidReceiptId",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "testCountsInconsistent",
+          "type": "string"
+        },
+        "value": {
+          "properties": {
+            "sumOfParts": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "total": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "total",
+            "sumOfParts"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "testCountsOverflow",
+          "type": "string"
+        },
+        "value": {
+          "properties": {
+            "failed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "passed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "skipped": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "passed",
+            "failed",
+            "skipped"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "planStepDependencyOutOfRange",
+          "type": "string"
+        },
+        "value": {
+          "properties": {
+            "dependency": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "stepIndex": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "totalSteps": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "stepIndex",
+            "dependency",
+            "totalSteps"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "custom",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ValidationError"
+}

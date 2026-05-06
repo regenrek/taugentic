@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId"
+  ],
+  "title": "ResumeRunRequest",
+  "type": "object"
+}

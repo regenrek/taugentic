@@ -1,0 +1,265 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "AgentAssistantRow": {
+      "properties": {
+        "completedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "startedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "startedAtMs",
+        "completedAtMs",
+        "text"
+      ],
+      "type": "object"
+    },
+    "AgentPendingStateRow": {
+      "properties": {
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/RuntimeLanePendingState"
+        },
+        "turnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "occurredAtMs",
+        "state"
+      ],
+      "type": "object"
+    },
+    "AgentToolCallOutcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "AgentToolCallRow": {
+      "properties": {
+        "completedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "input": {
+          "type": "string"
+        },
+        "itemId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/AgentToolCallOutcome"
+        },
+        "output": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "startedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "toolName",
+        "input",
+        "output",
+        "outcome",
+        "startedAtMs",
+        "completedAtMs"
+      ],
+      "type": "object"
+    },
+    "AgentTurnRow": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AgentAssistantRow",
+          "properties": {
+            "kind": {
+              "const": "assistant",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/AgentToolCallRow",
+          "properties": {
+            "kind": {
+              "const": "toolCall",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/AgentPendingStateRow",
+          "properties": {
+            "kind": {
+              "const": "pendingState",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DaemonEventCursor": {
+      "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
+      "properties": {
+        "daemonInstanceId": {
+          "type": "string"
+        },
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "daemonInstanceId",
+        "sessionId",
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "RuntimeLanePendingState": {
+      "enum": [
+        "queued",
+        "waitingForApproval",
+        "waitingForInput"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/AgentTurnRow"
+      },
+      "type": "array"
+    },
+    "latestCursor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DaemonEventCursor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nextBefore": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "title": "AgentTurnsPageResult",
+  "type": "object"
+}

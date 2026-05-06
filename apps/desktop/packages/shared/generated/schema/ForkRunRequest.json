@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "objective": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "parentEventSeq": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "parentRunId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "parentEventSeq"
+  ],
+  "title": "ForkRunRequest",
+  "type": "object"
+}

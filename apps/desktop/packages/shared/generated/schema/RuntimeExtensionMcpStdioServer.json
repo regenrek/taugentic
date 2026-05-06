@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "RuntimeExtensionEnvVar": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "args": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "command": {
+      "type": "string"
+    },
+    "env": {
+      "items": {
+        "$ref": "#/$defs/RuntimeExtensionEnvVar"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "command"
+  ],
+  "title": "RuntimeExtensionMcpStdioServer",
+  "type": "object"
+}

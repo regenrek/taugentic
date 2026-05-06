@@ -1,0 +1,42 @@
+[package]
+name = "ta-auth-openai"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+ta-protocol = { version = "0.0.1", path = "../ta-protocol" }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[lints.rust]
+# Windows Credential Manager requires direct Win32 FFI calls through the
+# `windows` crate; unsafe is isolated to the Windows backend module.
+unsafe_code = "allow"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+secret-service.workspace = true
+ta-host-platform = { version = "0.0.1", path = "../ta-host-platform" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3.7.0"
+ta-host-platform = { version = "0.0.1", path = "../ta-host-platform" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ta-host-platform = { version = "0.0.1", path = "../ta-host-platform" }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security_Credentials"] }

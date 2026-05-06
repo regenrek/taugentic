@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "displayName": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "providerId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "providerId",
+    "displayName"
+  ],
+  "title": "AuthProfileRef",
+  "type": "object"
+}

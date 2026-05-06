@@ -1,0 +1,79 @@
+[workspace]
+members = [
+  "crates/ta-daemon-client",
+  "crates/ta-auth-openai",
+  "crates/ta-exec",
+  "crates/ta-host-platform",
+  "crates/ta-jsonrpc",
+  "crates/ta-cli",
+  "crates/ta-observability",
+  "crates/ta-orchestrator",
+  "crates/ta-policy",
+  "crates/ta-provider-acp",
+  "crates/ta-provider-llm",
+  "crates/ta-linux-sandbox",
+  "crates/ta-windows-sandbox",
+  "crates/ta-sandbox",
+  "crates/ta-protocol",
+  "crates/ta-store",
+  "crates/ta-workflow",
+  "crates/ta-work-source",
+  "crates/taugentic-agent",
+  "crates/xtask",
+]
+resolver = "3"
+default-members = ["crates/ta-orchestrator"]
+
+[workspace.package]
+edition = "2024"
+version = "0.0.1"
+authors = ["Taugentic"]
+license = "MIT"
+rust-version = "1.90"
+
+[workspace.dependencies]
+async-trait = "0.1.89"
+base64 = "0.22.1"
+ignore = "0.4.24"
+proptest = "1.9.0"
+rand = "0.9"
+serde = { version = "1.0.228", features = ["derive"] }
+schemars = "1.2.1"
+serde_json = "1.0.145"
+serde_yaml = "0.9.34"
+secret-service = { version = "5.1.0", features = ["rt-tokio-crypto-rust"] }
+parking_lot = "0.12"
+tempfile = "3.23.0"
+thiserror = "2.0.17"
+toml = "1.1.2"
+tokio-util = "0.7.17"
+ts-rs = "12.0.1"
+os_info = "3.14.0"
+interprocess = { version = "2.4.0", features = ["tokio"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+futures-util = "0.3.31"
+futures-executor = "0.3.31"
+include_dir = "0.7.4"
+landlock = "0.4.4"
+libc = "0.2.177"
+nix = { version = "0.30.1", features = ["signal", "process"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+rmcp = { version = "1.5.0", features = ["client", "transport-child-process", "transport-streamable-http-client", "transport-streamable-http-client-reqwest"] }
+seccompiler = "0.5.0"
+tokio-tungstenite = "0.29.0"
+tracing = "0.1.44"
+tracing-appender = "0.2.4"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+tungstenite = "0.29.0"
+uuid = { version = "1.18.1", features = ["v4"] }
+sha2 = "0.10.9"
+url = "2"
+windows-sys = "0.52"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"

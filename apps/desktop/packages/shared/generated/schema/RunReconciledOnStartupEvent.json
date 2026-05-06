@@ -1,0 +1,41 @@
+{
+  "$defs": {
+    "RunFailureKind": {
+      "enum": [
+        "daemonRestartedWhileRunning"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "prevStatus": {
+      "$ref": "#/$defs/RunStatus"
+    },
+    "reason": {
+      "$ref": "#/$defs/RunFailureKind"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "prevStatus",
+    "reason"
+  ],
+  "title": "RunReconciledOnStartupEvent",
+  "type": "object"
+}

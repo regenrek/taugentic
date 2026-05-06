@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "DaemonEventKind": {
+      "enum": [
+        "session",
+        "run",
+        "runReconciledOnStartup",
+        "approval",
+        "artifact",
+        "contextReceipt",
+        "agentStream",
+        "tokenUsageRecorded",
+        "conflict",
+        "budget"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "before": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Durable paging cursor for older activity items from `daemon.activity.page`."
+    },
+    "kinds": {
+      "items": {
+        "$ref": "#/$defs/DaemonEventKind"
+      },
+      "type": "array"
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "limit"
+  ],
+  "title": "ActivityPageQuery",
+  "type": "object"
+}

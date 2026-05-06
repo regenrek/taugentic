@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReceiptKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "parentRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReceiptState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "title": "ListReceiptsRequest",
+  "type": "object"
+}

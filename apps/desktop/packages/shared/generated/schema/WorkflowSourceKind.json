@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "linear",
+    "github_issues",
+    "github_pr_reviews",
+    "local_tasks",
+    "mission_board",
+    "cli"
+  ],
+  "title": "WorkflowSourceKind",
+  "type": "string"
+}

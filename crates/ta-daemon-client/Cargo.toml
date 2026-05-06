@@ -1,0 +1,17 @@
+[package]
+name = "ta-daemon-client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+ta-jsonrpc = { path = "../ta-jsonrpc" }
+ta-protocol = { path = "../ta-protocol" }
+
+[lints]
+workspace = true

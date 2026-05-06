@@ -1,0 +1,526 @@
+use super::*;
+
+#[test]
+fn daemon_session_attach_rejects_unknown_session() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: None,
+    }));
+    let session = test_session();
+
+    let error = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(33),
+            method: METHOD_DAEMON_SESSION_ATTACH.to_string(),
+            params: Some(
+                serde_json::to_value(DaemonSessionAttachParams {
+                    session_id: SessionId::new("session-missing").expect("session id"),
+                    session_authority: test_session_authority(),
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect_err("daemon.session.attach should reject unknown sessions");
+
+    assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+    assert!(error.message.contains("session does not exist"));
+}
+
+#[test]
+fn daemon_subscribe_requires_initialize_first() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState::default()));
+    let session = test_session();
+
+    let error = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(4),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({})),
+        },
+    )
+    .expect_err("daemon.subscribe should require initialize");
+
+    assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+}
+
+#[test]
+fn daemon_subscribe_requires_attached_session() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some("test-client".to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: None,
+    }));
+    let session = test_session();
+
+    let error = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(41),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({})),
+        },
+    )
+    .expect_err("daemon.subscribe should require attached session");
+
+    assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+    assert!(
+        error
+            .message
+            .contains("daemon.subscribe requires daemon.session.open or daemon.session.attach")
+    );
+}
+
+#[test]
+fn daemon_subscribe_returns_history_gap_when_cursor_is_stale() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(5),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::Session],
+                "afterCursor": {
+                    "daemonInstanceId": state.runtime.daemon_instance_id(),
+                    "sessionId": opened.id.clone(),
+                    "sequence": "0"
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let latest_cursor = state
+        .app
+        .latest_event_cursor_for_session(
+            &session_state
+                .lock()
+                .expect("session lock")
+                .attached_session_id
+                .clone()
+                .expect("attached session"),
+        )
+        .expect("latest cursor should load");
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(result, DaemonSubscribeResult::HistoryGap { latest_cursor });
+}
+
+#[test]
+fn daemon_subscribe_returns_ready_when_cursor_is_current() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    let running = ensure_running_run(&state, &opened.id, "Ship app server hard cut");
+    let recorded = state
+        .app
+        .record_artifact(ArtifactRecord {
+            id: ArtifactId::new(format!("artifact-{}", opened.id.as_str())).expect("artifact id"),
+            session_id: opened.id.clone(),
+            run_id: running.body.id,
+            kind: ArtifactKind::Patch,
+            storage_path: "artifacts/run-1/patch.diff".to_string(),
+        })
+        .expect("artifact should record");
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(6),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::Artifact],
+                "afterCursor": {
+                    "daemonInstanceId": state.runtime.daemon_instance_id(),
+                    "sessionId": opened.id.clone(),
+                    "sequence": recorded
+                        .deferred_records
+                        .last()
+                        .expect("artifact event")
+                        .sequence
+                        .to_string()
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(
+        result,
+        DaemonSubscribeResult::Ready {
+            latest_cursor: Some(DaemonEventCursor {
+                daemon_instance_id: state.runtime.daemon_instance_id(),
+                session_id: opened.id.clone(),
+                sequence: recorded
+                    .deferred_records
+                    .last()
+                    .expect("artifact event")
+                    .sequence,
+            }),
+        }
+    );
+}
+
+#[test]
+fn daemon_subscribe_returns_ready_when_live_lane_backlog_can_resume() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    state.runtime.publish_record(&EventRecord {
+        sequence: 1,
+        session_id: opened.id.clone(),
+        occurred_at_ms: 100,
+        payload: crate::DaemonEvent::Session(crate::SessionEvent {
+            session_id: opened.id.clone(),
+            status: SessionStatus::Idle,
+        }),
+    });
+    state.runtime.publish_record(&EventRecord {
+        sequence: 2,
+        session_id: opened.id.clone(),
+        occurred_at_ms: 200,
+        payload: crate::DaemonEvent::AgentStream(AgentStreamEvent {
+            run_id: RunId::new("run-1").expect("run id"),
+            emission: StreamEmission {
+                turn_id: None,
+                item_id: None,
+                fragment_sequence: Some(1),
+                frame: AgentStreamFrame::AssistantMessageDelta {
+                    delta: "partial".to_string(),
+                },
+            },
+        }),
+    });
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(61),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::AgentStream],
+                "afterCursor": {
+                    "daemonInstanceId": state.runtime.daemon_instance_id(),
+                    "sessionId": opened.id.clone(),
+                    "sequence": "1"
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(
+        result,
+        DaemonSubscribeResult::Ready {
+            latest_cursor: Some(DaemonEventCursor {
+                daemon_instance_id: state.runtime.daemon_instance_id(),
+                session_id: opened.id.clone(),
+                sequence: 2,
+            }),
+        }
+    );
+}
+
+#[test]
+fn daemon_subscribe_caps_history_gap_cursor_to_durable_latest_when_live_only_frames_exist() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    let session_event = EventRecord {
+        sequence: 1,
+        session_id: opened.id.clone(),
+        occurred_at_ms: 100,
+        payload: crate::DaemonEvent::Session(crate::SessionEvent {
+            session_id: opened.id.clone(),
+            status: SessionStatus::Idle,
+        }),
+    };
+    state.runtime.publish_record(&session_event);
+    state.runtime.publish_record(&EventRecord {
+        sequence: 2,
+        session_id: opened.id.clone(),
+        occurred_at_ms: 200,
+        payload: crate::DaemonEvent::AgentStream(AgentStreamEvent {
+            run_id: RunId::new("run-1").expect("run id"),
+            emission: StreamEmission {
+                turn_id: None,
+                item_id: None,
+                fragment_sequence: Some(1),
+                frame: AgentStreamFrame::AssistantMessageDelta {
+                    delta: "partial".to_string(),
+                },
+            },
+        }),
+    });
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(62),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::AgentStream],
+                "afterCursor": {
+                    "daemonInstanceId": "stale-daemon",
+                    "sessionId": opened.id.clone(),
+                    "sequence": "0"
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(
+        result,
+        DaemonSubscribeResult::HistoryGap {
+            latest_cursor: Some(DaemonEventCursor {
+                daemon_instance_id: state.runtime.daemon_instance_id(),
+                session_id: opened.id.clone(),
+                sequence: 1,
+            }),
+        }
+    );
+}
+
+#[test]
+fn daemon_subscribe_returns_history_gap_when_cursor_epoch_differs() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+    let current_cursor = state
+        .app
+        .latest_event_cursor_for_session(&opened.id)
+        .expect("latest cursor should load");
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(7),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::Session],
+                "afterCursor": {
+                    "daemonInstanceId": "stale-daemon",
+                    "sessionId": opened.id,
+                    "sequence": current_cursor
+                        .as_ref()
+                        .expect("latest cursor")
+                        .sequence
+                        .to_string()
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(
+        result,
+        DaemonSubscribeResult::HistoryGap {
+            latest_cursor: current_cursor,
+        }
+    );
+}
+
+#[test]
+fn daemon_subscribe_returns_history_gap_when_cursor_session_differs() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+            },
+        )
+        .expect("session should open");
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let session = test_session();
+    let current_cursor = state
+        .app
+        .latest_event_cursor_for_session(&opened.id)
+        .expect("latest cursor should load");
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(8),
+            method: METHOD_DAEMON_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({
+                "kinds": [DaemonEventKind::Session],
+                "afterCursor": {
+                    "daemonInstanceId": state.runtime.daemon_instance_id(),
+                    "sessionId": "session-foreign",
+                    "sequence": current_cursor
+                        .as_ref()
+                        .expect("latest cursor")
+                        .sequence
+                        .to_string()
+                }
+            })),
+        },
+    )
+    .expect("daemon.subscribe should succeed");
+
+    let result: DaemonSubscribeResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    assert_eq!(
+        result,
+        DaemonSubscribeResult::HistoryGap {
+            latest_cursor: current_cursor,
+        }
+    );
+}

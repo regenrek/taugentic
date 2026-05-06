@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "evidence",
+    "patch",
+    "testOutput",
+    "reviewFinding",
+    "artifact",
+    "risk",
+    "blocker",
+    "summary"
+  ],
+  "title": "ReceiptKind",
+  "type": "string"
+}

@@ -1,0 +1,36 @@
+{
+  "id": "xai",
+  "family": "openai_compatible",
+  "display_name": "xAI",
+  "description": "OpenAI-compatible xAI Grok models",
+  "doc_url": "https://docs.x.ai/docs/overview",
+  "setup_steps": [
+    "Set XAI_API_KEY in the daemon environment"
+  ],
+  "base_url": "https://api.x.ai/v1",
+  "completions_prefix": "",
+  "auth": {
+    "kind": "bearer_env",
+    "env": "XAI_API_KEY"
+  },
+  "default_model": "grok-4",
+  "fast_model": "grok-3-mini",
+  "models": [
+    {
+      "id": "grok-4",
+      "display_name": "Grok 4"
+    },
+    {
+      "id": "grok-3",
+      "display_name": "Grok 3"
+    },
+    {
+      "id": "grok-3-mini",
+      "display_name": "Grok 3 Mini"
+    },
+    {
+      "id": "grok-code-fast-1",
+      "display_name": "Grok Code Fast 1"
+    }
+  ]
+}

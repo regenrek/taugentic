@@ -1,0 +1,18 @@
+[package]
+name = "ta-protocol"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ta-work-source = { path = "../ta-work-source" }
+thiserror.workspace = true
+ts-rs.workspace = true
+
+[lints]
+workspace = true

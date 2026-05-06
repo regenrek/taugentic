@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "RuntimeLanePendingState": {
+      "enum": [
+        "queued",
+        "waitingForApproval",
+        "waitingForInput"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cursor": {
+      "$ref": "#/$defs/ActivityCursor"
+    },
+    "occurredAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/RuntimeLanePendingState"
+    },
+    "turnId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "cursor",
+    "sessionId",
+    "runId",
+    "occurredAtMs",
+    "state"
+  ],
+  "title": "AgentPendingStateRow",
+  "type": "object"
+}

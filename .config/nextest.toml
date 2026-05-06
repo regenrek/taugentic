@@ -1,0 +1,14 @@
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 1 }
+
+# The CLI contract suite starts real local IPC listeners and child CLI processes.
+# Windows named-pipe teardown is process-scoped, so keep these tests mutually exclusive.
+[[profile.default.overrides]]
+filter = 'package(ta-cli) & binary(cli_contract)'
+threads-required = "num-test-threads"
+
+# MCP stdio tests spawn sandboxed helper processes. Keep them serial in nextest,
+# since nextest runs each test as a separate process and in-file mutexes do not coordinate them.
+[[profile.default.overrides]]
+filter = 'package(taugentic-agent) & (binary(mcp_tool_mount) | binary(mcp_lifecycle_unmount))'
+threads-required = "num-test-threads"

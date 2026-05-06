@@ -1,0 +1,22 @@
+pre-commit:
+  parallel: true
+  commands:
+    forbidden-stage-files:
+      run: "node scripts/hooks/block-forbidden-staged-files.mjs"
+    gitleaks-staged:
+      run: "gitleaks git --staged --no-banner --redact=100 --config .gitleaks.toml ."
+    rust-fmt:
+      files: "*.rs"
+      run: "cargo fmt --all -- --check"
+
+pre-push:
+  parallel: false
+  commands:
+    gitleaks:
+      run: "gitleaks git --no-banner --redact=100 --config .gitleaks.toml ."
+    desktop-check:
+      run: "pnpm --dir apps/desktop check"
+    desktop-test:
+      run: "pnpm --dir apps/desktop test"
+    nextest:
+      run: "cargo nextest run --workspace"

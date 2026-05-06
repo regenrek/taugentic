@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "WorkflowSourceKind": {
+      "enum": [
+        "linear",
+        "github_issues",
+        "github_pr_reviews",
+        "local_tasks",
+        "mission_board",
+        "cli"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "active_states": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "kind": {
+      "$ref": "#/$defs/WorkflowSourceKind"
+    },
+    "paths": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "project": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "repo": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "terminal_states": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "kind",
+    "active_states",
+    "terminal_states"
+  ],
+  "title": "WorkflowSourceBinding",
+  "type": "object"
+}

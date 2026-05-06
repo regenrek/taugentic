@@ -1,0 +1,138 @@
+{
+  "$defs": {
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "claimedFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "depth": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "endedAtMs": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "outputContract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parentRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recipeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "startedAtMs": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "$ref": "#/$defs/RunStatus"
+    },
+    "workspaceInfo": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorktreeInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "runId",
+    "depth",
+    "status"
+  ],
+  "title": "RunTimelineRun",
+  "type": "object"
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "occurredAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "occurredAtMs",
+    "source",
+    "message"
+  ],
+  "title": "DaemonDiagnosticError",
+  "type": "object"
+}

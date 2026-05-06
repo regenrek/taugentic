@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "BudgetBreach": {
+      "properties": {
+        "actual": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "limit": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "metric": {
+          "$ref": "#/$defs/BudgetMetric"
+        },
+        "scope": {
+          "$ref": "#/$defs/BudgetScope"
+        }
+      },
+      "required": [
+        "scope",
+        "metric",
+        "limit",
+        "actual"
+      ],
+      "type": "object"
+    },
+    "BudgetMetric": {
+      "enum": [
+        "tokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "string"
+    },
+    "BudgetScope": {
+      "enum": [
+        "run",
+        "parentAggregate"
+      ],
+      "type": "string"
+    },
+    "BudgetSnapshot": {
+      "properties": {
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/BudgetScope"
+        },
+        "toolCalls": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "totalTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "wallClockMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "scope",
+        "totalTokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "breach": {
+      "$ref": "#/$defs/BudgetBreach"
+    },
+    "parentRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/BudgetSnapshot"
+    }
+  },
+  "required": [
+    "runId",
+    "breach",
+    "snapshot"
+  ],
+  "title": "BudgetExceededEvent",
+  "type": "object"
+}

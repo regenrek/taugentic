@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "contract": {
+      "$ref": "#/$defs/OutputContractKind"
+    },
+    "defaultModel": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "defaultSandboxProfile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "promptTemplate": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "contract",
+    "promptTemplate"
+  ],
+  "title": "CapsuleRecipe",
+  "type": "object"
+}

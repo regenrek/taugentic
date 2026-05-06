@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "WorkflowValidationError": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "prev_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "const": "reloaded",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/WorkflowValidationError"
+          },
+          "type": "array"
+        },
+        "status": {
+          "const": "failed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "errors"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkflowReloadOutcome"
+}

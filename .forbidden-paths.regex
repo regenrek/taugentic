@@ -1,0 +1,27 @@
+# Forbidden staged paths (regex; matched against git paths).
+# Keep conservative; gitleaks + GitHub protections remain the hard gates.
+
+# Local runtime + plaintext env files (allow committed templates)
+(^|/)\.taugentic/
+(^|/)\.env($|/)
+(^|/)\.env\.(?!example$|sample$|template$).+
+
+# Common credential files
+(^|/)\.aws/credentials$
+(^|/)\.npmrc$
+(^|/)\.netrc$
+(^|/)\.git-credentials$
+
+# Terraform/OpenTofu state/plan
+\.tfstate($|\.|/)
+\.tfplan$
+
+# Private keys / keystores
+\.pem$
+\.key$
+\.p12$
+\.jks$
+\.keystore$
+(^|/)id_rsa$
+(^|/)id_ed25519$
+\.agekey$

@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "unknownRecipeId",
+          "type": "string"
+        },
+        "recipeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "recipeId"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "recipeContractConflict",
+          "type": "string"
+        },
+        "recipeContract": {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        "recipeId": {
+          "type": "string"
+        },
+        "requestContract": {
+          "$ref": "#/$defs/OutputContractKind"
+        }
+      },
+      "required": [
+        "kind",
+        "recipeId",
+        "recipeContract",
+        "requestContract"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "RecipeResolutionError"
+}

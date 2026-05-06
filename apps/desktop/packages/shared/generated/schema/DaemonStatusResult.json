@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "DaemonRuntimeMode": {
+      "enum": [
+        "local",
+        "background"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "daemonInstanceId": {
+      "type": "string"
+    },
+    "logPath": {
+      "type": "string"
+    },
+    "ready": {
+      "type": "boolean"
+    },
+    "runtimeMode": {
+      "$ref": "#/$defs/DaemonRuntimeMode"
+    },
+    "socketPath": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ready",
+    "daemonInstanceId",
+    "runtimeMode",
+    "socketPath",
+    "logPath",
+    "version"
+  ],
+  "title": "DaemonStatusResult",
+  "type": "object"
+}

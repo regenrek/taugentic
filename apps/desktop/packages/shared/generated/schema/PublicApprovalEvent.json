@@ -1,0 +1,263 @@
+{
+  "$defs": {
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "properties": {
+        "expiresAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requestedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/ApprovalScope"
+        },
+        "target": {
+          "$ref": "#/$defs/ApprovalTarget"
+        },
+        "toolCallId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "scope",
+        "requestedAtMs",
+        "expiresAtMs",
+        "target",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ApprovalResolutionReason": {
+      "enum": [
+        "user",
+        "expired",
+        "cancelled",
+        "budgetExceeded",
+        "runtimePolicy"
+      ],
+      "type": "string"
+    },
+    "ApprovalScope": {
+      "enum": [
+        "fileWrite",
+        "processExec",
+        "networkAccess"
+      ],
+      "type": "string"
+    },
+    "ApprovalTarget": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCall",
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "toolName"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fileWrite",
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "paths"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "command": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "processExec",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "host": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "networkAccess",
+              "type": "string"
+            },
+            "protocol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "childRunId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "capsuleDispatch",
+              "type": "string"
+            },
+            "workspaceScope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WorkspaceMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PublicApprovalResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "approvalId": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApprovalDecision"
+        },
+        "reason": {
+          "$ref": "#/$defs/ApprovalResolutionReason"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "approvalId",
+        "runId",
+        "decision",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "const": "requested",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/ApprovalRequest"
+        }
+      },
+      "required": [
+        "phase",
+        "request"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "const": "resolved",
+          "type": "string"
+        },
+        "resolution": {
+          "$ref": "#/$defs/PublicApprovalResolution"
+        }
+      },
+      "required": [
+        "phase",
+        "resolution"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "PublicApprovalEvent"
+}

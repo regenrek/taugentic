@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "blockers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "passing": {
+      "type": "boolean"
+    },
+    "patchReceiptIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "testsRunReceiptIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "touchedFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "patchReceiptIds",
+    "touchedFiles",
+    "testsRunReceiptIds",
+    "passing",
+    "blockers"
+  ],
+  "title": "PatchResult",
+  "type": "object"
+}

@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy",
+      "default": "deleteOnSuccess"
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "objective": {
+      "type": "string"
+    },
+    "outputContract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "plannedWriteFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "recipeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sandboxProfile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "workspaceScope": {
+      "$ref": "#/$defs/WorkspaceMode",
+      "default": "worktreeWrite"
+    }
+  },
+  "required": [
+    "objective"
+  ],
+  "title": "DelegateRequest",
+  "type": "object"
+}

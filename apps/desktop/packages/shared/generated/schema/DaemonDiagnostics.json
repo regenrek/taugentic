@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "AgentRuntimeStrategyHealthStatus": {
+      "enum": [
+        "unknown",
+        "ready",
+        "degraded",
+        "unavailable"
+      ],
+      "type": "string"
+    },
+    "DaemonDiagnosticError": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "occurredAtMs",
+        "source",
+        "message"
+      ],
+      "type": "object"
+    },
+    "DaemonDiagnosticTokenUsage": {
+      "properties": {
+        "cachedTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completionTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelContextWindow": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "promptTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoningTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "totalTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "DaemonProviderHealthDiagnostic": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AgentRuntimeStrategyHealthStatus"
+        }
+      },
+      "required": [
+        "providerId",
+        "displayName",
+        "status"
+      ],
+      "type": "object"
+    },
+    "DaemonSandboxCapabilitySnapshot": {
+      "properties": {
+        "appcontainer": {
+          "type": "boolean"
+        },
+        "filesystemAllowlist": {
+          "type": "boolean"
+        },
+        "helperAvailable": {
+          "type": "boolean"
+        },
+        "networkDefaultDeny": {
+          "type": "boolean"
+        },
+        "networkDestinationAllowlist": {
+          "type": "boolean"
+        },
+        "os": {
+          "type": "string"
+        },
+        "restrictedTokenJob": {
+          "type": "boolean"
+        },
+        "sandboxKind": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "sandboxKind",
+        "helperAvailable",
+        "restrictedTokenJob",
+        "appcontainer",
+        "filesystemAllowlist",
+        "networkDefaultDeny",
+        "networkDestinationAllowlist"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "claimCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "inFlightCapsuleRunCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "inFlightRpcCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "providerHealth": {
+      "items": {
+        "$ref": "#/$defs/DaemonProviderHealthDiagnostic"
+      },
+      "type": "array"
+    },
+    "recentErrorCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "recentErrors": {
+      "items": {
+        "$ref": "#/$defs/DaemonDiagnosticError"
+      },
+      "type": "array"
+    },
+    "sandbox": {
+      "$ref": "#/$defs/DaemonSandboxCapabilitySnapshot"
+    },
+    "tokenUsage": {
+      "$ref": "#/$defs/DaemonDiagnosticTokenUsage"
+    },
+    "uptimeMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "worktreeCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "uptimeMs",
+    "inFlightRpcCount",
+    "inFlightCapsuleRunCount",
+    "recentErrorCount",
+    "recentErrors",
+    "tokenUsage",
+    "worktreeCount",
+    "claimCount",
+    "sandbox",
+    "providerHealth"
+  ],
+  "title": "DaemonDiagnostics",
+  "type": "object"
+}

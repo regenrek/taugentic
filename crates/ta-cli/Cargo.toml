@@ -1,0 +1,27 @@
+[package]
+name = "ta-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+clap = { version = "4.6.0", features = ["derive"] }
+serde.workspace = true
+serde_json.workspace = true
+ta-daemon-client = { path = "../ta-daemon-client" }
+ta-jsonrpc = { path = "../ta-jsonrpc" }
+ta-observability = { path = "../ta-observability" }
+ta-orchestrator = { path = "../ta-orchestrator" }
+ta-protocol = { path = "../ta-protocol" }
+thiserror.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+assert_cmd = "2.2.0"
+predicates = "3.1.4"
+sha2.workspace = true

@@ -1,0 +1,37 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Rust auth_token parameter name in remote websocket config"
+paths = ['''crates/ta-orchestrator/src/host/config.rs''']
+regexTarget = "line"
+regexes = ['''^\s*auth_token: Option<String>,\s*$''']
+
+# Synthetic daemon integration auth_token fixture. Scoped to the historical commits
+# where the fixed 32-byte test token appears in remote websocket test code.
+[[allowlists]]
+description = "Synthetic remote websocket auth_token test fixture"
+condition = "AND"
+commits = [
+  "f911836d2a041bdb97dc95db3f9c3e4e02f71163",
+  "abbb8f44fdf0603ba171a037b25592cabc21e7b1",
+  "b4e7c48a11a869a561984373544c722401cfb773",
+]
+paths = ['''^crates/ta-orchestrator/tests/daemon_integration(/(lifecycle|restart_and_remote)\.rs|\.rs)$''']
+regexTarget = "line"
+regexes = ['''^\s*let auth_token = "[0-9a-f]{32}";\s*$''']
+
+# Synthetic ACP adapter error-redaction payload. Scoped to the commit and test
+# fixture path that intentionally contains fake credential-like JSON fields.
+[[allowlists]]
+description = "Synthetic ACP error-redaction credential JSON fixture"
+condition = "AND"
+commits = [
+  "6f87be2009091917630747299f987646911fb369",
+]
+paths = ['''^crates/ta-provider-acp/src/adapter/errors\.rs$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"api_key": "[^"]+",\s*$''',
+  '''^\s*"key": "[^"]+",\s*$''',
+]

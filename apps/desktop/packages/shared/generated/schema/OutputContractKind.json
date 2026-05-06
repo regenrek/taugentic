@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "debug",
+    "patch",
+    "review",
+    "test",
+    "plan",
+    "custom"
+  ],
+  "title": "OutputContractKind",
+  "type": "string"
+}

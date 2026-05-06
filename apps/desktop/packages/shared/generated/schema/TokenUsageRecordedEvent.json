@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cachedTokens": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "capsuleId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "completionTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "promptTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "reasoningTokens": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recordedAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "promptTokens",
+    "completionTokens",
+    "model",
+    "provider",
+    "recordedAtMs"
+  ],
+  "title": "TokenUsageRecordedEvent",
+  "type": "object"
+}

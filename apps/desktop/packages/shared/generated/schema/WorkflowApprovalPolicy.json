@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "WorkflowFileWriteApproval": {
+      "enum": [
+        "ask",
+        "auto",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "WorkflowNetworkApproval": {
+      "enum": [
+        "allowlist",
+        "ask",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "WorkflowProcessApproval": {
+      "enum": [
+        "ask",
+        "ask_for_sensitive",
+        "auto",
+        "deny"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "file_write": {
+      "$ref": "#/$defs/WorkflowFileWriteApproval"
+    },
+    "network": {
+      "$ref": "#/$defs/WorkflowNetworkApproval"
+    },
+    "process": {
+      "$ref": "#/$defs/WorkflowProcessApproval"
+    }
+  },
+  "required": [
+    "file_write",
+    "process",
+    "network"
+  ],
+  "title": "WorkflowApprovalPolicy",
+  "type": "object"
+}

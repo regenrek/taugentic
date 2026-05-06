@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "WorkItemStatus": {
+      "enum": [
+        "available",
+        "dismissed",
+        "triggered",
+        "stale"
+      ],
+      "type": "string"
+    },
+    "WorkSource": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "gitHub",
+              "type": "string"
+            },
+            "repo_name": {
+              "type": "string"
+            },
+            "repo_owner": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "repo_owner",
+            "repo_name"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "externalId": {
+      "type": "string"
+    },
+    "fetchedAtMs": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "key": {
+      "type": "string"
+    },
+    "labels": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "source": {
+      "$ref": "#/$defs/WorkSource"
+    },
+    "status": {
+      "$ref": "#/$defs/WorkItemStatus"
+    },
+    "title": {
+      "type": "string"
+    },
+    "triggeredRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "source",
+    "externalId",
+    "title",
+    "body",
+    "labels",
+    "url",
+    "fetchedAtMs",
+    "status"
+  ],
+  "title": "WorkItem",
+  "type": "object"
+}

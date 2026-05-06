@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gpt-5.4",
+    "displayName": "GPT-5.4",
+    "wireApi": "responses"
+  },
+  {
+    "id": "gpt-5.3",
+    "displayName": "GPT-5.3",
+    "wireApi": "responses"
+  },
+  {
+    "id": "gpt-5.2",
+    "displayName": "GPT-5.2",
+    "wireApi": "responses"
+  },
+  {
+    "id": "gpt-5.1-codex",
+    "displayName": "GPT-5.1 Codex",
+    "wireApi": "responses"
+  },
+  {
+    "id": "gpt-4.1",
+    "displayName": "GPT-4.1",
+    "wireApi": "chatCompletions"
+  },
+  {
+    "id": "gpt-4o",
+    "displayName": "GPT-4o",
+    "wireApi": "chatCompletions"
+  }
+]

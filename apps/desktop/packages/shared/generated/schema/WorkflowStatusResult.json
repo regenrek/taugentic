@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "WorkflowLoadedStatus": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "runtimeProfileCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceKind": {
+          "$ref": "#/$defs/WorkflowSourceKind"
+        },
+        "version": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "sourceKind",
+        "runtimeProfileCount",
+        "version"
+      ],
+      "type": "object"
+    },
+    "WorkflowReloadOutcome": {
+      "oneOf": [
+        {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "prev_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "const": "reloaded",
+              "type": "string"
+            },
+            "version": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/WorkflowValidationError"
+              },
+              "type": "array"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "errors"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorkflowSourceKind": {
+      "enum": [
+        "linear",
+        "github_issues",
+        "github_pr_reviews",
+        "local_tasks",
+        "mission_board",
+        "cli"
+      ],
+      "type": "string"
+    },
+    "WorkflowValidationError": {
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "lastReload": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkflowReloadOutcome"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "loaded": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkflowLoadedStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "title": "WorkflowStatusResult",
+  "type": "object"
+}

@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "AuthProfileLoginMethod": {
+      "enum": [
+        "browser",
+        "deviceCode",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authProfileId": {
+      "type": "string"
+    },
+    "authorizeUrl": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manualBrowserUrl": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "method": {
+      "$ref": "#/$defs/AuthProfileLoginMethod"
+    },
+    "userCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "authProfileId",
+    "method"
+  ],
+  "title": "AuthProfileLoginChallenge",
+  "type": "object"
+}

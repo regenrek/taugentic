@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "file": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "line": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "#/$defs/FindingSeverity"
+    },
+    "suggestion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "severity",
+    "message"
+  ],
+  "title": "ReviewFinding",
+  "type": "object"
+}

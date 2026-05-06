@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptProvenance": {
+      "description": "Provenance shape rules:\n- artifact-derived: only `artifact_id` is set; identity = (session, run, kind, artifact_id).\n- event-derived: both `event_seq` and `agent_turn_id` are set; identity = (session, run, kind, event_seq, agent_turn_id).\n- free-form: all identifying fields are None.\n\n`stream_cursor` is descriptive metadata (e.g. for UI navigation) and may be\npresent in any shape. It is never part of the unique identity.",
+      "properties": {
+        "agentTurnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifactId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "streamCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "createdAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/ReceiptKind"
+    },
+    "parentRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "promotedAtMs": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "provenance": {
+      "$ref": "#/$defs/ReceiptProvenance"
+    },
+    "quarantinedAtMs": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/ReceiptState"
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "sessionId",
+    "runId",
+    "kind",
+    "provenance",
+    "state",
+    "createdAtMs"
+  ],
+  "title": "ContextReceipt",
+  "type": "object"
+}

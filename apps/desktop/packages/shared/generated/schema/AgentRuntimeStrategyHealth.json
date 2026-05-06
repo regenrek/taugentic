@@ -1,0 +1,30 @@
+{
+  "$defs": {
+    "AgentRuntimeStrategyHealthStatus": {
+      "enum": [
+        "unknown",
+        "ready",
+        "degraded",
+        "unavailable"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "message": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "$ref": "#/$defs/AgentRuntimeStrategyHealthStatus"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "AgentRuntimeStrategyHealth",
+  "type": "object"
+}

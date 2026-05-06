@@ -1,0 +1,25 @@
+[package]
+name = "ta-linux-sandbox"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+ta-host-platform = { path = "../ta-host-platform" }
+ta-sandbox = { path = "../ta-sandbox" }
+thiserror.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock.workspace = true
+libc.workspace = true
+nix = { workspace = true, features = ["fs", "net", "resource", "socket"] }
+seccompiler.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

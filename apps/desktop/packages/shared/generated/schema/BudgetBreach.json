@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "BudgetMetric": {
+      "enum": [
+        "tokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "string"
+    },
+    "BudgetScope": {
+      "enum": [
+        "run",
+        "parentAggregate"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actual": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "limit": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "metric": {
+      "$ref": "#/$defs/BudgetMetric"
+    },
+    "scope": {
+      "$ref": "#/$defs/BudgetScope"
+    }
+  },
+  "required": [
+    "scope",
+    "metric",
+    "limit",
+    "actual"
+  ],
+  "title": "BudgetBreach",
+  "type": "object"
+}

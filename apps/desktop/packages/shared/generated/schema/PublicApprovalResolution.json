@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "ApprovalResolutionReason": {
+      "enum": [
+        "user",
+        "expired",
+        "cancelled",
+        "budgetExceeded",
+        "runtimePolicy"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approvalId": {
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/ApprovalDecision"
+    },
+    "reason": {
+      "$ref": "#/$defs/ApprovalResolutionReason"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "toolCallId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "approvalId",
+    "runId",
+    "decision",
+    "reason"
+  ],
+  "title": "PublicApprovalResolution",
+  "type": "object"
+}

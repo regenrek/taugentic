@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "RuntimeExtensionHttpHeader": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "headers": {
+      "items": {
+        "$ref": "#/$defs/RuntimeExtensionHttpHeader"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "url"
+  ],
+  "title": "RuntimeExtensionMcpHttpServer",
+  "type": "object"
+}

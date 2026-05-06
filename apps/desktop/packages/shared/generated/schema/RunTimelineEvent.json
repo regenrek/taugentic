@@ -1,0 +1,477 @@
+{
+  "$defs": {
+    "AgentToolCallOutcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "ApprovalScope": {
+      "enum": [
+        "fileWrite",
+        "processExec",
+        "networkAccess"
+      ],
+      "type": "string"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog"
+      ],
+      "type": "string"
+    },
+    "BudgetMetric": {
+      "enum": [
+        "tokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "string"
+    },
+    "BudgetScope": {
+      "enum": [
+        "run",
+        "parentAggregate"
+      ],
+      "type": "string"
+    },
+    "ConflictSeverity": {
+      "enum": [
+        "informational",
+        "warning"
+      ],
+      "type": "string"
+    },
+    "ConflictWarning": {
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/$defs/FileClaimConflict"
+          },
+          "type": "array"
+        },
+        "requestingCapsule": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/ConflictSeverity"
+        }
+      },
+      "required": [
+        "requestingCapsule",
+        "severity",
+        "conflicts"
+      ],
+      "type": "object"
+    },
+    "FileClaimConflict": {
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "holdingCapsule": {
+          "type": "string"
+        },
+        "holdingKind": {
+          "$ref": "#/$defs/FileClaimKind"
+        }
+      },
+      "required": [
+        "file",
+        "holdingCapsule",
+        "holdingKind"
+      ],
+      "type": "object"
+    },
+    "FileClaimKind": {
+      "enum": [
+        "write"
+      ],
+      "type": "string"
+    },
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RunTimelineEventKind": {
+      "enum": [
+        "runStatus",
+        "approvalRequested",
+        "approvalResolved",
+        "claimConflict",
+        "budgetExceeded",
+        "tokenUsage",
+        "toolCall",
+        "artifact",
+        "receipt",
+        "agentStream"
+      ],
+      "type": "string"
+    },
+    "RunTimelineEventPayload": {
+      "oneOf": [
+        {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "run",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "detail"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "approvalId": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "approvalRequested",
+              "type": "string"
+            },
+            "scope": {
+              "$ref": "#/$defs/ApprovalScope"
+            }
+          },
+          "required": [
+            "kind",
+            "approvalId",
+            "scope"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "approvalId": {
+              "type": "string"
+            },
+            "decision": {
+              "$ref": "#/$defs/ApprovalDecision"
+            },
+            "kind": {
+              "const": "approvalResolved",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "approvalId",
+            "decision"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "conflict",
+              "type": "string"
+            },
+            "warning": {
+              "$ref": "#/$defs/ConflictWarning"
+            }
+          },
+          "required": [
+            "kind",
+            "warning"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "actual": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "budgetExceeded",
+              "type": "string"
+            },
+            "limit": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "metric": {
+              "$ref": "#/$defs/BudgetMetric"
+            },
+            "scope": {
+              "$ref": "#/$defs/BudgetScope"
+            }
+          },
+          "required": [
+            "kind",
+            "scope",
+            "metric",
+            "limit",
+            "actual"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "tokenUsage",
+              "type": "string"
+            },
+            "usage": {
+              "$ref": "#/$defs/TokenUsageRecordedEvent"
+            }
+          },
+          "required": [
+            "kind",
+            "usage"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCall",
+              "type": "string"
+            },
+            "outcome": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AgentToolCallOutcome"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "toolName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "artifactId": {
+              "type": "string"
+            },
+            "artifactKind": {
+              "$ref": "#/$defs/ArtifactKind"
+            },
+            "kind": {
+              "const": "artifact",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "artifactId",
+            "artifactKind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "receipt",
+              "type": "string"
+            },
+            "receiptId": {
+              "type": "string"
+            },
+            "receiptKind": {
+              "$ref": "#/$defs/ReceiptKind"
+            },
+            "receiptState": {
+              "$ref": "#/$defs/ReceiptState"
+            }
+          },
+          "required": [
+            "kind",
+            "receiptId",
+            "receiptKind",
+            "receiptState"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "frameKind": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "agentStream",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "frameKind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TokenUsageRecordedEvent": {
+      "properties": {
+        "cachedTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capsuleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "completionTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "promptTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recordedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "promptTokens",
+        "completionTokens",
+        "model",
+        "provider",
+        "recordedAtMs"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/RunTimelineEventKind"
+    },
+    "label": {
+      "type": "string"
+    },
+    "occurredAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "payload": {
+      "$ref": "#/$defs/RunTimelineEventPayload"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "seq": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunStatus"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "seq",
+    "occurredAtMs",
+    "runId",
+    "kind",
+    "label",
+    "payload"
+  ],
+  "title": "RunTimelineEvent",
+  "type": "object"
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "evidence",
+    "tests",
+    "patch_or_blocker",
+    "risk_summary",
+    "plan",
+    "review_findings"
+  ],
+  "title": "WorkflowOutputRequirement",
+  "type": "string"
+}

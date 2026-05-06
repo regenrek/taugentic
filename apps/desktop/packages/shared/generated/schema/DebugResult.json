@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "blockers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "evidenceReceiptIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "patchReceiptId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reproduced": {
+      "type": "boolean"
+    },
+    "rootCause": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "reproduced",
+    "evidenceReceiptIds",
+    "confidence",
+    "blockers"
+  ],
+  "title": "DebugResult",
+  "type": "object"
+}

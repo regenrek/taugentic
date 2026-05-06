@@ -1,0 +1,23 @@
+[package]
+name = "ta-store"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+test-support = []
+
+[dependencies]
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+ta-protocol = { path = "../ta-protocol" }
+ta-work-source = { path = "../ta-work-source" }
+thiserror.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

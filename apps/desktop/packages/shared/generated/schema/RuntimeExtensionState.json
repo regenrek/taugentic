@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "RuntimeExtensionAvailability": {
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "type": "string"
+    },
+    "RuntimeExtensionDescriptor": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "description"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionEnvVar": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionHttpHeader": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionMcpHttpServer": {
+      "properties": {
+        "headers": {
+          "items": {
+            "$ref": "#/$defs/RuntimeExtensionHttpHeader"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "url"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionMcpServer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RuntimeExtensionMcpStdioServer",
+          "properties": {
+            "transport": {
+              "const": "stdio",
+              "type": "string"
+            }
+          },
+          "required": [
+            "transport"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/RuntimeExtensionMcpHttpServer",
+          "properties": {
+            "transport": {
+              "const": "http",
+              "type": "string"
+            }
+          },
+          "required": [
+            "transport"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RuntimeExtensionMcpStdioServer": {
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "command": {
+          "type": "string"
+        },
+        "env": {
+          "items": {
+            "$ref": "#/$defs/RuntimeExtensionEnvVar"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "command"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "availability": {
+      "$ref": "#/$defs/RuntimeExtensionAvailability"
+    },
+    "descriptor": {
+      "$ref": "#/$defs/RuntimeExtensionDescriptor"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "mcpServer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RuntimeExtensionMcpServer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "descriptor",
+    "availability",
+    "enabled"
+  ],
+  "title": "RuntimeExtensionState",
+  "type": "object"
+}

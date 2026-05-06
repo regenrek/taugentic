@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "AuthProfileActionHint": {
+      "properties": {
+        "command": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    },
+    "AuthProfileConnectionState": {
+      "enum": [
+        "loggedOut",
+        "pendingLogin",
+        "connected",
+        "error"
+      ],
+      "type": "string"
+    },
+    "AuthProfileManagementMode": {
+      "enum": [
+        "interactive",
+        "nativeAcpAuth",
+        "terminalCliDelegated",
+        "environment",
+        "none",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "AuthProfileMethodInfo": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "managementMode": {
+          "$ref": "#/$defs/AuthProfileManagementMode"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "managementMode"
+      ],
+      "type": "object"
+    },
+    "AuthProfileRef": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "providerId",
+        "displayName"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthProfileActionHint"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "canLogin": {
+      "type": "boolean"
+    },
+    "canLogout": {
+      "type": "boolean"
+    },
+    "connectionState": {
+      "$ref": "#/$defs/AuthProfileConnectionState"
+    },
+    "lastError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "managementMode": {
+      "$ref": "#/$defs/AuthProfileManagementMode"
+    },
+    "methods": {
+      "items": {
+        "$ref": "#/$defs/AuthProfileMethodInfo"
+      },
+      "type": "array"
+    },
+    "platformOrgLinked": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "profile": {
+      "$ref": "#/$defs/AuthProfileRef"
+    },
+    "setupSteps": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile",
+    "connectionState",
+    "managementMode",
+    "canLogin",
+    "canLogout"
+  ],
+  "title": "AuthProfileState",
+  "type": "object"
+}

@@ -1,0 +1,309 @@
+{
+  "$defs": {
+    "WorkflowApprovalPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "file_write": {
+          "$ref": "#/$defs/WorkflowFileWriteApproval"
+        },
+        "network": {
+          "$ref": "#/$defs/WorkflowNetworkApproval"
+        },
+        "process": {
+          "$ref": "#/$defs/WorkflowProcessApproval"
+        }
+      },
+      "required": [
+        "file_write",
+        "process",
+        "network"
+      ],
+      "type": "object"
+    },
+    "WorkflowBudgetLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cost_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_tokens": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_wall_time_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "WorkflowBudgets": {
+      "additionalProperties": false,
+      "properties": {
+        "per_capsule": {
+          "$ref": "#/$defs/WorkflowBudgetLimits"
+        },
+        "per_orchestrator": {
+          "$ref": "#/$defs/WorkflowBudgetLimits"
+        },
+        "per_workflow": {
+          "$ref": "#/$defs/WorkflowBudgetLimits"
+        }
+      },
+      "required": [
+        "per_capsule",
+        "per_orchestrator",
+        "per_workflow"
+      ],
+      "type": "object"
+    },
+    "WorkflowFileWriteApproval": {
+      "enum": [
+        "ask",
+        "auto",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "WorkflowNetworkApproval": {
+      "enum": [
+        "allowlist",
+        "ask",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "WorkflowOrchestratorPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "max_capsules_per_mission": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_concurrent_missions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "retry": {
+          "$ref": "#/$defs/WorkflowRetryPolicy"
+        }
+      },
+      "required": [
+        "max_concurrent_missions",
+        "max_capsules_per_mission",
+        "retry"
+      ],
+      "type": "object"
+    },
+    "WorkflowOutputRequirement": {
+      "enum": [
+        "evidence",
+        "tests",
+        "patch_or_blocker",
+        "risk_summary",
+        "plan",
+        "review_findings"
+      ],
+      "type": "string"
+    },
+    "WorkflowOutputsPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "items": {
+            "$ref": "#/$defs/WorkflowOutputRequirement"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "required"
+      ],
+      "type": "object"
+    },
+    "WorkflowPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "approvals": {
+          "$ref": "#/$defs/WorkflowApprovalPolicy"
+        },
+        "network_allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "approvals"
+      ],
+      "type": "object"
+    },
+    "WorkflowProcessApproval": {
+      "enum": [
+        "ask",
+        "ask_for_sensitive",
+        "auto",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "WorkflowRetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "initial_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "initial_ms",
+        "max_ms"
+      ],
+      "type": "object"
+    },
+    "WorkflowRuntimeProfileRef": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoning_effort": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "model"
+      ],
+      "type": "object"
+    },
+    "WorkflowSourceBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "active_states": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkflowSourceKind"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "project": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "repo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "terminal_states": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "active_states",
+        "terminal_states"
+      ],
+      "type": "object"
+    },
+    "WorkflowSourceKind": {
+      "enum": [
+        "linear",
+        "github_issues",
+        "github_pr_reviews",
+        "local_tasks",
+        "mission_board",
+        "cli"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "budgets": {
+      "$ref": "#/$defs/WorkflowBudgets"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "orchestrator": {
+      "$ref": "#/$defs/WorkflowOrchestratorPolicy"
+    },
+    "outputs": {
+      "$ref": "#/$defs/WorkflowOutputsPolicy"
+    },
+    "policy": {
+      "$ref": "#/$defs/WorkflowPolicy"
+    },
+    "runtime_profiles": {
+      "additionalProperties": {
+        "$ref": "#/$defs/WorkflowRuntimeProfileRef"
+      },
+      "type": "object"
+    },
+    "source": {
+      "$ref": "#/$defs/WorkflowSourceBinding"
+    }
+  },
+  "required": [
+    "kind",
+    "name",
+    "source",
+    "orchestrator",
+    "policy",
+    "runtime_profiles",
+    "outputs",
+    "budgets"
+  ],
+  "title": "WorkflowDefinition",
+  "type": "object"
+}

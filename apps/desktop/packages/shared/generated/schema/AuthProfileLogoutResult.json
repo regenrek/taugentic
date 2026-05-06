@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authProfileId": {
+      "type": "string"
+    },
+    "disconnected": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "authProfileId",
+    "disconnected"
+  ],
+  "title": "AuthProfileLogoutResult",
+  "type": "object"
+}

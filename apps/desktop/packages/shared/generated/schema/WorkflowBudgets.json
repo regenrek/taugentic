@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "WorkflowBudgetLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cost_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_tokens": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_wall_time_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "per_capsule": {
+      "$ref": "#/$defs/WorkflowBudgetLimits"
+    },
+    "per_orchestrator": {
+      "$ref": "#/$defs/WorkflowBudgetLimits"
+    },
+    "per_workflow": {
+      "$ref": "#/$defs/WorkflowBudgetLimits"
+    }
+  },
+  "required": [
+    "per_capsule",
+    "per_orchestrator",
+    "per_workflow"
+  ],
+  "title": "WorkflowBudgets",
+  "type": "object"
+}

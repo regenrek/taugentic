@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "session",
+    "run",
+    "runReconciledOnStartup",
+    "approval",
+    "artifact",
+    "contextReceipt",
+    "agentStream",
+    "tokenUsageRecorded",
+    "conflict",
+    "budget"
+  ],
+  "title": "DaemonEventKind",
+  "type": "string"
+}

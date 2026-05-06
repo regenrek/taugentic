@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "ApprovalScope": {
+      "enum": [
+        "fileWrite",
+        "processExec",
+        "networkAccess"
+      ],
+      "type": "string"
+    },
+    "ApprovalTarget": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCall",
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "toolName"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fileWrite",
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "paths"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "command": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "processExec",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "host": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "networkAccess",
+              "type": "string"
+            },
+            "protocol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "childRunId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "capsuleDispatch",
+              "type": "string"
+            },
+            "workspaceScope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WorkspaceMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "expiresAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "requestedAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/ApprovalScope"
+    },
+    "target": {
+      "$ref": "#/$defs/ApprovalTarget"
+    },
+    "toolCallId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "runId",
+    "scope",
+    "requestedAtMs",
+    "expiresAtMs",
+    "target",
+    "reason"
+  ],
+  "title": "ApprovalRequest",
+  "type": "object"
+}

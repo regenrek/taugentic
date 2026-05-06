@@ -1,0 +1,1600 @@
+{
+  "$defs": {
+    "AgentStreamEvent": {
+      "properties": {
+        "fragmentSequence": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "frame": {
+          "$ref": "#/$defs/AgentStreamFrame"
+        },
+        "itemId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "frame"
+      ],
+      "type": "object"
+    },
+    "AgentStreamFrame": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "assistantTurnStarted",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "delta": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "assistantMessageDelta",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "assistantTurnCompleted",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "input": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "toolCallStarted",
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "toolName",
+            "input"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "delta": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "toolCallProgressed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCallCompleted",
+              "type": "string"
+            },
+            "outcome": {
+              "$ref": "#/$defs/AgentToolCallOutcome"
+            }
+          },
+          "required": [
+            "kind",
+            "outcome"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "pendingStateChanged",
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/RuntimeLanePendingState"
+            }
+          },
+          "required": [
+            "kind",
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "tokenUsageUpdated",
+              "type": "string"
+            },
+            "modelContextWindow": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "totalTokens": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AgentToolCallOutcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "properties": {
+        "expiresAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requestedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/ApprovalScope"
+        },
+        "target": {
+          "$ref": "#/$defs/ApprovalTarget"
+        },
+        "toolCallId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "scope",
+        "requestedAtMs",
+        "expiresAtMs",
+        "target",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ApprovalResolutionReason": {
+      "enum": [
+        "user",
+        "expired",
+        "cancelled",
+        "budgetExceeded",
+        "runtimePolicy"
+      ],
+      "type": "string"
+    },
+    "ApprovalScope": {
+      "enum": [
+        "fileWrite",
+        "processExec",
+        "networkAccess"
+      ],
+      "type": "string"
+    },
+    "ApprovalTarget": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "toolCall",
+              "type": "string"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "toolName"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fileWrite",
+              "type": "string"
+            },
+            "paths": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "paths"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "command": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "processExec",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "host": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "networkAccess",
+              "type": "string"
+            },
+            "protocol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "childRunId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "const": "capsuleDispatch",
+              "type": "string"
+            },
+            "workspaceScope": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WorkspaceMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ArtifactEvent": {
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactSummary"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "type": "object"
+    },
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog"
+      ],
+      "type": "string"
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "storagePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "storagePath"
+      ],
+      "type": "object"
+    },
+    "BudgetBreach": {
+      "properties": {
+        "actual": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "limit": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "metric": {
+          "$ref": "#/$defs/BudgetMetric"
+        },
+        "scope": {
+          "$ref": "#/$defs/BudgetScope"
+        }
+      },
+      "required": [
+        "scope",
+        "metric",
+        "limit",
+        "actual"
+      ],
+      "type": "object"
+    },
+    "BudgetEvent": {
+      "oneOf": [
+        {
+          "properties": {
+            "event": {
+              "$ref": "#/$defs/BudgetExceededEvent"
+            },
+            "phase": {
+              "const": "exceeded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "phase",
+            "event"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "BudgetExceededEvent": {
+      "properties": {
+        "breach": {
+          "$ref": "#/$defs/BudgetBreach"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/BudgetSnapshot"
+        }
+      },
+      "required": [
+        "runId",
+        "breach",
+        "snapshot"
+      ],
+      "type": "object"
+    },
+    "BudgetMetric": {
+      "enum": [
+        "tokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "string"
+    },
+    "BudgetScope": {
+      "enum": [
+        "run",
+        "parentAggregate"
+      ],
+      "type": "string"
+    },
+    "BudgetSnapshot": {
+      "properties": {
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/BudgetScope"
+        },
+        "toolCalls": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "totalTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "wallClockMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "scope",
+        "totalTokens",
+        "wallClockMs",
+        "toolCalls"
+      ],
+      "type": "object"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConflictEvent": {
+      "oneOf": [
+        {
+          "properties": {
+            "phase": {
+              "const": "warning",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "warning": {
+              "$ref": "#/$defs/ConflictWarning"
+            }
+          },
+          "required": [
+            "phase",
+            "run_id",
+            "warning"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConflictSeverity": {
+      "enum": [
+        "informational",
+        "warning"
+      ],
+      "type": "string"
+    },
+    "ConflictWarning": {
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/$defs/FileClaimConflict"
+          },
+          "type": "array"
+        },
+        "requestingCapsule": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/ConflictSeverity"
+        }
+      },
+      "required": [
+        "requestingCapsule",
+        "severity",
+        "conflicts"
+      ],
+      "type": "object"
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "FileClaimConflict": {
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "holdingCapsule": {
+          "type": "string"
+        },
+        "holdingKind": {
+          "$ref": "#/$defs/FileClaimKind"
+        }
+      },
+      "required": [
+        "file",
+        "holdingCapsule",
+        "holdingKind"
+      ],
+      "type": "object"
+    },
+    "FileClaimKind": {
+      "enum": [
+        "write"
+      ],
+      "type": "string"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "PublicApprovalEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "phase": {
+              "const": "requested",
+              "type": "string"
+            },
+            "request": {
+              "$ref": "#/$defs/ApprovalRequest"
+            }
+          },
+          "required": [
+            "phase",
+            "request"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "phase": {
+              "const": "resolved",
+              "type": "string"
+            },
+            "resolution": {
+              "$ref": "#/$defs/PublicApprovalResolution"
+            }
+          },
+          "required": [
+            "phase",
+            "resolution"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PublicApprovalResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "approvalId": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/ApprovalDecision"
+        },
+        "reason": {
+          "$ref": "#/$defs/ApprovalResolutionReason"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "approvalId",
+        "runId",
+        "decision",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "PublicContextReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReceiptKind"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ReceiptProvenance"
+        },
+        "state": {
+          "$ref": "#/$defs/ReceiptState"
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "PublicContextReceiptEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "phase": {
+              "const": "created",
+              "type": "string"
+            },
+            "receipt": {
+              "$ref": "#/$defs/PublicContextReceipt"
+            }
+          },
+          "required": [
+            "phase",
+            "receipt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "phase": {
+              "const": "promoted",
+              "type": "string"
+            },
+            "receipt": {
+              "$ref": "#/$defs/PublicContextReceipt"
+            }
+          },
+          "required": [
+            "phase",
+            "receipt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "phase": {
+              "const": "quarantined",
+              "type": "string"
+            },
+            "receipt": {
+              "$ref": "#/$defs/PublicContextReceipt"
+            }
+          },
+          "required": [
+            "phase",
+            "receipt"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PublicDaemonEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "session": {
+              "$ref": "#/$defs/SessionEvent"
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "run": {
+              "$ref": "#/$defs/RunEvent"
+            }
+          },
+          "required": [
+            "run"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "runReconciledOnStartup": {
+              "$ref": "#/$defs/RunReconciledOnStartupEvent"
+            }
+          },
+          "required": [
+            "runReconciledOnStartup"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "approval": {
+              "$ref": "#/$defs/PublicApprovalEvent"
+            }
+          },
+          "required": [
+            "approval"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact": {
+              "$ref": "#/$defs/ArtifactEvent"
+            }
+          },
+          "required": [
+            "artifact"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "contextReceipt": {
+              "$ref": "#/$defs/PublicContextReceiptEvent"
+            }
+          },
+          "required": [
+            "contextReceipt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "agentStream": {
+              "$ref": "#/$defs/AgentStreamEvent"
+            }
+          },
+          "required": [
+            "agentStream"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "tokenUsageRecorded": {
+              "$ref": "#/$defs/TokenUsageRecordedEvent"
+            }
+          },
+          "required": [
+            "tokenUsageRecorded"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "conflict": {
+              "$ref": "#/$defs/ConflictEvent"
+            }
+          },
+          "required": [
+            "conflict"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "budget": {
+              "$ref": "#/$defs/BudgetEvent"
+            }
+          },
+          "required": [
+            "budget"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptProvenance": {
+      "description": "Provenance shape rules:\n- artifact-derived: only `artifact_id` is set; identity = (session, run, kind, artifact_id).\n- event-derived: both `event_seq` and `agent_turn_id` are set; identity = (session, run, kind, event_seq, agent_turn_id).\n- free-form: all identifying fields are None.\n\n`stream_cursor` is descriptive metadata (e.g. for UI navigation) and may be\npresent in any shape. It is never part of the unique identity.",
+      "properties": {
+        "agentTurnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifactId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "streamCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunEvent": {
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status",
+        "detail"
+      ],
+      "type": "object"
+    },
+    "RunEventDelta": {
+      "description": "One run event delta returned by replay or live splice.\n\nThe sequence is the persisted daemon-event sequence, so clients can dedupe\nreplay and live deliveries with one cursor.",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/PublicDaemonEvent"
+        },
+        "seq": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "event"
+      ],
+      "type": "object"
+    },
+    "RunEventStreamError": {
+      "enum": [
+        "lagged",
+        "historyGap"
+      ],
+      "type": "string"
+    },
+    "RunEventStreamPayload": {
+      "oneOf": [
+        {
+          "properties": {
+            "delta": {
+              "$ref": "#/$defs/RunEventDelta"
+            },
+            "kind": {
+              "const": "delta",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "error": {
+              "$ref": "#/$defs/RunEventStreamError"
+            },
+            "kind": {
+              "const": "error",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunFailureKind": {
+      "enum": [
+        "daemonRestartedWhileRunning"
+      ],
+      "type": "string"
+    },
+    "RunReconciledOnStartupEvent": {
+      "properties": {
+        "prevStatus": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "reason": {
+          "$ref": "#/$defs/RunFailureKind"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "prevStatus",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RuntimeLanePendingState": {
+      "enum": [
+        "queued",
+        "waitingForApproval",
+        "waitingForInput"
+      ],
+      "type": "string"
+    },
+    "SessionEvent": {
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus"
+        }
+      },
+      "required": [
+        "sessionId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    },
+    "TokenUsageRecordedEvent": {
+      "properties": {
+        "cachedTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capsuleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "completionTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "promptTokens": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningTokens": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recordedAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "promptTokens",
+        "completionTokens",
+        "model",
+        "provider",
+        "recordedAtMs"
+      ],
+      "type": "object"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "payload": {
+      "$ref": "#/$defs/RunEventStreamPayload"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "payload"
+  ],
+  "title": "RunEventStreamItem",
+  "type": "object"
+}

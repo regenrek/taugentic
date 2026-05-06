@@ -1,0 +1,511 @@
+use std::{fs, path::Path};
+
+use schemars::{JsonSchema, schema_for};
+use serde_json::json;
+
+use crate::wire::*;
+
+use super::{PROTOCOL_VERSION, ProtocolExportError};
+
+pub fn export_json_schemas(shared_package_dir: &Path) -> Result<(), ProtocolExportError> {
+    let schema_dir = shared_package_dir.join("generated/schema");
+    fs::create_dir_all(&schema_dir)?;
+
+    write_core_schemas(&schema_dir)?;
+    write_agent_runtime_schemas(&schema_dir)?;
+    write_protocol_version_schema(&schema_dir)?;
+
+    Ok(())
+}
+
+pub(super) fn build_runtime_json_schemas()
+-> Result<Vec<(&'static str, serde_json::Value)>, ProtocolExportError> {
+    let mut schemas = build_core_runtime_json_schemas()?;
+    schemas.extend(agent_runtime_runtime_schemas()?);
+    Ok(schemas)
+}
+
+fn write_schema<T: JsonSchema>(schema_dir: &Path) -> Result<(), ProtocolExportError> {
+    let schema_path = schema_dir.join(format!("{}.json", simple_type_name::<T>()));
+    let schema_json = serde_json::to_string_pretty(&schema_value::<T>()?)?;
+    fs::write(schema_path, format!("{schema_json}\n"))?;
+    Ok(())
+}
+
+fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
+    write_schema::<AgentStreamTurnId>(schema_dir)?;
+    write_schema::<AgentStreamItemId>(schema_dir)?;
+    write_schema::<AgentToolCallOutcome>(schema_dir)?;
+    write_schema::<RuntimeLanePendingState>(schema_dir)?;
+    write_schema::<AgentStreamEvent>(schema_dir)?;
+    write_schema::<StreamEmission>(schema_dir)?;
+    write_schema::<AgentStreamFrame>(schema_dir)?;
+    write_schema::<BudgetScope>(schema_dir)?;
+    write_schema::<BudgetMetric>(schema_dir)?;
+    write_schema::<BudgetBreach>(schema_dir)?;
+    write_schema::<BudgetSnapshot>(schema_dir)?;
+    write_schema::<BudgetExceededEvent>(schema_dir)?;
+    write_schema::<BudgetEvent>(schema_dir)?;
+    write_schema::<ArtifactId>(schema_dir)?;
+    write_schema::<ArtifactKind>(schema_dir)?;
+    write_schema::<ArtifactEvent>(schema_dir)?;
+    write_schema::<ArtifactSummary>(schema_dir)?;
+    write_schema::<ActivityCursor>(schema_dir)?;
+    write_schema::<ActivityPageQuery>(schema_dir)?;
+    write_schema::<PublicActivityPageItem>(schema_dir)?;
+    write_schema::<PublicActivityPageResult>(schema_dir)?;
+    write_schema::<AgentTurnsPageQuery>(schema_dir)?;
+    write_schema::<AgentAssistantRow>(schema_dir)?;
+    write_schema::<AgentToolCallRow>(schema_dir)?;
+    write_schema::<AgentPendingStateRow>(schema_dir)?;
+    write_schema::<AgentTurnRow>(schema_dir)?;
+    write_schema::<AgentTurnsPageResult>(schema_dir)?;
+    write_schema::<DaemonEventCursor>(schema_dir)?;
+    write_schema::<PublicApprovalEvent>(schema_dir)?;
+    write_schema::<ContextReceipt>(schema_dir)?;
+    write_schema::<ContextReceiptEvent>(schema_dir)?;
+    write_schema::<PublicContextReceipt>(schema_dir)?;
+    write_schema::<PublicContextReceiptEvent>(schema_dir)?;
+    write_schema::<ReceiptKind>(schema_dir)?;
+    write_schema::<ReceiptProvenance>(schema_dir)?;
+    write_schema::<ReceiptState>(schema_dir)?;
+    write_schema::<RunFailureKind>(schema_dir)?;
+    write_schema::<RunReconciledOnStartupEvent>(schema_dir)?;
+    write_schema::<TokenUsageRecordedEvent>(schema_dir)?;
+    write_schema::<TokenUsageTotals>(schema_dir)?;
+    write_schema::<PublicDaemonEvent>(schema_dir)?;
+    write_schema::<PublicDaemonEventEnvelope>(schema_dir)?;
+    write_schema::<DaemonEventKind>(schema_dir)?;
+    write_schema::<SessionOverviewQuery>(schema_dir)?;
+    write_schema::<SessionOverviewResult>(schema_dir)?;
+    write_schema::<SessionOverviewLaneStatus>(schema_dir)?;
+    write_schema::<ApprovalAttentionState>(schema_dir)?;
+    write_schema::<DaemonActualRuntimeMode>(schema_dir)?;
+    write_schema::<DaemonClientCapabilities>(schema_dir)?;
+    write_schema::<DaemonControlAction>(schema_dir)?;
+    write_schema::<DaemonControlErrorCode>(schema_dir)?;
+    write_schema::<DaemonServerCapabilities>(schema_dir)?;
+    write_schema::<DaemonInitializeParams>(schema_dir)?;
+    write_schema::<DaemonInitializeResult>(schema_dir)?;
+    write_schema::<DaemonPendingTransitionKind>(schema_dir)?;
+    write_schema::<DaemonPendingTransitionView>(schema_dir)?;
+    write_schema::<DaemonRuntimeMode>(schema_dir)?;
+    write_schema::<DaemonSessionOpenParams>(schema_dir)?;
+    write_schema::<DaemonSessionOpenResult>(schema_dir)?;
+    write_schema::<DaemonSessionAttachParams>(schema_dir)?;
+    write_schema::<DaemonSessionAttachResult>(schema_dir)?;
+    write_schema::<DaemonStatusParams>(schema_dir)?;
+    write_schema::<DaemonStatusResult>(schema_dir)?;
+    write_schema::<DaemonDiagnosticsParams>(schema_dir)?;
+    write_schema::<DaemonDiagnostics>(schema_dir)?;
+    write_schema::<DaemonDiagnosticError>(schema_dir)?;
+    write_schema::<DaemonDiagnosticTokenUsage>(schema_dir)?;
+    write_schema::<DaemonSandboxCapabilitySnapshot>(schema_dir)?;
+    write_schema::<DaemonProviderHealthDiagnostic>(schema_dir)?;
+    write_schema::<DaemonControlStatusResult>(schema_dir)?;
+    write_schema::<DaemonSubscribeParams>(schema_dir)?;
+    write_schema::<DaemonSubscribeResult>(schema_dir)?;
+    write_schema::<DaemonTransitionStatus>(schema_dir)?;
+    write_schema::<DelegateRequest>(schema_dir)?;
+    write_schema::<ListSessionsQuery>(schema_dir)?;
+    write_schema::<GetSessionQuery>(schema_dir)?;
+    write_schema::<ListApprovalsQuery>(schema_dir)?;
+    write_schema::<ApprovalSnapshotResult>(schema_dir)?;
+    write_schema::<ta_work_source::WorkItemKey>(schema_dir)?;
+    write_schema::<ta_work_source::WorkItem>(schema_dir)?;
+    write_schema::<WorkItemListResult>(schema_dir)?;
+    write_schema::<WorkItemRefreshParams>(schema_dir)?;
+    write_schema::<WorkItemDismissParams>(schema_dir)?;
+    write_schema::<WorkItemDismissResult>(schema_dir)?;
+    write_schema::<WorkItemTriggerParams>(schema_dir)?;
+    write_schema::<WorkItemTriggerResult>(schema_dir)?;
+    write_schema::<GetArtifactQuery>(schema_dir)?;
+    write_schema::<GetRunQuery>(schema_dir)?;
+    write_schema::<ListRunsQuery>(schema_dir)?;
+    write_schema::<RunListFilter>(schema_dir)?;
+    write_schema::<ListNativeRunsRequest>(schema_dir)?;
+    write_schema::<RunListEntry>(schema_dir)?;
+    write_schema::<ListNativeRunsResult>(schema_dir)?;
+    write_schema::<GetRunTimelineQuery>(schema_dir)?;
+    write_schema::<RunTimeline>(schema_dir)?;
+    write_schema::<RunTimelineRun>(schema_dir)?;
+    write_schema::<RunTimelineEventKind>(schema_dir)?;
+    write_schema::<RunTimelineEvent>(schema_dir)?;
+    write_schema::<RunTimelineEventPayload>(schema_dir)?;
+    write_schema::<ListArtifactsQuery>(schema_dir)?;
+    write_schema::<ArtifactSnapshotResult>(schema_dir)?;
+    write_schema::<ListReceiptsRequest>(schema_dir)?;
+    write_schema::<ListReceiptsResult>(schema_dir)?;
+    write_schema::<PromoteReceiptRequest>(schema_dir)?;
+    write_schema::<QuarantineReceiptRequest>(schema_dir)?;
+    write_schema::<OutputContractKind>(schema_dir)?;
+    write_schema::<CapsuleResult>(schema_dir)?;
+    write_schema::<DebugResult>(schema_dir)?;
+    write_schema::<PatchResult>(schema_dir)?;
+    write_schema::<ReviewResult>(schema_dir)?;
+    write_schema::<ReviewVerdict>(schema_dir)?;
+    write_schema::<ReviewFinding>(schema_dir)?;
+    write_schema::<FindingSeverity>(schema_dir)?;
+    write_schema::<TestResult>(schema_dir)?;
+    write_schema::<PlanResult>(schema_dir)?;
+    write_schema::<PlanStep>(schema_dir)?;
+    write_schema::<ValidationError>(schema_dir)?;
+    write_schema::<CapsuleRecipe>(schema_dir)?;
+    write_schema::<ListRecipesParams>(schema_dir)?;
+    write_schema::<RecipeListResponse>(schema_dir)?;
+    write_schema::<RecipeValidationError>(schema_dir)?;
+    write_schema::<RecipeResolutionError>(schema_dir)?;
+    write_schema::<SessionOverview>(schema_dir)?;
+    write_schema::<SessionSummary>(schema_dir)?;
+    write_schema::<RunHarnessKind>(schema_dir)?;
+    write_schema::<RunDetail>(schema_dir)?;
+    write_schema::<RunRecord>(schema_dir)?;
+    write_schema::<RunSummary>(schema_dir)?;
+    write_schema::<ResumeRunRequest>(schema_dir)?;
+    write_schema::<ResumeRunResult>(schema_dir)?;
+    write_schema::<ResumeRunState>(schema_dir)?;
+    write_schema::<ForkRunRequest>(schema_dir)?;
+    write_schema::<ForkRunResult>(schema_dir)?;
+    write_schema::<SubscribeRunEventsRequest>(schema_dir)?;
+    write_schema::<RunEventDelta>(schema_dir)?;
+    write_schema::<RunEventStreamError>(schema_dir)?;
+    write_schema::<RunEventStreamPayload>(schema_dir)?;
+    write_schema::<RunEventStreamItem>(schema_dir)?;
+    write_schema::<SubscribeRunEventsResult>(schema_dir)?;
+    write_schema::<SessionId>(schema_dir)?;
+    write_schema::<SessionAuthority>(schema_dir)?;
+    write_schema::<RunId>(schema_dir)?;
+    write_schema::<ApprovalId>(schema_dir)?;
+    write_schema::<ApprovalScope>(schema_dir)?;
+    write_schema::<ApprovalDecision>(schema_dir)?;
+    write_schema::<ApprovalResolutionReason>(schema_dir)?;
+    write_schema::<ApprovalTarget>(schema_dir)?;
+    write_schema::<ApprovalRequest>(schema_dir)?;
+    write_schema::<PublicApprovalResolution>(schema_dir)?;
+    write_schema::<DaemonApprovalDecideParams>(schema_dir)?;
+    write_schema::<DaemonApprovalDecideResult>(schema_dir)?;
+    write_schema::<SessionStatus>(schema_dir)?;
+    write_schema::<RunStatus>(schema_dir)?;
+    write_schema::<StartRunCommand>(schema_dir)?;
+    write_schema::<DaemonRunCompleteWithResultParams>(schema_dir)?;
+    write_schema::<WorkflowDefinition>(schema_dir)?;
+    write_schema::<WorkflowSourceBinding>(schema_dir)?;
+    write_schema::<WorkflowSourceKind>(schema_dir)?;
+    write_schema::<WorkflowOrchestratorPolicy>(schema_dir)?;
+    write_schema::<WorkflowRetryPolicy>(schema_dir)?;
+    write_schema::<WorkflowPolicy>(schema_dir)?;
+    write_schema::<WorkflowApprovalPolicy>(schema_dir)?;
+    write_schema::<WorkflowFileWriteApproval>(schema_dir)?;
+    write_schema::<WorkflowProcessApproval>(schema_dir)?;
+    write_schema::<WorkflowNetworkApproval>(schema_dir)?;
+    write_schema::<WorkflowRuntimeProfileRef>(schema_dir)?;
+    write_schema::<WorkflowOutputsPolicy>(schema_dir)?;
+    write_schema::<WorkflowOutputRequirement>(schema_dir)?;
+    write_schema::<WorkflowBudgets>(schema_dir)?;
+    write_schema::<WorkflowBudgetLimits>(schema_dir)?;
+    write_schema::<WorkflowLoadParams>(schema_dir)?;
+    write_schema::<WorkflowReloadParams>(schema_dir)?;
+    write_schema::<WorkflowValidateParams>(schema_dir)?;
+    write_schema::<WorkflowValidationReport>(schema_dir)?;
+    write_schema::<WorkflowValidationError>(schema_dir)?;
+    write_schema::<WorkflowStatusResult>(schema_dir)?;
+    write_schema::<WorkflowLoadedStatus>(schema_dir)?;
+    write_schema::<WorkflowReloadOutcome>(schema_dir)?;
+    Ok(())
+}
+
+fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
+    write_schema::<AgentRuntimeStrategyId>(schema_dir)?;
+    write_schema::<AgentRuntimeModelId>(schema_dir)?;
+    write_schema::<AgentRuntimeModelRef>(schema_dir)?;
+    write_schema::<AgentRuntimeStrategyHealthStatus>(schema_dir)?;
+    write_schema::<AgentRuntimeStrategyHealth>(schema_dir)?;
+    write_schema::<AgentRuntimeStrategyInfo>(schema_dir)?;
+    write_schema::<AuthProfileId>(schema_dir)?;
+    write_schema::<AuthProfileConnectionState>(schema_dir)?;
+    write_schema::<AuthProfileLoginMethod>(schema_dir)?;
+    write_schema::<AuthProfileRef>(schema_dir)?;
+    write_schema::<AuthProfileState>(schema_dir)?;
+    write_schema::<AuthProfileLoginChallenge>(schema_dir)?;
+    write_schema::<AuthProfileLoginResult>(schema_dir)?;
+    write_schema::<AuthProfileLogoutResult>(schema_dir)?;
+    write_schema::<RuntimeExtensionId>(schema_dir)?;
+    write_schema::<RuntimeExtensionDescriptor>(schema_dir)?;
+    write_schema::<RuntimeExtensionAvailability>(schema_dir)?;
+    write_schema::<RuntimeExtensionMcpServer>(schema_dir)?;
+    write_schema::<RuntimeExtensionMcpStdioServer>(schema_dir)?;
+    write_schema::<RuntimeExtensionMcpHttpServer>(schema_dir)?;
+    write_schema::<RuntimeExtensionEnvVar>(schema_dir)?;
+    write_schema::<RuntimeExtensionHttpHeader>(schema_dir)?;
+    write_schema::<RuntimeExtensionState>(schema_dir)?;
+    write_schema::<RuntimeProfileId>(schema_dir)?;
+    write_schema::<RuntimePolicyMode>(schema_dir)?;
+    write_schema::<RuntimeProfileSummary>(schema_dir)?;
+    write_schema::<RuntimeProfileModelIdPatch>(schema_dir)?;
+    write_schema::<RuntimeProfileAuthProfilePatch>(schema_dir)?;
+    write_schema::<RuntimeProfilePatch>(schema_dir)?;
+    write_schema::<AgentRuntimeSelection>(schema_dir)?;
+    write_schema::<AgentRuntimeSnapshot>(schema_dir)?;
+    write_schema::<GetAgentRuntimeQuery>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeSelectProfileParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimePatchProfileParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeAuthLoginParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeAuthLogoutParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeSetExtensionEnabledParams>(schema_dir)?;
+    Ok(())
+}
+
+fn build_core_runtime_json_schemas()
+-> Result<Vec<(&'static str, serde_json::Value)>, ProtocolExportError> {
+    Ok(vec![
+        schema_pair::<AgentStreamTurnId>()?,
+        schema_pair::<AgentStreamItemId>()?,
+        schema_pair::<AgentToolCallOutcome>()?,
+        schema_pair::<RuntimeLanePendingState>()?,
+        schema_pair::<AgentStreamEvent>()?,
+        schema_pair::<AgentStreamFrame>()?,
+        schema_pair::<BudgetScope>()?,
+        schema_pair::<BudgetMetric>()?,
+        schema_pair::<BudgetBreach>()?,
+        schema_pair::<BudgetSnapshot>()?,
+        schema_pair::<BudgetExceededEvent>()?,
+        schema_pair::<BudgetEvent>()?,
+        schema_pair::<ApprovalDecision>()?,
+        schema_pair::<ApprovalResolutionReason>()?,
+        schema_pair::<ApprovalId>()?,
+        schema_pair::<ApprovalRequest>()?,
+        schema_pair::<ApprovalTarget>()?,
+        schema_pair::<PublicApprovalEvent>()?,
+        schema_pair::<PublicApprovalResolution>()?,
+        schema_pair::<ApprovalScope>()?,
+        schema_pair::<ActivityCursor>()?,
+        schema_pair::<ActivityPageQuery>()?,
+        schema_pair::<PublicActivityPageItem>()?,
+        schema_pair::<PublicActivityPageResult>()?,
+        schema_pair::<AgentTurnsPageQuery>()?,
+        schema_pair::<AgentAssistantRow>()?,
+        schema_pair::<AgentToolCallRow>()?,
+        schema_pair::<AgentPendingStateRow>()?,
+        schema_pair::<AgentTurnRow>()?,
+        schema_pair::<AgentTurnsPageResult>()?,
+        schema_pair::<ArtifactId>()?,
+        schema_pair::<ArtifactKind>()?,
+        schema_pair::<ArtifactEvent>()?,
+        schema_pair::<ArtifactSummary>()?,
+        schema_pair::<DaemonClientCapabilities>()?,
+        schema_pair::<DaemonEventCursor>()?,
+        schema_pair::<ContextReceipt>()?,
+        schema_pair::<ContextReceiptEvent>()?,
+        schema_pair::<PublicContextReceipt>()?,
+        schema_pair::<PublicContextReceiptEvent>()?,
+        schema_pair::<ReceiptKind>()?,
+        schema_pair::<ReceiptProvenance>()?,
+        schema_pair::<ReceiptState>()?,
+        schema_pair::<RunFailureKind>()?,
+        schema_pair::<RunReconciledOnStartupEvent>()?,
+        schema_pair::<TokenUsageRecordedEvent>()?,
+        schema_pair::<TokenUsageTotals>()?,
+        schema_pair::<PublicDaemonEvent>()?,
+        schema_pair::<PublicDaemonEventEnvelope>()?,
+        schema_pair::<DaemonEventKind>()?,
+        schema_pair::<SessionOverviewQuery>()?,
+        schema_pair::<SessionOverviewResult>()?,
+        schema_pair::<SessionOverviewLaneStatus>()?,
+        schema_pair::<ApprovalAttentionState>()?,
+        schema_pair::<DaemonInitializeParams>()?,
+        schema_pair::<DaemonInitializeResult>()?,
+        schema_pair::<DaemonRuntimeMode>()?,
+        schema_pair::<DaemonSessionOpenParams>()?,
+        schema_pair::<DaemonSessionOpenResult>()?,
+        schema_pair::<DaemonSessionAttachParams>()?,
+        schema_pair::<DaemonSessionAttachResult>()?,
+        schema_pair::<DaemonApprovalDecideParams>()?,
+        schema_pair::<DaemonApprovalDecideResult>()?,
+        schema_pair::<DaemonServerCapabilities>()?,
+        schema_pair::<DaemonControlStatusResult>()?,
+        schema_pair::<DaemonStatusParams>()?,
+        schema_pair::<DaemonStatusResult>()?,
+        schema_pair::<DaemonDiagnosticsParams>()?,
+        schema_pair::<DaemonDiagnostics>()?,
+        schema_pair::<DaemonDiagnosticError>()?,
+        schema_pair::<DaemonDiagnosticTokenUsage>()?,
+        schema_pair::<DaemonSandboxCapabilitySnapshot>()?,
+        schema_pair::<DaemonProviderHealthDiagnostic>()?,
+        schema_pair::<DaemonSubscribeParams>()?,
+        schema_pair::<DaemonSubscribeResult>()?,
+        schema_pair::<DelegateRequest>()?,
+        schema_pair::<ListApprovalsQuery>()?,
+        schema_pair::<ApprovalSnapshotResult>()?,
+        schema_pair::<ta_work_source::WorkItemKey>()?,
+        schema_pair::<ta_work_source::WorkItem>()?,
+        schema_pair::<WorkItemListResult>()?,
+        schema_pair::<WorkItemRefreshParams>()?,
+        schema_pair::<WorkItemDismissParams>()?,
+        schema_pair::<WorkItemDismissResult>()?,
+        schema_pair::<WorkItemTriggerParams>()?,
+        schema_pair::<WorkItemTriggerResult>()?,
+        schema_pair::<GetArtifactQuery>()?,
+        schema_pair::<GetRunQuery>()?,
+        schema_pair::<GetSessionQuery>()?,
+        schema_pair::<ListArtifactsQuery>()?,
+        schema_pair::<ArtifactSnapshotResult>()?,
+        schema_pair::<ListReceiptsRequest>()?,
+        schema_pair::<ListReceiptsResult>()?,
+        schema_pair::<PromoteReceiptRequest>()?,
+        schema_pair::<QuarantineReceiptRequest>()?,
+        schema_pair::<OutputContractKind>()?,
+        schema_pair::<CapsuleResult>()?,
+        schema_pair::<DebugResult>()?,
+        schema_pair::<PatchResult>()?,
+        schema_pair::<ReviewResult>()?,
+        schema_pair::<ReviewVerdict>()?,
+        schema_pair::<ReviewFinding>()?,
+        schema_pair::<FindingSeverity>()?,
+        schema_pair::<TestResult>()?,
+        schema_pair::<PlanResult>()?,
+        schema_pair::<PlanStep>()?,
+        schema_pair::<ValidationError>()?,
+        schema_pair::<CapsuleRecipe>()?,
+        schema_pair::<ListRecipesParams>()?,
+        schema_pair::<RecipeListResponse>()?,
+        schema_pair::<RecipeValidationError>()?,
+        schema_pair::<RecipeResolutionError>()?,
+        schema_pair::<ListRunsQuery>()?,
+        schema_pair::<RunListFilter>()?,
+        schema_pair::<ListNativeRunsRequest>()?,
+        schema_pair::<RunListEntry>()?,
+        schema_pair::<ListNativeRunsResult>()?,
+        schema_pair::<GetRunTimelineQuery>()?,
+        schema_pair::<RunTimeline>()?,
+        schema_pair::<RunTimelineRun>()?,
+        schema_pair::<RunTimelineEventKind>()?,
+        schema_pair::<RunTimelineEvent>()?,
+        schema_pair::<RunTimelineEventPayload>()?,
+        schema_pair::<ListSessionsQuery>()?,
+        ("ProtocolVersion", protocol_version_schema_value()),
+        schema_pair::<RunId>()?,
+        schema_pair::<RunHarnessKind>()?,
+        schema_pair::<RunDetail>()?,
+        schema_pair::<RunRecord>()?,
+        schema_pair::<RunStatus>()?,
+        schema_pair::<RunSummary>()?,
+        schema_pair::<ResumeRunRequest>()?,
+        schema_pair::<ResumeRunResult>()?,
+        schema_pair::<ResumeRunState>()?,
+        schema_pair::<ForkRunRequest>()?,
+        schema_pair::<ForkRunResult>()?,
+        schema_pair::<SubscribeRunEventsRequest>()?,
+        schema_pair::<RunEventDelta>()?,
+        schema_pair::<RunEventStreamError>()?,
+        schema_pair::<RunEventStreamPayload>()?,
+        schema_pair::<RunEventStreamItem>()?,
+        schema_pair::<SubscribeRunEventsResult>()?,
+        schema_pair::<SessionAuthority>()?,
+        schema_pair::<SessionId>()?,
+        schema_pair::<SessionOverview>()?,
+        schema_pair::<SessionStatus>()?,
+        schema_pair::<SessionSummary>()?,
+        schema_pair::<StartRunCommand>()?,
+        schema_pair::<DaemonRunCompleteWithResultParams>()?,
+        schema_pair::<WorkflowDefinition>()?,
+        schema_pair::<WorkflowSourceBinding>()?,
+        schema_pair::<WorkflowSourceKind>()?,
+        schema_pair::<WorkflowOrchestratorPolicy>()?,
+        schema_pair::<WorkflowRetryPolicy>()?,
+        schema_pair::<WorkflowPolicy>()?,
+        schema_pair::<WorkflowApprovalPolicy>()?,
+        schema_pair::<WorkflowFileWriteApproval>()?,
+        schema_pair::<WorkflowProcessApproval>()?,
+        schema_pair::<WorkflowNetworkApproval>()?,
+        schema_pair::<WorkflowRuntimeProfileRef>()?,
+        schema_pair::<WorkflowOutputsPolicy>()?,
+        schema_pair::<WorkflowOutputRequirement>()?,
+        schema_pair::<WorkflowBudgets>()?,
+        schema_pair::<WorkflowBudgetLimits>()?,
+        schema_pair::<WorkflowLoadParams>()?,
+        schema_pair::<WorkflowReloadParams>()?,
+        schema_pair::<WorkflowValidateParams>()?,
+        schema_pair::<WorkflowValidationReport>()?,
+        schema_pair::<WorkflowValidationError>()?,
+        schema_pair::<WorkflowStatusResult>()?,
+        schema_pair::<WorkflowLoadedStatus>()?,
+        schema_pair::<WorkflowReloadOutcome>()?,
+    ])
+}
+
+fn agent_runtime_runtime_schemas()
+-> Result<Vec<(&'static str, serde_json::Value)>, ProtocolExportError> {
+    Ok(vec![
+        schema_pair::<AgentRuntimeStrategyId>()?,
+        schema_pair::<AgentRuntimeModelId>()?,
+        schema_pair::<AgentRuntimeModelRef>()?,
+        schema_pair::<AgentRuntimeStrategyHealthStatus>()?,
+        schema_pair::<AgentRuntimeStrategyHealth>()?,
+        schema_pair::<AgentRuntimeStrategyInfo>()?,
+        schema_pair::<AuthProfileId>()?,
+        schema_pair::<AuthProfileConnectionState>()?,
+        schema_pair::<AuthProfileLoginMethod>()?,
+        schema_pair::<AuthProfileRef>()?,
+        schema_pair::<AuthProfileState>()?,
+        schema_pair::<AuthProfileLoginChallenge>()?,
+        schema_pair::<AuthProfileLoginResult>()?,
+        schema_pair::<AuthProfileLogoutResult>()?,
+        schema_pair::<RuntimeExtensionId>()?,
+        schema_pair::<RuntimeExtensionDescriptor>()?,
+        schema_pair::<RuntimeExtensionAvailability>()?,
+        schema_pair::<RuntimeExtensionMcpServer>()?,
+        schema_pair::<RuntimeExtensionMcpStdioServer>()?,
+        schema_pair::<RuntimeExtensionMcpHttpServer>()?,
+        schema_pair::<RuntimeExtensionEnvVar>()?,
+        schema_pair::<RuntimeExtensionHttpHeader>()?,
+        schema_pair::<RuntimeExtensionState>()?,
+        schema_pair::<RuntimeProfileId>()?,
+        schema_pair::<RuntimePolicyMode>()?,
+        schema_pair::<RuntimeProfileSummary>()?,
+        schema_pair::<RuntimeProfileModelIdPatch>()?,
+        schema_pair::<RuntimeProfileAuthProfilePatch>()?,
+        schema_pair::<RuntimeProfilePatch>()?,
+        schema_pair::<AgentRuntimeSelection>()?,
+        schema_pair::<AgentRuntimeSnapshot>()?,
+        schema_pair::<GetAgentRuntimeQuery>()?,
+        schema_pair::<DaemonAgentRuntimeSelectProfileParams>()?,
+        schema_pair::<DaemonAgentRuntimePatchProfileParams>()?,
+        schema_pair::<DaemonAgentRuntimeAuthLoginParams>()?,
+        schema_pair::<DaemonAgentRuntimeAuthLogoutParams>()?,
+        schema_pair::<DaemonAgentRuntimeSetExtensionEnabledParams>()?,
+    ])
+}
+
+fn schema_pair<T: JsonSchema>() -> Result<(&'static str, serde_json::Value), ProtocolExportError> {
+    Ok((simple_type_name::<T>(), schema_value::<T>()?))
+}
+
+fn write_protocol_version_schema(schema_dir: &Path) -> Result<(), ProtocolExportError> {
+    let schema = protocol_version_schema_value();
+    let schema_json = serde_json::to_string_pretty(&schema)?;
+    fs::write(
+        schema_dir.join("ProtocolVersion.json"),
+        format!("{schema_json}\n"),
+    )?;
+    Ok(())
+}
+
+fn schema_value<T: JsonSchema>() -> Result<serde_json::Value, ProtocolExportError> {
+    Ok(serde_json::to_value(schema_for!(T))?)
+}
+
+fn protocol_version_schema_value() -> serde_json::Value {
+    json!({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "ProtocolVersion",
+        "type": "string",
+        "const": PROTOCOL_VERSION,
+    })
+}
+
+fn simple_type_name<T>() -> &'static str {
+    std::any::type_name::<T>()
+        .rsplit("::")
+        .next()
+        .expect("type name should be present")
+}

@@ -1,0 +1,76 @@
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::wire::identifier;
+
+identifier!(AgentRuntimeStrategyId, "agent runtime provider");
+identifier!(AgentRuntimeModelId, "agent runtime model");
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentRuntimeModelRef {
+    pub id: AgentRuntimeModelId,
+    pub display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_limit: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_token_cost_micros: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_token_cost_micros: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum AgentRuntimeStrategyHealthStatus {
+    Unknown,
+    Ready,
+    Degraded,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentRuntimeStrategyHealth {
+    pub status: AgentRuntimeStrategyHealthStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum AgentRuntimeModelAvailability {
+    Enumerated,
+    CurrentOnly,
+    Unsupported,
+    Unavailable,
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentRuntimeModelCapability {
+    pub availability: AgentRuntimeModelAvailability,
+    pub can_set_model: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_model_id: Option<AgentRuntimeModelId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentRuntimeStrategyInfo {
+    pub id: AgentRuntimeStrategyId,
+    pub display_name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub models: Vec<AgentRuntimeModelRef>,
+    pub model_capability: AgentRuntimeModelCapability,
+    pub health: AgentRuntimeStrategyHealth,
+}

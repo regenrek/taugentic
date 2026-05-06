@@ -1,0 +1,200 @@
+name: desktop-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_profile:
+        description: Desktop release profile
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - nightly
+          - mission-control
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.90.0
+          components: rustfmt, clippy
+          targets: x86_64-pc-windows-msvc,aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@nextest
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install desktop deps
+        run: pnpm install --dir apps/desktop --frozen-lockfile
+
+      - name: Validate release tag version
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: pnpm --dir apps/desktop release:version -- --tag=${{ github.ref_name }}
+
+      - name: Run release preflight
+        run: just release-check
+
+  package:
+    name: package (${{ matrix.platform }})
+    needs: preflight
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            runner: ubuntu-latest
+            require_signing: false
+          - platform: darwin
+            runner: macos-latest
+            require_signing: true
+          - platform: win32
+            runner: windows-latest
+            require_signing: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.90.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install desktop deps
+        run: pnpm install --dir apps/desktop --frozen-lockfile
+
+      - name: Validate signing env
+        if: ${{ matrix.require_signing }}
+        env:
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+        run: node ./apps/desktop/scripts/release-env.mjs --platform=${{ matrix.platform }} --require-signing
+
+      - name: Package desktop
+        env:
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          TAUGENTIC_DESKTOP_RELEASE_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_profile || 'stable' }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+        run: pnpm --dir apps/desktop package -- --publish never
+
+      - name: Verify release artifact trust
+        if: ${{ matrix.platform != 'linux' }}
+        env:
+          TAUGENTIC_DESKTOP_RELEASE_PLATFORM: ${{ matrix.platform }}
+        run: pnpm --dir apps/desktop release:trust
+
+      - name: Generate release artifact manifest
+        env:
+          TAUGENTIC_DESKTOP_RELEASE_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_profile || 'stable' }}
+        run: pnpm --dir apps/desktop release:artifacts
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_profile || 'stable' }}-${{ matrix.platform }}
+          path: apps/desktop/release/**
+          if-no-files-found: error
+
+      - name: Attest packaged artifacts
+        if: ${{ !github.event.repository.private || vars.TAUGENTIC_ENABLE_ATTESTATIONS == '1' }}
+        uses: actions/attest@v4
+        with:
+          subject-checksums: apps/desktop/release/release-sha256.txt
+
+  finalize-release:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install desktop deps
+        run: pnpm install --dir apps/desktop --frozen-lockfile
+
+      - name: Validate publish mode for tagged release
+        run: test "$(pnpm --dir apps/desktop release:publish-mode -- --ref="${GITHUB_REF}")" = "always"
+
+      - name: Ensure draft GitHub release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" --draft --title "${GITHUB_REF_NAME}" --notes ""
+          fi
+
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-release-*
+          path: /tmp/taugentic-desktop-release-artifacts
+
+      - name: Aggregate release artifacts
+        run: pnpm --dir apps/desktop release:aggregate -- --input-dir=/tmp/taugentic-desktop-release-artifacts
+
+      - name: Generate final release metadata
+        run: pnpm --dir apps/desktop release:artifacts
+
+      - name: Upload canonical release bundle to draft GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: find apps/desktop/release -type f -print0 | sort -z | xargs -0 gh release upload "${GITHUB_REF_NAME}" --clobber
+
+      - name: Publish draft GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false --latest

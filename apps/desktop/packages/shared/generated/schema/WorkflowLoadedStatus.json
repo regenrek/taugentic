@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "WorkflowSourceKind": {
+      "enum": [
+        "linear",
+        "github_issues",
+        "github_pr_reviews",
+        "local_tasks",
+        "mission_board",
+        "cli"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "runtimeProfileCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sourceKind": {
+      "$ref": "#/$defs/WorkflowSourceKind"
+    },
+    "version": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "path",
+    "sourceKind",
+    "runtimeProfileCount",
+    "version"
+  ],
+  "title": "WorkflowLoadedStatus",
+  "type": "object"
+}

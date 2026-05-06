@@ -1,0 +1,213 @@
+{
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer"
+      ],
+      "type": "string"
+    },
+    "RunListEntry": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objectivePreview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "harness",
+        "status"
+      ],
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/RunListEntry"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "runs"
+  ],
+  "title": "ListNativeRunsResult",
+  "type": "object"
+}

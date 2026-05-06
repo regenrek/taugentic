@@ -1,0 +1,47 @@
+{
+  "$defs": {
+    "RuntimePolicyMode": {
+      "enum": [
+        "requireApproval",
+        "allow",
+        "deny"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authProfileId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "policyMode": {
+      "$ref": "#/$defs/RuntimePolicyMode"
+    },
+    "providerId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "displayName",
+    "providerId",
+    "policyMode"
+  ],
+  "title": "RuntimeProfileSummary",
+  "type": "object"
+}

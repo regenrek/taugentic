@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "harness": {
+      "items": {
+        "$ref": "#/$defs/RunHarnessKind"
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "parentRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "items": {
+        "$ref": "#/$defs/RunStatus"
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    }
+  },
+  "title": "RunListFilter",
+  "type": "object"
+}

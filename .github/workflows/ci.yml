@@ -1,0 +1,104 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.90.0
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@nextest
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install desktop deps
+        run: pnpm install --dir apps/desktop --frozen-lockfile
+
+      - name: Check desktop workspace
+        run: pnpm --dir apps/desktop check
+
+      - name: Check desktop dependency hygiene
+        run: pnpm --dir apps/desktop knip
+
+      - name: Run desktop tests
+        run: pnpm --dir apps/desktop test
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Check Rust dependency hygiene
+        run: cargo deny check advisories licenses bans sources
+
+      - name: Build desktop runtime
+        run: pnpm --dir apps/desktop build
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint Rust workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build Linux sandbox helper
+        run: cargo build -p ta-linux-sandbox
+
+      - name: Run Rust workspace tests
+        env:
+          TA_LINUX_SANDBOX_HELPER: ${{ github.workspace }}/target/debug/ta-linux-sandbox
+        run: cargo nextest run --workspace
+
+  platform-smoke:
+    name: platform-smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.90.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Build Linux sandbox helper
+        if: runner.os == 'Linux'
+        run: cargo build -p ta-linux-sandbox
+
+      - name: Run Rust platform package tests
+        env:
+          TA_LINUX_SANDBOX_HELPER: ${{ github.workspace }}/target/debug/ta-linux-sandbox
+        run: cargo nextest run -p ta-host-platform -p ta-orchestrator -p ta-cli
+
+      - name: Smoke daemon lifecycle on host
+        env:
+          TA_LINUX_SANDBOX_HELPER: ${{ github.workspace }}/target/debug/ta-linux-sandbox
+        run: cargo xtask smoke-local-daemon

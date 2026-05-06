@@ -1,0 +1,35 @@
+[package]
+name = "taugentic-agent"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+futures-util.workspace = true
+ignore.workspace = true
+nix.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+rmcp.workspace = true
+ta-exec = { path = "../ta-exec" }
+ta-policy = { path = "../ta-policy" }
+ta-provider-acp = { path = "../ta-provider-acp" }
+ta-provider-llm = { path = "../ta-provider-llm" }
+ta-protocol = { path = "../ta-protocol" }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

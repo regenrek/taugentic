@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "DaemonEventCursor": {
+      "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
+      "properties": {
+        "daemonInstanceId": {
+          "type": "string"
+        },
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "daemonInstanceId",
+        "sessionId",
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "DaemonEventKind": {
+      "enum": [
+        "session",
+        "run",
+        "runReconciledOnStartup",
+        "approval",
+        "artifact",
+        "contextReceipt",
+        "agentStream",
+        "tokenUsageRecorded",
+        "conflict",
+        "budget"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "afterCursor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DaemonEventCursor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kinds": {
+      "items": {
+        "$ref": "#/$defs/DaemonEventKind"
+      },
+      "type": "array"
+    }
+  },
+  "title": "DaemonSubscribeParams",
+  "type": "object"
+}

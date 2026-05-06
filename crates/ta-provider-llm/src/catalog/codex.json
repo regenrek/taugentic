@@ -1,0 +1,22 @@
+[
+  {
+    "id": "gpt-5.4",
+    "displayName": "GPT-5.4"
+  },
+  {
+    "id": "gpt-5.3-codex",
+    "displayName": "GPT-5.3 Codex"
+  },
+  {
+    "id": "gpt-5.2-codex",
+    "displayName": "GPT-5.2 Codex"
+  },
+  {
+    "id": "gpt-5.1-codex",
+    "displayName": "GPT-5.1 Codex"
+  },
+  {
+    "id": "gpt-5-codex",
+    "displayName": "GPT-5 Codex"
+  }
+]

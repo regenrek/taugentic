@@ -1,0 +1,32 @@
+[package]
+name = "ta-windows-sandbox"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ta-windows-sandbox"
+path = "src/bin/main.rs"
+
+[dependencies]
+serde_json.workspace = true
+ta-sandbox = { path = "../ta-sandbox" }
+thiserror.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_WindowsFirewall",
+    "Win32_NetworkManagement_WindowsFilteringPlatform",
+    "Win32_Networking_WinSock",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Security_Isolation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_JobObjects",
+    "Win32_System_Rpc",
+    "Win32_System_Threading",
+] }

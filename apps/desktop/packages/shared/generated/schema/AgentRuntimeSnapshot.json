@@ -1,0 +1,529 @@
+{
+  "$defs": {
+    "AgentRuntimeModelAvailability": {
+      "enum": [
+        "enumerated",
+        "currentOnly",
+        "unsupported",
+        "unavailable",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "AgentRuntimeModelCapability": {
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AgentRuntimeModelAvailability"
+        },
+        "canSetModel": {
+          "type": "boolean"
+        },
+        "currentModelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "availability",
+        "canSetModel"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeModelRef": {
+      "properties": {
+        "contextLimit": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "outputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeSelection": {
+      "properties": {
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeStrategyHealth": {
+      "properties": {
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/AgentRuntimeStrategyHealthStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeStrategyHealthStatus": {
+      "enum": [
+        "unknown",
+        "ready",
+        "degraded",
+        "unavailable"
+      ],
+      "type": "string"
+    },
+    "AgentRuntimeStrategyInfo": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "health": {
+          "$ref": "#/$defs/AgentRuntimeStrategyHealth"
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelCapability": {
+          "$ref": "#/$defs/AgentRuntimeModelCapability"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/AgentRuntimeModelRef"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "modelCapability",
+        "health"
+      ],
+      "type": "object"
+    },
+    "AuthProfileActionHint": {
+      "properties": {
+        "command": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    },
+    "AuthProfileConnectionState": {
+      "enum": [
+        "loggedOut",
+        "pendingLogin",
+        "connected",
+        "error"
+      ],
+      "type": "string"
+    },
+    "AuthProfileManagementMode": {
+      "enum": [
+        "interactive",
+        "nativeAcpAuth",
+        "terminalCliDelegated",
+        "environment",
+        "none",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "AuthProfileMethodInfo": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "managementMode": {
+          "$ref": "#/$defs/AuthProfileManagementMode"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "managementMode"
+      ],
+      "type": "object"
+    },
+    "AuthProfileRef": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "providerId",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "AuthProfileState": {
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileActionHint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "canLogin": {
+          "type": "boolean"
+        },
+        "canLogout": {
+          "type": "boolean"
+        },
+        "connectionState": {
+          "$ref": "#/$defs/AuthProfileConnectionState"
+        },
+        "lastError": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "managementMode": {
+          "$ref": "#/$defs/AuthProfileManagementMode"
+        },
+        "methods": {
+          "items": {
+            "$ref": "#/$defs/AuthProfileMethodInfo"
+          },
+          "type": "array"
+        },
+        "platformOrgLinked": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "profile": {
+          "$ref": "#/$defs/AuthProfileRef"
+        },
+        "setupSteps": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "profile",
+        "connectionState",
+        "managementMode",
+        "canLogin",
+        "canLogout"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionAvailability": {
+      "enum": [
+        "available",
+        "unavailable"
+      ],
+      "type": "string"
+    },
+    "RuntimeExtensionDescriptor": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "description"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionEnvVar": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionHttpHeader": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionMcpHttpServer": {
+      "properties": {
+        "headers": {
+          "items": {
+            "$ref": "#/$defs/RuntimeExtensionHttpHeader"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "url"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionMcpServer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RuntimeExtensionMcpStdioServer",
+          "properties": {
+            "transport": {
+              "const": "stdio",
+              "type": "string"
+            }
+          },
+          "required": [
+            "transport"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/RuntimeExtensionMcpHttpServer",
+          "properties": {
+            "transport": {
+              "const": "http",
+              "type": "string"
+            }
+          },
+          "required": [
+            "transport"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RuntimeExtensionMcpStdioServer": {
+      "properties": {
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "command": {
+          "type": "string"
+        },
+        "env": {
+          "items": {
+            "$ref": "#/$defs/RuntimeExtensionEnvVar"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "command"
+      ],
+      "type": "object"
+    },
+    "RuntimeExtensionState": {
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/RuntimeExtensionAvailability"
+        },
+        "descriptor": {
+          "$ref": "#/$defs/RuntimeExtensionDescriptor"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "mcpServer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeExtensionMcpServer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "descriptor",
+        "availability",
+        "enabled"
+      ],
+      "type": "object"
+    },
+    "RuntimePolicyMode": {
+      "enum": [
+        "requireApproval",
+        "allow",
+        "deny"
+      ],
+      "type": "string"
+    },
+    "RuntimeProfileSummary": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "policyMode": {
+          "$ref": "#/$defs/RuntimePolicyMode"
+        },
+        "providerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "displayName",
+        "providerId",
+        "policyMode"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authProfiles": {
+      "items": {
+        "$ref": "#/$defs/AuthProfileState"
+      },
+      "type": "array"
+    },
+    "providers": {
+      "items": {
+        "$ref": "#/$defs/AgentRuntimeStrategyInfo"
+      },
+      "type": "array"
+    },
+    "runtimeExtensions": {
+      "items": {
+        "$ref": "#/$defs/RuntimeExtensionState"
+      },
+      "type": "array"
+    },
+    "runtimeProfiles": {
+      "items": {
+        "$ref": "#/$defs/RuntimeProfileSummary"
+      },
+      "type": "array"
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    }
+  },
+  "required": [
+    "selection"
+  ],
+  "title": "AgentRuntimeSnapshot",
+  "type": "object"
+}

@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "AgentRuntimeModelAvailability": {
+      "enum": [
+        "enumerated",
+        "currentOnly",
+        "unsupported",
+        "unavailable",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "AgentRuntimeModelCapability": {
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/AgentRuntimeModelAvailability"
+        },
+        "canSetModel": {
+          "type": "boolean"
+        },
+        "currentModelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "availability",
+        "canSetModel"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeModelRef": {
+      "properties": {
+        "contextLimit": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "outputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeStrategyHealth": {
+      "properties": {
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/AgentRuntimeStrategyHealthStatus"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeStrategyHealthStatus": {
+      "enum": [
+        "unknown",
+        "ready",
+        "degraded",
+        "unavailable"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "displayName": {
+      "type": "string"
+    },
+    "health": {
+      "$ref": "#/$defs/AgentRuntimeStrategyHealth"
+    },
+    "id": {
+      "type": "string"
+    },
+    "modelCapability": {
+      "$ref": "#/$defs/AgentRuntimeModelCapability"
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/AgentRuntimeModelRef"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "displayName",
+    "modelCapability",
+    "health"
+  ],
+  "title": "AgentRuntimeStrategyInfo",
+  "type": "object"
+}

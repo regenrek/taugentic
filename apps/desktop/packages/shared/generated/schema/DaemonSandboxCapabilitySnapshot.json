@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "appcontainer": {
+      "type": "boolean"
+    },
+    "filesystemAllowlist": {
+      "type": "boolean"
+    },
+    "helperAvailable": {
+      "type": "boolean"
+    },
+    "networkDefaultDeny": {
+      "type": "boolean"
+    },
+    "networkDestinationAllowlist": {
+      "type": "boolean"
+    },
+    "os": {
+      "type": "string"
+    },
+    "restrictedTokenJob": {
+      "type": "boolean"
+    },
+    "sandboxKind": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "os",
+    "sandboxKind",
+    "helperAvailable",
+    "restrictedTokenJob",
+    "appcontainer",
+    "filesystemAllowlist",
+    "networkDefaultDeny",
+    "networkDestinationAllowlist"
+  ],
+  "title": "DaemonSandboxCapabilitySnapshot",
+  "type": "object"
+}

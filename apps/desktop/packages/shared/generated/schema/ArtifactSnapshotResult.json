@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog"
+      ],
+      "type": "string"
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "storagePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "storagePath"
+      ],
+      "type": "object"
+    },
+    "DaemonEventCursor": {
+      "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
+      "properties": {
+        "daemonInstanceId": {
+          "type": "string"
+        },
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "daemonInstanceId",
+        "sessionId",
+        "sequence"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ArtifactSummary"
+      },
+      "type": "array"
+    },
+    "latestCursor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DaemonEventCursor"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "ArtifactSnapshotResult",
+  "type": "object"
+}

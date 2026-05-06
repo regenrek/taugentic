@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "stopped",
+    "local",
+    "background",
+    "foreign"
+  ],
+  "title": "DaemonActualRuntimeMode",
+  "type": "string"
+}

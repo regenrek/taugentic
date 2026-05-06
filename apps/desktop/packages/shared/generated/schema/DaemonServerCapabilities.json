@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "eventSubscriptions": {
+      "type": "boolean"
+    },
+    "notifications": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "notifications",
+    "eventSubscriptions"
+  ],
+  "title": "DaemonServerCapabilities",
+  "type": "object"
+}

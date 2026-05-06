@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cachedTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "completionTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "promptTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "reasoningTokens": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "promptTokens",
+    "completionTokens",
+    "cachedTokens",
+    "reasoningTokens"
+  ],
+  "title": "TokenUsageTotals",
+  "type": "object"
+}

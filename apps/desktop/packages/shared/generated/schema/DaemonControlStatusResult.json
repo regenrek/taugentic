@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "DaemonActualRuntimeMode": {
+      "enum": [
+        "stopped",
+        "local",
+        "background",
+        "foreign"
+      ],
+      "type": "string"
+    },
+    "DaemonControlAction": {
+      "enum": [
+        "start",
+        "stop",
+        "enableBackground",
+        "disableBackground",
+        "reconcile"
+      ],
+      "type": "string"
+    },
+    "DaemonControlErrorCode": {
+      "enum": [
+        "unsupportedPlatform",
+        "externalRuntime",
+        "ownershipMismatch",
+        "reconcileRequired",
+        "transitionFailed"
+      ],
+      "type": "string"
+    },
+    "DaemonPendingTransitionKind": {
+      "enum": [
+        "enableBackground",
+        "disableBackground",
+        "recoverToLocal"
+      ],
+      "type": "string"
+    },
+    "DaemonPendingTransitionView": {
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/DaemonPendingTransitionKind"
+        },
+        "opId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "opId"
+      ],
+      "type": "object"
+    },
+    "DaemonRuntimeMode": {
+      "enum": [
+        "local",
+        "background"
+      ],
+      "type": "string"
+    },
+    "DaemonTransitionStatus": {
+      "enum": [
+        "idle",
+        "applying",
+        "degradedReconcileRequired",
+        "failedNoStateChange"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actualMode": {
+      "$ref": "#/$defs/DaemonActualRuntimeMode"
+    },
+    "allowedActions": {
+      "items": {
+        "$ref": "#/$defs/DaemonControlAction"
+      },
+      "type": "array"
+    },
+    "backgroundOptIn": {
+      "type": "boolean"
+    },
+    "daemonVersion": {
+      "description": "Running daemon version observed via daemon status.\n`None` means the daemon version is currently not observable, so UIs should omit it.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "desiredMode": {
+      "$ref": "#/$defs/DaemonRuntimeMode"
+    },
+    "errorCode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DaemonControlErrorCode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "logPath": {
+      "description": "Canonical daemon log path for this host/runtime configuration.",
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "pendingTransition": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DaemonPendingTransitionView"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "protocolVersion": {
+      "type": "string"
+    },
+    "reconcileRequired": {
+      "type": "boolean"
+    },
+    "socketPath": {
+      "type": "string"
+    },
+    "transitionStatus": {
+      "$ref": "#/$defs/DaemonTransitionStatus"
+    }
+  },
+  "required": [
+    "backgroundOptIn",
+    "desiredMode",
+    "actualMode",
+    "transitionStatus",
+    "reconcileRequired",
+    "allowedActions",
+    "message",
+    "socketPath",
+    "logPath",
+    "protocolVersion"
+  ],
+  "title": "DaemonControlStatusResult",
+  "type": "object"
+}

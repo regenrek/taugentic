@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Run event subscription request after an optional durable cursor.\n\n`daemon.run.replay_events` uses this shape for finite replay batches.\n`daemon.run.subscribe_events` uses it for replay plus live splice streams.",
+  "properties": {
+    "afterSeq": {
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "runId"
+  ],
+  "title": "SubscribeRunEventsRequest",
+  "type": "object"
+}

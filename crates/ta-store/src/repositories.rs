@@ -1,0 +1,155 @@
+use ta_protocol::wire::{ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId};
+
+use crate::{
+    ArtifactPublishCommitResult, ArtifactRecord, CheckpointPersistCommitResult, CheckpointRecord,
+    CommitArtifactPublish, CommitCheckpointPersist, CommitReceiptEvent, CommitRunTransition,
+    CommitSessionOpen, CommitStartupReconciliation, EventRecord, NativeRunListPage,
+    NativeRunListQuery, ReceiptEventCommitResult, RunEventRange, RunEventRangeQuery, RunProjection,
+    RunTransitionCommitResult, SessionAgentTurnsPage, SessionAgentTurnsPageQuery,
+    SessionApprovalQuery, SessionEventPage, SessionEventPageQuery, SessionEventRange,
+    SessionEventRangeQuery, SessionOpenCommitResult, SessionProjection, StoreError,
+    WorkItemRepository, projections::PrincipalProjection, receipts::ReceiptRepository,
+};
+
+pub trait EventLogRepository {
+    fn events(&self) -> Result<Vec<EventRecord>, StoreError>;
+    /// Latest `limit` records in descending global sequence order (newest first).
+    fn events_tail_desc(&self, limit: usize) -> Result<Vec<EventRecord>, StoreError>;
+    fn events_for_session(&self, session_id: &SessionId) -> Result<Vec<EventRecord>, StoreError>;
+    fn approvals_for_session(
+        &self,
+        query: &SessionApprovalQuery,
+    ) -> Result<Vec<ApprovalRequest>, StoreError>;
+    fn approval_lookup(
+        &self,
+        session_id: &SessionId,
+        approval_id: &ApprovalId,
+    ) -> Result<crate::SessionApprovalLookup, StoreError>;
+    fn session_event_page(
+        &self,
+        query: &SessionEventPageQuery,
+    ) -> Result<SessionEventPage, StoreError>;
+    fn session_event_range(
+        &self,
+        query: &SessionEventRangeQuery,
+    ) -> Result<SessionEventRange, StoreError>;
+    fn read_run_events(&self, query: &RunEventRangeQuery) -> Result<RunEventRange, StoreError>;
+    fn session_agent_turns_page(
+        &self,
+        query: &SessionAgentTurnsPageQuery,
+    ) -> Result<SessionAgentTurnsPage, StoreError>;
+}
+
+pub trait ProjectionRepository {
+    fn session(&self, session_id: &SessionId) -> Result<Option<SessionProjection>, StoreError>;
+    fn sessions(&self) -> Result<Vec<SessionProjection>, StoreError>;
+
+    fn run(&self, run_id: &RunId) -> Result<Option<RunProjection>, StoreError>;
+    fn runs(&self) -> Result<Vec<RunProjection>, StoreError>;
+    fn list_native_runs(&self, query: &NativeRunListQuery)
+    -> Result<NativeRunListPage, StoreError>;
+}
+
+pub trait PrincipalRepository {
+    fn principal_by_credential_hash(
+        &self,
+        credential_hash: &str,
+    ) -> Result<Option<PrincipalProjection>, StoreError>;
+
+    fn save_principal(&mut self, principal: PrincipalProjection) -> Result<(), StoreError>;
+}
+
+pub trait SessionAuthorityRepository {
+    fn rotate_session_authority(
+        &mut self,
+        session_id: &SessionId,
+        owner_principal_id: &str,
+        presented_authority_hash: &str,
+        next_authority_hash: &str,
+    ) -> Result<Option<SessionProjection>, StoreError>;
+}
+
+pub trait CommitRepository {
+    fn commit_run_transition(
+        &mut self,
+        input: CommitRunTransition,
+    ) -> Result<RunTransitionCommitResult, StoreError>;
+
+    fn commit_startup_reconciliation(
+        &mut self,
+        input: CommitStartupReconciliation,
+    ) -> Result<Vec<RunTransitionCommitResult>, StoreError>;
+
+    fn commit_session_open(
+        &mut self,
+        input: CommitSessionOpen,
+    ) -> Result<SessionOpenCommitResult, StoreError>;
+
+    fn commit_artifact_publish(
+        &mut self,
+        input: CommitArtifactPublish,
+    ) -> Result<ArtifactPublishCommitResult, StoreError>;
+
+    fn commit_receipt_event(
+        &mut self,
+        input: CommitReceiptEvent,
+    ) -> Result<ReceiptEventCommitResult, StoreError>;
+
+    fn commit_checkpoint_persist(
+        &mut self,
+        input: CommitCheckpointPersist,
+    ) -> Result<CheckpointPersistCommitResult, StoreError>;
+}
+
+pub trait CheckpointRepository {
+    fn checkpoints_for_run(&self, run_id: &RunId) -> Result<Vec<CheckpointRecord>, StoreError>;
+}
+
+pub trait ArtifactRepository {
+    fn artifact(&self, artifact_id: &ArtifactId) -> Result<Option<ArtifactRecord>, StoreError>;
+    fn artifacts_for_run(&self, run_id: &RunId) -> Result<Vec<ArtifactRecord>, StoreError>;
+    fn artifacts_for_session(
+        &self,
+        query: &SessionArtifactQuery,
+    ) -> Result<Vec<ArtifactRecord>, StoreError>;
+
+    fn artifact_for_session(
+        &self,
+        query: &SessionArtifactQuery,
+    ) -> Result<Option<ArtifactRecord>, StoreError> {
+        Ok(self.artifacts_for_session(query)?.into_iter().next())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionArtifactQuery {
+    pub session_id: SessionId,
+    pub run_id: Option<RunId>,
+    pub artifact_id: Option<ArtifactId>,
+}
+
+pub trait PersistenceStore:
+    EventLogRepository
+    + ProjectionRepository
+    + PrincipalRepository
+    + SessionAuthorityRepository
+    + CommitRepository
+    + CheckpointRepository
+    + ArtifactRepository
+    + ReceiptRepository
+    + WorkItemRepository
+{
+}
+
+impl<T> PersistenceStore for T where
+    T: EventLogRepository
+        + ProjectionRepository
+        + PrincipalRepository
+        + SessionAuthorityRepository
+        + CommitRepository
+        + CheckpointRepository
+        + ArtifactRepository
+        + ReceiptRepository
+        + WorkItemRepository
+{
+}

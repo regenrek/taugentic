@@ -1,0 +1,30 @@
+[package]
+name = "ta-host-platform"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+os_info.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+[lints.rust]
+unsafe_code = "allow"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.30.1", features = ["user"] }
+secret-service.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3.7.0"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"

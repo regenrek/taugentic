@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "DaemonServerCapabilities": {
+      "properties": {
+        "eventSubscriptions": {
+          "type": "boolean"
+        },
+        "notifications": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "notifications",
+        "eventSubscriptions"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "capabilities": {
+      "$ref": "#/$defs/DaemonServerCapabilities"
+    },
+    "clientCredential": {
+      "type": "string"
+    },
+    "daemonInstanceId": {
+      "type": "string"
+    },
+    "daemonVersion": {
+      "type": "string"
+    },
+    "protocolVersion": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "daemonInstanceId",
+    "daemonVersion",
+    "clientCredential",
+    "protocolVersion",
+    "capabilities"
+  ],
+  "title": "DaemonInitializeResult",
+  "type": "object"
+}

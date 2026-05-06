@@ -1,0 +1,20 @@
+[package]
+name = "ta-workflow"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+serde_yaml.workspace = true
+ta-protocol = { path = "../ta-protocol" }
+ta-provider-llm = { path = "../ta-provider-llm" }
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

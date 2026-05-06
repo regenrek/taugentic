@@ -1,0 +1,36 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/ArtifactKind"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "storagePath": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "runId",
+    "kind",
+    "storagePath"
+  ],
+  "title": "ArtifactSummary",
+  "type": "object"
+}

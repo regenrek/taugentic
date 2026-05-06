@@ -1,0 +1,27 @@
+{
+  "$defs": {
+    "DaemonPendingTransitionKind": {
+      "enum": [
+        "enableBackground",
+        "disableBackground",
+        "recoverToLocal"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/DaemonPendingTransitionKind"
+    },
+    "opId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "opId"
+  ],
+  "title": "DaemonPendingTransitionView",
+  "type": "object"
+}

@@ -1,0 +1,58 @@
+# Rust
+/target/
+/target-cursor/
+**/*.rs.bk
+*.pdb
+
+# Node / pnpm
+node_modules/
+.pnpm-debug.log*
+
+# Frontend / bundler
+dist/
+build/
+.vite/
+*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+.tmp
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs & diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Agent folders
+.codex
+.cursor
+
+# Misc
+.cache/
+.cursor-target/
+node_modules/
+apps/desktop/node_modules/
+apps/desktop/.artifacts/
+apps/desktop/packages/*/dist/
+apps/desktop/packages/*/*.tsbuildinfo
+apps/desktop/release/
+apps/desktop/packages/shared/generated/**/*.d.ts
+apps/desktop/packages/shared/generated/**/*.js
+!apps/desktop/packages/shared/generated/index.js
+!apps/desktop/packages/shared/generated/runtime.js
+taugentic.code-workspace

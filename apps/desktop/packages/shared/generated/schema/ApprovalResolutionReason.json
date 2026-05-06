@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "user",
+    "expired",
+    "cancelled",
+    "budgetExceeded",
+    "runtimePolicy"
+  ],
+  "title": "ApprovalResolutionReason",
+  "type": "string"
+}

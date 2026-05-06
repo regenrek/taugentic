@@ -1,0 +1,32 @@
+{
+  "$defs": {
+    "ApprovalDecision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "approvalId": {
+      "type": "string"
+    },
+    "commentary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision": {
+      "$ref": "#/$defs/ApprovalDecision"
+    }
+  },
+  "required": [
+    "approvalId",
+    "decision"
+  ],
+  "title": "DaemonApprovalDecideParams",
+  "type": "object"
+}

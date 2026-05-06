@@ -1,0 +1,47 @@
+[package]
+name = "ta-orchestrator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+futures-util.workspace = true
+futures-executor.workspace = true
+nix.workspace = true
+parking_lot.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ta-host-platform = { path = "../ta-host-platform" }
+ta-jsonrpc = { path = "../ta-jsonrpc" }
+ta-observability = { path = "../ta-observability" }
+ta-policy = { path = "../ta-policy" }
+ta-provider-acp = { path = "../ta-provider-acp" }
+ta-provider-llm = { path = "../ta-provider-llm" }
+ta-protocol = { path = "../ta-protocol" }
+ta-store = { path = "../ta-store" }
+ta-workflow = { path = "../ta-workflow" }
+ta-work-source = { path = "../ta-work-source" }
+taugentic-agent = { path = "../taugentic-agent" }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tungstenite.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+sha2.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+ta-daemon-client = { path = "../ta-daemon-client" }
+ta-store = { path = "../ta-store", features = ["test-support"] }
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+wiremock = "0.6"
+
+[lints]
+workspace = true

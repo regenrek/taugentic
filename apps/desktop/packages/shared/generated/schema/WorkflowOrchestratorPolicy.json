@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "WorkflowRetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "initial_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "initial_ms",
+        "max_ms"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "max_capsules_per_mission": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_concurrent_missions": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "retry": {
+      "$ref": "#/$defs/WorkflowRetryPolicy"
+    }
+  },
+  "required": [
+    "max_concurrent_missions",
+    "max_capsules_per_mission",
+    "retry"
+  ],
+  "title": "WorkflowOrchestratorPolicy",
+  "type": "object"
+}
