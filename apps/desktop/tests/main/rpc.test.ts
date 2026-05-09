@@ -166,11 +166,13 @@ describe("rpc", () => {
     await expect(sessionOverviewHandler?.({}, { recentActivityLimit: 5 })).resolves.toEqual({
       query: { recentActivityLimit: 5 },
     });
-    await expect(openSessionHandler?.({}, "Fresh session", testWorkspaceSelector)).resolves.toEqual({
-      id: "session-1",
-      title: "Fresh session",
-      workspace: testWorkspaceSelector,
-    });
+    await expect(openSessionHandler?.({}, "Fresh session", testWorkspaceSelector)).resolves.toEqual(
+      {
+        id: "session-1",
+        title: "Fresh session",
+        workspace: testWorkspaceSelector,
+      },
+    );
 
     expect(hoisted.startDaemonViaBootstrap).toHaveBeenCalledTimes(1);
     expect(hoisted.desktopAgentRuntimeInvokeHandlers.getAgentRuntime).toHaveBeenCalledTimes(1);
@@ -202,9 +204,7 @@ describe("rpc", () => {
 
     expect(() =>
       openSessionHandler({}, "Fresh session", testWorkspaceSelector, "extra arg"),
-    ).toThrow(
-      "desktop IPC method openSession expected 2 arg(s), got 3",
-    );
+    ).toThrow("desktop IPC method openSession expected 2 arg(s), got 3");
     expect(hoisted.desktopSessionInvokeHandlers.openSession).not.toHaveBeenCalled();
   });
 });

@@ -130,10 +130,7 @@ export function openWorkspace(
   return window.desktopApi.openWorkspace(params);
 }
 
-export function openSession(
-  title: string,
-  workspace: WorkspaceSelector,
-): Promise<SessionSummary> {
+export function openSession(title: string, workspace: WorkspaceSelector): Promise<SessionSummary> {
   return window.desktopApi.openSession(title, workspace);
 }
 

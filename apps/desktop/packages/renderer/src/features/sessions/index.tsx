@@ -25,8 +25,7 @@ export function SessionsPanel({
     selectSession,
     setDraftTitle,
     state,
-  } =
-    useSessionsPanelModel(currentSessionId, onSessionChange);
+  } = useSessionsPanelModel(currentSessionId, onSessionChange);
 
   const isOpening = state.pendingAction === "open";
   const isRefreshing = state.pendingAction === "refresh";
@@ -40,8 +39,8 @@ export function SessionsPanel({
             <div className="space-y-2">
               <CardTitle className="text-white">Sessions</CardTitle>
               <CardDescription>
-                Open a coding workspace, keep the active session pinned, and reuse it across runs and
-                review surfaces.
+                Open a coding workspace, keep the active session pinned, and reuse it across runs
+                and review surfaces.
               </CardDescription>
             </div>
             <Button

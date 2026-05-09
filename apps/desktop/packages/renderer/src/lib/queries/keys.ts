@@ -80,5 +80,4 @@ export const queryKeys = {
 
 /** Root key used to invalidate every session overview variant regardless of limit. */
 export const sessionOverviewRootKey = ["session", "overview"] as const;
-export const sessionListRootKey = queryKeys.sessions;
 export const agentRuntimeRootKey = ["agentRuntime"] as const;

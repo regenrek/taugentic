@@ -64,7 +64,8 @@ export function useWorkspacePicker() {
 }
 
 function isWorkspaceTrustRequired(error: unknown): boolean {
-  const data = error instanceof Error && "data" in error ? (error as { data?: unknown }).data : null;
+  const data =
+    error instanceof Error && "data" in error ? (error as { data?: unknown }).data : null;
   if (isRecord(data) && data.code === "WorkspaceTrustRequired") {
     return true;
   }
