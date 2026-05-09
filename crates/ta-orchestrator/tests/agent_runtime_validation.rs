@@ -593,31 +593,18 @@ fn prepend_path(dir: &Path) -> String {
 }
 
 fn seed_default_test_workspace_under_home(config_home: &Path, socket_name: &str) {
-    let store_path = if cfg!(target_os = "macos") {
-        config_home
-            .join("Library")
-            .join("Application Support")
-            .join("taugentic")
-            .join("daemon")
-            .join("store")
-            .join(format!("{socket_name}.sqlite3"))
+    let base = if cfg!(target_os = "macos") {
+        config_home.join("Library").join("Application Support")
     } else if cfg!(windows) {
-        config_home
-            .join("AppData")
-            .join("Roaming")
-            .join("taugentic")
-            .join("daemon")
-            .join("store")
-            .join(format!("{socket_name}.sqlite3"))
+        config_home.join("AppData").join("Roaming")
     } else {
-        config_home
-            .join(".local")
-            .join("share")
-            .join("taugentic")
-            .join("daemon")
-            .join("store")
-            .join(format!("{socket_name}.sqlite3"))
+        config_home.join(".config")
     };
+    let store_path = base
+        .join("taugentic")
+        .join("daemon")
+        .join("store")
+        .join(format!("{socket_name}.sqlite3"));
     if let Some(parent) = store_path.parent() {
         fs::create_dir_all(parent).expect("daemon store parent");
     }
