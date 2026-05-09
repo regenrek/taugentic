@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "state": {
+          "const": "unverified",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "confirmedAt": {
+          "type": "string"
+        },
+        "state": {
+          "const": "userConfirmed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "confirmedAt"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "state": {
+          "const": "revoked",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "TrustState"
+}

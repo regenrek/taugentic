@@ -2774,6 +2774,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "ta-host-platform",
  "ta-work-source",
  "thiserror",
  "ts-rs",

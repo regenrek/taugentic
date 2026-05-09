@@ -1,4 +1,11 @@
-use std::path::PathBuf;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
+
+pub fn canonical_realpath(path: impl AsRef<Path>) -> io::Result<PathBuf> {
+    std::fs::canonicalize(path)
+}
 
 pub fn taugentic_user_recipe_dir() -> Option<PathBuf> {
     normalized_home_dir().map(|home| home.join(".taugentic").join("recipes"))

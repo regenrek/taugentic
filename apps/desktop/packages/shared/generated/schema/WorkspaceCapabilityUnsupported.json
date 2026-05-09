@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "capability": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "requested": {
+      "type": "string"
+    },
+    "variant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "vendor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "capability",
+    "requested",
+    "reason"
+  ],
+  "title": "WorkspaceCapabilityUnsupported",
+  "type": "object"
+}

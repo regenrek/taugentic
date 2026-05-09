@@ -200,6 +200,19 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<FileClaimConflict>(cfg)?;
     export_ts::<ConflictWarning>(cfg)?;
     export_ts::<ConflictSummary>(cfg)?;
+    export_ts::<WorkspaceId>(cfg)?;
+    export_ts::<WorkspacePath>(cfg)?;
+    export_ts::<WorkspacePathError>(cfg)?;
+    export_ts::<Workspace>(cfg)?;
+    export_ts::<TrustState>(cfg)?;
+    export_ts::<ExecutionContext>(cfg)?;
+    export_ts::<WorkspaceScope>(cfg)?;
+    export_ts::<SandboxProfile>(cfg)?;
+    export_ts::<ProcessExecPolicy>(cfg)?;
+    export_ts::<PermissionPolicy>(cfg)?;
+    export_ts::<NetworkPolicy>(cfg)?;
+    export_ts::<EnvPolicy>(cfg)?;
+    export_ts::<WorkspaceCapabilityUnsupported>(cfg)?;
     export_ts::<SessionOverviewQuery>(cfg)?;
     export_ts::<SessionOverviewResult>(cfg)?;
     export_ts::<SessionOverviewLaneStatus>(cfg)?;
@@ -478,6 +491,19 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "FileClaimConflict",
         "ConflictWarning",
         "ConflictSummary",
+        "WorkspaceId",
+        "WorkspacePath",
+        "WorkspacePathError",
+        "Workspace",
+        "TrustState",
+        "ExecutionContext",
+        "WorkspaceScope",
+        "SandboxProfile",
+        "ProcessExecPolicy",
+        "PermissionPolicy",
+        "NetworkPolicy",
+        "EnvPolicy",
+        "WorkspaceCapabilityUnsupported",
         "SessionOverviewQuery",
         "SessionOverviewResult",
         "SessionOverviewLaneStatus",

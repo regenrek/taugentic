@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "deniedRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "processExec": {
+      "$ref": "#/$defs/ProcessExecPolicy"
+    },
+    "readRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "writeRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "readRoots",
+    "writeRoots",
+    "deniedRoots",
+    "processExec"
+  ],
+  "title": "SandboxProfile",
+  "type": "object"
+}

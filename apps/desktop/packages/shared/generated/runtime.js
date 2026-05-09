@@ -9366,6 +9366,920 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "DaemonEventKind",
   "type": "string"
 },
+  WorkspaceId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  WorkspacePath: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  WorkspacePathError: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "code": {
+          "const": "WorkspacePathNotAbsolute",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "path"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "canonical": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "const": "WorkspacePathNotCanonical",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "path"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspacePathError"
+},
+  Workspace: {
+  "$defs": {
+    "TrustState": {
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confirmedAt": {
+              "type": "string"
+            },
+            "state": {
+              "const": "userConfirmed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "confirmedAt"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "revoked",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "createdAt": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "gitRepoRoot": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "lastUsedAt": {
+      "type": "string"
+    },
+    "rootRealpath": {
+      "type": "string"
+    },
+    "trustState": {
+      "$ref": "#/$defs/TrustState"
+    }
+  },
+  "required": [
+    "id",
+    "rootRealpath",
+    "displayName",
+    "trustState",
+    "createdAt",
+    "lastUsedAt"
+  ],
+  "title": "Workspace",
+  "type": "object"
+},
+  TrustState: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "state": {
+          "const": "unverified",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "confirmedAt": {
+          "type": "string"
+        },
+        "state": {
+          "const": "userConfirmed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "confirmedAt"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "state": {
+          "const": "revoked",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "TrustState"
+},
+  ExecutionContext: {
+  "$defs": {
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifactRoot": {
+      "type": "string"
+    },
+    "effectiveCwd": {
+      "type": "string"
+    },
+    "envPolicy": {
+      "$ref": "#/$defs/EnvPolicy"
+    },
+    "networkPolicy": {
+      "$ref": "#/$defs/NetworkPolicy"
+    },
+    "permissionPolicy": {
+      "$ref": "#/$defs/PermissionPolicy"
+    },
+    "sandboxProfile": {
+      "$ref": "#/$defs/SandboxProfile"
+    },
+    "workspaceId": {
+      "type": "string"
+    },
+    "workspaceRoot": {
+      "type": "string"
+    },
+    "workspaceScope": {
+      "$ref": "#/$defs/WorkspaceScope"
+    }
+  },
+  "required": [
+    "workspaceId",
+    "workspaceRoot",
+    "effectiveCwd",
+    "artifactRoot",
+    "workspaceScope",
+    "sandboxProfile",
+    "permissionPolicy",
+    "networkPolicy",
+    "envPolicy"
+  ],
+  "title": "ExecutionContext",
+  "type": "object"
+},
+  WorkspaceScope: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "local",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "worktree",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "worktree": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root",
+        "worktree",
+        "branch"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "readonly",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "remote",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "container",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "ephemeral",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspaceScope"
+},
+  SandboxProfile: {
+  "$defs": {
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "deniedRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "processExec": {
+      "$ref": "#/$defs/ProcessExecPolicy"
+    },
+    "readRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "writeRoots": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "readRoots",
+    "writeRoots",
+    "deniedRoots",
+    "processExec"
+  ],
+  "title": "SandboxProfile",
+  "type": "object"
+},
+  ProcessExecPolicy: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "denied",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "binaries": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "allowlist",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "binaries"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "allowAll",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ProcessExecPolicy"
+},
+  PermissionPolicy: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "readOnly",
+    "workspaceWrite",
+    "workspaceWriteWithApproval",
+    "repoWriteWithApproval",
+    "unrestricted"
+  ],
+  "title": "PermissionPolicy",
+  "type": "string"
+},
+  NetworkPolicy: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "none",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "loopback",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "domains": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "allowlist",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "domains"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "open",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "NetworkPolicy"
+},
+  EnvPolicy: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "allowlist",
+          "type": "string"
+        },
+        "vars": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "vars"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "all",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "EnvPolicy"
+},
+  WorkspaceCapabilityUnsupported: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "capability": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "requested": {
+      "type": "string"
+    },
+    "variant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "vendor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "capability",
+    "requested",
+    "reason"
+  ],
+  "title": "WorkspaceCapabilityUnsupported",
+  "type": "object"
+},
   SessionOverviewQuery: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {

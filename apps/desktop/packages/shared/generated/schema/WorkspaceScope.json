@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "local",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "worktree",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "worktree": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root",
+        "worktree",
+        "branch"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "readonly",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "remote",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "container",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "ephemeral",
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "root"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspaceScope"
+}

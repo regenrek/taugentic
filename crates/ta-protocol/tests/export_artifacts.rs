@@ -49,6 +49,14 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(index.contains("export type { RuntimeProfilePatch }"));
     assert!(index.contains("export type { AgentRuntimeStrategyInfo }"));
     assert!(index.contains("export type { AuthProfileState }"));
+    assert!(index.contains("export type { Workspace }"));
+    assert!(index.contains("export type { WorkspaceId }"));
+    assert!(index.contains("export type { WorkspacePath }"));
+    assert!(index.contains("export type { WorkspacePathError }"));
+    assert!(index.contains("export type { ExecutionContext }"));
+    assert!(index.contains("export type { WorkspaceScope }"));
+    assert!(index.contains("export type { PermissionPolicy }"));
+    assert!(index.contains("export type { EnvPolicy }"));
     assert!(!index.contains("export type { ApprovalEvent }"));
     assert!(!index.contains("export type { ApprovalResolution }"));
     assert!(!index.contains("export type { ActivityPageItem }"));
@@ -106,6 +114,9 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(runtime.contains("RuntimeProfilePatch"));
     assert!(runtime.contains("AgentRuntimeStrategyInfo"));
     assert!(runtime.contains("AuthProfileState"));
+    assert!(runtime.contains("Workspace"));
+    assert!(runtime.contains("ExecutionContext"));
+    assert!(runtime.contains("WorkspaceScope"));
     assert!(
         !runtime.contains("\"format\": \"float\""),
         "runtime schema bundle must stay AJV-compatible"
@@ -219,6 +230,12 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
         fs::read_to_string(export_root.join("generated/schema/AgentRuntimeSnapshot.json"))
             .expect("agent runtime snapshot schema should exist");
     assert!(agent_runtime_snapshot_schema.contains("\"title\": \"AgentRuntimeSnapshot\""));
+    let execution_context_schema =
+        fs::read_to_string(export_root.join("generated/schema/ExecutionContext.json"))
+            .expect("execution context schema should exist");
+    assert!(execution_context_schema.contains("\"title\": \"ExecutionContext\""));
+    assert!(execution_context_schema.contains("\"workspaceScope\""));
+    assert!(execution_context_schema.contains("\"permissionPolicy\""));
 
     fs::remove_dir_all(&export_root).expect("temp export directory should be removable");
 }

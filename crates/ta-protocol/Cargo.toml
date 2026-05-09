@@ -10,6 +10,7 @@ rust-version.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ta-host-platform = { path = "../ta-host-platform" }
 ta-work-source = { path = "../ta-work-source" }
 thiserror.workspace = true
 ts-rs.workspace = true

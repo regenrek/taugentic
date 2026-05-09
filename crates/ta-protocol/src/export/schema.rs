@@ -76,6 +76,19 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<PublicDaemonEvent>(schema_dir)?;
     write_schema::<PublicDaemonEventEnvelope>(schema_dir)?;
     write_schema::<DaemonEventKind>(schema_dir)?;
+    write_schema::<WorkspaceId>(schema_dir)?;
+    write_schema::<WorkspacePath>(schema_dir)?;
+    write_schema::<WorkspacePathError>(schema_dir)?;
+    write_schema::<Workspace>(schema_dir)?;
+    write_schema::<TrustState>(schema_dir)?;
+    write_schema::<ExecutionContext>(schema_dir)?;
+    write_schema::<WorkspaceScope>(schema_dir)?;
+    write_schema::<SandboxProfile>(schema_dir)?;
+    write_schema::<ProcessExecPolicy>(schema_dir)?;
+    write_schema::<PermissionPolicy>(schema_dir)?;
+    write_schema::<NetworkPolicy>(schema_dir)?;
+    write_schema::<EnvPolicy>(schema_dir)?;
+    write_schema::<WorkspaceCapabilityUnsupported>(schema_dir)?;
     write_schema::<SessionOverviewQuery>(schema_dir)?;
     write_schema::<SessionOverviewResult>(schema_dir)?;
     write_schema::<SessionOverviewLaneStatus>(schema_dir)?;
@@ -308,6 +321,19 @@ fn build_core_runtime_json_schemas()
         schema_pair::<PublicDaemonEvent>()?,
         schema_pair::<PublicDaemonEventEnvelope>()?,
         schema_pair::<DaemonEventKind>()?,
+        schema_pair::<WorkspaceId>()?,
+        schema_pair::<WorkspacePath>()?,
+        schema_pair::<WorkspacePathError>()?,
+        schema_pair::<Workspace>()?,
+        schema_pair::<TrustState>()?,
+        schema_pair::<ExecutionContext>()?,
+        schema_pair::<WorkspaceScope>()?,
+        schema_pair::<SandboxProfile>()?,
+        schema_pair::<ProcessExecPolicy>()?,
+        schema_pair::<PermissionPolicy>()?,
+        schema_pair::<NetworkPolicy>()?,
+        schema_pair::<EnvPolicy>()?,
+        schema_pair::<WorkspaceCapabilityUnsupported>()?,
         schema_pair::<SessionOverviewQuery>()?,
         schema_pair::<SessionOverviewResult>()?,
         schema_pair::<SessionOverviewLaneStatus>()?,

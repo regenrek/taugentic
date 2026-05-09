@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "code": {
+          "const": "WorkspacePathNotAbsolute",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "path"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "canonical": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "const": "WorkspacePathNotCanonical",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "path"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspacePathError"
+}

@@ -5,7 +5,7 @@ mod secrets;
 mod types;
 
 pub use detect::*;
-pub use paths::{taugentic_user_recipe_dir, taugentic_workflow_file_path};
+pub use paths::{canonical_realpath, taugentic_user_recipe_dir, taugentic_workflow_file_path};
 #[cfg(target_os = "linux")]
 pub use platform::is_safe_bwrap_binary;
 #[cfg(windows)]
