@@ -11,6 +11,7 @@ fn daemon_approval_decide_requires_matching_attached_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -72,6 +73,7 @@ fn daemon_approval_decide_collapses_missing_and_resolved_public_errors() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -214,6 +216,7 @@ fn assert_approval_decision_transitions_run_and_clears_pending_approval(
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -306,6 +309,7 @@ fn daemon_approval_decide_redacts_actor_in_public_activity_page() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

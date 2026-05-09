@@ -17,6 +17,7 @@ fn rotate_session_authority_consumes_recovery_slot_once() {
             recovery_session_authority_generation: None,
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -110,6 +111,7 @@ fn rotate_session_authority_persists_recovery_slot_across_reopen() {
             recovery_session_authority_generation: None,
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     let rotated_once = store
@@ -195,6 +197,7 @@ fn open_persists_and_reloads_existing_rows() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store

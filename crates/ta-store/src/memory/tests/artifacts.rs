@@ -239,6 +239,7 @@ fn commit_artifact_publish_persists_artifact_and_allocates_monotonic_event_seque
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
     store
@@ -366,6 +367,7 @@ fn commit_run_transition_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 
@@ -430,6 +432,7 @@ fn commit_run_transition_rejects_orphan_approval_resolution() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 
@@ -495,6 +498,7 @@ fn commit_run_transition_rejects_mismatched_run_event_run_id() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 
@@ -557,6 +561,7 @@ fn commit_run_transition_rejects_mismatched_agent_stream_run_id() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 
@@ -620,6 +625,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
     store
@@ -633,6 +639,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Other".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
     store
@@ -703,6 +710,7 @@ fn commit_artifact_publish_rejects_non_running_run_projection() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
     store

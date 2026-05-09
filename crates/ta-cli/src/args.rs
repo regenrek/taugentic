@@ -122,10 +122,17 @@ pub enum DaemonBackgroundCommands {
 pub enum SessionCommands {
     /// List daemon-owned sessions.
     List,
-    /// Open a new daemon-owned session.
+    /// Open a new daemon-owned session bound to a workspace.
     Open {
         #[arg(value_name = "TITLE")]
         title: String,
+        /// Workspace identifier returned by `daemon.workspace.open`.
+        ///
+        /// The workspace.open RPC and folder picker land in the slice
+        /// following this one; until then, callers can supply an existing
+        /// workspace id obtained via the daemon-internal API.
+        #[arg(long = "workspace-id", value_name = "WORKSPACE_ID")]
+        workspace_id: String,
     },
 }
 

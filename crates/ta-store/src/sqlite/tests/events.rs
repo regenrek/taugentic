@@ -21,6 +21,7 @@ fn read_run_events_uses_session_cursor_and_preserves_run_limit() {
                 recovery_session_authority_generation: None,
                 title: "Replay".to_string(),
                 status: SessionStatus::Running,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session should persist");
     }
@@ -111,6 +112,7 @@ fn approval_lookup_distinguishes_pending_resolved_and_not_found_after_reopen() {
                 recovery_session_authority_generation: None,
                 title: "Approval lookup".to_string(),
                 status: SessionStatus::Running,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session");
         store
@@ -218,6 +220,9 @@ fn session_event_page_returns_decode_record_for_corrupt_event_payload() {
     let session_id = SessionId::new("session-1").expect("session id");
     {
         let mut store = SqliteStore::open(&path).expect("store should open");
+        crate::WorkspaceRepository::upsert_workspace(&mut store, crate::default_test_workspace())
+            .expect("seed workspace");
+
         store
             .commit_session_open(CommitSessionOpen {
                 session: SessionProjection {
@@ -230,6 +235,7 @@ fn session_event_page_returns_decode_record_for_corrupt_event_payload() {
                     recovery_session_authority_generation: None,
                     title: "Persisted".to_string(),
                     status: SessionStatus::Idle,
+                    workspace_id: crate::default_test_workspace_id(),
                 },
                 occurred_at_ms: 20,
             })
@@ -269,6 +275,9 @@ fn events_read_returns_decode_record_for_corrupt_event_payload_after_reopen() {
     let session_id = SessionId::new("session-1").expect("session id");
     {
         let mut store = SqliteStore::open(&path).expect("store should open");
+        crate::WorkspaceRepository::upsert_workspace(&mut store, crate::default_test_workspace())
+            .expect("seed workspace");
+
         store
             .commit_session_open(CommitSessionOpen {
                 session: SessionProjection {
@@ -281,6 +290,7 @@ fn events_read_returns_decode_record_for_corrupt_event_payload_after_reopen() {
                     recovery_session_authority_generation: None,
                     title: "Persisted".to_string(),
                     status: SessionStatus::Idle,
+                    workspace_id: crate::default_test_workspace_id(),
                 },
                 occurred_at_ms: 20,
             })

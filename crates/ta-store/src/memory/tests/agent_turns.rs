@@ -17,6 +17,7 @@ fn session_agent_turns_page_materializes_committed_rows_from_stream_frames() {
             recovery_session_authority_generation: None,
             title: "Agent turns".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 

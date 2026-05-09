@@ -495,6 +495,9 @@ fn agent_stream_event_roundtrips_through_json() {
 fn daemon_session_open_params_serialize_with_camel_case_fields() {
     let params = DaemonSessionOpenParams {
         title: "Build daemon app server".to_string(),
+        workspace_id: Some(
+            ta_protocol::wire::WorkspaceId::new("workspace-test-default").expect("workspace id"),
+        ),
     };
 
     let json = serde_json::to_value(&params).expect("open params should serialize");
@@ -502,7 +505,8 @@ fn daemon_session_open_params_serialize_with_camel_case_fields() {
     assert_eq!(
         json,
         serde_json::json!({
-            "title": "Build daemon app server"
+            "title": "Build daemon app server",
+            "workspaceId": "workspace-test-default"
         })
     );
 }

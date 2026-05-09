@@ -19,6 +19,7 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -29,6 +30,7 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
             OTHER_TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("other session should open");
@@ -87,6 +89,7 @@ fn daemon_run_list_filters_by_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -97,6 +100,7 @@ fn daemon_run_list_filters_by_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -161,6 +165,7 @@ fn daemon_approval_list_filters_by_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -221,6 +226,7 @@ fn daemon_run_get_returns_none_outside_selected_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -311,6 +317,7 @@ fn daemon_session_get_returns_optional_summary() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

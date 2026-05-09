@@ -346,7 +346,9 @@ fn initialized_client(config: ClientConfig, client_name: &str) -> PersistentDaem
 }
 
 fn open_and_attach_session(client: &mut PersistentDaemonClient, title: &str) -> SessionId {
-    let opened = client.open_session(title).expect("open session");
+    let opened = client
+        .open_session(title, ta_store::default_test_workspace_id())
+        .expect("open session");
     client
         .attach_session(opened.session.id.clone())
         .expect("attach session");
@@ -425,6 +427,11 @@ impl ManagedDaemon {
         fs::create_dir_all(&config_home).expect("config home");
         fs::create_dir_all(&runtime_dir).expect("runtime dir");
         fs::create_dir_all(&log_dir).expect("log dir");
+        // Slice 2 hard-cuts session creation without a workspace. Until the
+        // slice 3 `daemon.workspace.open` RPC ships, side-load the canonical
+        // default test workspace into the daemon's store before the daemon
+        // process opens it.
+        seed_default_test_workspace_under_home(&config_home, socket_name);
 
         let mut command = Command::new(env!("CARGO_BIN_EXE_ta-daemon"));
         command
@@ -583,6 +590,40 @@ fn prepend_path(dir: &Path) -> String {
     } else {
         format!("{}:{current}", dir.display())
     }
+}
+
+fn seed_default_test_workspace_under_home(config_home: &Path, socket_name: &str) {
+    let store_path = if cfg!(target_os = "macos") {
+        config_home
+            .join("Library")
+            .join("Application Support")
+            .join("taugentic")
+            .join("daemon")
+            .join("store")
+            .join(format!("{socket_name}.sqlite3"))
+    } else if cfg!(windows) {
+        config_home
+            .join("AppData")
+            .join("Roaming")
+            .join("taugentic")
+            .join("daemon")
+            .join("store")
+            .join(format!("{socket_name}.sqlite3"))
+    } else {
+        config_home
+            .join(".local")
+            .join("share")
+            .join("taugentic")
+            .join("daemon")
+            .join("store")
+            .join(format!("{socket_name}.sqlite3"))
+    };
+    if let Some(parent) = store_path.parent() {
+        fs::create_dir_all(parent).expect("daemon store parent");
+    }
+    let mut store = ta_store::SqliteStore::open(&store_path).expect("open store");
+    ta_store::WorkspaceRepository::upsert_workspace(&mut store, ta_store::default_test_workspace())
+        .expect("seed default workspace");
 }
 
 fn test_temp_dir(name: &str) -> PathBuf {

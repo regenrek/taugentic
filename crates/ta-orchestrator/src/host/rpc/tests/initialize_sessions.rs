@@ -331,6 +331,7 @@ fn daemon_session_open_requires_initialize_first() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: Some(ta_store::default_test_workspace_id()),
                 })
                 .expect("params"),
             ),
@@ -367,6 +368,7 @@ fn daemon_session_open_creates_idle_session_summary() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: Some(ta_store::default_test_workspace_id()),
                 })
                 .expect("params"),
             ),
@@ -420,6 +422,7 @@ fn daemon_session_open_rejects_blank_title() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "   ".to_string(),
+                    workspace_id: Some(ta_store::default_test_workspace_id()),
                 })
                 .expect("params"),
             ),
@@ -451,6 +454,7 @@ fn daemon_session_attach_returns_session_summary_and_records_binding() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -585,6 +589,7 @@ fn daemon_session_attach_returns_latest_runtime_cursor_when_available() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -644,6 +649,7 @@ fn daemon_session_attach_rejects_foreign_owned_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

@@ -12121,6 +12121,13 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "properties": {
     "title": {
       "type": "string"
+    },
+    "workspaceId": {
+      "description": "Workspace the session is bound to. Required from this slice forward;\nthe optional wire shape is a transitional accepting form so the\n`daemon.workspace.open` slice can populate the value before the\nstricter `WorkspaceSelector` shape lands. Daemons must reject\nrequests without it via `SessionWorkspaceMissing`.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "required": [

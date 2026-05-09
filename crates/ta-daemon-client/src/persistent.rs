@@ -76,11 +76,13 @@ impl PersistentDaemonClient {
     pub fn open_session(
         &mut self,
         title: &str,
+        workspace_id: ta_protocol::wire::WorkspaceId,
     ) -> Result<DaemonSessionOpenResult, JsonRpcClientError> {
         let result: DaemonSessionOpenResult = self.call(
             METHOD_DAEMON_SESSION_OPEN,
             &DaemonSessionOpenParams {
                 title: title.to_string(),
+                workspace_id: Some(workspace_id),
             },
         )?;
         store_session_authority(

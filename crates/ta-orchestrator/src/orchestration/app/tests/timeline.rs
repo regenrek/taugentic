@@ -9,6 +9,7 @@ fn run_timeline_projects_lineage_and_typed_events_from_event_log() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Timeline projection".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -68,6 +69,7 @@ fn run_timeline_rejects_session_mismatch() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Timeline session".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

@@ -12,11 +12,28 @@ impl CommitRepository for SqliteStore {
                 entity: "session_transaction",
                 source,
             })?;
+        let workspace_exists: i64 = tx
+            .query_row(
+                "SELECT COUNT(1) FROM workspaces WHERE id = ?",
+                [input.session.workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(|source| StoreError::QueryStore {
+                entity: "workspace",
+                source,
+            })?;
+        if workspace_exists == 0 {
+            return Err(StoreError::SessionWorkspaceMissing {
+                workspace_id: input.session.workspace_id.as_str().to_string(),
+            });
+        }
         tx.execute(
-            "INSERT OR IGNORE INTO sessions (id, data_json, last_commit_id) VALUES (?, ?, NULL)",
+            "INSERT OR IGNORE INTO sessions (id, data_json, workspace_id, last_commit_id)
+             VALUES (?, ?, ?, NULL)",
             params![
                 input.session.id.as_str(),
-                Self::encode("session_projection", &input.session)?
+                Self::encode("session_projection", &input.session)?,
+                input.session.workspace_id.as_str()
             ],
         )
         .map_err(|source| StoreError::QueryStore {
@@ -165,11 +182,13 @@ impl CommitRepository for SqliteStore {
             ..existing_session
         };
         tx.execute(
-            "INSERT INTO sessions (id, data_json, last_commit_id) VALUES (?, ?, NULL)
+            "INSERT INTO sessions (id, data_json, workspace_id, last_commit_id)
+             VALUES (?, ?, ?, NULL)
              ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json",
             params![
                 session.id.as_str(),
-                Self::encode("session_projection", &session)?
+                Self::encode("session_projection", &session)?,
+                session.workspace_id.as_str()
             ],
         )
         .map_err(|source| StoreError::QueryStore {

@@ -66,7 +66,12 @@ pub fn open_bootstrap_state(config: DaemonConfig) -> Result<BootstrapState, Boot
 
 #[cfg(test)]
 pub fn boot(config: DaemonConfig) -> BootstrapState {
-    open_bootstrap_state(config).expect("daemon store should open")
+    let state = open_bootstrap_state(config).expect("daemon store should open");
+    state
+        .app
+        .upsert_workspace(ta_store::default_test_workspace())
+        .expect("seed default test workspace");
+    state
 }
 
 pub fn boot_with_store<S>(
@@ -312,6 +317,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-reloads-store-snapshot", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let created = first
                 .app
                 .open_session(
@@ -319,6 +328,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Persist me".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");
@@ -344,6 +354,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-reloads-committed-run", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let session = first
                 .app
                 .open_session(
@@ -351,6 +365,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Persist me".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");
@@ -426,6 +441,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-reconciles-running-runs", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let session = first
                 .app
                 .open_session(
@@ -433,6 +452,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Reconcile me".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");
@@ -491,6 +511,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-reconciles-waiting-approvals", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let session = first
                 .app
                 .open_session(
@@ -498,6 +522,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Preserve pending approval".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");
@@ -550,6 +575,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-promotes-queued-run", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let session = first
                 .app
                 .open_session(
@@ -557,6 +586,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Promote queued run".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");
@@ -607,6 +637,10 @@ mod tests {
         crate::host::config::with_test_config_home("boot-fails-checkpointed-running-run", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
+            first
+                .app
+                .upsert_workspace(ta_store::default_test_workspace())
+                .expect("seed workspace");
             let session = first
                 .app
                 .open_session(
@@ -614,6 +648,7 @@ mod tests {
                     TEST_OWNER_PRINCIPAL_ID,
                     &OpenSessionRequest {
                         title: "Resume checkpointed run".to_string(),
+                        workspace_id: ta_store::default_test_workspace_id(),
                     },
                 )
                 .expect("session should persist");

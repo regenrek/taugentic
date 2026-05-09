@@ -142,6 +142,8 @@ fn session_open_json_smoke_outputs_parseable_payload() {
             "session",
             "open",
             "Build daemon app server",
+            "--workspace-id",
+            "workspace-test-default",
             "--json",
             "--socket",
             &socket_name,
@@ -2173,6 +2175,15 @@ fn spawn_session_open_server(
         let params: DaemonSessionOpenParams = parse_params(&request).expect("params should parse");
         assert_eq!(request.method, METHOD_DAEMON_SESSION_OPEN);
         assert_eq!(params.title, expected_title);
+        assert_eq!(
+            params
+                .workspace_id
+                .as_ref()
+                .map(|id| id.as_str().to_string())
+                .as_deref(),
+            Some("workspace-test-default"),
+            "session.open must propagate workspace_id from CLI",
+        );
         write_response(
             &mut reader,
             JsonRpcResponse::new(

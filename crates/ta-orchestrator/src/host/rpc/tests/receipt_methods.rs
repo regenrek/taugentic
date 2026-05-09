@@ -11,6 +11,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -21,6 +22,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

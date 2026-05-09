@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
     CapsuleResult, ConflictSummary, RunHarnessKind, RunId, RunSource, RunStatus, RuntimeProfileId,
-    SessionId, SessionStatus, ValidationError, WorktreeInfo,
+    SessionId, SessionStatus, TrustState, ValidationError, Workspace, WorkspaceId, WorkspacePath,
+    WorktreeInfo,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,6 +25,64 @@ pub struct SessionProjection {
     pub recovery_session_authority_generation: Option<u64>,
     pub title: String,
     pub status: SessionStatus,
+    pub workspace_id: WorkspaceId,
+}
+
+/// Workspace projection persisted alongside sessions and runs. Wraps the
+/// canonical wire `Workspace` shape verbatim so the daemon, store, and
+/// renderer share one source of truth.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct WorkspaceProjection(pub Workspace);
+
+impl WorkspaceProjection {
+    pub fn new(workspace: Workspace) -> Self {
+        Self(workspace)
+    }
+
+    pub fn into_inner(self) -> Workspace {
+        self.0
+    }
+
+    pub fn id(&self) -> &WorkspaceId {
+        &self.0.id
+    }
+
+    pub fn root_realpath(&self) -> &WorkspacePath {
+        &self.0.root_realpath
+    }
+
+    pub fn display_name(&self) -> &str {
+        &self.0.display_name
+    }
+
+    pub fn trust_state(&self) -> &TrustState {
+        &self.0.trust_state
+    }
+
+    pub fn git_repo_root(&self) -> Option<&WorkspacePath> {
+        self.0.git_repo_root.as_ref()
+    }
+
+    pub fn created_at(&self) -> &str {
+        &self.0.created_at
+    }
+
+    pub fn last_used_at(&self) -> &str {
+        &self.0.last_used_at
+    }
+}
+
+impl From<Workspace> for WorkspaceProjection {
+    fn from(value: Workspace) -> Self {
+        Self(value)
+    }
+}
+
+impl From<WorkspaceProjection> for Workspace {
+    fn from(value: WorkspaceProjection) -> Self {
+        value.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

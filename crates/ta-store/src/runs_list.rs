@@ -336,6 +336,7 @@ mod tests {
                 recovery_session_authority_generation: None,
                 title: "Session".to_string(),
                 status: SessionStatus::Idle,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session should seed");
         store

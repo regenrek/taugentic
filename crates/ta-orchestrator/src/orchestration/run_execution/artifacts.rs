@@ -204,6 +204,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &crate::orchestration::OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");
@@ -259,6 +260,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &crate::orchestration::OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");
@@ -404,6 +406,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &crate::orchestration::OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");
@@ -469,6 +472,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &crate::orchestration::OpenSessionRequest {
                     title: "Receipt failure".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");
@@ -536,6 +540,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &crate::orchestration::OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");

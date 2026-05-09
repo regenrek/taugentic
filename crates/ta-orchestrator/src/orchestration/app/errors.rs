@@ -15,6 +15,10 @@ pub enum AppServiceError {
     Store(#[from] StoreError),
     #[error("session title must not be empty")]
     EmptySessionTitle,
+    #[error("daemon.session.open requires a workspaceId; call daemon.workspace.open first")]
+    SessionWorkspaceMissing,
+    #[error("workspace does not exist: {0}")]
+    WorkspaceNotFound(String),
     #[error("session owner client name must not be empty")]
     EmptySessionOwnerClientName,
     #[error("session owner principal id must not be empty")]

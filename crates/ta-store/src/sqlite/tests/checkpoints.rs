@@ -17,6 +17,7 @@ fn commit_checkpoint_persist_persists_checkpoint_under_canonical_commit_boundary
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -84,6 +85,7 @@ fn checkpoints_for_run_returns_decode_record_for_corrupt_data_json() {
                 recovery_session_authority_generation: None,
                 title: "Persisted".to_string(),
                 status: SessionStatus::Running,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session");
         store

@@ -17,6 +17,7 @@ fn commit_run_transition_persists_run_session_status_and_activity_atomically() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -94,6 +95,7 @@ fn commit_run_transition_persists_only_durable_agent_stream_frames() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -222,6 +224,7 @@ fn commit_run_transition_rolls_back_when_existing_run_projection_is_corrupt() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -324,6 +327,7 @@ fn commit_run_transition_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -389,6 +393,7 @@ fn commit_run_transition_rejects_orphan_approval_resolution() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -455,6 +460,7 @@ fn commit_run_transition_rejects_mismatched_run_event_run_id() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -519,6 +525,7 @@ fn commit_run_transition_rejects_mismatched_agent_stream_run_id() {
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 
@@ -573,6 +580,8 @@ fn commit_session_open_persists_session_and_allocates_event_sequence() {
     let mut store = SqliteStore::open(&path).expect("store should open");
     let session_id = SessionId::new("session-1").expect("session id");
 
+    crate::WorkspaceRepository::upsert_workspace(&mut store, crate::default_test_workspace())
+        .expect("seed workspace");
     let committed = store
         .commit_session_open(CommitSessionOpen {
             session: SessionProjection {
@@ -585,6 +594,7 @@ fn commit_session_open_persists_session_and_allocates_event_sequence() {
                 recovery_session_authority_generation: None,
                 title: "Persisted".to_string(),
                 status: SessionStatus::Idle,
+                workspace_id: crate::default_test_workspace_id(),
             },
             occurred_at_ms: 20,
         })
@@ -625,6 +635,7 @@ fn reopen_preserves_committed_run_transition_and_continues_event_sequence() {
                 recovery_session_authority_generation: None,
                 title: "Persisted".to_string(),
                 status: SessionStatus::Idle,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session should persist");
         store
@@ -706,6 +717,7 @@ fn reopen_preserves_committed_checkpoint_and_next_event_sequence() {
                 recovery_session_authority_generation: None,
                 title: "Persisted".to_string(),
                 status: SessionStatus::Running,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session should persist");
         store

@@ -4,7 +4,9 @@ mod run_execution;
 #[cfg(test)]
 mod tests;
 
-use ta_host_platform::{HostPlatform, detect_current_platform};
+use ta_host_platform::HostPlatform;
+#[cfg(any(test, feature = "test-support"))]
+use ta_host_platform::detect_current_platform;
 use ta_store::EventRecord;
 use uuid::Uuid;
 
@@ -35,6 +37,7 @@ pub struct RuntimeService {
 }
 
 impl RuntimeService {
+    #[cfg(any(test, feature = "test-support"))]
     pub fn bootstrap() -> Self {
         Self::from_host_platform_with_paths(
             detect_current_platform(),

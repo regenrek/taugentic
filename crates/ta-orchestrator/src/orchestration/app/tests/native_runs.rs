@@ -9,6 +9,7 @@ fn list_native_runs_filters_children_and_paginates() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Native runs".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -103,6 +104,7 @@ fn list_native_runs_rejects_zero_and_over_max_limit() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Native run limits".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -157,6 +159,7 @@ fn list_native_runs_allows_max_limit() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Native max limit".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

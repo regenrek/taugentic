@@ -19,6 +19,7 @@ fn daemon_run_start_requires_attached_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -59,6 +60,7 @@ fn daemon_run_start_commits_follow_up_transition_before_response() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -139,6 +141,7 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -243,6 +246,7 @@ fn daemon_run_subscribe_events_streams_live_notifications_and_drops_on_disconnec
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -330,6 +334,7 @@ fn daemon_run_timeline_returns_root_run_events() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Timeline RPC".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -395,6 +400,7 @@ fn daemon_run_cancel_requires_attached_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -482,6 +488,7 @@ fn daemon_run_cancel_redacts_actor_in_public_activity_page_and_marks_run_cancell
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

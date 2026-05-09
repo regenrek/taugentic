@@ -123,6 +123,7 @@ fn daemon_session_list_returns_daemon_owned_read_models() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -133,6 +134,7 @@ fn daemon_session_list_returns_daemon_owned_read_models() {
             OTHER_TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("other session should open");

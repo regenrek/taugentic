@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+test-support = ["ta-store/test-support"]
+
 [dependencies]
 futures-util.workspace = true
 futures-executor.workspace = true

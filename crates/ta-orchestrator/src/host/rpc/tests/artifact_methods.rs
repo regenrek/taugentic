@@ -11,6 +11,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -29,6 +30,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -100,6 +102,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -118,6 +121,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

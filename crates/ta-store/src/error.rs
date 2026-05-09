@@ -23,6 +23,8 @@ pub enum StoreError {
     CommitRunEventMismatch { expected: String, actual: String },
     #[error("committed store transition requires at least one event")]
     EmptyCommitEvents,
+    #[error("session insert requires existing workspace; workspace_id {workspace_id} unknown")]
+    SessionWorkspaceMissing { workspace_id: String },
     #[error("invalid approval lifecycle for {approval_id}: {detail}")]
     ApprovalLifecycleViolation { approval_id: String, detail: String },
     #[error("invalid agent turn projection state: {detail}")]
@@ -161,6 +163,14 @@ impl PartialEq for StoreError {
                 },
             ) => left_expected == right_expected && left_actual == right_actual,
             (Self::EmptyCommitEvents, Self::EmptyCommitEvents) => true,
+            (
+                Self::SessionWorkspaceMissing {
+                    workspace_id: left_workspace_id,
+                },
+                Self::SessionWorkspaceMissing {
+                    workspace_id: right_workspace_id,
+                },
+            ) => left_workspace_id == right_workspace_id,
             (
                 Self::ApprovalLifecycleViolation {
                     approval_id: left_approval_id,

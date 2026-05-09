@@ -46,11 +46,26 @@ impl SqliteStore {
             .execute_batch(
                 "
                 BEGIN;
+                CREATE TABLE IF NOT EXISTS workspaces (
+                    id TEXT PRIMARY KEY,
+                    root_realpath TEXT NOT NULL UNIQUE,
+                    display_name TEXT NOT NULL,
+                    trust_state TEXT NOT NULL,
+                    git_repo_root TEXT,
+                    created_at TEXT NOT NULL,
+                    last_used_at TEXT NOT NULL,
+                    data_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_workspaces_root_realpath
+                    ON workspaces (root_realpath);
                 CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY,
                     data_json TEXT NOT NULL,
+                    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
                     last_commit_id INTEGER REFERENCES commits(id)
                 );
+                CREATE INDEX IF NOT EXISTS idx_sessions_workspace_id
+                    ON sessions (workspace_id);
                 CREATE TABLE IF NOT EXISTS principals (
                     id TEXT PRIMARY KEY,
                     credential_hash TEXT NOT NULL UNIQUE,
@@ -249,6 +264,7 @@ impl SqliteStore {
             ("table", "events"),
             ("table", "principals"),
             ("table", "sessions"),
+            ("table", "workspaces"),
             ("table", "runs"),
             ("table", "checkpoints"),
             ("table", "artifacts"),
@@ -258,6 +274,8 @@ impl SqliteStore {
             ("index", "idx_events_session_sequence"),
             ("index", "idx_agent_turn_rows_session_sequence"),
             ("index", "idx_principals_credential_hash"),
+            ("index", "idx_workspaces_root_realpath"),
+            ("index", "idx_sessions_workspace_id"),
             ("index", "idx_runs_session_id"),
             ("index", "idx_run_projections_session_started_at"),
             ("index", "idx_events_session_run_seq"),
@@ -277,7 +295,23 @@ impl SqliteStore {
             self.require_schema_object(kind, name)?;
         }
         self.require_table_columns("principals", &["id", "credential_hash", "data_json"])?;
-        self.require_table_columns("sessions", &["id", "data_json", "last_commit_id"])?;
+        self.require_table_columns(
+            "workspaces",
+            &[
+                "id",
+                "root_realpath",
+                "display_name",
+                "trust_state",
+                "git_repo_root",
+                "created_at",
+                "last_used_at",
+                "data_json",
+            ],
+        )?;
+        self.require_table_columns(
+            "sessions",
+            &["id", "data_json", "workspace_id", "last_commit_id"],
+        )?;
         self.require_table_columns("runs", &["id", "session_id", "data_json", "last_commit_id"])?;
         self.require_table_columns(
             "events",
@@ -325,7 +359,13 @@ impl SqliteStore {
             &["key", "source_kind", "status", "fetched_at_ms", "data_json"],
         )?;
         self.require_table_columns("work_source_cursors", &["source_key", "data_json"])?;
-        self.require_foreign_keys("sessions", &[("last_commit_id", "commits", "id")])?;
+        self.require_foreign_keys(
+            "sessions",
+            &[
+                ("last_commit_id", "commits", "id"),
+                ("workspace_id", "workspaces", "id"),
+            ],
+        )?;
         self.require_foreign_keys(
             "runs",
             &[

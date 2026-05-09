@@ -353,6 +353,7 @@ mod tests {
                 TEST_OWNER_PRINCIPAL_ID,
                 &OpenSessionRequest {
                     title: "Live splice module".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open")

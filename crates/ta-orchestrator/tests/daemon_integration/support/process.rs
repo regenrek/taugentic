@@ -40,6 +40,11 @@ impl ManagedDaemon {
             .expect("test config base dir should exist");
         fs::create_dir_all(&runtime_dir).expect("test runtime dir should exist");
         fs::create_dir_all(&log_dir).expect("test log dir should exist");
+        // Slice 2 hard-cuts session creation without a workspace. Until slice 3
+        // ships `daemon.workspace.open`, integration tests pre-seed the
+        // canonical default test workspace by side-loading the daemon's store
+        // before the daemon process opens it.
+        seed_default_test_workspace_for_daemon(&root_dir, socket_name);
 
         let mut command = Command::new(env!("CARGO_BIN_EXE_ta-daemon"));
         command
@@ -269,6 +274,19 @@ pub fn store_path_for_root(root_dir: &Path, socket_name: &str) -> PathBuf {
         .join("daemon")
         .join("store")
         .join(format!("{socket_name}.sqlite3"))
+}
+
+/// Pre-seed the canonical default test workspace into the daemon's store so
+/// integration tests can call `daemon.session.open` with the default workspace
+/// id before slice 3 introduces `daemon.workspace.open`.
+pub fn seed_default_test_workspace_for_daemon(root_dir: &Path, socket_name: &str) {
+    let store_path = store_path_for_root(root_dir, socket_name);
+    if let Some(parent) = store_path.parent() {
+        fs::create_dir_all(parent).expect("daemon store parent should exist");
+    }
+    let mut store = SqliteStore::open(&store_path).expect("daemon store should open");
+    ta_store::WorkspaceRepository::upsert_workspace(&mut store, ta_store::default_test_workspace())
+        .expect("seed default test workspace");
 }
 
 pub fn wait_for_daily_log_file(log_dir: &Path, file_name: &str) -> Result<PathBuf, String> {

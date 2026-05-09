@@ -7,6 +7,12 @@ pub(super) fn map_app_service_error(
         crate::orchestration::AppServiceError::EmptySessionTitle => {
             invalid_params(error.to_string())
         }
+        crate::orchestration::AppServiceError::SessionWorkspaceMissing => {
+            invalid_params(error.to_string())
+        }
+        crate::orchestration::AppServiceError::WorkspaceNotFound(_) => {
+            invalid_params(error.to_string())
+        }
         crate::orchestration::AppServiceError::EmptySessionOwnerClientName => {
             invalid_params(error.to_string())
         }

@@ -18,6 +18,7 @@ fn session_agent_turns_page_persists_committed_rows_across_reopen() {
             recovery_session_authority_generation: None,
             title: "Agent turns".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 

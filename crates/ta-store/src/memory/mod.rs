@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
     AgentTurnRow, ApprovalId, ApprovalRequest, ArtifactEvent, ArtifactId, ArtifactSummary,
-    ContextReceipt, DaemonEvent, ReceiptId, RunId, RunStatus, SessionId,
+    ContextReceipt, DaemonEvent, ReceiptId, RunId, RunStatus, SessionId, WorkspaceId,
 };
 #[cfg(test)]
 use ta_protocol::wire::{RunHarnessKind, RunSource};
@@ -22,7 +22,7 @@ use crate::{
     SessionAgentTurnsPage, SessionAgentTurnsPageQuery, SessionApprovalQuery, SessionArtifactQuery,
     SessionAuthorityRepository, SessionEventPage, SessionEventPageQuery, SessionEventRange,
     SessionEventRangeQuery, SessionOpenCommitResult, SessionProjection, StoreError, ToolCallKey,
-    apply_agent_stream_event, apply_promote, apply_quarantine,
+    WorkspaceProjection, apply_agent_stream_event, apply_promote, apply_quarantine,
     approval_lifecycle::ApprovalLifecycleState, build_returned_receipt,
     compute_session_status_from_runs, event_persistence, list_native_runs_from_projections,
     projections::PrincipalProjection, receipt_matches_query, receipt_unique_key, row_sequence,
@@ -42,6 +42,7 @@ mod sessions;
 #[cfg(test)]
 mod tests;
 mod work_items;
+mod workspaces;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InMemoryStore {
@@ -49,6 +50,8 @@ pub struct InMemoryStore {
     next_event_sequence: u64,
     events: BTreeMap<u64, EventRecord>,
     principals: BTreeMap<String, PrincipalProjection>,
+    #[serde(default)]
+    workspaces: BTreeMap<WorkspaceId, WorkspaceProjection>,
     sessions: BTreeMap<SessionId, SessionProjection>,
     runs: BTreeMap<RunId, RunProjection>,
     checkpoints: BTreeMap<RunId, BTreeMap<u64, CheckpointRecord>>,
@@ -73,6 +76,7 @@ impl InMemoryStore {
             next_event_sequence: 1,
             events: BTreeMap::new(),
             principals: BTreeMap::new(),
+            workspaces: BTreeMap::new(),
             sessions: BTreeMap::new(),
             runs: BTreeMap::new(),
             checkpoints: BTreeMap::new(),
@@ -126,7 +130,19 @@ impl InMemoryStore {
     }
 
     #[cfg(any(test, feature = "test-support"))]
+    fn save_seed_workspace(&mut self, workspace: WorkspaceProjection) -> Result<(), StoreError> {
+        self.workspaces.insert(workspace.id().clone(), workspace);
+        Ok(())
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
     fn save_seed_session(&mut self, session: SessionProjection) -> Result<(), StoreError> {
+        if !self.workspaces.contains_key(&session.workspace_id) {
+            self.workspaces.insert(
+                session.workspace_id.clone(),
+                crate::test_workspace(session.workspace_id.as_str(), "/"),
+            );
+        }
         self.sessions.insert(session.id.clone(), session);
         Ok(())
     }

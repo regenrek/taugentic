@@ -133,6 +133,7 @@ fn open_test_session(service: &AppService, title: &str) -> SessionSummary {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: title.to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open")

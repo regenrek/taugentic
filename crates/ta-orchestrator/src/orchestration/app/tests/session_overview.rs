@@ -9,6 +9,7 @@ fn session_overview_projects_lane_activity_and_approval_attention() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -18,6 +19,7 @@ fn session_overview_projects_lane_activity_and_approval_attention() {
             OTHER_TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -76,6 +78,7 @@ fn session_overview_uses_latest_run_not_latest_non_run_activity() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -142,6 +145,7 @@ fn session_overview_caps_recent_activity_limit_server_side() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -195,6 +199,7 @@ fn session_overview_preserves_preview_metadata_when_recent_activity_is_zero() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -236,6 +241,7 @@ fn session_overview_excludes_agent_stream_events_from_recent_activity() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

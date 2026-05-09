@@ -26,6 +26,8 @@ pub(super) fn app_and_execution_with_runtime(
     let execution =
         RunExecutionService::new(store.clone(), execution_runtime.clone(), recipe_registry);
     let app = AppService::from_runtime(store, &runtime);
+    app.upsert_workspace(ta_store::default_test_workspace())
+        .expect("seed default test workspace");
     (app, execution)
 }
 
@@ -170,6 +172,7 @@ pub(super) fn open_session(app: &AppService<InMemoryStore>, title: &str) -> crat
         TEST_OWNER_PRINCIPAL_ID,
         &crate::orchestration::OpenSessionRequest {
             title: title.to_string(),
+            workspace_id: ta_store::default_test_workspace_id(),
         },
     )
     .expect("session should open")

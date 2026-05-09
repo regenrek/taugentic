@@ -82,6 +82,7 @@ fn daemon_work_item_trigger_reuses_run_start_path() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -143,6 +144,7 @@ fn daemon_work_item_trigger_requires_loaded_workflow() {
                 TEST_OWNER_PRINCIPAL_ID,
                 &OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");

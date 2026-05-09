@@ -16,6 +16,7 @@ fn commit_run_transition_updates_session_and_allocates_monotonic_run_event_seque
             recovery_session_authority_generation: None,
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
     store
@@ -104,6 +105,7 @@ fn commit_run_transition_persists_only_durable_agent_stream_frames() {
             recovery_session_authority_generation: None,
             title: "Lane".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session");
 

@@ -9,6 +9,7 @@ fn activity_page_filters_by_session_kind_and_cursor() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "A".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -18,6 +19,7 @@ fn activity_page_filters_by_session_kind_and_cursor() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "B".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -116,6 +118,7 @@ fn activity_page_agent_stream_surface_excludes_transient_lane_frames() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "A".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -204,6 +207,7 @@ fn agent_turns_page_materializes_committed_rows_from_stream_frames() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Agent turns".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -278,6 +282,7 @@ fn latest_event_cursor_for_session_ignores_live_only_agent_stream_frames() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Cursor".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

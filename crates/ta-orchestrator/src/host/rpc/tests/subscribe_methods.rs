@@ -107,6 +107,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_is_stale() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -167,6 +168,7 @@ fn daemon_subscribe_returns_ready_when_cursor_is_current() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -245,6 +247,7 @@ fn daemon_subscribe_returns_ready_when_live_lane_backlog_can_resume() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -328,6 +331,7 @@ fn daemon_subscribe_caps_history_gap_cursor_to_durable_latest_when_live_only_fra
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -412,6 +416,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_epoch_differs() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -474,6 +479,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_session_differs() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

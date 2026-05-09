@@ -18,6 +18,7 @@ fn commit_artifact_publish_persists_artifact_and_activity_atomically() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -93,6 +94,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -106,6 +108,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             recovery_session_authority_generation: None,
             title: "Other".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -178,6 +181,7 @@ fn commit_artifact_publish_rejects_non_running_run_projection() {
             recovery_session_authority_generation: None,
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
     store
@@ -252,6 +256,7 @@ fn artifact_read_returns_decode_record_for_corrupt_data_json() {
                 recovery_session_authority_generation: None,
                 title: "Persisted".to_string(),
                 status: SessionStatus::Running,
+                workspace_id: crate::default_test_workspace_id(),
             })
             .expect("session");
         store

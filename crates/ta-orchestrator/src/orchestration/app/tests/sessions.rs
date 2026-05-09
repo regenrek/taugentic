@@ -9,6 +9,7 @@ fn get_session_returns_projected_summary() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build foundation".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -30,6 +31,7 @@ fn list_sessions_filters_by_owner_principal_id() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -39,6 +41,7 @@ fn list_sessions_filters_by_owner_principal_id() {
             OTHER_TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -110,6 +113,7 @@ fn attach_session_rejects_foreign_owner_projection() {
             OTHER_TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -151,6 +155,7 @@ fn attach_session_rejects_wrong_session_authority() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -180,6 +185,7 @@ fn attach_session_consumes_recovery_authority_once() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -253,6 +259,7 @@ fn open_session_creates_idle_projection() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -288,6 +295,7 @@ fn completing_all_runs_marks_session_completed() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -322,6 +330,7 @@ fn mixed_terminal_states_resolves_to_failed_when_any_failed() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -375,6 +384,7 @@ fn open_session_rejects_blank_title() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "   ".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect_err("blank title should fail");

@@ -10,6 +10,10 @@ impl StoreSeedRepository for InMemoryStore {
         self.save_seed_principal(principal)
     }
 
+    fn save_workspace(&mut self, workspace: WorkspaceProjection) -> Result<(), StoreError> {
+        self.save_seed_workspace(workspace)
+    }
+
     fn save_session(&mut self, session: SessionProjection) -> Result<(), StoreError> {
         self.save_seed_session(session)
     }

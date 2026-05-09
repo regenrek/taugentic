@@ -72,6 +72,7 @@ where
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OpenSessionRequest {
     pub title: String,
+    pub workspace_id: ta_protocol::wire::WorkspaceId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -130,11 +131,18 @@ impl<T> AppDeferredMutationResult<T> {
 }
 
 impl AppService<InMemoryStore> {
-    #[cfg_attr(not(test), allow(dead_code))]
+    #[cfg(any(test, feature = "test-support"))]
     pub fn bootstrap() -> Result<Self, AppServiceError> {
-        Self::bootstrap_with_runtime(RuntimeService::bootstrap())
+        let service = Self::bootstrap_with_runtime(RuntimeService::bootstrap())?;
+        // Seed the canonical test workspace so test fixtures that call
+        // `open_session` with `ta_store::default_test_workspace_id()` find
+        // a valid FK without each test having to bootstrap the workspace
+        // explicitly. Production deployments do not invoke `bootstrap`.
+        service.upsert_workspace(ta_store::default_test_workspace())?;
+        Ok(service)
     }
 
+    #[cfg(any(test, feature = "test-support"))]
     pub fn bootstrap_with_runtime(runtime: RuntimeService) -> Result<Self, AppServiceError> {
         Ok(Self::from_runtime(
             Arc::new(Mutex::new(InMemoryStore::current())),
@@ -147,6 +155,7 @@ impl<S> AppService<S>
 where
     S: PersistenceStore + Send,
 {
+    #[cfg(any(test, feature = "test-support"))]
     pub(crate) fn from_runtime(store: Arc<Mutex<S>>, runtime: &RuntimeService) -> Self {
         let recipe_registry =
             Arc::new(RecipeRegistry::load_builtin().expect("built-in recipes should load"));

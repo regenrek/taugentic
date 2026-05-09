@@ -13,6 +13,8 @@ pub enum CliError {
     Io(#[from] std::io::Error),
     #[error("failed to serialize command output: {0}")]
     SerializeOutput(#[source] serde_json::Error),
+    #[error("invalid argument: {0}")]
+    InvalidArgument(String),
     #[error("failed to serialize control response: {0}")]
     SerializeControlResponse(#[source] serde_json::Error),
     #[error("failed to deserialize control request: {0}")]
@@ -57,6 +59,7 @@ impl CliError {
             | Self::DaemonShutdownTimeout { .. }
             | Self::DaemonExitedEarly { .. }
             | Self::DaemonLogMissing { .. }
+            | Self::InvalidArgument(_)
             | Self::InvalidInput(_) => 1,
         }
     }
@@ -78,6 +81,7 @@ impl CliError {
             | Self::DaemonShutdownTimeout { .. }
             | Self::DaemonExitedEarly { .. }
             | Self::DaemonLogMissing { .. }
+            | Self::InvalidArgument(_)
             | Self::InvalidInput(_) => {
                 eprintln!("{self}");
             }

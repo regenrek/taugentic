@@ -9,6 +9,7 @@ fn subscribe_run_events_replays_native_events_after_sequence() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Native replay".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -96,6 +97,7 @@ fn subscribe_run_events_redacts_resolved_approval_for_replay_and_live() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Approval redaction".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -175,6 +177,7 @@ fn subscribe_run_events_rejects_external_harness() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "External replay".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -210,6 +213,7 @@ fn subscribe_run_events_replay_only_terminal_run_closes_live_receiver() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Terminal run replay".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -270,6 +274,7 @@ fn subscribe_run_events_splices_replay_then_live_without_gap() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Live splice".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -317,6 +322,7 @@ fn subscribe_run_events_paginates_replay_before_live_forward() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Live splice paginated replay".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -401,6 +407,7 @@ fn subscribe_run_events_dedupes_replay_boundary() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Live splice dedupe".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -456,6 +463,7 @@ fn subscribe_run_events_emits_lagged_before_overflow_close() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Lagged live splice".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -556,6 +564,7 @@ fn subscribe_run_events_rejects_external_harness_for_live_splice() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "External live splice".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -591,6 +600,7 @@ fn subscribe_run_events_drop_releases_live_channel_immediately() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Drop live splice".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

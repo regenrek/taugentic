@@ -115,6 +115,11 @@ pub(super) async fn handle_request(
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let client_name = require_client_name(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let principal_id = require_principal_id(session_state, METHOD_DAEMON_SESSION_OPEN)?;
+            let workspace_id = params.workspace_id.ok_or_else(|| {
+                map_app_service_error(
+                    crate::orchestration::AppServiceError::SessionWorkspaceMissing,
+                )
+            })?;
             let opened_session = state
                 .app
                 .open_session(
@@ -122,6 +127,7 @@ pub(super) async fn handle_request(
                     &principal_id,
                     &OpenSessionRequest {
                         title: params.title,
+                        workspace_id,
                     },
                 )
                 .map_err(map_app_service_error)?;

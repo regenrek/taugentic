@@ -23,11 +23,26 @@ fn open_backfills_additive_schema_objects_for_existing_store() {
     let conn = Connection::open(&path).expect("sqlite should open directly");
     conn.execute_batch(
         "
+            CREATE TABLE workspaces (
+                id TEXT PRIMARY KEY,
+                root_realpath TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                trust_state TEXT NOT NULL,
+                git_repo_root TEXT,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL,
+                data_json TEXT NOT NULL
+            );
+            CREATE INDEX idx_workspaces_root_realpath
+                ON workspaces (root_realpath);
             CREATE TABLE sessions (
                 id TEXT PRIMARY KEY,
                 data_json TEXT NOT NULL,
+                workspace_id TEXT NOT NULL REFERENCES workspaces(id),
                 last_commit_id INTEGER REFERENCES commits(id)
             );
+            CREATE INDEX idx_sessions_workspace_id
+                ON sessions (workspace_id);
             CREATE TABLE commits (
                 id INTEGER PRIMARY KEY,
                 session_id TEXT NOT NULL REFERENCES sessions(id),

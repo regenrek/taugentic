@@ -5,6 +5,11 @@ impl CommitRepository for InMemoryStore {
         &mut self,
         input: CommitSessionOpen,
     ) -> Result<SessionOpenCommitResult, StoreError> {
+        if !self.workspaces.contains_key(&input.session.workspace_id) {
+            return Err(StoreError::SessionWorkspaceMissing {
+                workspace_id: input.session.workspace_id.as_str().to_string(),
+            });
+        }
         self.sessions
             .insert(input.session.id.clone(), input.session.clone());
         let payload = DaemonEvent::Session(ta_protocol::wire::SessionEvent {

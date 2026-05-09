@@ -19,6 +19,7 @@ fn decide_approval_rejects_already_resolved_request() {
             TEST_OWNER_PRINCIPAL_ID,
             &crate::orchestration::OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -75,6 +76,7 @@ fn decide_approval_rejects_missing_request() {
             TEST_OWNER_PRINCIPAL_ID,
             &crate::orchestration::OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -105,6 +107,7 @@ fn list_approvals_expires_stale_waiting_request() {
             TEST_OWNER_PRINCIPAL_ID,
             &crate::orchestration::OpenSessionRequest {
                 title: "Expire stale approval".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -208,6 +211,7 @@ fn decide_approval_resolves_live_provider_handle_without_restarting_run() {
             TEST_OWNER_PRINCIPAL_ID,
             &crate::orchestration::OpenSessionRequest {
                 title: "Build live approval bridge".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

@@ -34,19 +34,52 @@ impl SqliteStore {
         &mut self,
         session: SessionProjection,
     ) -> Result<(), StoreError> {
+        self.ensure_default_test_workspace_seed(&session.workspace_id)?;
         self.conn
             .execute(
-                "INSERT INTO sessions (id, data_json, last_commit_id) VALUES (?, ?, NULL)
-                 ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json",
+                "INSERT INTO sessions (id, data_json, workspace_id, last_commit_id)
+                 VALUES (?, ?, ?, NULL)
+                 ON CONFLICT(id) DO UPDATE SET
+                    data_json = excluded.data_json,
+                    workspace_id = excluded.workspace_id",
                 params![
                     session.id.as_str(),
-                    Self::encode("session_projection", &session)?
+                    Self::encode("session_projection", &session)?,
+                    session.workspace_id.as_str()
                 ],
             )
             .map_err(|source| StoreError::QueryStore {
                 entity: "session",
                 source,
             })?;
+        Ok(())
+    }
+
+    /// For test fixtures only: lazily insert a placeholder workspace row when
+    /// `save_seed_session` is called for an unknown workspace id. Production
+    /// paths must always go through `WorkspaceRepository::upsert_workspace`
+    /// first.
+    #[cfg(any(test, feature = "test-support"))]
+    pub(super) fn ensure_default_test_workspace_seed(
+        &mut self,
+        workspace_id: &ta_protocol::wire::WorkspaceId,
+    ) -> Result<(), StoreError> {
+        let exists: i64 = self
+            .conn
+            .query_row(
+                "SELECT COUNT(1) FROM workspaces WHERE id = ?",
+                [workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(|source| StoreError::QueryStore {
+                entity: "workspace",
+                source,
+            })?;
+        if exists == 1 {
+            return Ok(());
+        }
+        let workspace = crate::test_workspace(workspace_id.as_str(), "/");
+        self.upsert_workspace_row(workspace)?;
         Ok(())
     }
 

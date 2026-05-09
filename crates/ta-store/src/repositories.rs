@@ -1,4 +1,4 @@
-use ta_protocol::wire::{ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId};
+use ta_protocol::wire::{ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId, WorkspaceId};
 
 use crate::{
     ArtifactPublishCommitResult, ArtifactRecord, CheckpointPersistCommitResult, CheckpointRecord,
@@ -8,7 +8,8 @@ use crate::{
     RunTransitionCommitResult, SessionAgentTurnsPage, SessionAgentTurnsPageQuery,
     SessionApprovalQuery, SessionEventPage, SessionEventPageQuery, SessionEventRange,
     SessionEventRangeQuery, SessionOpenCommitResult, SessionProjection, StoreError,
-    WorkItemRepository, projections::PrincipalProjection, receipts::ReceiptRepository,
+    WorkItemRepository, WorkspaceProjection, projections::PrincipalProjection,
+    receipts::ReceiptRepository,
 };
 
 pub trait EventLogRepository {
@@ -48,6 +49,28 @@ pub trait ProjectionRepository {
     fn runs(&self) -> Result<Vec<RunProjection>, StoreError>;
     fn list_native_runs(&self, query: &NativeRunListQuery)
     -> Result<NativeRunListPage, StoreError>;
+}
+
+pub trait WorkspaceRepository {
+    /// Insert or replace the workspace row. The daemon owns identity and
+    /// canonicalization; this method records the projection verbatim and
+    /// enforces `root_realpath` UNIQUE at the schema layer.
+    fn upsert_workspace(
+        &mut self,
+        workspace: WorkspaceProjection,
+    ) -> Result<WorkspaceProjection, StoreError>;
+
+    fn workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Option<WorkspaceProjection>, StoreError>;
+
+    fn workspace_by_root_realpath(
+        &self,
+        root_realpath: &str,
+    ) -> Result<Option<WorkspaceProjection>, StoreError>;
+
+    fn workspaces(&self) -> Result<Vec<WorkspaceProjection>, StoreError>;
 }
 
 pub trait PrincipalRepository {
@@ -132,6 +155,7 @@ pub trait PersistenceStore:
     EventLogRepository
     + ProjectionRepository
     + PrincipalRepository
+    + WorkspaceRepository
     + SessionAuthorityRepository
     + CommitRepository
     + CheckpointRepository
@@ -145,6 +169,7 @@ impl<T> PersistenceStore for T where
     T: EventLogRepository
         + ProjectionRepository
         + PrincipalRepository
+        + WorkspaceRepository
         + SessionAuthorityRepository
         + CommitRepository
         + CheckpointRepository

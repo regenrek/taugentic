@@ -14,6 +14,38 @@ impl<S> AppService<S>
 where
     S: PersistenceStore + Send,
 {
+    /// Insert or replace a workspace projection. Slice 3 layers the full
+    /// canonicalization + trust validation pipeline on top of this primitive
+    /// from the `daemon.workspace.open` handler. Tests use it directly to
+    /// seed fixtures.
+    #[allow(dead_code)]
+    pub fn upsert_workspace(
+        &self,
+        workspace: ta_store::WorkspaceProjection,
+    ) -> Result<ta_store::WorkspaceProjection, AppServiceError> {
+        let mut store = self.store.lock().expect("app store should not be poisoned");
+        Ok(store.upsert_workspace(workspace)?)
+    }
+
+    /// Lookup a workspace projection. Slice 3 wires this into the
+    /// `daemon.workspace.get` handler.
+    #[allow(dead_code)]
+    pub fn workspace(
+        &self,
+        workspace_id: &ta_protocol::wire::WorkspaceId,
+    ) -> Result<Option<ta_store::WorkspaceProjection>, AppServiceError> {
+        let store = self.store.lock().expect("app store should not be poisoned");
+        Ok(store.workspace(workspace_id)?)
+    }
+
+    /// List all workspaces. Slice 3 wires this into the
+    /// `daemon.workspace.list` handler.
+    #[allow(dead_code)]
+    pub fn workspaces(&self) -> Result<Vec<ta_store::WorkspaceProjection>, AppServiceError> {
+        let store = self.store.lock().expect("app store should not be poisoned");
+        Ok(store.workspaces()?)
+    }
+
     pub fn list_sessions(
         &self,
         owner_client_name: &str,
@@ -56,10 +88,16 @@ where
             recovery_session_authority_generation: None,
             title: title.to_string(),
             status: crate::SessionStatus::Idle,
+            workspace_id: request.workspace_id.clone(),
         };
         let summary = project_session_summary(session.clone());
 
         let mut store = self.store.lock().expect("app store should not be poisoned");
+        if store.workspace(&request.workspace_id)?.is_none() {
+            return Err(AppServiceError::WorkspaceNotFound(
+                request.workspace_id.as_str().to_string(),
+            ));
+        }
         store.commit_session_open(CommitSessionOpen {
             session,
             occurred_at_ms: current_time_ms(),

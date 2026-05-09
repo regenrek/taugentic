@@ -34,6 +34,7 @@ fn rotate_session_authority_consumes_recovery_slot_once() {
             recovery_session_authority_generation: None,
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session should persist");
 
@@ -140,6 +141,7 @@ fn persists_runtime_facing_records_through_repository_traits() {
             recovery_session_authority_generation: None,
             title: "Build Taugentic".to_string(),
             status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
         })
         .expect("session projection");
     store

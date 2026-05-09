@@ -255,6 +255,8 @@ fn seed_openai_runtime_profile_store(store_path: &Path) {
     let mut store = SqliteStore::open(store_path).expect("seed store should open");
     let session_id = SessionId::new("session-seeded-openai").expect("session id");
     let run_id = RunId::new("run-seeded-openai").expect("run id");
+    ta_store::WorkspaceRepository::upsert_workspace(&mut store, ta_store::default_test_workspace())
+        .expect("seed workspace");
     store
         .commit_session_open(CommitSessionOpen {
             session: SessionProjection {
@@ -267,6 +269,7 @@ fn seed_openai_runtime_profile_store(store_path: &Path) {
                 recovery_session_authority_generation: None,
                 title: "seeded profile compatibility".to_string(),
                 status: SessionStatus::Idle,
+                workspace_id: ta_store::default_test_workspace_id(),
             },
             occurred_at_ms: 1,
         })

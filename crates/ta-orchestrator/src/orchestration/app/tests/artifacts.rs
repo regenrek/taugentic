@@ -9,6 +9,7 @@ fn list_artifacts_filters_by_session_run_and_artifact() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Session A".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -18,6 +19,7 @@ fn list_artifacts_filters_by_session_run_and_artifact() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Session B".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -73,6 +75,7 @@ fn record_artifact_returns_trimmed_summary_and_deferred_records() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Artifacts".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -113,6 +116,7 @@ fn record_artifact_auto_creates_native_receipts_with_kind_mapping() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Receipts".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -176,6 +180,7 @@ fn record_artifact_skips_receipt_for_external_harness() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "External".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -226,6 +231,7 @@ fn receipt_rpc_app_methods_filter_and_transition() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Receipt RPC".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -319,6 +325,7 @@ fn get_artifact_returns_summary_only_for_selected_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Selected".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
@@ -328,6 +335,7 @@ fn get_artifact_returns_summary_only_for_selected_session() {
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
                 title: "Other".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");

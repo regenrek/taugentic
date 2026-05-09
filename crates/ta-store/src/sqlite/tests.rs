@@ -50,3 +50,4 @@ mod principals;
 mod runs_list;
 mod sessions;
 mod work_items;
+mod workspaces;
