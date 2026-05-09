@@ -82,7 +82,7 @@ fn upsert_workspace_replaces_metadata_for_same_id() {
     let id = original.id().clone();
     store.upsert_workspace(original).expect("initial upsert");
 
-    let mut updated = test_workspace(id.as_str(), "/");
+    let mut updated = test_workspace(id.as_str(), crate::default_test_workspace_root());
     updated.0.display_name = "Renamed Workspace".to_string();
     store.upsert_workspace(updated).expect("upsert overwrite");
 

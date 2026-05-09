@@ -24,10 +24,9 @@ use crate::{
     RunTransitionCommitResult, SessionAgentTurnsPage, SessionAgentTurnsPageQuery,
     SessionApprovalQuery, SessionArtifactQuery, SessionAuthorityRepository, SessionEventPage,
     SessionEventPageQuery, SessionEventRange, SessionEventRangeQuery, SessionOpenCommitResult,
-    SessionProjection, StoreError, ToolCallKey, WorkItemRepository,
-    apply_agent_stream_event, apply_promote, apply_quarantine,
-    approval_lifecycle::ApprovalLifecycleState, build_returned_receipt,
-    compute_session_status_from_runs, event_persistence, event_run_id,
+    SessionProjection, StoreError, ToolCallKey, WorkItemRepository, apply_agent_stream_event,
+    apply_promote, apply_quarantine, approval_lifecycle::ApprovalLifecycleState,
+    build_returned_receipt, compute_session_status_from_runs, event_persistence, event_run_id,
     list_native_runs_from_projections, projections::PrincipalProjection, receipt_kind_storage,
     receipt_state_storage, receipt_unique_key, row_sequence, row_session_id,
     validate_run_transition_events,
@@ -174,10 +173,7 @@ impl StoreSeedRepository for SqliteStore {
         self.save_seed_principal(principal)
     }
 
-    fn save_workspace(
-        &mut self,
-        workspace: crate::WorkspaceProjection,
-    ) -> Result<(), StoreError> {
+    fn save_workspace(&mut self, workspace: crate::WorkspaceProjection) -> Result<(), StoreError> {
         self.upsert_workspace_row(workspace).map(|_| ())
     }
 

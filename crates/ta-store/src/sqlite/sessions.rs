@@ -78,7 +78,8 @@ impl SqliteStore {
         if exists == 1 {
             return Ok(());
         }
-        let workspace = crate::test_workspace(workspace_id.as_str(), "/");
+        let workspace =
+            crate::test_workspace(workspace_id.as_str(), crate::default_test_workspace_root());
         self.upsert_workspace_row(workspace)?;
         Ok(())
     }

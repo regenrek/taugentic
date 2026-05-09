@@ -140,7 +140,10 @@ impl InMemoryStore {
         if !self.workspaces.contains_key(&session.workspace_id) {
             self.workspaces.insert(
                 session.workspace_id.clone(),
-                crate::test_workspace(session.workspace_id.as_str(), "/"),
+                crate::test_workspace(
+                    session.workspace_id.as_str(),
+                    crate::default_test_workspace_root(),
+                ),
             );
         }
         self.sessions.insert(session.id.clone(), session);

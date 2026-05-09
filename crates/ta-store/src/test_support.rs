@@ -35,10 +35,19 @@ pub fn test_workspace(id: &str, root: &str) -> WorkspaceProjection {
     WorkspaceProjection::new(workspace)
 }
 
-/// Convenience wrapper around [`test_workspace`] using the default id and
-/// `/private/tmp/taugentic-test-workspace` as the canonical root.
+/// Platform-specific canonical root used by the default test workspace.
+///
+/// Workspaces require an absolute, lexically canonical path; `/` is absolute
+/// on Unix but not on Windows, so the helper picks a stable per-OS fallback
+/// that the wire-shape validator accepts without filesystem IO.
+pub fn default_test_workspace_root() -> &'static str {
+    if cfg!(windows) { r"C:\" } else { "/" }
+}
+
+/// Convenience wrapper around [`test_workspace`] using the default id and a
+/// platform-appropriate canonical root (`/` on Unix, `C:\` on Windows).
 pub fn default_test_workspace() -> WorkspaceProjection {
-    test_workspace(DEFAULT_TEST_WORKSPACE_ID, "/")
+    test_workspace(DEFAULT_TEST_WORKSPACE_ID, default_test_workspace_root())
 }
 
 /// Seed `store` with the default test workspace and return its id. Idempotent
