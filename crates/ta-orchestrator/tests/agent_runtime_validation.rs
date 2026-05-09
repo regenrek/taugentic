@@ -347,7 +347,12 @@ fn initialized_client(config: ClientConfig, client_name: &str) -> PersistentDaem
 
 fn open_and_attach_session(client: &mut PersistentDaemonClient, title: &str) -> SessionId {
     let opened = client
-        .open_session(title, ta_store::default_test_workspace_id())
+        .open_session(
+            title,
+            ta_protocol::wire::WorkspaceSelector::ById {
+                id: ta_store::default_test_workspace_id(),
+            },
+        )
         .expect("open session");
     client
         .attach_session(opened.session.id.clone())

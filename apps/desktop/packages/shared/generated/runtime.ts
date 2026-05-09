@@ -9511,6 +9511,332 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "Workspace",
   "type": "object"
 },
+  DaemonWorkspaceOpenParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "trustAcknowledged": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "path",
+    "trustAcknowledged"
+  ],
+  "title": "DaemonWorkspaceOpenParams",
+  "type": "object"
+},
+  DaemonWorkspaceOpenResult: {
+  "$defs": {
+    "TrustState": {
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confirmedAt": {
+              "type": "string"
+            },
+            "state": {
+              "const": "userConfirmed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "confirmedAt"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "revoked",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Workspace": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "gitRepoRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "rootRealpath": {
+          "type": "string"
+        },
+        "trustState": {
+          "$ref": "#/$defs/TrustState"
+        }
+      },
+      "required": [
+        "id",
+        "rootRealpath",
+        "displayName",
+        "trustState",
+        "createdAt",
+        "lastUsedAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "workspace": {
+      "$ref": "#/$defs/Workspace"
+    }
+  },
+  "required": [
+    "workspace"
+  ],
+  "title": "DaemonWorkspaceOpenResult",
+  "type": "object"
+},
+  DaemonWorkspaceListParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DaemonWorkspaceListParams",
+  "type": "object"
+},
+  DaemonWorkspaceListResult: {
+  "$defs": {
+    "TrustState": {
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confirmedAt": {
+              "type": "string"
+            },
+            "state": {
+              "const": "userConfirmed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "confirmedAt"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "revoked",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Workspace": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "gitRepoRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "rootRealpath": {
+          "type": "string"
+        },
+        "trustState": {
+          "$ref": "#/$defs/TrustState"
+        }
+      },
+      "required": [
+        "id",
+        "rootRealpath",
+        "displayName",
+        "trustState",
+        "createdAt",
+        "lastUsedAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "workspaces": {
+      "items": {
+        "$ref": "#/$defs/Workspace"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "workspaces"
+  ],
+  "title": "DaemonWorkspaceListResult",
+  "type": "object"
+},
+  DaemonWorkspaceGetParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "title": "DaemonWorkspaceGetParams",
+  "type": "object"
+},
+  DaemonWorkspaceGetResult: {
+  "$defs": {
+    "TrustState": {
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confirmedAt": {
+              "type": "string"
+            },
+            "state": {
+              "const": "userConfirmed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "confirmedAt"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "revoked",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Workspace": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "gitRepoRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "rootRealpath": {
+          "type": "string"
+        },
+        "trustState": {
+          "$ref": "#/$defs/TrustState"
+        }
+      },
+      "required": [
+        "id",
+        "rootRealpath",
+        "displayName",
+        "trustState",
+        "createdAt",
+        "lastUsedAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "workspace": {
+      "$ref": "#/$defs/Workspace"
+    }
+  },
+  "required": [
+    "workspace"
+  ],
+  "title": "DaemonWorkspaceGetResult",
+  "type": "object"
+},
   TrustState: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "oneOf": [
@@ -12116,22 +12442,103 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "DaemonRuntimeMode",
   "type": "string"
 },
+  WorkspaceSelector: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "byPath",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "trustAcknowledged": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "path",
+        "trustAcknowledged"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "byId",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspaceSelector"
+},
   DaemonSessionOpenParams: {
+  "$defs": {
+    "WorkspaceSelector": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "byPath",
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "trustAcknowledged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "path",
+            "trustAcknowledged"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "byId",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "title": {
       "type": "string"
     },
-    "workspaceId": {
-      "description": "Workspace the session is bound to. Required from this slice forward;\nthe optional wire shape is a transitional accepting form so the\n`daemon.workspace.open` slice can populate the value before the\nstricter `WorkspaceSelector` shape lands. Daemons must reject\nrequests without it via `SessionWorkspaceMissing`.",
-      "type": [
-        "string",
-        "null"
-      ]
+    "workspace": {
+      "$ref": "#/$defs/WorkspaceSelector"
     }
   },
   "required": [
-    "title"
+    "title",
+    "workspace"
   ],
   "title": "DaemonSessionOpenParams",
   "type": "object"

@@ -6,6 +6,7 @@ use std::sync::{
 use crate::{
     DAEMON_PROTOCOL_VERSION, DaemonInitializeResult, DaemonServerCapabilities,
     DaemonSessionAttachResult, DaemonSessionOpenResult, DaemonSubscribeResult,
+    DaemonWorkspaceGetResult, DaemonWorkspaceListResult, DaemonWorkspaceOpenResult,
     JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession, METHOD_DAEMON_ACTIVITY_PAGE,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
@@ -20,8 +21,10 @@ use crate::{
     METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
     METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
     METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST, METHOD_DAEMON_WORK_ITEM_REFRESH,
-    METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD,
-    METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest, RecipeListResponse,
+    METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST,
+    METHOD_DAEMON_WORKSPACE_OPEN, METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD,
+    METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest, OpenWorkspaceRequest,
+    RecipeListResponse, WorkspaceSelector,
     host::{
         bootstrap::BootstrapState,
         control::rpc::handle_control_status_request,
@@ -115,11 +118,22 @@ pub(super) async fn handle_request(
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let client_name = require_client_name(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let principal_id = require_principal_id(session_state, METHOD_DAEMON_SESSION_OPEN)?;
-            let workspace_id = params.workspace_id.ok_or_else(|| {
-                map_app_service_error(
-                    crate::orchestration::AppServiceError::SessionWorkspaceMissing,
-                )
-            })?;
+            let workspace_id = match params.workspace {
+                WorkspaceSelector::ById { id } => id,
+                WorkspaceSelector::ByPath {
+                    path,
+                    trust_acknowledged,
+                } => {
+                    state
+                        .app
+                        .open_workspace(&OpenWorkspaceRequest {
+                            path,
+                            trust_acknowledged,
+                        })
+                        .map_err(map_app_service_error)?
+                        .id
+                }
+            };
             let opened_session = state
                 .app
                 .open_session(
@@ -144,6 +158,30 @@ pub(super) async fn handle_request(
                 latest_cursor,
                 session_authority: opened_session.session_authority,
             })
+        }
+        DaemonRpcRequest::WorkspaceOpen(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_OPEN)?;
+            let workspace = state
+                .app
+                .open_workspace(&OpenWorkspaceRequest {
+                    path: params.path,
+                    trust_acknowledged: params.trust_acknowledged,
+                })
+                .map_err(map_app_service_error)?;
+            json_result(DaemonWorkspaceOpenResult { workspace })
+        }
+        DaemonRpcRequest::WorkspaceList(_params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_LIST)?;
+            let workspaces = state.app.list_workspaces().map_err(map_app_service_error)?;
+            json_result(DaemonWorkspaceListResult { workspaces })
+        }
+        DaemonRpcRequest::WorkspaceGet(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_GET)?;
+            let workspace = state
+                .app
+                .get_workspace(&params.id)
+                .map_err(map_app_service_error)?;
+            json_result(DaemonWorkspaceGetResult { workspace })
         }
         DaemonRpcRequest::SessionAttach(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_ATTACH)?;

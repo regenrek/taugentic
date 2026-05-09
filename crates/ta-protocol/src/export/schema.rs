@@ -80,6 +80,12 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<WorkspacePath>(schema_dir)?;
     write_schema::<WorkspacePathError>(schema_dir)?;
     write_schema::<Workspace>(schema_dir)?;
+    write_schema::<DaemonWorkspaceOpenParams>(schema_dir)?;
+    write_schema::<DaemonWorkspaceOpenResult>(schema_dir)?;
+    write_schema::<DaemonWorkspaceListParams>(schema_dir)?;
+    write_schema::<DaemonWorkspaceListResult>(schema_dir)?;
+    write_schema::<DaemonWorkspaceGetParams>(schema_dir)?;
+    write_schema::<DaemonWorkspaceGetResult>(schema_dir)?;
     write_schema::<TrustState>(schema_dir)?;
     write_schema::<ExecutionContext>(schema_dir)?;
     write_schema::<WorkspaceScope>(schema_dir)?;
@@ -103,6 +109,7 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<DaemonPendingTransitionKind>(schema_dir)?;
     write_schema::<DaemonPendingTransitionView>(schema_dir)?;
     write_schema::<DaemonRuntimeMode>(schema_dir)?;
+    write_schema::<WorkspaceSelector>(schema_dir)?;
     write_schema::<DaemonSessionOpenParams>(schema_dir)?;
     write_schema::<DaemonSessionOpenResult>(schema_dir)?;
     write_schema::<DaemonSessionAttachParams>(schema_dir)?;
@@ -325,6 +332,12 @@ fn build_core_runtime_json_schemas()
         schema_pair::<WorkspacePath>()?,
         schema_pair::<WorkspacePathError>()?,
         schema_pair::<Workspace>()?,
+        schema_pair::<DaemonWorkspaceOpenParams>()?,
+        schema_pair::<DaemonWorkspaceOpenResult>()?,
+        schema_pair::<DaemonWorkspaceListParams>()?,
+        schema_pair::<DaemonWorkspaceListResult>()?,
+        schema_pair::<DaemonWorkspaceGetParams>()?,
+        schema_pair::<DaemonWorkspaceGetResult>()?,
         schema_pair::<TrustState>()?,
         schema_pair::<ExecutionContext>()?,
         schema_pair::<WorkspaceScope>()?,
@@ -341,6 +354,7 @@ fn build_core_runtime_json_schemas()
         schema_pair::<DaemonInitializeParams>()?,
         schema_pair::<DaemonInitializeResult>()?,
         schema_pair::<DaemonRuntimeMode>()?,
+        schema_pair::<WorkspaceSelector>()?,
         schema_pair::<DaemonSessionOpenParams>()?,
         schema_pair::<DaemonSessionOpenResult>()?,
         schema_pair::<DaemonSessionAttachParams>()?,

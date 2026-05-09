@@ -15,7 +15,9 @@ pub fn open_session(
             Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: title.to_string(),
-                    workspace_id: Some(ta_store::default_test_workspace_id()),
+                    workspace: WorkspaceSelector::ById {
+                        id: ta_store::default_test_workspace_id(),
+                    },
                 })
                 .expect("session open params should serialize"),
             ),

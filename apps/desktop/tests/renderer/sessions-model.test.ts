@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import type { SessionId, SessionSummary } from "../../packages/shared/generated/index.js";
+import type {
+  SessionId,
+  SessionSummary,
+  WorkspaceSelector,
+} from "../../packages/shared/generated/index.js";
 import {
   createInitialSessionsPanelState,
   selectSessionsPanelSnapshotContext,
@@ -29,6 +33,11 @@ function makeSession(id: string, title: string): SessionSummary {
     title,
   };
 }
+
+const testWorkspaceSelector: WorkspaceSelector = {
+  id: "workspace-test-default",
+  kind: "byId",
+};
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -101,6 +110,7 @@ describe("sessions panel store", () => {
       {
         openSession: () => open.promise,
       },
+      testWorkspaceSelector,
       driver.handleSessionChange,
     );
     await refreshSessionsPanel(driver.store, refreshSessions, driver.handleSessionChange);
@@ -126,7 +136,12 @@ describe("sessions panel store", () => {
       driver.handleSessionChange,
     );
     setSessionsPanelDraftTitle(driver.store, "New session");
-    const openPromise = openSessionsPanelSession(driver.store, deps, driver.handleSessionChange);
+    const openPromise = openSessionsPanelSession(
+      driver.store,
+      deps,
+      testWorkspaceSelector,
+      driver.handleSessionChange,
+    );
 
     open.resolve(makeSession("session-3", "Three"));
     await openPromise;

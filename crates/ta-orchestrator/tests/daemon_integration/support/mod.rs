@@ -34,7 +34,7 @@ pub use ta_protocol::wire::{
     METHOD_DAEMON_SUBSCRIBE, PublicActivityPageResult, PublicApprovalEvent, PublicDaemonEvent,
     PublicDaemonEventEnvelope, RunDetail, RunId, RunStatus, RunSummary, RuntimeProfileId,
     SessionAuthority, SessionId, SessionSummary, StartRunCommand, SubscribeRunEventsRequest,
-    SubscribeRunEventsResult,
+    SubscribeRunEventsResult, WorkspaceSelector,
 };
 pub use ta_store::{
     ArtifactRecord, CheckpointRecord, CommitArtifactPublish, CommitCheckpointPersist,

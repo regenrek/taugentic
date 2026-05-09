@@ -1,19 +1,58 @@
 {
+  "$defs": {
+    "WorkspaceSelector": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "byPath",
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "trustAcknowledged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "path",
+            "trustAcknowledged"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "byId",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "title": {
       "type": "string"
     },
-    "workspaceId": {
-      "description": "Workspace the session is bound to. Required from this slice forward;\nthe optional wire shape is a transitional accepting form so the\n`daemon.workspace.open` slice can populate the value before the\nstricter `WorkspaceSelector` shape lands. Daemons must reject\nrequests without it via `SessionWorkspaceMissing`.",
-      "type": [
-        "string",
-        "null"
-      ]
+    "workspace": {
+      "$ref": "#/$defs/WorkspaceSelector"
     }
   },
   "required": [
-    "title"
+    "title",
+    "workspace"
   ],
   "title": "DaemonSessionOpenParams",
   "type": "object"

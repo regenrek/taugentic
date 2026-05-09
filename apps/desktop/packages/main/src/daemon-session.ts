@@ -1,4 +1,4 @@
-import type { MessagePortMain } from "electron";
+import { BrowserWindow, dialog, type MessagePortMain } from "electron";
 
 import type {
   AgentTurnsPageQuery,
@@ -19,6 +19,8 @@ import type {
   SessionOverviewResult,
   DaemonEventCursor,
   DaemonApprovalDecideResult,
+  DaemonWorkspaceOpenParams,
+  DaemonWorkspaceOpenResult,
   DesktopInvokeHandlers,
   ForkRunRequest,
   ForkRunResult,
@@ -34,6 +36,7 @@ import type {
   RunId,
   RunSummary,
   SessionSummary,
+  WorkspaceSelector,
   StartRunCommand,
   SubscribeRunEventsResult,
   WorkItemDismissParams,
@@ -54,6 +57,7 @@ import {
   parseApprovalId,
   parseSessionOverviewQuery,
   parseDaemonSessionOpenParams,
+  parseDaemonWorkspaceOpenParams,
   parseListApprovalsQuery,
   parseListArtifactsQuery,
   parseListNativeRunsRequest,
@@ -236,8 +240,29 @@ export async function getSession(sessionId: SessionId): Promise<SessionSummary |
   return withAttachedRequestSession(sessionId, (session) => session.getSession());
 }
 
-async function openSession(title: string): Promise<SessionSummary> {
-  return sharedDaemonSession.openSession(title);
+async function pickWorkspaceFolder(): Promise<string | null> {
+  const parentWindow = BrowserWindow.getFocusedWindow() ?? undefined;
+  const result = parentWindow
+    ? await dialog.showOpenDialog(parentWindow, {
+        properties: ["openDirectory"],
+      })
+    : await dialog.showOpenDialog({
+        properties: ["openDirectory"],
+      });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0] ?? null;
+}
+
+async function openWorkspace(
+  params: DaemonWorkspaceOpenParams,
+): Promise<DaemonWorkspaceOpenResult> {
+  return sharedDaemonSession.openWorkspace(parseDaemonWorkspaceOpenParams(params));
+}
+
+async function openSession(title: string, workspace: WorkspaceSelector): Promise<SessionSummary> {
+  return sharedDaemonSession.openSession(title, workspace);
 }
 
 async function listRecipes(): Promise<RecipeListResponse> {
@@ -397,6 +422,8 @@ async function saveArtifactAs(query: SaveArtifactAsQuery): Promise<SaveArtifactA
 
 export const desktopSessionInvokeHandlers: Pick<
   DesktopInvokeHandlers,
+  | "pickWorkspaceFolder"
+  | "openWorkspace"
   | "openSession"
   | "listRecipes"
   | "listWorkItems"
@@ -422,7 +449,12 @@ export const desktopSessionInvokeHandlers: Pick<
   | "getRunTimeline"
   | "replayRunEvents"
 > = {
-  openSession: (title) => openSession(parseDaemonSessionOpenParams({ title }).title),
+  pickWorkspaceFolder: () => pickWorkspaceFolder(),
+  openWorkspace: (params) => openWorkspace(params),
+  openSession: (title, workspace) => {
+    const parsed = parseDaemonSessionOpenParams({ title, workspace });
+    return openSession(parsed.title, parsed.workspace);
+  },
   listRecipes: () => listRecipes(),
   listWorkItems: () => listWorkItems(),
   loadWorkflow: (params) => loadWorkflow(params),

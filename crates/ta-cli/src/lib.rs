@@ -25,11 +25,11 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    let cli = Cli::try_parse_from(args)?;
-    let daemon_client = DaemonClient::new(cli.global.socket.as_deref());
-    let output = commands::run(&daemon_client, cli.command, cli.global.output_format())?;
+    let Cli { global, command } = Cli::try_parse_from(args)?;
+    let daemon_client = DaemonClient::new(global.socket.as_deref());
+    let output = commands::run(&daemon_client, command, &global, global.output_format())?;
     if let Some(output) = output {
-        output::print(&output, cli.global.output_format())?;
+        output::print(&output, global.output_format())?;
     }
     Ok(())
 }

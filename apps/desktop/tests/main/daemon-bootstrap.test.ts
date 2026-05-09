@@ -83,6 +83,8 @@ describe("daemon-bootstrap", () => {
     TAUGENTIC_DAEMON_BINARY: process.env.TAUGENTIC_DAEMON_BINARY,
     TAUGENTIC_DAEMON_SOCKET_NAME: process.env.TAUGENTIC_DAEMON_SOCKET_NAME,
     TAUGENTIC_LOG_DIR: process.env.TAUGENTIC_LOG_DIR,
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
     TMPDIR: process.env.TMPDIR,
     USERPROFILE: process.env.USERPROFILE,
     XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
@@ -101,6 +103,8 @@ describe("daemon-bootstrap", () => {
     delete process.env.TAUGENTIC_LOG_DIR;
     delete process.env.APPDATA;
     delete process.env.CARGO_TARGET_DIR;
+    delete process.env.TEMP;
+    delete process.env.TMP;
     delete process.env.TMPDIR;
     delete process.env.USERPROFILE;
     delete process.env.XDG_CONFIG_HOME;

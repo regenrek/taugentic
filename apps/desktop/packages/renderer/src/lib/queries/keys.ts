@@ -46,6 +46,7 @@ export const queryKeys = {
     status: ["workflow", "status"] as const,
   },
   workItems: ["workItems"] as const,
+  workspaces: ["workspace", "list"] as const,
   sessions: ["session", "list"] as const,
   sessionOverview: (recentActivityLimit: number) =>
     ["session", "overview", { recentActivityLimit }] as const,
@@ -79,5 +80,4 @@ export const queryKeys = {
 
 /** Root key used to invalidate every session overview variant regardless of limit. */
 export const sessionOverviewRootKey = ["session", "overview"] as const;
-export const sessionListRootKey = queryKeys.sessions;
 export const agentRuntimeRootKey = ["agentRuntime"] as const;

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "byPath",
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "trustAcknowledged": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "path",
+        "trustAcknowledged"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "byId",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "WorkspaceSelector"
+}

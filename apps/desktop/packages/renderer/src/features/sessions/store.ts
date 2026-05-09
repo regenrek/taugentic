@@ -1,6 +1,6 @@
 import { createStore } from "@xstate/store";
 
-import type { SessionId, SessionSummary } from "@taugentic/desktop-shared";
+import type { SessionId, SessionSummary, WorkspaceSelector } from "@taugentic/desktop-shared";
 
 import { getCurrentWorkspaceSessionId } from "../workspace/state/store";
 import { reconcileCurrentSessionId } from "./selection";
@@ -19,7 +19,7 @@ interface SessionsPanelContext extends SessionsPanelState {
 }
 
 export interface SessionsPanelDeps {
-  openSession: (title: string) => Promise<SessionSummary>;
+  openSession: (title: string, workspace: WorkspaceSelector) => Promise<SessionSummary>;
 }
 
 export type SessionsPanelStore = ReturnType<typeof createSessionsPanelStore>;
@@ -167,6 +167,7 @@ export function setSessionsPanelDraftTitle(store: SessionsPanelStore, value: str
 export async function openSessionsPanelSession(
   store: SessionsPanelStore,
   deps: SessionsPanelDeps,
+  workspace: WorkspaceSelector,
   onSessionChange: (sessionId: SessionId | null) => void,
   onOpenedSession?: (openedSession: SessionSummary) => void,
 ): Promise<void> {
@@ -188,7 +189,7 @@ export async function openSessionsPanelSession(
   store.trigger.openStarted({ sequence });
 
   try {
-    const openedSession = await deps.openSession(title);
+    const openedSession = await deps.openSession(title, workspace);
     store.trigger.openSucceeded({ sequence });
     if (!matchesCurrentRequest(store, sequence)) {
       return;

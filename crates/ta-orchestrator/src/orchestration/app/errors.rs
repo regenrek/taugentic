@@ -15,10 +15,34 @@ pub enum AppServiceError {
     Store(#[from] StoreError),
     #[error("session title must not be empty")]
     EmptySessionTitle,
-    #[error("daemon.session.open requires a workspaceId; call daemon.workspace.open first")]
+    #[error("daemon.session.open requires a workspace selector; call daemon.workspace.open first")]
+    #[allow(dead_code)]
     SessionWorkspaceMissing,
     #[error("workspace does not exist: {0}")]
     WorkspaceNotFound(String),
+    #[error("workspace path is not a directory: {0}")]
+    WorkspaceNotADirectory(String),
+    #[error("workspace path canonicalization failed for {path}: {reason}")]
+    WorkspaceCanonicalizeFailed { path: String, reason: String },
+    #[error("workspace trust confirmation required: {0}")]
+    WorkspaceTrustRequired(String),
+    #[error("workspace permission probe failed for {path}: {reason}")]
+    WorkspacePermissionDenied { path: String, reason: String },
+    #[error("workspace symlink escapes allowed root: {0}")]
+    #[allow(dead_code)]
+    WorkspaceSymlinkEscape(String),
+    #[error("workspace is outside allowed roots: {0}")]
+    #[allow(dead_code)]
+    WorkspaceOutsideAllowedRoots(String),
+    #[error("workspace capability unsupported: {reason}")]
+    #[allow(dead_code)]
+    WorkspaceCapabilityUnsupported {
+        variant: Option<String>,
+        vendor: Option<String>,
+        capability: String,
+        requested: String,
+        reason: String,
+    },
     #[error("session owner client name must not be empty")]
     EmptySessionOwnerClientName,
     #[error("session owner principal id must not be empty")]

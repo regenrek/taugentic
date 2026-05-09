@@ -27,6 +27,9 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
         "METHOD_DAEMON_SESSION_OVERVIEW",
         METHOD_DAEMON_SESSION_OVERVIEW,
     ),
+    ("METHOD_DAEMON_WORKSPACE_OPEN", METHOD_DAEMON_WORKSPACE_OPEN),
+    ("METHOD_DAEMON_WORKSPACE_LIST", METHOD_DAEMON_WORKSPACE_LIST),
+    ("METHOD_DAEMON_WORKSPACE_GET", METHOD_DAEMON_WORKSPACE_GET),
     ("METHOD_DAEMON_ACTIVITY_PAGE", METHOD_DAEMON_ACTIVITY_PAGE),
     (
         "METHOD_DAEMON_AGENT_TURNS_PAGE",
@@ -204,6 +207,12 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<WorkspacePath>(cfg)?;
     export_ts::<WorkspacePathError>(cfg)?;
     export_ts::<Workspace>(cfg)?;
+    export_ts::<DaemonWorkspaceOpenParams>(cfg)?;
+    export_ts::<DaemonWorkspaceOpenResult>(cfg)?;
+    export_ts::<DaemonWorkspaceListParams>(cfg)?;
+    export_ts::<DaemonWorkspaceListResult>(cfg)?;
+    export_ts::<DaemonWorkspaceGetParams>(cfg)?;
+    export_ts::<DaemonWorkspaceGetResult>(cfg)?;
     export_ts::<TrustState>(cfg)?;
     export_ts::<ExecutionContext>(cfg)?;
     export_ts::<WorkspaceScope>(cfg)?;
@@ -227,6 +236,7 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<DaemonPendingTransitionKind>(cfg)?;
     export_ts::<DaemonPendingTransitionView>(cfg)?;
     export_ts::<DaemonRuntimeMode>(cfg)?;
+    export_ts::<WorkspaceSelector>(cfg)?;
     export_ts::<DaemonSessionOpenParams>(cfg)?;
     export_ts::<DaemonSessionOpenResult>(cfg)?;
     export_ts::<DaemonSessionAttachParams>(cfg)?;
@@ -495,6 +505,12 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "WorkspacePath",
         "WorkspacePathError",
         "Workspace",
+        "DaemonWorkspaceOpenParams",
+        "DaemonWorkspaceOpenResult",
+        "DaemonWorkspaceListParams",
+        "DaemonWorkspaceListResult",
+        "DaemonWorkspaceGetParams",
+        "DaemonWorkspaceGetResult",
         "TrustState",
         "ExecutionContext",
         "WorkspaceScope",
@@ -513,6 +529,7 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "DaemonPendingTransitionKind",
         "DaemonPendingTransitionView",
         "DaemonRuntimeMode",
+        "WorkspaceSelector",
         "DaemonSessionOpenParams",
         "DaemonSessionOpenResult",
         "DaemonSessionAttachParams",

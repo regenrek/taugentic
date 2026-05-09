@@ -68,7 +68,6 @@ vi.mock("../../packages/renderer/src/features/agent-stream/index.js", () => ({
 }));
 
 vi.mock("../../packages/renderer/src/lib/queries/session-mutations.js", () => ({
-  useOpenSessionMutation: () => noopMutation,
   useStartRunMutation: () => noopMutation,
   useDecideApprovalMutation: () => noopMutation,
 }));

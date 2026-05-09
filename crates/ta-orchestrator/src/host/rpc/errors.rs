@@ -9,9 +9,54 @@ pub(super) fn map_app_service_error(
         }
         crate::orchestration::AppServiceError::SessionWorkspaceMissing => {
             invalid_params(error.to_string())
+                .with_data(serde_json::json!({ "code": "SessionWorkspaceMissing" }))
         }
         crate::orchestration::AppServiceError::WorkspaceNotFound(_) => {
-            invalid_params(error.to_string())
+            workspace_error(error.to_string(), "WorkspaceNotFound")
+        }
+        crate::orchestration::AppServiceError::WorkspaceNotADirectory(_) => {
+            workspace_error(error.to_string(), "WorkspaceNotADirectory")
+        }
+        crate::orchestration::AppServiceError::WorkspaceCanonicalizeFailed { .. } => {
+            workspace_error(error.to_string(), "WorkspaceCanonicalizeFailed")
+        }
+        crate::orchestration::AppServiceError::WorkspaceTrustRequired(_) => {
+            workspace_error(error.to_string(), "WorkspaceTrustRequired")
+        }
+        crate::orchestration::AppServiceError::WorkspacePermissionDenied { .. } => {
+            workspace_error(error.to_string(), "WorkspacePermissionDenied")
+        }
+        crate::orchestration::AppServiceError::WorkspaceSymlinkEscape(_) => {
+            workspace_error(error.to_string(), "WorkspaceSymlinkEscape")
+        }
+        crate::orchestration::AppServiceError::WorkspaceOutsideAllowedRoots(_) => {
+            workspace_error(error.to_string(), "WorkspaceOutsideAllowedRoots")
+        }
+        crate::orchestration::AppServiceError::WorkspaceCapabilityUnsupported {
+            variant,
+            vendor,
+            capability,
+            requested,
+            reason,
+        } => {
+            let message = format!("workspace capability unsupported: {reason}");
+            let mut data = serde_json::json!({
+                "code": "WorkspaceCapabilityUnsupported",
+                "capability": capability,
+                "requested": requested,
+                "reason": reason,
+            });
+            if let Some(variant) = variant
+                && let Some(object) = data.as_object_mut()
+            {
+                object.insert("variant".to_string(), serde_json::Value::String(variant));
+            }
+            if let Some(vendor) = vendor
+                && let Some(object) = data.as_object_mut()
+            {
+                object.insert("vendor".to_string(), serde_json::Value::String(vendor));
+            }
+            invalid_params(message).with_data(data)
         }
         crate::orchestration::AppServiceError::EmptySessionOwnerClientName => {
             invalid_params(error.to_string())
@@ -116,6 +161,10 @@ pub(super) fn map_app_service_error(
         }
         crate::orchestration::AppServiceError::Store(error) => internal_error(error.to_string()),
     }
+}
+
+fn workspace_error(message: String, code: &'static str) -> crate::JsonRpcErrorObject {
+    invalid_params(message).with_data(serde_json::json!({ "code": code }))
 }
 
 pub(super) fn invalid_public_approval_state() -> crate::JsonRpcErrorObject {

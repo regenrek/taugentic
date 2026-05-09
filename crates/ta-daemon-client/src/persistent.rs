@@ -14,6 +14,8 @@ use ta_protocol::wire::{
     DaemonApprovalDecideParams, DaemonApprovalDecideResult, DaemonClientCapabilities,
     DaemonInitializeParams, DaemonInitializeResult, DaemonSessionAttachParams,
     DaemonSessionAttachResult, DaemonSessionOpenParams, DaemonSessionOpenResult,
+    DaemonWorkspaceGetParams, DaemonWorkspaceGetResult, DaemonWorkspaceListParams,
+    DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult,
     GetAgentRuntimeQuery, ListApprovalsQuery, ListArtifactsQuery, ListRunsQuery, ListSessionsQuery,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
@@ -21,8 +23,9 @@ use ta_protocol::wire::{
     METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_LIST,
     METHOD_DAEMON_INITIALIZE, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START,
     METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
-    METHOD_DAEMON_SESSION_OVERVIEW, RunSummary, SessionOverviewQuery, SessionOverviewResult,
-    SessionSummary, StartRunCommand,
+    METHOD_DAEMON_SESSION_OVERVIEW, METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST,
+    METHOD_DAEMON_WORKSPACE_OPEN, RunSummary, SessionOverviewQuery, SessionOverviewResult,
+    SessionSummary, StartRunCommand, Workspace, WorkspaceId, WorkspacePath, WorkspaceSelector,
 };
 
 use crate::credential_store::remove_session_authority;
@@ -76,13 +79,13 @@ impl PersistentDaemonClient {
     pub fn open_session(
         &mut self,
         title: &str,
-        workspace_id: ta_protocol::wire::WorkspaceId,
+        workspace: WorkspaceSelector,
     ) -> Result<DaemonSessionOpenResult, JsonRpcClientError> {
         let result: DaemonSessionOpenResult = self.call(
             METHOD_DAEMON_SESSION_OPEN,
             &DaemonSessionOpenParams {
                 title: title.to_string(),
-                workspace_id: Some(workspace_id),
+                workspace,
             },
         )?;
         store_session_authority(
@@ -92,6 +95,35 @@ impl PersistentDaemonClient {
             &result.session_authority,
         )?;
         Ok(result)
+    }
+
+    pub fn open_workspace(
+        &mut self,
+        path: WorkspacePath,
+        trust_acknowledged: bool,
+    ) -> Result<Workspace, JsonRpcClientError> {
+        let result: DaemonWorkspaceOpenResult = self.call(
+            METHOD_DAEMON_WORKSPACE_OPEN,
+            &DaemonWorkspaceOpenParams {
+                path,
+                trust_acknowledged,
+            },
+        )?;
+        Ok(result.workspace)
+    }
+
+    pub fn list_workspaces(&mut self) -> Result<Vec<Workspace>, JsonRpcClientError> {
+        let result: DaemonWorkspaceListResult =
+            self.call(METHOD_DAEMON_WORKSPACE_LIST, &DaemonWorkspaceListParams {})?;
+        Ok(result.workspaces)
+    }
+
+    pub fn get_workspace(&mut self, id: WorkspaceId) -> Result<Workspace, JsonRpcClientError> {
+        let result: DaemonWorkspaceGetResult = self.call(
+            METHOD_DAEMON_WORKSPACE_GET,
+            &DaemonWorkspaceGetParams { id },
+        )?;
+        Ok(result.workspace)
     }
 
     pub fn attach_session(

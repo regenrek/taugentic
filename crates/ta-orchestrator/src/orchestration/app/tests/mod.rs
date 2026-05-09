@@ -31,6 +31,7 @@ mod runs;
 mod session_overview;
 mod sessions;
 mod timeline;
+mod workspaces;
 
 pub(crate) const RUN_EVENT_REPLAY_BATCH_LIMIT: usize =
     crate::orchestration::run_events_subscribe::RUN_EVENT_REPLAY_BATCH_LIMIT;
