@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -64,6 +64,24 @@ impl WorkspacePath {
         Ok(Self(display_path(canonical)))
     }
 
+    pub fn from_canonical_wire_value(value: impl Into<String>) -> Result<Self, WorkspacePathError> {
+        let value = value.into();
+        let path = Path::new(&value);
+        ensure_absolute(path)?;
+        if path
+            .components()
+            .any(|component| matches!(component, Component::CurDir | Component::ParentDir))
+        {
+            return Err(WorkspacePathError::WorkspacePathNotCanonical {
+                path: value,
+                canonical: None,
+                reason: Some("path contains relative components".to_string()),
+            });
+        }
+
+        Ok(Self(value))
+    }
+
     pub fn as_path(&self) -> &Path {
         Path::new(&self.0)
     }
@@ -85,7 +103,7 @@ impl<'de> Deserialize<'de> for WorkspacePath {
         D: serde::Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        Self::new(PathBuf::from(value)).map_err(serde::de::Error::custom)
+        Self::from_canonical_wire_value(value).map_err(serde::de::Error::custom)
     }
 }
 

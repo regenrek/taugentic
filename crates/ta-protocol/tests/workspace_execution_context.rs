@@ -20,6 +20,17 @@ fn workspace_path_rejects_relative_paths() {
 }
 
 #[test]
+fn workspace_path_deserialization_does_not_probe_filesystem() {
+    let path = std::env::temp_dir().join("taugentic-wsec-nonexistent-workspace");
+    let path = path.to_string_lossy().into_owned();
+
+    let decoded: WorkspacePath =
+        serde_json::from_value(serde_json::json!(path)).expect("absolute wire path should decode");
+
+    assert_eq!(decoded.as_str(), path);
+}
+
+#[test]
 fn workspace_roundtrips_through_json() {
     let root = canonical_repo_path();
     let workspace = Workspace {
