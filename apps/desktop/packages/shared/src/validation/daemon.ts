@@ -15,6 +15,8 @@ import type {
   DaemonSessionOpenResult,
   DaemonStatusResult,
   DaemonSubscribeResult,
+  DaemonWorkspaceOpenParams,
+  DaemonWorkspaceOpenResult,
 } from "../contracts.js";
 import { PROTOCOL_JSON_SCHEMAS } from "../../generated/runtime.js";
 import {
@@ -32,6 +34,12 @@ import { parseSessionSummary } from "./summaries.js";
 const validateDaemonInitializeResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.DaemonInitializeResult);
 const validateDaemonSessionOpenParams = ajv.compile(PROTOCOL_JSON_SCHEMAS.DaemonSessionOpenParams);
 const validateDaemonSessionOpenResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.DaemonSessionOpenResult);
+const validateDaemonWorkspaceOpenParams = ajv.compile(
+  PROTOCOL_JSON_SCHEMAS.DaemonWorkspaceOpenParams,
+);
+const validateDaemonWorkspaceOpenResult = ajv.compile(
+  PROTOCOL_JSON_SCHEMAS.DaemonWorkspaceOpenResult,
+);
 const validateDaemonSessionAttachResult = ajv.compile(
   PROTOCOL_JSON_SCHEMAS.DaemonSessionAttachResult,
 );
@@ -99,6 +107,22 @@ export function parseDaemonSessionOpenParams(value: unknown): DaemonSessionOpenP
   return parseSchema<DaemonSessionOpenParams>(
     "DaemonSessionOpenParams",
     validateDaemonSessionOpenParams,
+    value,
+  );
+}
+
+export function parseDaemonWorkspaceOpenParams(value: unknown): DaemonWorkspaceOpenParams {
+  return parseSchema<DaemonWorkspaceOpenParams>(
+    "DaemonWorkspaceOpenParams",
+    validateDaemonWorkspaceOpenParams,
+    value,
+  );
+}
+
+export function parseDaemonWorkspaceOpenResult(value: unknown): DaemonWorkspaceOpenResult {
+  return parseSchema<DaemonWorkspaceOpenResult>(
+    "DaemonWorkspaceOpenResult",
+    validateDaemonWorkspaceOpenResult,
     value,
   );
 }

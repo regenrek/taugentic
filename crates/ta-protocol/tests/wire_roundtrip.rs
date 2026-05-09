@@ -6,18 +6,23 @@ use ta_protocol::wire::{
     ArtifactSnapshotResult, ArtifactSummary, CapsuleResult, DaemonEvent, DaemonEventCursor,
     DaemonEventEnvelope, DaemonEventKind, DaemonRunCompleteWithResultParams,
     DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
-    DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult, ForkRunRequest,
-    ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery, ListApprovalsQuery, ListArtifactsQuery,
-    ListNativeRunsRequest, ListNativeRunsResult, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT,
-    METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_REPLAY_EVENTS,
-    METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS, OutputContractKind, PatchResult, PublicApprovalResolution,
-    PublicDaemonEvent, ResumeRunRequest, ResumeRunResult, ResumeRunState, RunEvent, RunEventDelta,
-    RunEventStreamError, RunEventStreamItem, RunEventStreamPayload, RunHarnessKind, RunId,
-    RunListEntry, RunListFilter, RunRecord, RunSource, RunStatus, RuntimeLanePendingState,
-    RuntimePolicyMode, RuntimeProfileAuthProfilePatch, RuntimeProfileId,
-    RuntimeProfileModelIdPatch, RuntimeProfilePatch, SessionAuthority, SessionId, SessionStatus,
-    SessionSummary, StartRunCommand, StreamEmission, SubscribeRunEventsRequest,
-    SubscribeRunEventsResult, WorkspaceMode, WorktreeCleanupPolicy,
+    DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
+    DaemonWorkspaceGetParams, DaemonWorkspaceGetResult, DaemonWorkspaceListParams,
+    DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult,
+    ForkRunRequest, ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery, ListApprovalsQuery,
+    ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
+    METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_FORK,
+    METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
+    METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN,
+    OutputContractKind, PatchResult, PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest,
+    ResumeRunResult, ResumeRunState, RunEvent, RunEventDelta, RunEventStreamError,
+    RunEventStreamItem, RunEventStreamPayload, RunHarnessKind, RunId, RunListEntry, RunListFilter,
+    RunRecord, RunSource, RunStatus, RuntimeLanePendingState, RuntimePolicyMode,
+    RuntimeProfileAuthProfilePatch, RuntimeProfileId, RuntimeProfileModelIdPatch,
+    RuntimeProfilePatch, SessionAuthority, SessionId, SessionStatus, SessionSummary,
+    StartRunCommand, StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult,
+    TrustState, Workspace, WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceSelector,
+    WorktreeCleanupPolicy,
 };
 
 #[test]
@@ -495,9 +500,9 @@ fn agent_stream_event_roundtrips_through_json() {
 fn daemon_session_open_params_serialize_with_camel_case_fields() {
     let params = DaemonSessionOpenParams {
         title: "Build daemon app server".to_string(),
-        workspace_id: Some(
-            ta_protocol::wire::WorkspaceId::new("workspace-test-default").expect("workspace id"),
-        ),
+        workspace: WorkspaceSelector::ById {
+            id: WorkspaceId::new("workspace-test-default").expect("workspace id"),
+        },
     };
 
     let json = serde_json::to_value(&params).expect("open params should serialize");
@@ -506,8 +511,101 @@ fn daemon_session_open_params_serialize_with_camel_case_fields() {
         json,
         serde_json::json!({
             "title": "Build daemon app server",
-            "workspaceId": "workspace-test-default"
+            "workspace": {
+                "kind": "byId",
+                "id": "workspace-test-default"
+            }
         })
+    );
+}
+
+#[test]
+fn daemon_session_open_params_support_workspace_selector_by_path() {
+    let params = DaemonSessionOpenParams {
+        title: "Build daemon app server".to_string(),
+        workspace: WorkspaceSelector::ByPath {
+            path: WorkspacePath::from_canonical_wire_value("/tmp/taugentic-workspace")
+                .expect("workspace path"),
+            trust_acknowledged: true,
+        },
+    };
+
+    let json = serde_json::to_value(&params).expect("open params should serialize");
+    let decoded: DaemonSessionOpenParams =
+        serde_json::from_value(json.clone()).expect("open params should deserialize");
+
+    assert_eq!(decoded, params);
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "title": "Build daemon app server",
+            "workspace": {
+                "kind": "byPath",
+                "path": "/tmp/taugentic-workspace",
+                "trustAcknowledged": true
+            }
+        })
+    );
+}
+
+#[test]
+fn daemon_workspace_rpc_payloads_roundtrip_through_json() {
+    assert_eq!(METHOD_DAEMON_WORKSPACE_OPEN, "daemon.workspace.open");
+    assert_eq!(METHOD_DAEMON_WORKSPACE_LIST, "daemon.workspace.list");
+    assert_eq!(METHOD_DAEMON_WORKSPACE_GET, "daemon.workspace.get");
+
+    let workspace = workspace_summary();
+    let open_params = DaemonWorkspaceOpenParams {
+        path: workspace.root_realpath.clone(),
+        trust_acknowledged: false,
+    };
+    let open_result = DaemonWorkspaceOpenResult {
+        workspace: workspace.clone(),
+    };
+    let list_params = DaemonWorkspaceListParams::default();
+    let list_result = DaemonWorkspaceListResult {
+        workspaces: vec![workspace.clone()],
+    };
+    let get_params = DaemonWorkspaceGetParams {
+        id: workspace.id.clone(),
+    };
+    let get_result = DaemonWorkspaceGetResult { workspace };
+
+    let open_json = serde_json::to_value(&open_params).expect("workspace open params serialize");
+    let list_json = serde_json::to_value(&list_params).expect("workspace list params serialize");
+    assert_eq!(open_json["trustAcknowledged"], false);
+    assert_eq!(list_json, serde_json::json!({}));
+    assert_eq!(
+        serde_json::from_value::<DaemonWorkspaceOpenParams>(open_json).expect("open params decode"),
+        open_params
+    );
+    assert_eq!(
+        serde_json::from_value::<DaemonWorkspaceOpenResult>(
+            serde_json::to_value(&open_result).expect("open result serialize")
+        )
+        .expect("open result decode"),
+        open_result
+    );
+    assert_eq!(
+        serde_json::from_value::<DaemonWorkspaceListResult>(
+            serde_json::to_value(&list_result).expect("list result serialize")
+        )
+        .expect("list result decode"),
+        list_result
+    );
+    assert_eq!(
+        serde_json::from_value::<DaemonWorkspaceGetParams>(
+            serde_json::to_value(&get_params).expect("get params serialize")
+        )
+        .expect("get params decode"),
+        get_params
+    );
+    assert_eq!(
+        serde_json::from_value::<DaemonWorkspaceGetResult>(
+            serde_json::to_value(&get_result).expect("get result serialize")
+        )
+        .expect("get result decode"),
+        get_result
     );
 }
 
@@ -1051,6 +1149,21 @@ fn session_summary() -> SessionSummary {
         id: SessionId::new("session-1").expect("session id"),
         title: "Build daemon app server".to_string(),
         status: SessionStatus::Idle,
+    }
+}
+
+fn workspace_summary() -> Workspace {
+    Workspace {
+        id: WorkspaceId::new("workspace-test-default").expect("workspace id"),
+        root_realpath: WorkspacePath::from_canonical_wire_value("/tmp/taugentic-workspace")
+            .expect("workspace path"),
+        display_name: "taugentic-workspace".to_string(),
+        trust_state: TrustState::UserConfirmed {
+            confirmed_at: "2026-05-09T00:00:00Z".to_string(),
+        },
+        git_repo_root: None,
+        created_at: "2026-05-09T00:00:00Z".to_string(),
+        last_used_at: "2026-05-09T00:00:00Z".to_string(),
     }
 }
 

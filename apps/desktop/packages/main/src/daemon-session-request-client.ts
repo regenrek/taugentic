@@ -18,6 +18,8 @@ import type {
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
   DaemonDiagnostics,
+  DaemonWorkspaceOpenParams,
+  DaemonWorkspaceOpenResult,
   SessionOverviewQuery,
   SessionOverviewResult,
   DaemonApprovalDecideResult,
@@ -37,6 +39,7 @@ import type {
   SessionSummary,
   StartRunCommand,
   SubscribeRunEventsResult,
+  WorkspaceSelector,
   WorkItemDismissParams,
   WorkItemDismissResult,
   WorkItemListResult,
@@ -78,6 +81,7 @@ import {
   METHOD_DAEMON_SESSION_GET,
   METHOD_DAEMON_SESSION_LIST,
   METHOD_DAEMON_SESSION_OPEN,
+  METHOD_DAEMON_WORKSPACE_OPEN,
   METHOD_WORKFLOW_LOAD,
   METHOD_WORKFLOW_RELOAD,
   METHOD_WORKFLOW_STATUS,
@@ -94,6 +98,8 @@ import {
   parseDaemonAgentRuntimeSelectProfileParams,
   parseDaemonAgentRuntimeSetExtensionEnabledParams,
   parseDaemonDiagnostics,
+  parseDaemonWorkspaceOpenParams,
+  parseDaemonWorkspaceOpenResult,
   parseAgentTurnsPageResult,
   parseActivityPageResult,
   parseApprovalSnapshotResult,
@@ -388,14 +394,22 @@ export class DaemonSessionRequestClient {
     return this.withConnectedRequest(METHOD_DAEMON_SESSION_GET, {}, parseOptionalSessionSummary);
   }
 
-  async openSession(title: string): Promise<SessionSummary> {
+  async openSession(title: string, workspace: WorkspaceSelector): Promise<SessionSummary> {
     const result = await this.withConnectedRequest(
       METHOD_DAEMON_SESSION_OPEN,
-      { title },
+      { title, workspace },
       parseDaemonSessionOpenResult,
     );
     await storeDesktopSessionAuthority("desktop-main", result.session.id, result.sessionAuthority);
     return result.session;
+  }
+
+  async openWorkspace(params: DaemonWorkspaceOpenParams): Promise<DaemonWorkspaceOpenResult> {
+    return this.withConnectedRequest(
+      METHOD_DAEMON_WORKSPACE_OPEN,
+      parseDaemonWorkspaceOpenParams(params),
+      parseDaemonWorkspaceOpenResult,
+    );
   }
 
   protected async ensureConnected(): Promise<void> {

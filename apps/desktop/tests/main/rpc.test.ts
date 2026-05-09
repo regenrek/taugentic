@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { DESKTOP_INVOKE_METHODS, DESKTOP_IPC_SCHEMA } from "../../packages/shared/src/ipc.js";
 
 type IpcHandler = (...args: unknown[]) => unknown;
+const testWorkspaceSelector = {
+  kind: "byPath",
+  path: "/tmp/taugentic-workspace",
+  trustAcknowledged: false,
+} as const;
 
 const hoisted = vi.hoisted(() => {
   const registeredHandlers = new Map<string, IpcHandler>();
@@ -31,7 +36,11 @@ const hoisted = vi.hoisted(() => {
     desktopSessionInvokeHandlers: {
       listSessions: vi.fn(async () => [{ id: "session-1" }]),
       getSessionOverview: vi.fn(async (query: unknown) => ({ query })),
-      openSession: vi.fn(async (title: string) => ({ id: "session-1", title })),
+      openSession: vi.fn(async (title: string, workspace: unknown) => ({
+        id: "session-1",
+        title,
+        workspace,
+      })),
       listRecipes: vi.fn(async () => ({ recipes: [] })),
       listWorkItems: vi.fn(async () => ({ items: [], sync: { state: "idle" } })),
       loadWorkflow: vi.fn(async (params: unknown) => ({ loaded: params })),
@@ -157,9 +166,10 @@ describe("rpc", () => {
     await expect(sessionOverviewHandler?.({}, { recentActivityLimit: 5 })).resolves.toEqual({
       query: { recentActivityLimit: 5 },
     });
-    await expect(openSessionHandler?.({}, "Fresh session")).resolves.toEqual({
+    await expect(openSessionHandler?.({}, "Fresh session", testWorkspaceSelector)).resolves.toEqual({
       id: "session-1",
       title: "Fresh session",
+      workspace: testWorkspaceSelector,
     });
 
     expect(hoisted.startDaemonViaBootstrap).toHaveBeenCalledTimes(1);
@@ -173,7 +183,10 @@ describe("rpc", () => {
     expect(hoisted.desktopSessionInvokeHandlers.getSessionOverview).toHaveBeenCalledWith({
       recentActivityLimit: 5,
     });
-    expect(hoisted.desktopSessionInvokeHandlers.openSession).toHaveBeenCalledWith("Fresh session");
+    expect(hoisted.desktopSessionInvokeHandlers.openSession).toHaveBeenCalledWith(
+      "Fresh session",
+      testWorkspaceSelector,
+    );
   });
 
   it("rejects invoke calls with extra positional args before reaching handlers", async () => {
@@ -187,8 +200,10 @@ describe("rpc", () => {
       throw new Error("expected openSession handler to be registered");
     }
 
-    expect(() => openSessionHandler({}, "Fresh session", "extra arg")).toThrow(
-      "desktop IPC method openSession expected 1 arg(s), got 2",
+    expect(() =>
+      openSessionHandler({}, "Fresh session", testWorkspaceSelector, "extra arg"),
+    ).toThrow(
+      "desktop IPC method openSession expected 2 arg(s), got 3",
     );
     expect(hoisted.desktopSessionInvokeHandlers.openSession).not.toHaveBeenCalled();
   });

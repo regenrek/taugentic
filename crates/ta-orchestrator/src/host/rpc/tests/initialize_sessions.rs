@@ -331,7 +331,9 @@ fn daemon_session_open_requires_initialize_first() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "Build daemon app server".to_string(),
-                    workspace_id: Some(ta_store::default_test_workspace_id()),
+                    workspace: WorkspaceSelector::ById {
+                        id: ta_store::default_test_workspace_id(),
+                    },
                 })
                 .expect("params"),
             ),
@@ -368,7 +370,9 @@ fn daemon_session_open_creates_idle_session_summary() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "Build daemon app server".to_string(),
-                    workspace_id: Some(ta_store::default_test_workspace_id()),
+                    workspace: WorkspaceSelector::ById {
+                        id: ta_store::default_test_workspace_id(),
+                    },
                 })
                 .expect("params"),
             ),
@@ -422,7 +426,9 @@ fn daemon_session_open_rejects_blank_title() {
             params: Some(
                 serde_json::to_value(DaemonSessionOpenParams {
                     title: "   ".to_string(),
-                    workspace_id: Some(ta_store::default_test_workspace_id()),
+                    workspace: WorkspaceSelector::ById {
+                        id: ta_store::default_test_workspace_id(),
+                    },
                 })
                 .expect("params"),
             ),

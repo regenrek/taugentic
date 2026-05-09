@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "TrustState": {
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "unverified",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "confirmedAt": {
+              "type": "string"
+            },
+            "state": {
+              "const": "userConfirmed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state",
+            "confirmedAt"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "revoked",
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Workspace": {
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "gitRepoRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUsedAt": {
+          "type": "string"
+        },
+        "rootRealpath": {
+          "type": "string"
+        },
+        "trustState": {
+          "$ref": "#/$defs/TrustState"
+        }
+      },
+      "required": [
+        "id",
+        "rootRealpath",
+        "displayName",
+        "trustState",
+        "createdAt",
+        "lastUsedAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "workspaces": {
+      "items": {
+        "$ref": "#/$defs/Workspace"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "workspaces"
+  ],
+  "title": "DaemonWorkspaceListResult",
+  "type": "object"
+}

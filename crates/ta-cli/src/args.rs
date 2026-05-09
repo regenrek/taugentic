@@ -34,6 +34,14 @@ pub struct GlobalArgs {
     /// Override the daemon socket name. Falls back to TAUGENTIC_DAEMON_SOCKET_NAME, then the default.
     #[arg(long, global = true, value_name = "SOCKET_NAME")]
     pub socket: Option<String>,
+
+    /// Trust this workspace path when a command opens an implicit workspace.
+    #[arg(long = "trust-workspace", global = true, value_name = "PATH")]
+    pub trust_workspaces: Vec<String>,
+
+    /// Trust every workspace path opened by this command invocation.
+    #[arg(long = "trust-all-workspaces", global = true)]
+    pub trust_all_workspaces: bool,
 }
 
 impl GlobalArgs {
@@ -67,6 +75,11 @@ pub enum Commands {
     Run {
         #[command(subcommand)]
         command: RunCommands,
+    },
+    /// Open and inspect daemon-owned workspaces.
+    Workspace {
+        #[command(subcommand)]
+        command: WorkspaceCommands,
     },
 }
 
@@ -126,13 +139,28 @@ pub enum SessionCommands {
     Open {
         #[arg(value_name = "TITLE")]
         title: String,
-        /// Workspace identifier returned by `daemon.workspace.open`.
-        ///
-        /// The workspace.open RPC and folder picker land in the slice
-        /// following this one; until then, callers can supply an existing
-        /// workspace id obtained via the daemon-internal API.
-        #[arg(long = "workspace-id", value_name = "WORKSPACE_ID")]
-        workspace_id: String,
+        /// Workspace path to bind; defaults to the current working directory.
+        #[arg(long = "workspace", value_name = "PATH")]
+        workspace: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkspaceCommands {
+    /// Open a daemon-owned workspace.
+    Open {
+        #[arg(value_name = "PATH")]
+        path: String,
+        /// Acknowledge trust for the selected workspace.
+        #[arg(long)]
+        trust: bool,
+    },
+    /// List daemon-owned workspaces.
+    List,
+    /// Get one daemon-owned workspace by id.
+    Get {
+        #[arg(value_name = "WORKSPACE_ID")]
+        id: String,
     },
 }
 

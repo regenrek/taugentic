@@ -21,6 +21,7 @@ mod timeline;
 mod work_item_poller;
 mod work_items;
 mod workflow;
+mod workspaces;
 
 #[cfg(test)]
 mod tests;
@@ -73,6 +74,12 @@ where
 pub struct OpenSessionRequest {
     pub title: String,
     pub workspace_id: ta_protocol::wire::WorkspaceId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpenWorkspaceRequest {
+    pub path: ta_protocol::wire::WorkspacePath,
+    pub trust_acknowledged: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

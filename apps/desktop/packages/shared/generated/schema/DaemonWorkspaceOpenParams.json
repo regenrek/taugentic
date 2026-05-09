@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "trustAcknowledged": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "path",
+    "trustAcknowledged"
+  ],
+  "title": "DaemonWorkspaceOpenParams",
+  "type": "object"
+}

@@ -2,7 +2,7 @@ use serde::Serialize;
 use ta_protocol::wire::{
     ApprovalRequest, DaemonActualRuntimeMode, DaemonControlAction, DaemonControlStatusResult,
     DaemonRuntimeMode, DaemonStatusResult, DaemonStopResult, DaemonTransitionStatus, RunSummary,
-    SessionSummary,
+    SessionSummary, Workspace,
 };
 
 use crate::daemon_ops::{
@@ -49,6 +49,8 @@ pub enum CommandOutput {
     DaemonBackgroundStatus(DaemonControlStatusResult),
     SessionList(Vec<SessionSummary>),
     SessionOpen(SessionSummary),
+    WorkspaceOpen(Workspace),
+    WorkspaceList(Vec<Workspace>),
     ApprovalList(Vec<ApprovalRequest>),
     ApprovalDecide(RunSummary),
     RunList(Vec<RunSummary>),
@@ -78,6 +80,8 @@ fn render_text(output: &CommandOutput) -> String {
         }
         CommandOutput::SessionList(sessions) => format_session_list_text(sessions),
         CommandOutput::SessionOpen(session) => format_session_text(session),
+        CommandOutput::WorkspaceOpen(workspace) => format_workspace_text(workspace),
+        CommandOutput::WorkspaceList(workspaces) => format_workspace_list_text(workspaces),
         CommandOutput::ApprovalList(approvals) => format_approval_list_text(approvals),
         CommandOutput::ApprovalDecide(run) => format_run_text(run),
         CommandOutput::RunList(runs) => format_run_list_text(runs),
@@ -97,6 +101,8 @@ fn render_json(output: &CommandOutput) -> Result<String, CliError> {
         CommandOutput::DaemonBackgroundStatus(result) => to_json(result),
         CommandOutput::SessionList(sessions) => to_json(sessions),
         CommandOutput::SessionOpen(session) => to_json(session),
+        CommandOutput::WorkspaceOpen(workspace) => to_json(workspace),
+        CommandOutput::WorkspaceList(workspaces) => to_json(workspaces),
         CommandOutput::ApprovalList(approvals) => to_json(approvals),
         CommandOutput::ApprovalDecide(run) => to_json(run),
         CommandOutput::RunList(runs) => to_json(runs),
@@ -330,6 +336,36 @@ fn format_session_status(status: ta_protocol::wire::SessionStatus) -> &'static s
         ta_protocol::wire::SessionStatus::Paused => "paused",
         ta_protocol::wire::SessionStatus::Failed => "failed",
         ta_protocol::wire::SessionStatus::Completed => "completed",
+    }
+}
+
+fn format_workspace_list_text(workspaces: &[Workspace]) -> String {
+    if workspaces.is_empty() {
+        return "no workspaces".to_string();
+    }
+
+    workspaces
+        .iter()
+        .map(format_workspace_text)
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+fn format_workspace_text(workspace: &Workspace) -> String {
+    format!(
+        "workspace {}\nname: {}\npath: {}\ntrust: {}",
+        workspace.id.as_str(),
+        workspace.display_name,
+        workspace.root_realpath.as_str(),
+        format_trust_state(&workspace.trust_state),
+    )
+}
+
+fn format_trust_state(trust_state: &ta_protocol::wire::TrustState) -> &'static str {
+    match trust_state {
+        ta_protocol::wire::TrustState::Unverified => "unverified",
+        ta_protocol::wire::TrustState::UserConfirmed { .. } => "user-confirmed",
+        ta_protocol::wire::TrustState::Revoked => "revoked",
     }
 }
 

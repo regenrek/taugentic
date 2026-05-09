@@ -46,6 +46,7 @@ export const queryKeys = {
     status: ["workflow", "status"] as const,
   },
   workItems: ["workItems"] as const,
+  workspaces: ["workspace", "list"] as const,
   sessions: ["session", "list"] as const,
   sessionOverview: (recentActivityLimit: number) =>
     ["session", "overview", { recentActivityLimit }] as const,

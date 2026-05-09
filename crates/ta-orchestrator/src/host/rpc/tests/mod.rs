@@ -45,7 +45,7 @@ pub(super) use crate::{
     StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult, WorkItemDismissParams,
     WorkItemDismissResult, WorkItemListQuery, WorkItemListResult, WorkItemRefreshParams,
     WorkItemTriggerParams, WorkItemTriggerResult, WorkflowLoadParams, WorkflowReloadOutcome,
-    WorkflowStatusResult, WorkflowValidateParams, WorkflowValidationReport,
+    WorkflowStatusResult, WorkflowValidateParams, WorkflowValidationReport, WorkspaceSelector,
     host::config::ControlToken,
     host::{
         bootstrap::{BootstrapState, boot},

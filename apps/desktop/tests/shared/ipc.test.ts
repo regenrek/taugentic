@@ -42,7 +42,12 @@ describe("createDesktopApi", () => {
       extensionId: "local-shell-tools",
       enabled: true,
     });
-    await desktopApi.openSession("Build daemon app server");
+    await desktopApi.pickWorkspaceFolder();
+    await desktopApi.openWorkspace({ path: "/Users/alice/project", trustAcknowledged: false });
+    await desktopApi.openSession("Build daemon app server", {
+      id: "workspace-test-default",
+      kind: "byId",
+    });
     await desktopApi.getSessionOverview({ recentActivityLimit: 5 });
     await desktopApi.listRecipes();
     await desktopApi.getWorkflowStatus();
@@ -98,8 +103,22 @@ describe("createDesktopApi", () => {
         args: [{ extensionId: "local-shell-tools", enabled: true }],
       },
       {
+        channel: DESKTOP_IPC_SCHEMA.pickWorkspaceFolder.channel,
+        args: [],
+      },
+      {
+        channel: DESKTOP_IPC_SCHEMA.openWorkspace.channel,
+        args: [{ path: "/Users/alice/project", trustAcknowledged: false }],
+      },
+      {
         channel: DESKTOP_IPC_SCHEMA.openSession.channel,
-        args: ["Build daemon app server"],
+        args: [
+          "Build daemon app server",
+          {
+            id: "workspace-test-default",
+            kind: "byId",
+          },
+        ],
       },
       {
         channel: DESKTOP_IPC_SCHEMA.getSessionOverview.channel,

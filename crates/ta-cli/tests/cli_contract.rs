@@ -30,6 +30,7 @@ use ta_protocol::wire::{
     METHOD_DAEMON_RUN_START, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST,
     METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_STATUS, RunId, RunStatus, RunSummary,
     RuntimeProfileId, SessionAuthority, SessionId, SessionStatus, SessionSummary, StartRunCommand,
+    WorkspaceSelector,
 };
 
 #[cfg(unix)]
@@ -47,7 +48,14 @@ fn help_surfaces_include_expected_commands() {
     let cases: &[(&[&str], &[&str])] = &[
         (
             &["--help"],
-            &["Usage: ta", "daemon", "session", "approval", "run"],
+            &[
+                "Usage: ta",
+                "daemon",
+                "session",
+                "approval",
+                "run",
+                "workspace",
+            ],
         ),
         (
             &["daemon", "--help"],
@@ -66,6 +74,7 @@ fn help_surfaces_include_expected_commands() {
             &["status", "enable", "disable"],
         ),
         (&["session", "--help"], &["list", "open"]),
+        (&["workspace", "--help"], &["open", "list", "get"]),
         (&["approval", "--help"], &["list", "decide"]),
         (&["run", "--help"], &["list", "start"]),
     ];
@@ -126,9 +135,12 @@ fn session_open_json_smoke_outputs_parseable_payload() {
     let socket_name = unique_socket_name("ta-cli-session-open");
     let socket_address = ServerConfig::local_default("ta-daemon-test", &socket_name).socket_address;
     let listener = bind_listener(&socket_address).expect("listener should bind");
+    let workspace_path = "/tmp/taugentic-cli-session-open-missing".to_string();
     let server_handle = spawn_session_open_server(
         listener,
         "Build daemon app server",
+        &workspace_path,
+        false,
         SessionSummary {
             id: SessionId::new("session-2").expect("session id"),
             title: "Build daemon app server".to_string(),
@@ -142,8 +154,8 @@ fn session_open_json_smoke_outputs_parseable_payload() {
             "session",
             "open",
             "Build daemon app server",
-            "--workspace-id",
-            "workspace-test-default",
+            "--workspace",
+            &workspace_path,
             "--json",
             "--socket",
             &socket_name,
@@ -164,6 +176,52 @@ fn session_open_json_smoke_outputs_parseable_payload() {
     assert_eq!(value["id"], json!("session-2"));
     assert_eq!(value["title"], json!("Build daemon app server"));
     assert_eq!(value["status"], json!("idle"));
+}
+
+#[cfg(unix)]
+#[test]
+fn session_open_trust_workspace_sets_workspace_selector_trust_acknowledged() {
+    let socket_name = unique_socket_name("ta-cli-session-open-trust");
+    let socket_address = ServerConfig::local_default("ta-daemon-test", &socket_name).socket_address;
+    let listener = bind_listener(&socket_address).expect("listener should bind");
+    let workspace_path = "/tmp/taugentic-cli-session-open-trusted".to_string();
+    let server_handle = spawn_session_open_server(
+        listener,
+        "Trusted daemon app server",
+        &workspace_path,
+        true,
+        SessionSummary {
+            id: SessionId::new("session-3").expect("session id"),
+            title: "Trusted daemon app server".to_string(),
+            status: SessionStatus::Idle,
+        },
+    );
+
+    let output = Command::cargo_bin("ta-cli")
+        .expect("ta-cli binary should build")
+        .args([
+            "--trust-workspace",
+            &workspace_path,
+            "session",
+            "open",
+            "Trusted daemon app server",
+            "--workspace",
+            &workspace_path,
+            "--json",
+            "--socket",
+            &socket_name,
+        ])
+        .output()
+        .expect("ta-cli should run");
+
+    server_handle.join().expect("server thread should complete");
+    cleanup_socket_address(&socket_address);
+
+    assert!(
+        output.status.success(),
+        "expected success, stderr was: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 /// Exercises the run-start persistent local IPC contract; Windows currently
@@ -2156,9 +2214,12 @@ fn spawn_control_status_stopped_server(
 fn spawn_session_open_server(
     listener: SocketListener,
     expected_title: &str,
+    expected_workspace_path: &str,
+    expected_trust_acknowledged: bool,
     session: SessionSummary,
 ) -> JoinHandle<()> {
     let expected_title = expected_title.to_string();
+    let expected_workspace_path = expected_workspace_path.to_string();
     thread::spawn(move || {
         let mut stream = listener
             .accept()
@@ -2176,13 +2237,15 @@ fn spawn_session_open_server(
         assert_eq!(request.method, METHOD_DAEMON_SESSION_OPEN);
         assert_eq!(params.title, expected_title);
         assert_eq!(
-            params
-                .workspace_id
-                .as_ref()
-                .map(|id| id.as_str().to_string())
-                .as_deref(),
-            Some("workspace-test-default"),
-            "session.open must propagate workspace_id from CLI",
+            params.workspace,
+            WorkspaceSelector::ByPath {
+                path: ta_protocol::wire::WorkspacePath::from_canonical_wire_value(
+                    expected_workspace_path
+                )
+                .expect("expected workspace path should be valid"),
+                trust_acknowledged: expected_trust_acknowledged,
+            },
+            "session.open must propagate workspace selector from CLI",
         );
         write_response(
             &mut reader,

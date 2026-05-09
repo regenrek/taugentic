@@ -31,6 +31,8 @@ export {
   parseDaemonSessionOpenResult,
   parseDaemonStatusResult,
   parseDaemonSubscribeResult,
+  parseDaemonWorkspaceOpenParams,
+  parseDaemonWorkspaceOpenResult,
 } from "./daemon.js";
 export {
   parseNullableActivityCursor,

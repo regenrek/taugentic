@@ -18,6 +18,8 @@ import type {
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
   DaemonDiagnostics,
+  DaemonWorkspaceOpenParams,
+  DaemonWorkspaceOpenResult,
   SessionOverviewQuery,
   SessionOverviewResult,
   ArtifactSnapshotResult,
@@ -38,6 +40,7 @@ import type {
   SessionId,
   RunSummary,
   SessionSummary,
+  WorkspaceSelector,
   StartRunCommand,
   SubscribeRunEventsResult,
   WorkItemDismissParams,
@@ -240,12 +243,20 @@ export const DESKTOP_IPC_SCHEMA = {
     [params: DaemonAgentRuntimeSetExtensionEnabledParams],
     AgentRuntimeSnapshot
   >("desktop:set-agent-runtime-extension-enabled", 1),
+  pickWorkspaceFolder: invokeChannel<[], string | null>("desktop:pick-workspace-folder", 0),
+  openWorkspace: invokeChannel<[params: DaemonWorkspaceOpenParams], DaemonWorkspaceOpenResult>(
+    "desktop:open-workspace",
+    1,
+  ),
   listSessions: invokeChannel<[], SessionSummary[]>("desktop:list-sessions", 0),
   getSessionOverview: invokeChannel<[query: SessionOverviewQuery], SessionOverviewResult>(
     "desktop:get-session-overview",
     1,
   ),
-  openSession: invokeChannel<[title: string], SessionSummary>("desktop:open-session", 1),
+  openSession: invokeChannel<[title: string, workspace: WorkspaceSelector], SessionSummary>(
+    "desktop:open-session",
+    2,
+  ),
   listRecipes: invokeChannel<[], RecipeListResponse>("desktop:list-recipes", 0),
   listWorkItems: invokeChannel<[], WorkItemListResult>("desktop:list-work-items", 0),
   loadWorkflow: invokeChannel<[params: WorkflowLoadParams], WorkflowStatusResult>(

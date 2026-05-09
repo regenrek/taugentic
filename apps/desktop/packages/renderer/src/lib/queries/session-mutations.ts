@@ -9,6 +9,7 @@ import type {
   RunSummary,
   SessionId,
   SessionSummary,
+  WorkspaceSelector,
 } from "@taugentic/desktop-shared";
 
 import { decideApproval, forkRun, openSession, startRun } from "@/lib/ipc/api";
@@ -17,8 +18,8 @@ import { queryKeys, sessionListRootKey, sessionOverviewRootKey } from "./keys";
 
 export function useOpenSessionMutation() {
   const qc = useQueryClient();
-  return useMutation<SessionSummary, Error, string>({
-    mutationFn: (title: string) => openSession(title),
+  return useMutation<SessionSummary, Error, { title: string; workspace: WorkspaceSelector }>({
+    mutationFn: ({ title, workspace }) => openSession(title, workspace),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: sessionListRootKey });
       void qc.invalidateQueries({ queryKey: sessionOverviewRootKey });

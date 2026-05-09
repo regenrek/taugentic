@@ -16,6 +16,8 @@ import type {
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
   DaemonDiagnostics,
+  DaemonWorkspaceOpenParams,
+  DaemonWorkspaceOpenResult,
   ForkRunRequest,
   ForkRunResult,
   ReadArtifactContentQuery,
@@ -36,6 +38,7 @@ import type {
   RunSummary,
   SessionId,
   SessionSummary,
+  WorkspaceSelector,
   StartRunCommand,
   SubscribeRunEventsResult,
   WorkItemDismissParams,
@@ -117,8 +120,21 @@ export function getSessionOverview(query: SessionOverviewQuery): Promise<Session
   return window.desktopApi.getSessionOverview(query);
 }
 
-export function openSession(title: string): Promise<SessionSummary> {
-  return window.desktopApi.openSession(title);
+export function pickWorkspaceFolder(): Promise<string | null> {
+  return window.desktopApi.pickWorkspaceFolder();
+}
+
+export function openWorkspace(
+  params: DaemonWorkspaceOpenParams,
+): Promise<DaemonWorkspaceOpenResult> {
+  return window.desktopApi.openWorkspace(params);
+}
+
+export function openSession(
+  title: string,
+  workspace: WorkspaceSelector,
+): Promise<SessionSummary> {
+  return window.desktopApi.openSession(title, workspace);
 }
 
 export function listRecipes(): Promise<RecipeListResponse> {
