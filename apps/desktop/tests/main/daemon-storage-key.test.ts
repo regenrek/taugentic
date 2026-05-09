@@ -296,15 +296,26 @@ describe("daemon local storage keys", () => {
   });
 
   it("persists open-session authority and reloads it from disk on a fresh connection", async () => {
-    hoisted.requestHandlers.set(METHOD_DAEMON_SESSION_OPEN, async () => ({
-      session: {
-        id: "session-1",
+    const workspace = {
+      kind: "byPath",
+      path: "/tmp/taugentic-storage-key-workspace",
+      trustAcknowledged: true,
+    } as const;
+    hoisted.requestHandlers.set(METHOD_DAEMON_SESSION_OPEN, async (params) => {
+      expect(params).toEqual({
         title: "Build daemon app server",
-        status: "idle",
-      },
-      latestCursor: null,
-      sessionAuthority: "session-authority-1session-authority-1",
-    }));
+        workspace,
+      });
+      return {
+        session: {
+          id: "session-1",
+          title: "Build daemon app server",
+          status: "idle",
+        },
+        latestCursor: null,
+        sessionAuthority: "session-authority-1session-authority-1",
+      };
+    });
     hoisted.requestHandlers.set(METHOD_DAEMON_SESSION_ATTACH, async (params) => {
       expect(params).toEqual({
         sessionId: "session-1",
@@ -333,7 +344,7 @@ describe("daemon local storage keys", () => {
     const client = new DaemonSessionRequestClient(null, {
       requestTimeout: DAEMON_REQUEST_TIMEOUT_DISABLED,
     });
-    const opened = await client.openSession("Build daemon app server");
+    const opened = await client.openSession("Build daemon app server", workspace);
     expect(opened.id).toBe("session-1");
     expect(await loadDesktopSessionAuthority("desktop-main", "session-1" as never)).toBe(
       "session-authority-1session-authority-1",
