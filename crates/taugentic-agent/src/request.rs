@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use crate::ExecutionError;
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeStrategyId, AgentStreamTurnId, ApprovalResolution,
-    AuthProfileId, CapsuleRecipe, OutputContractKind, RunId, RunStatus, RuntimeExtensionState,
-    RuntimePolicyMode, RuntimeProfileId, SessionId, WorkspaceMode, WorktreeCleanupPolicy,
+    AuthProfileId, CapsuleRecipe, LocalModelEndpointConfig, OutputContractKind, RunId, RunStatus,
+    RuntimeExtensionState, RuntimePolicyMode, RuntimeProfileId, SessionId, WorkspaceMode,
+    WorktreeCleanupPolicy,
 };
 use ta_provider_acp::descriptor::AcpProviderSpec;
 use ta_provider_llm::client::StreamMessage;
@@ -74,6 +75,7 @@ pub struct ExecutionRequest {
     pub objective: String,
     pub model_id: Option<AgentRuntimeModelId>,
     pub auth_profile_id: Option<AuthProfileId>,
+    pub local_endpoint: Option<LocalModelEndpointConfig>,
     pub policy_mode: RuntimePolicyMode,
     pub resume_provider_session_id: Option<String>,
     pub runtime_extensions: Vec<RuntimeExtensionState>,

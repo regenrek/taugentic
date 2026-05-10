@@ -1,5 +1,6 @@
 use ta_protocol::wire::{
-    AgentRuntimeModelId, AuthProfileId, RuntimeProfileAuthProfilePatch, RuntimeProfileModelIdPatch,
+    AgentRuntimeModelId, AuthProfileId, LocalModelAuthMode, LocalModelEndpointConfig,
+    RuntimeProfileAuthProfilePatch, RuntimeProfileLocalEndpointPatch, RuntimeProfileModelIdPatch,
     RuntimeProfilePatch, RuntimeProfileSummary,
 };
 
@@ -41,6 +42,9 @@ pub(crate) fn apply_runtime_profile_patch(
     if let Some(auth_patch) = patch.auth_profile.as_ref() {
         updated.auth_profile_id = apply_auth_patch(auth_patch);
     }
+    if let Some(local_endpoint_patch) = patch.local_endpoint.as_ref() {
+        updated.local_endpoint = apply_local_endpoint_patch(local_endpoint_patch);
+    }
     if let Some(policy_mode) = patch.policy_mode {
         updated.policy_mode = policy_mode;
     }
@@ -59,7 +63,7 @@ pub(crate) fn normalize_for_snapshot(
 
     let mut normalized = profile.clone();
     if let Some(model_id) = normalized.model_id.as_ref()
-        && !registry.has_model(&normalized.provider_id, model_id)
+        && !registry.has_model_for_profile(&normalized, model_id)
     {
         normalized.model_id = None;
     }
@@ -89,6 +93,15 @@ fn apply_auth_patch(auth_patch: &RuntimeProfileAuthProfilePatch) -> Option<AuthP
     }
 }
 
+fn apply_local_endpoint_patch(
+    local_endpoint_patch: &RuntimeProfileLocalEndpointPatch,
+) -> Option<LocalModelEndpointConfig> {
+    match local_endpoint_patch {
+        RuntimeProfileLocalEndpointPatch::Set { value } => Some(value.clone()),
+        RuntimeProfileLocalEndpointPatch::Clear => None,
+    }
+}
+
 fn validate_explicit_patch(
     profile: &RuntimeProfileSummary,
     patch: &RuntimeProfilePatch,
@@ -96,8 +109,20 @@ fn validate_explicit_patch(
 ) -> Result<(), AgentRuntimeServiceError> {
     validate_provider_exists(registry, &profile.provider_id)?;
 
+    if let Some(RuntimeProfileLocalEndpointPatch::Set { value }) = patch.local_endpoint.as_ref() {
+        validate_local_endpoint(value)?;
+    }
+    if let Some(endpoint) = profile.local_endpoint.as_ref()
+        && profile.model_id.is_none()
+        && endpoint.default_model.is_none()
+    {
+        return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+            "local model endpoint profiles require a modelId or defaultModel".to_string(),
+        ));
+    }
+
     if let Some(RuntimeProfileModelIdPatch::Set { value }) = patch.model_id.as_ref()
-        && !registry.has_model(&profile.provider_id, value)
+        && !registry.has_model_for_profile(profile, value)
     {
         return Err(AgentRuntimeServiceError::UnknownModel {
             provider_id: profile.provider_id.as_str().to_string(),
@@ -117,6 +142,37 @@ fn validate_explicit_patch(
         }
     }
 
+    Ok(())
+}
+
+pub(crate) fn validate_local_endpoint(
+    endpoint: &LocalModelEndpointConfig,
+) -> Result<(), AgentRuntimeServiceError> {
+    let base_url = endpoint.base_url.trim();
+    if base_url.is_empty() {
+        return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+            "local model endpoint base URL must not be empty".to_string(),
+        ));
+    }
+    if !(base_url.starts_with("http://") || base_url.starts_with("https://")) {
+        return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+            "local model endpoint base URL must start with http:// or https://".to_string(),
+        ));
+    }
+    match endpoint.auth_mode {
+        LocalModelAuthMode::None => {}
+        LocalModelAuthMode::BearerEnv => {
+            if endpoint
+                .api_key_env
+                .as_deref()
+                .is_none_or(|value| value.trim().is_empty())
+            {
+                return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                    "local model endpoint bearer-env auth requires apiKeyEnv".to_string(),
+                ));
+            }
+        }
+    }
     Ok(())
 }
 
@@ -179,6 +235,7 @@ mod tests {
             provider_id,
             model_id: model_id.map(model_id_value),
             auth_profile_id: auth_profile_id_value.map(auth_profile_id),
+            local_endpoint: None,
             policy_mode,
         }
     }

@@ -2,7 +2,8 @@
 import type { AgentRuntimeModelId } from "./AgentRuntimeModelId.js";
 import type { AgentRuntimeStrategyId } from "./AgentRuntimeStrategyId.js";
 import type { AuthProfileId } from "./AuthProfileId.js";
+import type { LocalModelEndpointConfig } from "./LocalModelEndpointConfig.js";
 import type { RuntimePolicyMode } from "./RuntimePolicyMode.js";
 import type { RuntimeProfileId } from "./RuntimeProfileId.js";
 
-export type RuntimeProfileSummary = { id: RuntimeProfileId, displayName: string, providerId: AgentRuntimeStrategyId, modelId?: AgentRuntimeModelId | null, authProfileId?: AuthProfileId | null, policyMode: RuntimePolicyMode, };
+export type RuntimeProfileSummary = { id: RuntimeProfileId, displayName: string, providerId: AgentRuntimeStrategyId, modelId?: AgentRuntimeModelId | null, authProfileId?: AuthProfileId | null, localEndpoint?: LocalModelEndpointConfig | null, policyMode: RuntimePolicyMode, };

@@ -1,3 +1,4 @@
+mod agent_runtime;
 mod approval;
 mod daemon;
 mod run;
@@ -20,5 +21,6 @@ pub fn run(
         Commands::Session { command } => session::run(daemon_client, command),
         Commands::Approval { command } => approval::run(daemon_client, command),
         Commands::Run { command } => run::run(daemon_client, command),
+        Commands::AgentRuntime { command } => agent_runtime::run(daemon_client, command),
     }
 }

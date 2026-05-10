@@ -45,6 +45,7 @@ pub(crate) enum StrategyKind {
     OpenAiNative,
     AnthropicApiKey { env_var: &'static str },
     OpenAiCompatible { env_var: Option<&'static str> },
+    LocalModelEndpoint,
     AcpChildProcess { provider: AcpProviderSpec },
 }
 
@@ -173,10 +174,19 @@ impl StrategyRegistry {
                 id: strategy.descriptor.id.clone(),
                 display_name: strategy.descriptor.display_name.clone(),
                 models: strategy.descriptor.models.clone(),
-                model_capability: enumerated_model_capability(
-                    None,
-                    strategy.descriptor.models.is_empty(),
-                ),
+                model_capability: if matches!(strategy.kind, StrategyKind::LocalModelEndpoint) {
+                    AgentRuntimeModelCapability {
+                        availability: AgentRuntimeModelAvailability::CurrentOnly,
+                        can_set_model: true,
+                        current_model_id: None,
+                        detail: Some(
+                            "Local endpoint profiles accept manual model IDs and discovered models"
+                                .to_string(),
+                        ),
+                    }
+                } else {
+                    enumerated_model_capability(None, strategy.descriptor.models.is_empty())
+                },
                 health: observed.health,
             });
             auth_profiles.extend(observed.auth_profiles);
@@ -208,6 +218,26 @@ impl StrategyRegistry {
                 .iter()
                 .any(|model| model.id == *model_id)
         })
+    }
+
+    pub(crate) fn has_model_for_profile(
+        &self,
+        profile: &RuntimeProfileSummary,
+        model_id: &AgentRuntimeModelId,
+    ) -> bool {
+        if self.provider_accepts_arbitrary_models(&profile.provider_id)
+            && profile.local_endpoint.is_some()
+            && !model_id.as_str().trim().is_empty()
+        {
+            return true;
+        }
+        self.has_model(&profile.provider_id, model_id)
+    }
+
+    fn provider_accepts_arbitrary_models(&self, provider_id: &AgentRuntimeStrategyId) -> bool {
+        self.by_id
+            .get(provider_id)
+            .is_some_and(|strategy| matches!(strategy.kind, StrategyKind::LocalModelEndpoint))
     }
 
     pub(crate) fn auth_profile_ref(
@@ -251,7 +281,7 @@ impl StrategyRegistry {
             | StrategyKind::OpenAiCompatible {
                 env_var: Some(env_var),
             } => login_env_auth(strategy, auth_profile_id, env_var),
-            StrategyKind::OpenAiCompatible { env_var: None } => {
+            StrategyKind::OpenAiCompatible { env_var: None } | StrategyKind::LocalModelEndpoint => {
                 Err(AgentRuntimeServiceError::ProviderExecutionFailed(format!(
                     "{} does not support interactive login for auth profile {}",
                     strategy.descriptor.display_name,
@@ -283,12 +313,12 @@ impl StrategyRegistry {
                 .await
                 .map_err(execution_error_from_llm_client)
                 .map_err(map_execution_error),
-            StrategyKind::AnthropicApiKey { .. } | StrategyKind::OpenAiCompatible { .. } => {
-                Ok(AuthProfileLogoutResult {
-                    auth_profile_id: auth_profile_id.clone(),
-                    disconnected: false,
-                })
-            }
+            StrategyKind::AnthropicApiKey { .. }
+            | StrategyKind::OpenAiCompatible { .. }
+            | StrategyKind::LocalModelEndpoint => Ok(AuthProfileLogoutResult {
+                auth_profile_id: auth_profile_id.clone(),
+                disconnected: false,
+            }),
             StrategyKind::AcpChildProcess { .. } => {
                 Err(AgentRuntimeServiceError::ProviderExecutionFailed(format!(
                     "{} delegates logout to the vendor CLI",
@@ -343,6 +373,7 @@ fn validate_profile_descriptor(
         )));
     }
     if let Some(model_id) = profile.model_id.as_ref()
+        && profile.local_endpoint.is_none()
         && !known_model_ids
             .iter()
             .any(|known_model_id| known_model_id == model_id)
@@ -386,6 +417,16 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
             env_var: Some(env_var),
         } => env_observed_state(strategy, env_var),
         StrategyKind::OpenAiCompatible { env_var: None } => ready_with_profiles(strategy),
+        StrategyKind::LocalModelEndpoint => StrategyObservedState {
+            health: AgentRuntimeStrategyHealth {
+                status: AgentRuntimeStrategyHealthStatus::Degraded,
+                message: Some(
+                    "Local endpoints are validated per runtime profile; use test connection before running"
+                        .to_string(),
+                ),
+            },
+            auth_profiles: Vec::new(),
+        },
         StrategyKind::AcpChildProcess { provider } => match ta_provider_acp::search_path::resolve(
             provider.binary_name(),
             provider.env_override_var(),
@@ -412,7 +453,8 @@ impl StrategyKind {
             StrategyKind::CodexAppServer => AgentExecutionHarness::CodexAppServer,
             StrategyKind::OpenAiNative
             | StrategyKind::AnthropicApiKey { .. }
-            | StrategyKind::OpenAiCompatible { .. } => AgentExecutionHarness::NativeLoop,
+            | StrategyKind::OpenAiCompatible { .. }
+            | StrategyKind::LocalModelEndpoint => AgentExecutionHarness::NativeLoop,
             StrategyKind::AcpChildProcess { provider } => AgentExecutionHarness::Acp {
                 provider: provider.clone(),
             },

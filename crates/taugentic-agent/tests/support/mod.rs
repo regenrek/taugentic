@@ -462,6 +462,7 @@ pub fn request() -> ExecutionRequest {
         objective: "test objective".to_string(),
         model_id: Some(must(AgentRuntimeModelId::new("test-model"))),
         auth_profile_id: Some(must(AuthProfileId::new("auth-test"))),
+        local_endpoint: None,
         policy_mode: ta_protocol::wire::RuntimePolicyMode::RequireApproval,
         resume_provider_session_id: None,
         runtime_extensions: Vec::new(),

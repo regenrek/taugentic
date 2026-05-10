@@ -29882,8 +29882,267 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "RuntimePolicyMode",
   "type": "string"
 },
+  LocalModelApiStandard: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "openAiChatCompletions",
+    "ollamaOpenAi",
+    "lmStudioOpenAi",
+    "llamaCppOpenAi",
+    "vllmOpenAi",
+    "tgiMessages"
+  ],
+  "title": "LocalModelApiStandard",
+  "type": "string"
+},
+  LocalModelAuthMode: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "none",
+    "bearerEnv"
+  ],
+  "title": "LocalModelAuthMode",
+  "type": "string"
+},
+  LocalModelEndpointCapabilities: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "parallelToolCalls": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "responsesApi": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "streaming": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "tools": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "vision": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "title": "LocalModelEndpointCapabilities",
+  "type": "object"
+},
+  LocalModelEndpointConfig: {
+  "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "apiKeyEnv": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "apiStandard": {
+      "$ref": "#/$defs/LocalModelApiStandard"
+    },
+    "authMode": {
+      "$ref": "#/$defs/LocalModelAuthMode"
+    },
+    "baseUrl": {
+      "type": "string"
+    },
+    "capabilities": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocalModelEndpointCapabilities"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "defaultModel": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "modelDiscovery": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "baseUrl",
+    "apiStandard",
+    "authMode"
+  ],
+  "title": "LocalModelEndpointConfig",
+  "type": "object"
+},
   RuntimeProfileSummary: {
   "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimePolicyMode": {
       "enum": [
         "requireApproval",
@@ -29906,6 +30165,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "id": {
       "type": "string"
+    },
+    "localEndpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocalModelEndpointConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "modelId": {
       "type": [
@@ -29997,8 +30266,240 @@ export const PROTOCOL_JSON_SCHEMAS = {
   ],
   "title": "RuntimeProfileAuthProfilePatch"
 },
+  RuntimeProfileLocalEndpointPatch: {
+  "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "set",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/LocalModelEndpointConfig"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "clear",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "RuntimeProfileLocalEndpointPatch"
+},
   RuntimeProfilePatch: {
   "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimePolicyMode": {
       "enum": [
         "requireApproval",
@@ -30017,6 +30518,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "value": {
               "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "clear",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RuntimeProfileLocalEndpointPatch": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "set",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/LocalModelEndpointConfig"
             }
           },
           "required": [
@@ -30088,6 +30621,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": [
         "string",
         "null"
+      ]
+    },
+    "localEndpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RuntimeProfileLocalEndpointPatch"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "modelId": {
@@ -30419,6 +30962,104 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimeExtensionAvailability": {
       "enum": [
         "available",
@@ -30604,6 +31245,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
+        "localEndpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "modelId": {
           "type": [
             "string",
@@ -30682,6 +31333,104 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   DaemonAgentRuntimePatchProfileParams: {
   "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimePolicyMode": {
       "enum": [
         "requireApproval",
@@ -30700,6 +31449,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "value": {
               "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "clear",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RuntimeProfileLocalEndpointPatch": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "set",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/LocalModelEndpointConfig"
             }
           },
           "required": [
@@ -30770,6 +31551,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": [
             "string",
             "null"
+          ]
+        },
+        "localEndpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeProfileLocalEndpointPatch"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "modelId": {
@@ -30859,6 +31650,224 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "enabled"
   ],
   "title": "DaemonAgentRuntimeSetExtensionEnabledParams",
+  "type": "object"
+},
+  DaemonAgentRuntimeTestLocalEndpointParams: {
+  "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "endpoint": {
+      "$ref": "#/$defs/LocalModelEndpointConfig"
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "testToolCall": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "endpoint"
+  ],
+  "title": "DaemonAgentRuntimeTestLocalEndpointParams",
+  "type": "object"
+},
+  LocalModelEndpointTestStatus: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "ready",
+    "degraded",
+    "toolsUnsupported",
+    "unreachable",
+    "invalidConfig"
+  ],
+  "title": "LocalModelEndpointTestStatus",
+  "type": "string"
+},
+  LocalModelEndpointTestResult: {
+  "$defs": {
+    "AgentRuntimeModelRef": {
+      "properties": {
+        "contextLimit": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "outputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "LocalModelEndpointTestStatus": {
+      "enum": [
+        "ready",
+        "degraded",
+        "toolsUnsupported",
+        "unreachable",
+        "invalidConfig"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "message": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "models": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AgentRuntimeModelRef"
+      },
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/LocalModelEndpointTestStatus"
+    },
+    "toolsSupported": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "LocalModelEndpointTestResult",
   "type": "object"
 },
 };

@@ -226,6 +226,7 @@ async function run(currentMode) {
     await runDesktopBuild();
     spawnManaged("electron", electronArgs(), {
       cwd: mainPackageDir,
+      env: electronEnv(),
       onExit: (code, signal) =>
         void shutdown({ exitCode: code ?? undefined, signal: signal ?? undefined }),
     });
@@ -274,7 +275,7 @@ async function run(currentMode) {
 
   spawnManaged("electron", electronArgs(), {
     cwd: mainPackageDir,
-    env: { ...process.env, TAUGENTIC_DESKTOP_URL: rendererUrl },
+    env: electronEnv({ ...process.env, TAUGENTIC_DESKTOP_URL: rendererUrl }),
     onExit: (code, signal) =>
       void shutdown({ exitCode: code ?? undefined, signal: signal ?? undefined }),
   });
@@ -373,6 +374,12 @@ function spawnManaged(name, command, options) {
 
 function electronArgs(env = process.env) {
   return resolveElectronLaunchArguments(env);
+}
+
+function electronEnv(env = process.env) {
+  const childEnv = { ...env };
+  delete childEnv.ELECTRON_RUN_AS_NODE;
+  return childEnv;
 }
 
 async function runCommand(name, command, cwd) {

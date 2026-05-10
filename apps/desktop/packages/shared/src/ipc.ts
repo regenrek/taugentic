@@ -17,6 +17,7 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
   DaemonDiagnostics,
   SessionOverviewQuery,
   SessionOverviewResult,
@@ -30,6 +31,7 @@ import type {
   ListArtifactsQuery,
   ListNativeRunsRequest,
   ListNativeRunsResult,
+  LocalModelEndpointTestResult,
   RecipeListResponse,
   RunDetail,
   RunEventStreamItem,
@@ -240,6 +242,10 @@ export const DESKTOP_IPC_SCHEMA = {
     [params: DaemonAgentRuntimeSetExtensionEnabledParams],
     AgentRuntimeSnapshot
   >("desktop:set-agent-runtime-extension-enabled", 1),
+  testLocalModelEndpoint: invokeChannel<
+    [params: DaemonAgentRuntimeTestLocalEndpointParams],
+    LocalModelEndpointTestResult
+  >("desktop:test-local-model-endpoint", 1),
   listSessions: invokeChannel<[], SessionSummary[]>("desktop:list-sessions", 0),
   getSessionOverview: invokeChannel<[query: SessionOverviewQuery], SessionOverviewResult>(
     "desktop:get-session-overview",

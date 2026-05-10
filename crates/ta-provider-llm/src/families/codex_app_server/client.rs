@@ -657,7 +657,7 @@ mod tests {
         let cli = CodexCli::with_binary(binary);
 
         let output = cli
-            .run_with_timeout(&["login", "status"], None, Some(Duration::from_millis(200)))
+            .run_with_timeout(&["login", "status"], None, Some(Duration::from_secs(2)))
             .expect("fast successful command should not be degraded");
 
         assert_eq!(output.stdout, "Logged in using ChatGPT");

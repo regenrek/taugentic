@@ -68,6 +68,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: RunCommands,
     },
+    /// Inspect and configure agent runtimes.
+    AgentRuntime {
+        #[command(subcommand)]
+        command: AgentRuntimeCommands,
+    },
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -163,6 +168,77 @@ pub enum RunCommands {
         #[arg(value_name = "OBJECTIVE")]
         objective: String,
     },
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum AgentRuntimeCommands {
+    /// List runtime profiles and providers.
+    List,
+    /// Manage local model endpoint profiles.
+    Local {
+        #[command(subcommand)]
+        command: AgentRuntimeLocalCommands,
+    },
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum AgentRuntimeLocalCommands {
+    /// Configure the custom local OpenAI-compatible runtime profile.
+    Add {
+        #[command(flatten)]
+        options: AgentRuntimeLocalEndpointOptions,
+    },
+    /// Test a local model endpoint without changing runtime configuration.
+    Test {
+        #[command(flatten)]
+        options: AgentRuntimeLocalEndpointOptions,
+        /// Request a tool-call compatibility probe.
+        #[arg(long)]
+        tool_call: bool,
+    },
+    /// Clear local endpoint config from a runtime profile.
+    Remove {
+        #[arg(
+            long,
+            value_name = "RUNTIME_PROFILE_ID",
+            default_value = "runtime-local-custom"
+        )]
+        profile: String,
+    },
+    /// Set the selected model for a local runtime profile.
+    SetModel {
+        #[arg(
+            long,
+            value_name = "RUNTIME_PROFILE_ID",
+            default_value = "runtime-local-custom"
+        )]
+        profile: String,
+        #[arg(value_name = "MODEL_ID")]
+        model: String,
+    },
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AgentRuntimeLocalEndpointOptions {
+    #[arg(long, value_name = "URL")]
+    pub base_url: String,
+    #[arg(long, value_name = "MODEL_ID")]
+    pub model: Option<String>,
+    #[arg(long, value_name = "STANDARD", default_value = "openai-chat-completions", value_parser = [
+        "openai-chat-completions",
+        "ollama-openai",
+        "lm-studio-openai",
+        "llama-cpp-openai",
+        "vllm-openai",
+        "tgi-messages",
+    ])]
+    pub standard: String,
+    #[arg(long, value_name = "MODE", default_value = "none", value_parser = ["none", "bearer-env"])]
+    pub auth_mode: String,
+    #[arg(long, value_name = "ENV")]
+    pub api_key_env: Option<String>,
+    #[arg(long, default_value_t = true)]
+    pub model_discovery: bool,
 }
 
 #[derive(Debug, Clone, Args)]

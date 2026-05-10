@@ -4,9 +4,11 @@ use ta_protocol::wire::{
     AgentRuntimeSnapshot, AuthProfileLoginResult, DaemonAgentRuntimeAuthLoginParams,
     DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
     DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    GetAgentRuntimeQuery, RuntimeExtensionState, RuntimePolicyMode, RuntimeProfileId,
-    RuntimeProfileSummary,
+    DaemonAgentRuntimeTestLocalEndpointParams, GetAgentRuntimeQuery, LocalModelAuthMode,
+    LocalModelEndpointTestResult, LocalModelEndpointTestStatus, RuntimeExtensionState,
+    RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
 };
+use ta_provider_llm::client::openai_compatible::OpenAiCompatibleAuth;
 use thiserror::Error;
 
 use crate::orchestration::agent_runtime::{
@@ -198,6 +200,76 @@ impl AgentRuntimeService {
         self.build_snapshot(&snapshot_state)
     }
 
+    pub(crate) async fn test_local_endpoint(
+        &self,
+        params: &DaemonAgentRuntimeTestLocalEndpointParams,
+    ) -> Result<LocalModelEndpointTestResult, AgentRuntimeServiceError> {
+        crate::orchestration::agent_runtime::config::validate_local_endpoint(&params.endpoint)?;
+        let auth = local_endpoint_auth(params)?;
+        let result = ta_provider_llm::local_endpoint::probe_openai_compatible_endpoint(
+            ta_provider_llm::local_endpoint::LocalEndpointProbeConfig {
+                base_url: params.endpoint.base_url.clone(),
+                auth,
+                model: params
+                    .model_id
+                    .as_ref()
+                    .or(params.endpoint.default_model.as_ref())
+                    .map(|model| model.as_str().to_string()),
+                model_discovery: params.endpoint.model_discovery,
+                test_tool_call: params.test_tool_call,
+            },
+            tokio_util::sync::CancellationToken::new(),
+        )
+        .await;
+
+        Ok(match result {
+            Ok(result) => {
+                LocalModelEndpointTestResult {
+                    status: if params.test_tool_call && result.tools_supported == Some(false) {
+                        LocalModelEndpointTestStatus::ToolsUnsupported
+                    } else {
+                        LocalModelEndpointTestStatus::Ready
+                    },
+                    message: if params.test_tool_call && result.tools_supported == Some(false) {
+                        Some("endpoint is reachable, but the tool-call probe did not return tool calls".to_string())
+                    } else {
+                        Some("endpoint is reachable".to_string())
+                    },
+                    models: result
+                        .models
+                        .into_iter()
+                        .map(|model| {
+                            Ok(ta_protocol::wire::AgentRuntimeModelRef {
+                                id: ta_protocol::wire::AgentRuntimeModelId::new(model.id.clone())
+                                    .map_err(|error| {
+                                    AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                                        error.to_string(),
+                                    )
+                                })?,
+                                display_name: model.id,
+                                context_limit: None,
+                                input_token_cost_micros: None,
+                                output_token_cost_micros: None,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    tools_supported: result.tools_supported,
+                }
+            }
+            Err(error) => LocalModelEndpointTestResult {
+                status: match &error {
+                    ta_provider_llm::error::LlmClientError::InvalidConfig(_) => {
+                        LocalModelEndpointTestStatus::InvalidConfig
+                    }
+                    _ => LocalModelEndpointTestStatus::Unreachable,
+                },
+                message: Some(error.to_string()),
+                models: Vec::new(),
+                tools_supported: None,
+            },
+        })
+    }
+
     fn build_snapshot(
         &self,
         state: &AgentRuntimeState,
@@ -211,6 +283,22 @@ impl AgentRuntimeService {
             .collect::<Result<Vec<_>, _>>()?;
         build_snapshot(&snapshot_state, runtime.providers, runtime.auth_profiles)
     }
+}
+
+fn local_endpoint_auth(
+    params: &DaemonAgentRuntimeTestLocalEndpointParams,
+) -> Result<Option<OpenAiCompatibleAuth>, AgentRuntimeServiceError> {
+    Ok(match params.endpoint.auth_mode {
+        LocalModelAuthMode::None => None,
+        LocalModelAuthMode::BearerEnv => {
+            let env = params.endpoint.api_key_env.as_deref().ok_or_else(|| {
+                AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                    "local model endpoint bearer-env auth requires apiKeyEnv".to_string(),
+                )
+            })?;
+            Some(OpenAiCompatibleAuth::BearerEnv(env.to_string()))
+        }
+    })
 }
 
 impl SharedAgentRuntimeState {

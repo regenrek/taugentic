@@ -284,6 +284,104 @@
       ],
       "type": "object"
     },
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimeExtensionAvailability": {
       "enum": [
         "available",
@@ -468,6 +566,16 @@
         },
         "id": {
           "type": "string"
+        },
+        "localEndpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "modelId": {
           "type": [

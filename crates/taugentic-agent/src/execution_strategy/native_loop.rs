@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use ta_protocol::wire::ApprovalResolution;
+use ta_protocol::wire::{ApprovalResolution, LocalModelAuthMode};
 use ta_provider_llm::client::LlmClient;
 use ta_provider_llm::client::anthropic_messages::AnthropicMessagesClient;
-use ta_provider_llm::client::openai_compatible::OpenAiCompatibleClient;
+use ta_provider_llm::client::openai_compatible::{OpenAiCompatibleAuth, OpenAiCompatibleClient};
 use ta_provider_llm::client::openai_responses::OpenAiResponsesClient;
 use ta_provider_llm::declarative;
 use tokio_util::sync::CancellationToken;
@@ -198,17 +198,55 @@ fn client_for_request(request: &ExecutionRequest) -> Result<Arc<dyn LlmClient>, 
             request.auth_profile_id.as_ref(),
         )?));
     }
+    if let Some(endpoint) = request.local_endpoint.as_ref() {
+        let model = if model.trim().is_empty() {
+            endpoint
+                .default_model
+                .as_ref()
+                .map(|model| model.as_str().to_string())
+                .unwrap_or_default()
+        } else {
+            model
+        };
+        let auth = match endpoint.auth_mode {
+            LocalModelAuthMode::None => None,
+            LocalModelAuthMode::BearerEnv => {
+                let env = endpoint.api_key_env.as_deref().ok_or_else(|| {
+                    ExecutionError::InvalidConfig(
+                        "local model bearer-env auth requires apiKeyEnv".to_string(),
+                    )
+                })?;
+                Some(OpenAiCompatibleAuth::BearerEnv(env.to_string()))
+            }
+        };
+        let supports_parallel_tool_calls = endpoint
+            .capabilities
+            .as_ref()
+            .and_then(|capabilities| capabilities.parallel_tool_calls)
+            .unwrap_or(false);
+        return Ok(Arc::new(OpenAiCompatibleClient::new_local(
+            endpoint.base_url.as_str(),
+            auth,
+            model,
+            supports_parallel_tool_calls,
+        )?));
+    }
     if let Some(spec) = declarative_spec_for_provider(provider_id) {
         let model = if model.trim().is_empty() {
             spec.default_model.as_ref().to_string()
         } else {
             model
         };
-        return Ok(Arc::new(OpenAiCompatibleClient::new(
-            spec.base_url.as_ref(),
-            spec.auth.clone(),
-            model,
-        )?));
+        let client = OpenAiCompatibleClient::new(spec.base_url.as_ref(), spec.auth.clone(), model)?;
+        let chat_path = if spec.completions_prefix.trim().is_empty() {
+            "chat/completions".to_string()
+        } else {
+            format!(
+                "{}/chat/completions",
+                spec.completions_prefix.trim().trim_matches('/')
+            )
+        };
+        return Ok(Arc::new(client.with_chat_completions_path(chat_path)?));
     }
     Err(ExecutionError::Unsupported(format!(
         "native loop client is not configured for provider {} on runtime profile {}",
@@ -228,6 +266,10 @@ fn declarative_spec_for_provider(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ta_protocol::wire::{
+        AgentRuntimeModelId, AgentRuntimeStrategyId, LocalModelApiStandard, LocalModelAuthMode,
+        LocalModelEndpointConfig, RunId, RuntimePolicyMode, RuntimeProfileId, SessionId,
+    };
 
     #[test]
     fn declarative_openai_compatible_providers_resolve_to_native_specs() {
@@ -236,5 +278,42 @@ mod tests {
 
         assert_eq!(spec.id.as_ref(), "openrouter");
         assert_eq!(spec.base_url.as_ref(), "https://openrouter.ai/api/v1");
+    }
+
+    #[test]
+    fn local_endpoint_request_resolves_to_native_client() {
+        let request = ExecutionRequest {
+            session_id: SessionId::new("session-test").expect("session id"),
+            run_id: RunId::new("run-test").expect("run id"),
+            runtime_profile_id: RuntimeProfileId::new("runtime-local-custom")
+                .expect("runtime profile id"),
+            provider_id: AgentRuntimeStrategyId::new("local-model").expect("provider id"),
+            execution_harness: crate::AgentExecutionHarness::NativeLoop,
+            system_prompt: None,
+            objective: "test".to_string(),
+            model_id: Some(AgentRuntimeModelId::new("local-model").expect("model id")),
+            auth_profile_id: None,
+            local_endpoint: Some(LocalModelEndpointConfig {
+                base_url: "http://127.0.0.1:11434/v1".to_string(),
+                api_standard: LocalModelApiStandard::OllamaOpenAi,
+                auth_mode: LocalModelAuthMode::None,
+                api_key_env: None,
+                default_model: None,
+                model_discovery: true,
+                capabilities: None,
+            }),
+            policy_mode: RuntimePolicyMode::RequireApproval,
+            resume_provider_session_id: None,
+            runtime_extensions: Vec::new(),
+            working_directory: ".".into(),
+            artifact_root: "target/test-artifacts".into(),
+            fork_initial_state: None,
+            output_contract: None,
+            sandbox_profile: None,
+            subagent_recipes: Vec::new(),
+        };
+
+        let client = client_for_request(&request).expect("local endpoint client");
+        assert!(!client.supports_parallel_tool_calls());
     }
 }

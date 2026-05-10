@@ -1,7 +1,8 @@
 use serde::Serialize;
 use ta_protocol::wire::{
-    ApprovalRequest, DaemonActualRuntimeMode, DaemonControlAction, DaemonControlStatusResult,
-    DaemonRuntimeMode, DaemonStatusResult, DaemonStopResult, DaemonTransitionStatus, RunSummary,
+    AgentRuntimeSnapshot, ApprovalRequest, DaemonActualRuntimeMode, DaemonControlAction,
+    DaemonControlStatusResult, DaemonRuntimeMode, DaemonStatusResult, DaemonStopResult,
+    DaemonTransitionStatus, LocalModelEndpointTestResult, RunSummary, RuntimePolicyMode,
     SessionSummary,
 };
 
@@ -53,6 +54,8 @@ pub enum CommandOutput {
     ApprovalDecide(RunSummary),
     RunList(Vec<RunSummary>),
     RunStart(RunSummary),
+    AgentRuntimeSnapshot(AgentRuntimeSnapshot),
+    LocalModelEndpointTest(LocalModelEndpointTestResult),
 }
 
 pub fn print(output: &CommandOutput, format: OutputFormat) -> Result<(), CliError> {
@@ -82,6 +85,10 @@ fn render_text(output: &CommandOutput) -> String {
         CommandOutput::ApprovalDecide(run) => format_run_text(run),
         CommandOutput::RunList(runs) => format_run_list_text(runs),
         CommandOutput::RunStart(run) => format_run_text(run),
+        CommandOutput::AgentRuntimeSnapshot(snapshot) => {
+            format_agent_runtime_snapshot_text(snapshot)
+        }
+        CommandOutput::LocalModelEndpointTest(result) => format_local_endpoint_test_text(result),
     }
 }
 
@@ -101,6 +108,68 @@ fn render_json(output: &CommandOutput) -> Result<String, CliError> {
         CommandOutput::ApprovalDecide(run) => to_json(run),
         CommandOutput::RunList(runs) => to_json(runs),
         CommandOutput::RunStart(run) => to_json(run),
+        CommandOutput::AgentRuntimeSnapshot(snapshot) => to_json(snapshot),
+        CommandOutput::LocalModelEndpointTest(result) => to_json(result),
+    }
+}
+
+fn format_agent_runtime_snapshot_text(snapshot: &AgentRuntimeSnapshot) -> String {
+    let selected = snapshot.selection.runtime_profile_id.as_str();
+    let mut lines = vec![format!("selected: {selected}")];
+    for profile in &snapshot.runtime_profiles {
+        let local = if let Some(endpoint) = profile.local_endpoint.as_ref() {
+            format!(
+                " local={} model={}",
+                endpoint.base_url,
+                profile
+                    .model_id
+                    .as_ref()
+                    .map(|model| model.as_str())
+                    .unwrap_or("default")
+            )
+        } else {
+            String::new()
+        };
+        lines.push(format!(
+            "{} provider={} policy={}{}",
+            profile.id.as_str(),
+            profile.provider_id.as_str(),
+            format_policy_mode(profile.policy_mode),
+            local
+        ));
+    }
+    lines.join("\n")
+}
+
+fn format_local_endpoint_test_text(result: &LocalModelEndpointTestResult) -> String {
+    let mut lines = vec![format!("status: {:?}", result.status)];
+    if let Some(message) = result.message.as_deref() {
+        lines.push(format!("message: {message}"));
+    }
+    if let Some(tools_supported) = result.tools_supported {
+        lines.push(format!("tools: {}", yes_no(tools_supported)));
+    }
+    if result.models.is_empty() {
+        lines.push("models: none discovered".to_string());
+    } else {
+        lines.push(format!(
+            "models: {}",
+            result
+                .models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    lines.join("\n")
+}
+
+fn format_policy_mode(policy_mode: RuntimePolicyMode) -> &'static str {
+    match policy_mode {
+        RuntimePolicyMode::RequireApproval => "requireApproval",
+        RuntimePolicyMode::Allow => "allow",
+        RuntimePolicyMode::Deny => "deny",
     }
 }
 

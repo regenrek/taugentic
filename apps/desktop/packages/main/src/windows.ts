@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from "electron";
+import type { BrowserWindow as BrowserWindowType } from "electron";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -8,6 +8,7 @@ import {
   resolveWindowChromeOptions,
   type DesktopWindowState,
 } from "@taugentic/desktop-shared";
+import { BrowserWindow, ipcMain } from "./electron.js";
 
 const WINDOW_CHROME_BACKGROUND = "#14171b";
 const WINDOW_CHROME_SYMBOL = "#ededed";
@@ -18,7 +19,7 @@ function resolvePreloadPath(): string {
   return fileURLToPath(new URL("../../preload/dist/preload.cjs", import.meta.url));
 }
 
-function getDesktopWindowState(mainWindow: BrowserWindow): DesktopWindowState {
+function getDesktopWindowState(mainWindow: BrowserWindowType): DesktopWindowState {
   const platform = resolveDesktopWindowPlatform(process.platform);
   return createDesktopWindowState(platform, {
     canClose: mainWindow.isClosable(),
@@ -30,14 +31,14 @@ function getDesktopWindowState(mainWindow: BrowserWindow): DesktopWindowState {
   });
 }
 
-function notifyDesktopWindowState(mainWindow: BrowserWindow): void {
+function notifyDesktopWindowState(mainWindow: BrowserWindowType): void {
   mainWindow.webContents.send(
     DESKTOP_WINDOW_CHANNELS.stateDidChange,
     getDesktopWindowState(mainWindow),
   );
 }
 
-function resolveSenderWindow(sender: Electron.WebContents): BrowserWindow {
+function resolveSenderWindow(sender: Electron.WebContents): BrowserWindowType {
   const mainWindow = BrowserWindow.fromWebContents(sender);
   if (mainWindow == null) {
     throw new Error("desktop window is not available for the current sender");
@@ -80,7 +81,7 @@ function ensureDesktopWindowHandlersRegistered(): void {
   });
 }
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(): BrowserWindowType {
   ensureDesktopWindowHandlersRegistered();
 
   const chromeOptions = resolveWindowChromeOptions(resolveDesktopWindowPlatform(process.platform), {

@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentRuntimeModelId, AuthProfileId, CapsuleRecipe, DaemonEventCursor, DaemonEventKind,
-    DaemonRuntimeMode, OutputContractKind, RuntimeExtensionId, RuntimeProfileId,
-    RuntimeProfilePatch, WorkspaceMode, WorktreeCleanupPolicy,
+    AgentRuntimeModelId, AgentRuntimeModelRef, AuthProfileId, CapsuleRecipe, DaemonEventCursor,
+    DaemonEventKind, DaemonRuntimeMode, LocalModelEndpointConfig, OutputContractKind,
+    RuntimeExtensionId, RuntimeProfileId, RuntimeProfilePatch, WorkspaceMode,
+    WorktreeCleanupPolicy,
 };
 
 pub const DAEMON_DEFAULT_SOCKET_NAME: &str = "ta-daemon";
@@ -58,6 +59,8 @@ pub const METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH: &str = "daemon.agent.runtim
 pub const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN: &str = "daemon.agent.runtime.auth.login";
 pub const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT: &str = "daemon.agent.runtime.auth.logout";
 pub const METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET: &str = "daemon.agent.runtime.extension.set";
+pub const METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST: &str =
+    "daemon.agent.runtime.localEndpoint.test";
 pub const METHOD_WORKFLOW_LOAD: &str = "workflow.load";
 pub const METHOD_WORKFLOW_STATUS: &str = "workflow.status";
 pub const METHOD_WORKFLOW_RELOAD: &str = "workflow.reload";
@@ -222,4 +225,39 @@ pub struct DaemonAgentRuntimeAuthLogoutParams {
 pub struct DaemonAgentRuntimeSetExtensionEnabledParams {
     pub extension_id: RuntimeExtensionId,
     pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct DaemonAgentRuntimeTestLocalEndpointParams {
+    pub endpoint: LocalModelEndpointConfig,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<AgentRuntimeModelId>,
+    #[serde(default)]
+    pub test_tool_call: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum LocalModelEndpointTestStatus {
+    Ready,
+    Degraded,
+    ToolsUnsupported,
+    Unreachable,
+    InvalidConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct LocalModelEndpointTestResult {
+    pub status: LocalModelEndpointTestStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(default)]
+    pub models: Vec<AgentRuntimeModelRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools_supported: Option<bool>,
 }

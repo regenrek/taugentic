@@ -1,5 +1,7 @@
 use super::*;
-use ta_protocol::wire::RuntimePolicyMode;
+use ta_protocol::wire::{
+    LocalModelApiStandard, LocalModelAuthMode, LocalModelEndpointConfig, RuntimePolicyMode,
+};
 use ta_provider_acp::descriptor::{AcpLaunchKind, AcpProviderDescriptor};
 
 fn strategy_id(value: &str) -> AgentRuntimeStrategyId {
@@ -43,6 +45,7 @@ fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
             provider_id,
             model_id: Some(model_id),
             auth_profile_id: Some(auth_id),
+            local_endpoint: None,
             policy_mode: RuntimePolicyMode::Allow,
         }],
     )
@@ -55,6 +58,7 @@ fn fake_runtime_profile(provider: &str, runtime_profile: &str) -> RuntimeProfile
         provider_id: strategy_id(provider),
         model_id: Some(model_id("model-a")),
         auth_profile_id: Some(auth_profile_id(&format!("auth-{provider}"))),
+        local_endpoint: None,
         policy_mode: RuntimePolicyMode::Allow,
     }
 }
@@ -178,6 +182,43 @@ fn derives_execution_harness_from_registered_strategy_kind() {
 }
 
 #[test]
+fn local_endpoint_profiles_accept_arbitrary_non_empty_models() {
+    let provider_id = strategy_id("local-model");
+    let registry = StrategyRegistry::from_registered(vec![registered_strategy(
+        strategy_descriptor(
+            provider_id.clone(),
+            "Local Model",
+            Vec::new(),
+            Vec::new(),
+            vec![RuntimeProfileSummary {
+                id: profile_id("runtime-local-custom"),
+                display_name: "Local Custom".to_string(),
+                provider_id: provider_id.clone(),
+                model_id: Some(model_id("arbitrary-local-model")),
+                auth_profile_id: None,
+                local_endpoint: Some(LocalModelEndpointConfig {
+                    base_url: "http://127.0.0.1:8000/v1".to_string(),
+                    api_standard: LocalModelApiStandard::OpenAiChatCompletions,
+                    auth_mode: LocalModelAuthMode::None,
+                    api_key_env: None,
+                    default_model: Some(model_id("arbitrary-local-model")),
+                    model_discovery: true,
+                    capabilities: None,
+                }),
+                policy_mode: RuntimePolicyMode::Allow,
+            }],
+        ),
+        StrategyKind::LocalModelEndpoint,
+    )])
+    .expect("registry");
+
+    assert!(registry.has_model_for_profile(
+        &registry.default_runtime_profiles()[0],
+        &model_id("another-local-model")
+    ));
+}
+
+#[test]
 fn openai_health_copy_treats_subscription_oauth_as_runnable() {
     let strategy = registered_strategy(
         fake_strategy("openai-native", "runtime-openai-native"),
@@ -239,6 +280,7 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
                 provider_id,
                 model_id: None,
                 auth_profile_id: None,
+                local_endpoint: None,
                 policy_mode: RuntimePolicyMode::RequireApproval,
             }],
         ),

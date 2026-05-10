@@ -15,12 +15,20 @@ use crate::formats::openai;
 use crate::http::shared_client;
 use tracing::instrument;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OpenAiCompatibleAuth {
+    BearerEnv(String),
+    BearerStatic(Arc<str>),
+}
+
 #[derive(Clone)]
 pub struct OpenAiCompatibleClient {
     http: reqwest::Client,
     base_url: String,
-    auth: AuthSource,
+    chat_completions_path: String,
+    auth: Option<OpenAiCompatibleAuth>,
     model: String,
+    supports_parallel_tool_calls: bool,
 }
 
 impl OpenAiCompatibleClient {
@@ -44,8 +52,53 @@ impl OpenAiCompatibleClient {
         Ok(Self {
             http: shared_client(),
             base_url: base_url.trim_end_matches('/').to_string(),
+            chat_completions_path: "chat/completions".to_string(),
+            auth: Some(auth.into()),
+            model,
+            supports_parallel_tool_calls: true,
+        })
+    }
+
+    pub fn with_chat_completions_path(
+        mut self,
+        path: impl Into<String>,
+    ) -> Result<Self, LlmClientError> {
+        let path = path.into();
+        let path = path.trim().trim_matches('/');
+        if path.is_empty() {
+            return Err(LlmClientError::InvalidConfig(
+                "OpenAI-compatible chat completions path is empty".to_string(),
+            ));
+        }
+        self.chat_completions_path = path.to_string();
+        Ok(self)
+    }
+
+    pub fn new_local(
+        base_url: impl Into<String>,
+        auth: Option<OpenAiCompatibleAuth>,
+        model: impl Into<String>,
+        supports_parallel_tool_calls: bool,
+    ) -> Result<Self, LlmClientError> {
+        let base_url = base_url.into();
+        if base_url.trim().is_empty() {
+            return Err(LlmClientError::InvalidConfig(
+                "local OpenAI-compatible base URL is empty".to_string(),
+            ));
+        }
+        let model = model.into();
+        if model.trim().is_empty() {
+            return Err(LlmClientError::InvalidConfig(
+                "local OpenAI-compatible model is empty".to_string(),
+            ));
+        }
+        Ok(Self {
+            http: shared_client(),
+            base_url: base_url.trim_end_matches('/').to_string(),
+            chat_completions_path: "chat/completions".to_string(),
             auth,
             model,
+            supports_parallel_tool_calls,
         })
     }
 
@@ -66,24 +119,36 @@ impl OpenAiCompatibleClient {
             .map_err(|error| LlmClientError::InvalidConfig(error.to_string()))?;
         let mut builder = self
             .http
-            .post(format!("{}/chat/completions", self.base_url))
+            .post(format!("{}/{}", self.base_url, self.chat_completions_path))
             .header(reqwest::header::ACCEPT, "text/event-stream")
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body(body);
 
-        match &self.auth {
-            AuthSource::BearerEnv(var) => {
-                let token = std::env::var(var)
-                    .map_err(|_| LlmClientError::CredentialsMissing(format!("{var} is not set")))?;
-                builder = builder.bearer_auth(token);
-            }
-            AuthSource::BearerStatic(token) => {
-                builder = builder.bearer_auth(token.as_ref());
+        if let Some(auth) = &self.auth {
+            match auth {
+                OpenAiCompatibleAuth::BearerEnv(var) => {
+                    let token = std::env::var(var).map_err(|_| {
+                        LlmClientError::CredentialsMissing(format!("{var} is not set"))
+                    })?;
+                    builder = builder.bearer_auth(token);
+                }
+                OpenAiCompatibleAuth::BearerStatic(token) => {
+                    builder = builder.bearer_auth(token.as_ref());
+                }
             }
         }
 
         let response = send_request(builder, cancellation).await?;
         require_stream_response(response, cancellation).await
+    }
+}
+
+impl From<AuthSource> for OpenAiCompatibleAuth {
+    fn from(value: AuthSource) -> Self {
+        match value {
+            AuthSource::BearerEnv(env) => Self::BearerEnv(env.to_string()),
+            AuthSource::BearerStatic(token) => Self::BearerStatic(token),
+        }
     }
 }
 
@@ -109,7 +174,7 @@ impl LlmClient for OpenAiCompatibleClient {
     }
 
     fn supports_parallel_tool_calls(&self) -> bool {
-        true
+        self.supports_parallel_tool_calls
     }
 }
 

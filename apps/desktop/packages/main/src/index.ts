@@ -1,7 +1,7 @@
-import { app, BrowserWindow, dialog } from "electron";
 import { fileURLToPath } from "node:url";
 
 import { ensureDesktopDaemonRuntime, stopManagedDaemonOnQuit } from "./daemon-process.js";
+import { app, BrowserWindow, dialog } from "./electron.js";
 import { createDesktopLifecycle } from "./lifecycle.js";
 import { registerDesktopRpcHandlers } from "./rpc.js";
 import { registerDesktopStreamHandlers } from "./streams.js";

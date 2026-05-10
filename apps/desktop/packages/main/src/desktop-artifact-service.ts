@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog } from "electron";
+import type { BrowserWindow as BrowserWindowType } from "electron";
 import { copyFile, realpath } from "node:fs/promises";
 import { basename, isAbsolute, normalize, resolve as resolvePath, sep } from "node:path";
 
@@ -15,6 +15,7 @@ import type {
   SaveArtifactAsResult,
 } from "@taugentic/desktop-shared";
 import { parseSessionId } from "@taugentic/desktop-shared/validation";
+import { BrowserWindow, dialog } from "./electron.js";
 
 /**
  * Dependency surface for artifact IO. Extracted so unit tests can supply an
@@ -52,7 +53,7 @@ export type DesktopArtifactReadResult =
 
 export interface DesktopArtifactSaveDialogOptions {
   readonly defaultPath: string;
-  readonly parentWindow: BrowserWindow | null;
+  readonly parentWindow: BrowserWindowType | null;
 }
 
 export type DesktopArtifactSaveDialogResult =
@@ -205,7 +206,7 @@ export async function performReadArtifactContent(
 export async function performSaveArtifactAs(
   summary: ArtifactSummary,
   suggestedFilename: string | undefined,
-  parentWindow: BrowserWindow | null,
+  parentWindow: BrowserWindowType | null,
   io: DesktopArtifactIo,
   artifactRoot: string | null,
 ): Promise<SaveArtifactAsResult> {
@@ -264,7 +265,7 @@ export async function handleReadArtifactContent(
  */
 export async function handleSaveArtifactAs(
   query: unknown,
-  parentWindow: BrowserWindow | null,
+  parentWindow: BrowserWindowType | null,
   deps: DesktopArtifactServiceDeps,
 ): Promise<SaveArtifactAsResult> {
   const parsed = parseSaveArtifactAsQuery(query);
@@ -359,7 +360,7 @@ export function createProductionDesktopArtifactIo(): DesktopArtifactIo {
 /**
  * Resolve the focused BrowserWindow, if any, for sheet-attachment on macOS.
  */
-export function resolveFocusedBrowserWindow(): BrowserWindow | null {
+export function resolveFocusedBrowserWindow(): BrowserWindowType | null {
   return BrowserWindow.getFocusedWindow?.() ?? null;
 }
 

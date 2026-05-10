@@ -545,6 +545,7 @@ fn runtime_profile_patch_roundtrips_set_and_clear_ops() {
         }),
         auth_profile: Some(RuntimeProfileAuthProfilePatch::Clear),
         policy_mode: Some(RuntimePolicyMode::RequireApproval),
+        local_endpoint: None,
     };
 
     let json = serde_json::to_value(&patch).expect("patch should serialize");

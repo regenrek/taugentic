@@ -9,6 +9,8 @@ import type {
   AuthProfileLoginChallenge,
   AuthProfileRef,
   AuthProfileState,
+  LocalModelEndpointConfig,
+  LocalModelEndpointTestResult,
   RuntimePolicyMode,
   RuntimeExtensionId,
   RuntimeProfileId,
@@ -25,6 +27,7 @@ import {
   usePatchAgentRuntimeProfileMutation,
   useSelectAgentRuntimeProfileMutation,
   useSetAgentRuntimeExtensionEnabledMutation,
+  useTestLocalModelEndpointMutation,
 } from "@/lib/queries/agent-runtime";
 
 import {
@@ -43,6 +46,7 @@ export function AgentRuntimePanel() {
   const loginProfile = useLoginAgentRuntimeAuthProfileMutation();
   const logoutProfile = useLogoutAgentRuntimeAuthProfileMutation();
   const setExtensionEnabled = useSetAgentRuntimeExtensionEnabledMutation();
+  const testLocalEndpoint = useTestLocalModelEndpointMutation();
   const [loginChallenge, setLoginChallenge] = useState<AuthProfileLoginChallenge | null>(null);
 
   const snapshot = runtime.data;
@@ -53,6 +57,7 @@ export function AgentRuntimePanel() {
     loginProfile.error,
     logoutProfile.error,
     setExtensionEnabled.error,
+    testLocalEndpoint.error,
   );
 
   return (
@@ -66,7 +71,8 @@ export function AgentRuntimePanel() {
         patchProfile.isPending ||
         loginProfile.isPending ||
         logoutProfile.isPending ||
-        setExtensionEnabled.isPending
+        setExtensionEnabled.isPending ||
+        testLocalEndpoint.isPending
       }
       mutationErrorMessage={mutationErrorMessage}
       loginChallenge={loginChallenge}
@@ -95,6 +101,23 @@ export function AgentRuntimePanel() {
               : { modelId: { kind: "set", value: modelId } },
         })
       }
+      onLocalEndpointSave={(runtimeProfileId, endpoint, modelId) =>
+        patchProfile.mutate({
+          runtimeProfileId,
+          patch: {
+            modelId: modelId ? { kind: "set", value: modelId } : undefined,
+            localEndpoint: { kind: "set", value: endpoint },
+          },
+        })
+      }
+      onLocalEndpointTest={(endpoint, modelId, testToolCall) =>
+        testLocalEndpoint.mutate({
+          endpoint,
+          modelId,
+          testToolCall,
+        })
+      }
+      localEndpointTestResult={testLocalEndpoint.data ?? null}
       onPolicyModeChange={(runtimeProfileId, policyMode) =>
         patchProfile.mutate({
           runtimeProfileId,
@@ -129,10 +152,21 @@ interface AgentRuntimePanelViewProps {
   onAuthLogin: (authProfileId: AuthProfileRef["id"]) => void;
   onAuthLogout: (authProfileId: AuthProfileRef["id"]) => void;
   onModelChange: (runtimeProfileId: RuntimeProfileId, modelId: AgentRuntimeModelId | null) => void;
+  onLocalEndpointSave: (
+    runtimeProfileId: RuntimeProfileId,
+    endpoint: LocalModelEndpointConfig,
+    modelId: AgentRuntimeModelId | null,
+  ) => void;
+  onLocalEndpointTest: (
+    endpoint: LocalModelEndpointConfig,
+    modelId: AgentRuntimeModelId | null,
+    testToolCall: boolean,
+  ) => void;
   onPolicyModeChange: (runtimeProfileId: RuntimeProfileId, policyMode: RuntimePolicyMode) => void;
   onRefresh: () => void;
   onSelectProfile: (runtimeProfileId: RuntimeProfileId) => void;
   onSetExtensionEnabled: (extensionId: RuntimeExtensionId, enabled: boolean) => void;
+  localEndpointTestResult: LocalModelEndpointTestResult | null;
   snapshot: AgentRuntimeSnapshot | undefined;
 }
 
@@ -147,10 +181,13 @@ export function AgentRuntimePanelView({
   onAuthLogin,
   onAuthLogout,
   onModelChange,
+  onLocalEndpointSave,
+  onLocalEndpointTest,
   onPolicyModeChange,
   onRefresh,
   onSelectProfile,
   onSetExtensionEnabled,
+  localEndpointTestResult,
   snapshot,
 }: AgentRuntimePanelViewProps) {
   const selectedProfile = getSelectedProfile(snapshot);
@@ -367,6 +404,20 @@ export function AgentRuntimePanelView({
             ))}
           </div>
 
+          {selectedProfile?.localEndpoint ? (
+            <LocalEndpointSettings
+              key={selectedProfile.id}
+              endpoint={selectedProfile.localEndpoint}
+              isMutating={isMutating}
+              modelId={selectedModelId}
+              onSave={(endpoint, modelId) =>
+                onLocalEndpointSave(selectedProfile.id, endpoint, modelId)
+              }
+              onTest={onLocalEndpointTest}
+              result={localEndpointTestResult}
+            />
+          ) : null}
+
           <div className="space-y-2">
             <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--fg-mute)]">
               Auth profiles
@@ -549,6 +600,110 @@ function AuthLoginUrlRow({ label, url }: { label: string; url: string }) {
       >
         Copy
       </Button>
+    </div>
+  );
+}
+
+function LocalEndpointSettings({
+  endpoint,
+  isMutating,
+  modelId,
+  onSave,
+  onTest,
+  result,
+}: {
+  endpoint: LocalModelEndpointConfig;
+  isMutating: boolean;
+  modelId: AgentRuntimeModelId | null;
+  onSave: (endpoint: LocalModelEndpointConfig, modelId: AgentRuntimeModelId | null) => void;
+  onTest: (
+    endpoint: LocalModelEndpointConfig,
+    modelId: AgentRuntimeModelId | null,
+    testToolCall: boolean,
+  ) => void;
+  result: LocalModelEndpointTestResult | null;
+}) {
+  const [baseUrl, setBaseUrl] = useState(endpoint.baseUrl);
+  const [model, setModel] = useState(modelId ?? endpoint.defaultModel ?? "");
+  const nextEndpoint: LocalModelEndpointConfig = {
+    ...endpoint,
+    baseUrl,
+    defaultModel: model.trim() === "" ? endpoint.defaultModel : (model as AgentRuntimeModelId),
+  };
+  const nextModelId = model.trim() === "" ? null : (model as AgentRuntimeModelId);
+
+  return (
+    <div className="space-y-2 border border-[var(--border)] bg-[var(--bg-raised)] px-2 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--fg-mute)]">
+            Local endpoint
+          </div>
+          <div className="text-[11px] text-[var(--fg-dim)]">
+            {endpoint.apiStandard} · {endpoint.authMode}
+          </div>
+        </div>
+        {result ? (
+          <Badge className="font-mono text-[10px]" variant="outline">
+            test · {result.status}
+          </Badge>
+        ) : null}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-[11px] text-[var(--fg-dim)]">
+          <span className="uppercase tracking-[0.18em]">Base URL</span>
+          <Input
+            className="h-8 font-[var(--font-mono)] text-[11px]"
+            onChange={(event) => setBaseUrl(event.currentTarget.value)}
+            value={baseUrl}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-[11px] text-[var(--fg-dim)]">
+          <span className="uppercase tracking-[0.18em]">Model ID</span>
+          <Input
+            className="h-8 font-[var(--font-mono)] text-[11px]"
+            onChange={(event) => setModel(event.currentTarget.value)}
+            value={model}
+          />
+        </label>
+      </div>
+      {result?.message ? (
+        <div className="text-[11px] text-[var(--fg-dim)]">{result.message}</div>
+      ) : null}
+      {result && result.models.length > 0 ? (
+        <div className="truncate text-[11px] text-[var(--fg-dim)]">
+          models · {result.models.map((candidate) => candidate.id).join(", ")}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          disabled={isMutating || baseUrl.trim() === "" || model.trim() === ""}
+          onClick={() => onSave(nextEndpoint, nextModelId)}
+          size="sm"
+          type="button"
+          variant="secondary"
+        >
+          Save local endpoint
+        </Button>
+        <Button
+          disabled={isMutating || baseUrl.trim() === "" || model.trim() === ""}
+          onClick={() => onTest(nextEndpoint, nextModelId, false)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Test connection
+        </Button>
+        <Button
+          disabled={isMutating || baseUrl.trim() === "" || model.trim() === ""}
+          onClick={() => onTest(nextEndpoint, nextModelId, true)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Test tool call
+        </Button>
+      </div>
     </div>
   );
 }

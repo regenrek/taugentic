@@ -241,11 +241,12 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
         snapshot.selection.runtime_profile_id.as_str(),
         "runtime-codex-safe"
     );
-    assert_eq!(snapshot.providers.len(), 12);
+    assert_eq!(snapshot.providers.len(), 13);
     for provider_id in [
         "codex",
         "openai",
         "anthropic",
+        "local-model",
         "deepseek",
         "groq",
         "openrouter",
@@ -294,7 +295,7 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
             "snapshot should contain auth profile {auth_profile_id}"
         );
     }
-    assert_eq!(snapshot.runtime_profiles.len(), 39);
+    assert_eq!(snapshot.runtime_profiles.len(), 45);
     assert!(
         snapshot
             .runtime_profiles
@@ -307,6 +308,12 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
         "runtime-openai-chatgpt-allow",
         "runtime-openai-chatgpt-deny",
         "runtime-anthropic-safe",
+        "runtime-local-ollama",
+        "runtime-local-lm-studio",
+        "runtime-local-llama-cpp",
+        "runtime-local-vllm",
+        "runtime-local-tgi",
+        "runtime-local-custom",
         "runtime-openrouter-safe",
         "runtime-codex-acp-safe",
         "runtime-claude-acp-safe",

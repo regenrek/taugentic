@@ -4,7 +4,7 @@ use crate::{
     AuthProfileLoginResult, AuthProfileLogoutResult, DaemonAgentRuntimeAuthLoginParams,
     DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
     DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    GetAgentRuntimeQuery,
+    DaemonAgentRuntimeTestLocalEndpointParams, GetAgentRuntimeQuery, LocalModelEndpointTestResult,
 };
 
 use super::{AppService, AppServiceError};
@@ -66,6 +66,16 @@ where
     ) -> Result<crate::AgentRuntimeSnapshot, AppServiceError> {
         self.agent_runtime
             .set_extension_enabled(params)
+            .map_err(AppServiceError::from)
+    }
+
+    pub async fn test_local_model_endpoint(
+        &self,
+        params: &DaemonAgentRuntimeTestLocalEndpointParams,
+    ) -> Result<LocalModelEndpointTestResult, AppServiceError> {
+        self.agent_runtime
+            .test_local_endpoint(params)
+            .await
             .map_err(AppServiceError::from)
     }
 }
