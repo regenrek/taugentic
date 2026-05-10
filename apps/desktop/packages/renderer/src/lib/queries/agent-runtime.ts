@@ -9,6 +9,8 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
+  LocalModelEndpointTestResult,
 } from "@taugentic/desktop-shared";
 
 import {
@@ -18,6 +20,7 @@ import {
   patchAgentRuntimeProfile,
   selectAgentRuntimeProfile,
   setAgentRuntimeExtensionEnabled,
+  testLocalModelEndpoint,
 } from "@/lib/ipc/api";
 
 import { agentRuntimeRootKey, queryKeys } from "./keys";
@@ -88,5 +91,15 @@ export function useSetAgentRuntimeExtensionEnabledMutation() {
       qc.setQueryData(queryKeys.agentRuntime.snapshot, snapshot);
       void qc.invalidateQueries({ queryKey: agentRuntimeRootKey });
     },
+  });
+}
+
+export function useTestLocalModelEndpointMutation() {
+  return useMutation<
+    LocalModelEndpointTestResult,
+    Error,
+    DaemonAgentRuntimeTestLocalEndpointParams
+  >({
+    mutationFn: (params) => testLocalModelEndpoint(params),
   });
 }

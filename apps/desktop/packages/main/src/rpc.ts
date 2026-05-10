@@ -1,5 +1,3 @@
-import { ipcMain } from "electron";
-
 import {
   DESKTOP_INVOKE_METHODS,
   DESKTOP_IPC_SCHEMA,
@@ -22,6 +20,7 @@ import {
   listDaemonRuns,
   listDaemonSessions,
 } from "./daemon-session.js";
+import { ipcMain } from "./electron.js";
 
 let desktopRpcHandlersRegistered = false;
 

@@ -1,6 +1,7 @@
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeModelRef, AgentRuntimeStrategyId, AuthProfileId,
-    AuthProfileRef, RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
+    AuthProfileRef, LocalModelApiStandard, LocalModelAuthMode, LocalModelEndpointCapabilities,
+    LocalModelEndpointConfig, RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
 };
 use ta_provider_acp::descriptor::{AcpProviderRegistry, AcpProviderSpec};
 
@@ -13,6 +14,7 @@ pub(crate) fn built_in_agent_runtime_strategies() -> Vec<RegisteredStrategy> {
         codex_app_server_strategy(),
         openai_strategy(),
         anthropic_strategy(),
+        local_model_strategy(),
     ];
     let acp_registry = AcpProviderRegistry::new(Vec::<AcpProviderSpec>::new())
         .expect("built-in ACP descriptors are unique");
@@ -82,6 +84,22 @@ fn anthropic_strategy() -> RegisteredStrategy {
     )
 }
 
+pub(crate) const LOCAL_MODEL_PROVIDER_ID: &str = "local-model";
+
+fn local_model_strategy() -> RegisteredStrategy {
+    let provider_id = strategy_id(LOCAL_MODEL_PROVIDER_ID);
+    registered_strategy(
+        strategy_descriptor(
+            provider_id.clone(),
+            "Local Model Endpoint",
+            Vec::new(),
+            Vec::new(),
+            local_model_runtime_profiles(provider_id),
+        ),
+        StrategyKind::LocalModelEndpoint,
+    )
+}
+
 fn declarative_strategies() -> Vec<RegisteredStrategy> {
     ta_provider_llm::declarative::specs()
         .iter()
@@ -114,6 +132,109 @@ fn declarative_strategies() -> Vec<RegisteredStrategy> {
         .collect()
 }
 
+fn local_model_runtime_profiles(provider_id: AgentRuntimeStrategyId) -> Vec<RuntimeProfileSummary> {
+    [
+        local_model_profile(
+            "ollama",
+            "Ollama",
+            "http://127.0.0.1:11434/v1",
+            LocalModelApiStandard::OllamaOpenAi,
+            "gpt-oss:20b",
+            local_capabilities(true, true, true, true, true),
+        ),
+        local_model_profile(
+            "lm-studio",
+            "LM Studio",
+            "http://127.0.0.1:1234/v1",
+            LocalModelApiStandard::LmStudioOpenAi,
+            "model-identifier",
+            local_capabilities(true, true, true, true, true),
+        ),
+        local_model_profile(
+            "llama-cpp",
+            "llama.cpp",
+            "http://127.0.0.1:8080/v1",
+            LocalModelApiStandard::LlamaCppOpenAi,
+            "model",
+            local_capabilities(true, true, true, true, true),
+        ),
+        local_model_profile(
+            "vllm",
+            "vLLM",
+            "http://127.0.0.1:8000/v1",
+            LocalModelApiStandard::VllmOpenAi,
+            "model",
+            local_capabilities(true, true, true, true, true),
+        ),
+        local_model_profile(
+            "tgi",
+            "TGI",
+            "http://127.0.0.1:3000/v1",
+            LocalModelApiStandard::TgiMessages,
+            "tgi",
+            local_capabilities(true, false, false, false, false),
+        ),
+        local_model_profile(
+            "custom",
+            "Custom OpenAI-Compatible",
+            "http://127.0.0.1:8000/v1",
+            LocalModelApiStandard::OpenAiChatCompletions,
+            "model",
+            local_capabilities(true, None, None, None, None),
+        ),
+    ]
+    .into_iter()
+    .map(|mut profile| {
+        profile.provider_id = provider_id.clone();
+        profile
+    })
+    .collect()
+}
+
+fn local_capabilities(
+    streaming: bool,
+    tools: impl Into<Option<bool>>,
+    parallel_tool_calls: impl Into<Option<bool>>,
+    responses_api: impl Into<Option<bool>>,
+    vision: impl Into<Option<bool>>,
+) -> LocalModelEndpointCapabilities {
+    LocalModelEndpointCapabilities {
+        streaming: Some(streaming),
+        tools: tools.into(),
+        parallel_tool_calls: parallel_tool_calls.into(),
+        responses_api: responses_api.into(),
+        vision: vision.into(),
+    }
+}
+
+fn local_model_profile(
+    suffix: &str,
+    label: &str,
+    base_url: &str,
+    api_standard: LocalModelApiStandard,
+    default_model: &str,
+    capabilities: LocalModelEndpointCapabilities,
+) -> RuntimeProfileSummary {
+    let model_id = model_id(default_model);
+    RuntimeProfileSummary {
+        id: RuntimeProfileId::new(format!("runtime-local-{suffix}")).expect("runtime profile id"),
+        display_name: format!("Local {label}"),
+        provider_id: strategy_id(LOCAL_MODEL_PROVIDER_ID),
+        model_id: Some(model_id.clone()),
+        auth_profile_id: None,
+        local_endpoint: Some(LocalModelEndpointConfig {
+            base_url: base_url.to_string(),
+            api_standard,
+            auth_mode: LocalModelAuthMode::None,
+            api_key_env: None,
+            default_model: Some(model_id),
+            model_discovery: true,
+            capabilities: Some(capabilities),
+        }),
+        policy_mode: RuntimePolicyMode::RequireApproval,
+    }
+}
+
 fn acp_strategy(provider: AcpProviderSpec) -> RegisteredStrategy {
     let provider_id = strategy_id(provider.provider_id());
     let descriptor = strategy_descriptor(
@@ -129,6 +250,7 @@ fn acp_strategy(provider: AcpProviderSpec) -> RegisteredStrategy {
                 provider_id: provider_id.clone(),
                 model_id: None,
                 auth_profile_id: None,
+                local_endpoint: None,
                 policy_mode,
             })
             .collect(),
@@ -186,6 +308,7 @@ fn declarative_runtime_profiles(
             provider_id: provider_id.clone(),
             model_id: Some(model_id),
             auth_profile_id: Some(auth_profile_id.clone()),
+            local_endpoint: None,
             policy_mode,
         },
     )
@@ -231,6 +354,7 @@ mod tests {
             "codex",
             "openai",
             "anthropic",
+            "local-model",
             "codex-acp",
             "claude-acp",
             "cursor",

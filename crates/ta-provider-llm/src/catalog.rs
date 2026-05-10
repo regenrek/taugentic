@@ -108,6 +108,7 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
             provider_id: provider_id.clone(),
             model_id: Some(default_model_id.clone()),
             auth_profile_id: Some(auth_profile_id.clone()),
+            local_endpoint: None,
             policy_mode: RuntimePolicyMode::RequireApproval,
         },
         RuntimeProfileSummary {
@@ -116,6 +117,7 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
             provider_id: provider_id.clone(),
             model_id: Some(default_model_id.clone()),
             auth_profile_id: Some(auth_profile_id.clone()),
+            local_endpoint: None,
             policy_mode: RuntimePolicyMode::Allow,
         },
         RuntimeProfileSummary {
@@ -124,6 +126,7 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
             provider_id,
             model_id: Some(default_model_id),
             auth_profile_id: Some(auth_profile_id),
+            local_endpoint: None,
             policy_mode: RuntimePolicyMode::Deny,
         },
     ]
@@ -204,6 +207,7 @@ fn default_runtime_profiles_with_id_prefix(
             provider_id,
             model_id: Some(default_model_id.clone()),
             auth_profile_id: Some(auth_profile_id.clone()),
+            local_endpoint: None,
             policy_mode,
         },
     )

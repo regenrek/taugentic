@@ -2,6 +2,7 @@
 import type { AgentRuntimeStrategyId } from "./AgentRuntimeStrategyId.js";
 import type { RuntimePolicyMode } from "./RuntimePolicyMode.js";
 import type { RuntimeProfileAuthProfilePatch } from "./RuntimeProfileAuthProfilePatch.js";
+import type { RuntimeProfileLocalEndpointPatch } from "./RuntimeProfileLocalEndpointPatch.js";
 import type { RuntimeProfileModelIdPatch } from "./RuntimeProfileModelIdPatch.js";
 
-export type RuntimeProfilePatch = { displayName?: string | null, providerId?: AgentRuntimeStrategyId | null, modelId?: RuntimeProfileModelIdPatch | null, authProfile?: RuntimeProfileAuthProfilePatch | null, policyMode?: RuntimePolicyMode | null, };
+export type RuntimeProfilePatch = { displayName?: string | null, providerId?: AgentRuntimeStrategyId | null, modelId?: RuntimeProfileModelIdPatch | null, authProfile?: RuntimeProfileAuthProfilePatch | null, localEndpoint?: RuntimeProfileLocalEndpointPatch | null, policyMode?: RuntimePolicyMode | null, };

@@ -1,7 +1,5 @@
 import { spawn } from "node:child_process";
 
-import { app } from "electron";
-
 import type { DaemonControlStatusResult } from "@taugentic/desktop-shared";
 import { parseDaemonControlStatusResult } from "@taugentic/desktop-shared/validation";
 import {
@@ -11,6 +9,7 @@ import {
   resolveDesktopDaemonBootstrapLaunchSpec,
   resolveDesktopRepoRoot,
 } from "./desktop-bootstrap-config.js";
+import { app } from "./electron.js";
 
 const DAEMON_BOOTSTRAP_START_COMMAND = "start";
 const DAEMON_BOOTSTRAP_SNAPSHOT_COMMAND = "snapshot";

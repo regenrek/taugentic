@@ -240,9 +240,14 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<RuntimeExtensionState>(schema_dir)?;
     write_schema::<RuntimeProfileId>(schema_dir)?;
     write_schema::<RuntimePolicyMode>(schema_dir)?;
+    write_schema::<LocalModelApiStandard>(schema_dir)?;
+    write_schema::<LocalModelAuthMode>(schema_dir)?;
+    write_schema::<LocalModelEndpointCapabilities>(schema_dir)?;
+    write_schema::<LocalModelEndpointConfig>(schema_dir)?;
     write_schema::<RuntimeProfileSummary>(schema_dir)?;
     write_schema::<RuntimeProfileModelIdPatch>(schema_dir)?;
     write_schema::<RuntimeProfileAuthProfilePatch>(schema_dir)?;
+    write_schema::<RuntimeProfileLocalEndpointPatch>(schema_dir)?;
     write_schema::<RuntimeProfilePatch>(schema_dir)?;
     write_schema::<AgentRuntimeSelection>(schema_dir)?;
     write_schema::<AgentRuntimeSnapshot>(schema_dir)?;
@@ -252,6 +257,9 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<DaemonAgentRuntimeAuthLoginParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimeAuthLogoutParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimeSetExtensionEnabledParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeTestLocalEndpointParams>(schema_dir)?;
+    write_schema::<LocalModelEndpointTestStatus>(schema_dir)?;
+    write_schema::<LocalModelEndpointTestResult>(schema_dir)?;
     Ok(())
 }
 
@@ -461,9 +469,14 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<RuntimeExtensionState>()?,
         schema_pair::<RuntimeProfileId>()?,
         schema_pair::<RuntimePolicyMode>()?,
+        schema_pair::<LocalModelApiStandard>()?,
+        schema_pair::<LocalModelAuthMode>()?,
+        schema_pair::<LocalModelEndpointCapabilities>()?,
+        schema_pair::<LocalModelEndpointConfig>()?,
         schema_pair::<RuntimeProfileSummary>()?,
         schema_pair::<RuntimeProfileModelIdPatch>()?,
         schema_pair::<RuntimeProfileAuthProfilePatch>()?,
+        schema_pair::<RuntimeProfileLocalEndpointPatch>()?,
         schema_pair::<RuntimeProfilePatch>()?,
         schema_pair::<AgentRuntimeSelection>()?,
         schema_pair::<AgentRuntimeSnapshot>()?,
@@ -473,6 +486,9 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<DaemonAgentRuntimeAuthLoginParams>()?,
         schema_pair::<DaemonAgentRuntimeAuthLogoutParams>()?,
         schema_pair::<DaemonAgentRuntimeSetExtensionEnabledParams>()?,
+        schema_pair::<DaemonAgentRuntimeTestLocalEndpointParams>()?,
+        schema_pair::<LocalModelEndpointTestStatus>()?,
+        schema_pair::<LocalModelEndpointTestResult>()?,
     ])
 }
 

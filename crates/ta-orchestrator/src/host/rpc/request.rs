@@ -2,18 +2,18 @@ use crate::{
     ActivityPageQuery, AgentTurnsPageQuery, DaemonAgentRuntimeAuthLoginParams,
     DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
     DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    DaemonApprovalDecideParams, DaemonDiagnosticsParams, DaemonInitializeParams,
-    DaemonRunCancelParams, DaemonRunCompleteWithResultParams, DaemonSessionAttachParams,
-    DaemonSessionOpenParams, DaemonStatusParams, DaemonSubscribeParams, ForkRunRequest,
-    GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery, GetRunTimelineQuery, GetSessionQuery,
-    JsonRpcErrorObject, JsonRpcRequest, ListApprovalsQuery, ListArtifactsQuery,
+    DaemonAgentRuntimeTestLocalEndpointParams, DaemonApprovalDecideParams, DaemonDiagnosticsParams,
+    DaemonInitializeParams, DaemonRunCancelParams, DaemonRunCompleteWithResultParams,
+    DaemonSessionAttachParams, DaemonSessionOpenParams, DaemonStatusParams, DaemonSubscribeParams,
+    ForkRunRequest, GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery, GetRunTimelineQuery,
+    GetSessionQuery, JsonRpcErrorObject, JsonRpcRequest, ListApprovalsQuery, ListArtifactsQuery,
     ListNativeRunsRequest, ListReceiptsRequest, ListRunsQuery, ListSessionsQuery,
     METHOD_DAEMON_ACTIVITY_PAGE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT, METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
-    METHOD_DAEMON_AGENT_RUNTIME_GET, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT, METHOD_DAEMON_AGENT_TURNS_PAGE,
-    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET,
-    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_LIST,
+    METHOD_DAEMON_AGENT_RUNTIME_GET, METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST,
+    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
+    METHOD_DAEMON_AGENT_TURNS_PAGE, METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST,
+    METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_LIST,
     METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE, METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE,
     METHOD_DAEMON_CONTROL_STATUS, METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_INITIALIZE,
     METHOD_DAEMON_RECIPES_LIST, METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT,
@@ -75,6 +75,7 @@ pub(super) enum DaemonRpcRequest {
     AgentRuntimeAuthLogin(DaemonAgentRuntimeAuthLoginParams),
     AgentRuntimeAuthLogout(DaemonAgentRuntimeAuthLogoutParams),
     AgentRuntimeExtensionSet(DaemonAgentRuntimeSetExtensionEnabledParams),
+    AgentRuntimeLocalEndpointTest(DaemonAgentRuntimeTestLocalEndpointParams),
     WorkflowLoad(WorkflowLoadParams),
     WorkflowStatus,
     WorkflowReload(WorkflowReloadParams),
@@ -154,6 +155,9 @@ impl DaemonRpcRequest {
             }
             METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET => {
                 Ok(Self::AgentRuntimeExtensionSet(parse_params(request)?))
+            }
+            METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST => {
+                Ok(Self::AgentRuntimeLocalEndpointTest(parse_params(request)?))
             }
             METHOD_WORKFLOW_LOAD => Ok(Self::WorkflowLoad(parse_params(request)?)),
             METHOD_WORKFLOW_STATUS => {

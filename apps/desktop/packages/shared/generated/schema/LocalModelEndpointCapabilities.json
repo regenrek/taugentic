@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "parallelToolCalls": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "responsesApi": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "streaming": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "tools": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "vision": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "title": "LocalModelEndpointCapabilities",
+  "type": "object"
+}

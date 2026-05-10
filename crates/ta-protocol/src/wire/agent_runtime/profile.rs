@@ -15,6 +15,67 @@ pub enum RuntimePolicyMode {
     Deny,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum LocalModelApiStandard {
+    OpenAiChatCompletions,
+    OllamaOpenAi,
+    LmStudioOpenAi,
+    LlamaCppOpenAi,
+    VllmOpenAi,
+    TgiMessages,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum LocalModelAuthMode {
+    None,
+    BearerEnv,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct LocalModelEndpointCapabilities {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub streaming: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parallel_tool_calls: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub responses_api: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vision: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct LocalModelEndpointConfig {
+    pub base_url: String,
+    pub api_standard: LocalModelApiStandard,
+    pub auth_mode: LocalModelAuthMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key_env: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_model: Option<AgentRuntimeModelId>,
+    #[serde(default)]
+    pub model_discovery: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<LocalModelEndpointCapabilities>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum RuntimeProfileLocalEndpointPatch {
+    Set { value: LocalModelEndpointConfig },
+    Clear,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
@@ -26,6 +87,8 @@ pub struct RuntimeProfileSummary {
     pub model_id: Option<AgentRuntimeModelId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_profile_id: Option<AuthProfileId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_endpoint: Option<LocalModelEndpointConfig>,
     pub policy_mode: RuntimePolicyMode,
 }
 
@@ -57,6 +120,8 @@ pub struct RuntimeProfilePatch {
     pub model_id: Option<RuntimeProfileModelIdPatch>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_profile: Option<RuntimeProfileAuthProfilePatch>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_endpoint: Option<RuntimeProfileLocalEndpointPatch>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy_mode: Option<RuntimePolicyMode>,
 }

@@ -17,6 +17,7 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
   DaemonDiagnostics,
   SessionOverviewQuery,
   SessionOverviewResult,
@@ -28,6 +29,7 @@ import type {
   ListNativeRunsRequest,
   ListNativeRunsResult,
   ListRunsQuery,
+  LocalModelEndpointTestResult,
   RecipeListResponse,
   RunDetail,
   RunId,
@@ -55,6 +57,7 @@ import {
   METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
   METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
   METHOD_DAEMON_AGENT_RUNTIME_GET,
+  METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST,
   METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT,
   METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
   METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
@@ -93,6 +96,7 @@ import {
   parseDaemonAgentRuntimePatchProfileParams,
   parseDaemonAgentRuntimeSelectProfileParams,
   parseDaemonAgentRuntimeSetExtensionEnabledParams,
+  parseDaemonAgentRuntimeTestLocalEndpointParams,
   parseDaemonDiagnostics,
   parseAgentTurnsPageResult,
   parseActivityPageResult,
@@ -103,6 +107,7 @@ import {
   parseForkRunResult,
   parseListNativeRunsRequest,
   parseListNativeRunsResult,
+  parseLocalModelEndpointTestResult,
   parseRecipeListResponse,
   parseRunDetail,
   parseRunTimeline,
@@ -215,6 +220,16 @@ export class DaemonSessionRequestClient {
       METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
       parseDaemonAgentRuntimeSetExtensionEnabledParams(params),
       parseAgentRuntimeSnapshot,
+    );
+  }
+
+  async testLocalModelEndpoint(
+    params: DaemonAgentRuntimeTestLocalEndpointParams,
+  ): Promise<LocalModelEndpointTestResult> {
+    return this.withConnectedRequest(
+      METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST,
+      parseDaemonAgentRuntimeTestLocalEndpointParams(params),
+      parseLocalModelEndpointTestResult,
     );
   }
 

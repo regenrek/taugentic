@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "AgentRuntimeModelRef": {
+      "properties": {
+        "contextLimit": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "outputTokenCostMicros": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "LocalModelEndpointTestStatus": {
+      "enum": [
+        "ready",
+        "degraded",
+        "toolsUnsupported",
+        "unreachable",
+        "invalidConfig"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "message": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "models": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AgentRuntimeModelRef"
+      },
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/LocalModelEndpointTestStatus"
+    },
+    "toolsSupported": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "LocalModelEndpointTestResult",
+  "type": "object"
+}

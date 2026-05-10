@@ -23,6 +23,7 @@ export {
   parseDaemonAgentRuntimePatchProfileParams,
   parseDaemonAgentRuntimeSelectProfileParams,
   parseDaemonAgentRuntimeSetExtensionEnabledParams,
+  parseDaemonAgentRuntimeTestLocalEndpointParams,
   parseDaemonControlStatusResult,
   parseDaemonDiagnostics,
   parseDaemonInitializeResult,
@@ -31,6 +32,7 @@ export {
   parseDaemonSessionOpenResult,
   parseDaemonStatusResult,
   parseDaemonSubscribeResult,
+  parseLocalModelEndpointTestResult,
 } from "./daemon.js";
 export {
   parseNullableActivityCursor,

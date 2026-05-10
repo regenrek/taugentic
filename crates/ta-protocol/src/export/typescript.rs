@@ -359,9 +359,14 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<RuntimeExtensionState>(cfg)?;
     export_ts::<RuntimeProfileId>(cfg)?;
     export_ts::<RuntimePolicyMode>(cfg)?;
+    export_ts::<LocalModelApiStandard>(cfg)?;
+    export_ts::<LocalModelAuthMode>(cfg)?;
+    export_ts::<LocalModelEndpointCapabilities>(cfg)?;
+    export_ts::<LocalModelEndpointConfig>(cfg)?;
     export_ts::<RuntimeProfileSummary>(cfg)?;
     export_ts::<RuntimeProfileModelIdPatch>(cfg)?;
     export_ts::<RuntimeProfileAuthProfilePatch>(cfg)?;
+    export_ts::<RuntimeProfileLocalEndpointPatch>(cfg)?;
     export_ts::<RuntimeProfilePatch>(cfg)?;
     export_ts::<AgentRuntimeSelection>(cfg)?;
     export_ts::<AgentRuntimeSnapshot>(cfg)?;
@@ -371,6 +376,9 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<DaemonAgentRuntimeAuthLoginParams>(cfg)?;
     export_ts::<DaemonAgentRuntimeAuthLogoutParams>(cfg)?;
     export_ts::<DaemonAgentRuntimeSetExtensionEnabledParams>(cfg)?;
+    export_ts::<DaemonAgentRuntimeTestLocalEndpointParams>(cfg)?;
+    export_ts::<LocalModelEndpointTestStatus>(cfg)?;
+    export_ts::<LocalModelEndpointTestResult>(cfg)?;
     Ok(())
 }
 
@@ -643,9 +651,14 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "RuntimeExtensionState",
         "RuntimeProfileId",
         "RuntimePolicyMode",
+        "LocalModelApiStandard",
+        "LocalModelAuthMode",
+        "LocalModelEndpointCapabilities",
+        "LocalModelEndpointConfig",
         "RuntimeProfileSummary",
         "RuntimeProfileModelIdPatch",
         "RuntimeProfileAuthProfilePatch",
+        "RuntimeProfileLocalEndpointPatch",
         "RuntimeProfilePatch",
         "AgentRuntimeSelection",
         "AgentRuntimeSnapshot",
@@ -655,6 +668,9 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "DaemonAgentRuntimeAuthLoginParams",
         "DaemonAgentRuntimeAuthLogoutParams",
         "DaemonAgentRuntimeSetExtensionEnabledParams",
+        "DaemonAgentRuntimeTestLocalEndpointParams",
+        "LocalModelEndpointTestStatus",
+        "LocalModelEndpointTestResult",
     ] {
         lines.push(format!("export type {{ {name} }} from \"./{name}.js\";"));
     }
@@ -693,6 +709,10 @@ fn append_agent_runtime_generated_consts(lines: &mut Vec<String>) {
         (
             "METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET",
             METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
+        ),
+        (
+            "METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST",
+            METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST,
         ),
     ] {
         lines.push(format!("export const {name} = {value:?};"));

@@ -7,8 +7,10 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
   DaemonDiagnostics,
   DesktopInvokeHandlers,
+  LocalModelEndpointTestResult,
 } from "@taugentic/desktop-shared";
 import {
   parseDaemonAgentRuntimeAuthLoginParams,
@@ -16,6 +18,7 @@ import {
   parseDaemonAgentRuntimePatchProfileParams,
   parseDaemonAgentRuntimeSelectProfileParams,
   parseDaemonAgentRuntimeSetExtensionEnabledParams,
+  parseDaemonAgentRuntimeTestLocalEndpointParams,
 } from "@taugentic/desktop-shared/validation";
 
 import { DaemonSessionRequestClient } from "./daemon-session-request-client.js";
@@ -84,6 +87,14 @@ async function setAgentRuntimeExtensionEnabled(
   );
 }
 
+async function testLocalModelEndpoint(
+  params: DaemonAgentRuntimeTestLocalEndpointParams,
+): Promise<LocalModelEndpointTestResult> {
+  return snapshotDaemonRuntime.testLocalModelEndpoint(
+    parseDaemonAgentRuntimeTestLocalEndpointParams(params),
+  );
+}
+
 export const desktopAgentRuntimeInvokeHandlers: Pick<
   DesktopInvokeHandlers,
   | "getDaemonDiagnostics"
@@ -93,6 +104,7 @@ export const desktopAgentRuntimeInvokeHandlers: Pick<
   | "loginAgentRuntimeAuthProfile"
   | "logoutAgentRuntimeAuthProfile"
   | "setAgentRuntimeExtensionEnabled"
+  | "testLocalModelEndpoint"
 > = {
   getDaemonDiagnostics,
   getAgentRuntime,
@@ -101,4 +113,5 @@ export const desktopAgentRuntimeInvokeHandlers: Pick<
   loginAgentRuntimeAuthProfile,
   logoutAgentRuntimeAuthProfile,
   setAgentRuntimeExtensionEnabled,
+  testLocalModelEndpoint,
 };

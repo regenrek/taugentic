@@ -15,6 +15,7 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
   DaemonDiagnostics,
   ForkRunRequest,
   ForkRunResult,
@@ -29,6 +30,7 @@ import type {
   ListArtifactsQuery,
   ListNativeRunsRequest,
   ListNativeRunsResult,
+  LocalModelEndpointTestResult,
   RecipeListResponse,
   RunDetail,
   RunId,
@@ -107,6 +109,12 @@ export function setAgentRuntimeExtensionEnabled(
   params: DaemonAgentRuntimeSetExtensionEnabledParams,
 ): Promise<AgentRuntimeSnapshot> {
   return window.desktopApi.setAgentRuntimeExtensionEnabled(params);
+}
+
+export function testLocalModelEndpoint(
+  params: DaemonAgentRuntimeTestLocalEndpointParams,
+): Promise<LocalModelEndpointTestResult> {
+  return window.desktopApi.testLocalModelEndpoint(params);
 }
 
 export function listSessions(): Promise<SessionSummary[]> {

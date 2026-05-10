@@ -7,6 +7,7 @@ import type {
   DaemonAgentRuntimePatchProfileParams,
   DaemonAgentRuntimeSelectProfileParams,
   DaemonAgentRuntimeSetExtensionEnabledParams,
+  DaemonAgentRuntimeTestLocalEndpointParams,
   DaemonControlStatusResult,
   DaemonDiagnostics,
   DaemonInitializeResult,
@@ -15,6 +16,7 @@ import type {
   DaemonSessionOpenResult,
   DaemonStatusResult,
   DaemonSubscribeResult,
+  LocalModelEndpointTestResult,
 } from "../contracts.js";
 import { PROTOCOL_JSON_SCHEMAS } from "../../generated/runtime.js";
 import {
@@ -55,10 +57,16 @@ const validateDaemonAgentRuntimeAuthLogoutParams = ajv.compile(
 const validateDaemonAgentRuntimeSetExtensionEnabledParams = ajv.compile(
   PROTOCOL_JSON_SCHEMAS.DaemonAgentRuntimeSetExtensionEnabledParams,
 );
+const validateDaemonAgentRuntimeTestLocalEndpointParams = ajv.compile(
+  PROTOCOL_JSON_SCHEMAS.DaemonAgentRuntimeTestLocalEndpointParams,
+);
 const validateAuthProfileLoginResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.AuthProfileLoginResult);
 const validateAuthProfileLogoutResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.AuthProfileLogoutResult);
 const validateDaemonStatusResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.DaemonStatusResult);
 const validateDaemonSubscribeResult = ajv.compile(PROTOCOL_JSON_SCHEMAS.DaemonSubscribeResult);
+const validateLocalModelEndpointTestResult = ajv.compile(
+  PROTOCOL_JSON_SCHEMAS.LocalModelEndpointTestResult,
+);
 
 type DaemonDiagnosticErrorWire = Omit<DaemonDiagnostics["recentErrors"][number], "occurredAtMs"> & {
   occurredAtMs: string;
@@ -240,6 +248,24 @@ export function parseDaemonAgentRuntimeSetExtensionEnabledParams(
   return parseSchema<DaemonAgentRuntimeSetExtensionEnabledParams>(
     "DaemonAgentRuntimeSetExtensionEnabledParams",
     validateDaemonAgentRuntimeSetExtensionEnabledParams,
+    value,
+  );
+}
+
+export function parseDaemonAgentRuntimeTestLocalEndpointParams(
+  value: unknown,
+): DaemonAgentRuntimeTestLocalEndpointParams {
+  return parseSchema<DaemonAgentRuntimeTestLocalEndpointParams>(
+    "DaemonAgentRuntimeTestLocalEndpointParams",
+    validateDaemonAgentRuntimeTestLocalEndpointParams,
+    value,
+  );
+}
+
+export function parseLocalModelEndpointTestResult(value: unknown): LocalModelEndpointTestResult {
+  return parseSchema<LocalModelEndpointTestResult>(
+    "LocalModelEndpointTestResult",
+    validateLocalModelEndpointTestResult,
     value,
   );
 }

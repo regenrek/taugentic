@@ -11,18 +11,19 @@ use ta_protocol::wire::{
     AuthProfileLogoutResult, DAEMON_PROTOCOL_VERSION, DaemonAgentRuntimeAuthLoginParams,
     DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
     DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    DaemonApprovalDecideParams, DaemonApprovalDecideResult, DaemonClientCapabilities,
-    DaemonInitializeParams, DaemonInitializeResult, DaemonSessionAttachParams,
-    DaemonSessionAttachResult, DaemonSessionOpenParams, DaemonSessionOpenResult,
-    GetAgentRuntimeQuery, ListApprovalsQuery, ListArtifactsQuery, ListRunsQuery, ListSessionsQuery,
+    DaemonAgentRuntimeTestLocalEndpointParams, DaemonApprovalDecideParams,
+    DaemonApprovalDecideResult, DaemonClientCapabilities, DaemonInitializeParams,
+    DaemonInitializeResult, DaemonSessionAttachParams, DaemonSessionAttachResult,
+    DaemonSessionOpenParams, DaemonSessionOpenResult, GetAgentRuntimeQuery, ListApprovalsQuery,
+    ListArtifactsQuery, ListRunsQuery, ListSessionsQuery, LocalModelEndpointTestResult,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
-    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_LIST,
-    METHOD_DAEMON_INITIALIZE, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START,
-    METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
-    METHOD_DAEMON_SESSION_OVERVIEW, RunSummary, SessionOverviewQuery, SessionOverviewResult,
-    SessionSummary, StartRunCommand,
+    METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
+    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT, METHOD_DAEMON_APPROVAL_DECIDE,
+    METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_INITIALIZE,
+    METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START, METHOD_DAEMON_SESSION_ATTACH,
+    METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
+    RunSummary, SessionOverviewQuery, SessionOverviewResult, SessionSummary, StartRunCommand,
 };
 
 use crate::credential_store::remove_session_authority;
@@ -209,6 +210,13 @@ impl PersistentDaemonClient {
         params: DaemonAgentRuntimeSetExtensionEnabledParams,
     ) -> Result<AgentRuntimeSnapshot, JsonRpcClientError> {
         self.call(METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, &params)
+    }
+
+    pub fn test_local_model_endpoint(
+        &mut self,
+        params: DaemonAgentRuntimeTestLocalEndpointParams,
+    ) -> Result<LocalModelEndpointTestResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST, &params)
     }
 
     fn call<Params, Response>(
@@ -650,6 +658,7 @@ mod tests {
                     auth_profile_id: Some(
                         AuthProfileId::new("auth-codex-chatgpt").expect("auth profile id"),
                     ),
+                    local_endpoint: None,
                     policy_mode: RuntimePolicyMode::RequireApproval,
                 }],
                 runtime_extensions: vec![RuntimeExtensionState {

@@ -216,9 +216,14 @@ export type { RuntimeExtensionHttpHeader } from "./RuntimeExtensionHttpHeader.js
 export type { RuntimeExtensionState } from "./RuntimeExtensionState.js";
 export type { RuntimeProfileId } from "./RuntimeProfileId.js";
 export type { RuntimePolicyMode } from "./RuntimePolicyMode.js";
+export type { LocalModelApiStandard } from "./LocalModelApiStandard.js";
+export type { LocalModelAuthMode } from "./LocalModelAuthMode.js";
+export type { LocalModelEndpointCapabilities } from "./LocalModelEndpointCapabilities.js";
+export type { LocalModelEndpointConfig } from "./LocalModelEndpointConfig.js";
 export type { RuntimeProfileSummary } from "./RuntimeProfileSummary.js";
 export type { RuntimeProfileModelIdPatch } from "./RuntimeProfileModelIdPatch.js";
 export type { RuntimeProfileAuthProfilePatch } from "./RuntimeProfileAuthProfilePatch.js";
+export type { RuntimeProfileLocalEndpointPatch } from "./RuntimeProfileLocalEndpointPatch.js";
 export type { RuntimeProfilePatch } from "./RuntimeProfilePatch.js";
 export type { AgentRuntimeSelection } from "./AgentRuntimeSelection.js";
 export type { AgentRuntimeSnapshot } from "./AgentRuntimeSnapshot.js";
@@ -228,6 +233,9 @@ export type { DaemonAgentRuntimePatchProfileParams } from "./DaemonAgentRuntimeP
 export type { DaemonAgentRuntimeAuthLoginParams } from "./DaemonAgentRuntimeAuthLoginParams.js";
 export type { DaemonAgentRuntimeAuthLogoutParams } from "./DaemonAgentRuntimeAuthLogoutParams.js";
 export type { DaemonAgentRuntimeSetExtensionEnabledParams } from "./DaemonAgentRuntimeSetExtensionEnabledParams.js";
+export type { DaemonAgentRuntimeTestLocalEndpointParams } from "./DaemonAgentRuntimeTestLocalEndpointParams.js";
+export type { LocalModelEndpointTestStatus } from "./LocalModelEndpointTestStatus.js";
+export type { LocalModelEndpointTestResult } from "./LocalModelEndpointTestResult.js";
 export const PROTOCOL_VERSION = "2026-04-stage3";
 export const DAEMON_DEFAULT_SOCKET_NAME = "ta-daemon";
 export const DAEMON_SOCKET_NAME_ENV_VAR = "TAUGENTIC_DAEMON_SOCKET_NAME";
@@ -276,6 +284,7 @@ export const METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH = "daemon.agent.runtime.p
 export const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN = "daemon.agent.runtime.auth.login";
 export const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT = "daemon.agent.runtime.auth.logout";
 export const METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET = "daemon.agent.runtime.extension.set";
+export const METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST = "daemon.agent.runtime.localEndpoint.test";
 export const DEFAULT_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;
 export const MAX_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;
 export const CONTEXT_RECEIPT_LIST_MAX_LIMIT = 200;

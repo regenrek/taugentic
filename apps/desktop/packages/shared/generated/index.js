@@ -46,6 +46,7 @@ export const METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH = "daemon.agent.runtime.p
 export const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN = "daemon.agent.runtime.auth.login";
 export const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT = "daemon.agent.runtime.auth.logout";
 export const METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET = "daemon.agent.runtime.extension.set";
+export const METHOD_DAEMON_AGENT_RUNTIME_LOCAL_ENDPOINT_TEST = "daemon.agent.runtime.localEndpoint.test";
 export const DEFAULT_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;
 export const MAX_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;
 export const CONTEXT_RECEIPT_LIST_MAX_LIMIT = 200;

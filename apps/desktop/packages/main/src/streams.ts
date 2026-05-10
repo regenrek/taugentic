@@ -1,5 +1,3 @@
-import { MessageChannelMain, ipcMain } from "electron";
-
 import {
   createDesktopStreamOpenErrorResponse,
   createDesktopStreamOpenSuccessResponse,
@@ -16,6 +14,7 @@ import {
 } from "@taugentic/desktop-shared/validation";
 
 import { desktopSessionStreamHandlers } from "./daemon-session.js";
+import { MessageChannelMain, ipcMain } from "./electron.js";
 
 let desktopStreamHandlersRegistered = false;
 

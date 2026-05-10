@@ -1,5 +1,103 @@
 {
   "$defs": {
+    "LocalModelApiStandard": {
+      "enum": [
+        "openAiChatCompletions",
+        "ollamaOpenAi",
+        "lmStudioOpenAi",
+        "llamaCppOpenAi",
+        "vllmOpenAi",
+        "tgiMessages"
+      ],
+      "type": "string"
+    },
+    "LocalModelAuthMode": {
+      "enum": [
+        "none",
+        "bearerEnv"
+      ],
+      "type": "string"
+    },
+    "LocalModelEndpointCapabilities": {
+      "properties": {
+        "parallelToolCalls": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "responsesApi": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "streaming": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "tools": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vision": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LocalModelEndpointConfig": {
+      "properties": {
+        "apiKeyEnv": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiStandard": {
+          "$ref": "#/$defs/LocalModelApiStandard"
+        },
+        "authMode": {
+          "$ref": "#/$defs/LocalModelAuthMode"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "capabilities": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocalModelEndpointCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelDiscovery": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "baseUrl",
+        "apiStandard",
+        "authMode"
+      ],
+      "type": "object"
+    },
     "RuntimePolicyMode": {
       "enum": [
         "requireApproval",
@@ -18,6 +116,38 @@
             },
             "value": {
               "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "clear",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RuntimeProfileLocalEndpointPatch": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "set",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/LocalModelEndpointConfig"
             }
           },
           "required": [
@@ -88,6 +218,16 @@
           "type": [
             "string",
             "null"
+          ]
+        },
+        "localEndpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeProfileLocalEndpointPatch"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "modelId": {

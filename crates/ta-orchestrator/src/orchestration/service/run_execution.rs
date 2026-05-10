@@ -260,6 +260,7 @@ impl RunExecutionRuntime {
                 .cloned()
                 .or_else(|| runtime_profile.model_id.clone()),
             auth_profile_id: runtime_profile.auth_profile_id.clone(),
+            local_endpoint: runtime_profile.local_endpoint.clone(),
             policy_mode: runtime_profile.policy_mode,
             resume_provider_session_id: None,
             runtime_extensions: self.policy.runtime_extensions(),

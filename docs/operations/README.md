@@ -6,6 +6,7 @@ Procedural runbooks for operators. Keep canonical architecture and contract poli
 
 - `run-daemon.md`: start, attach to, stop, health-check, and recover the local daemon.
 - `openai-chatgpt-login.md`: operate native OpenAI ChatGPT subscription login/logout and credential storage.
+- `local-model-endpoints.md`: configure and verify local OpenAI-compatible model servers.
 - `workflow-file.md`: load, validate, reload, and troubleshoot `taugentic.workflow/v1`.
 - `github-work-source.md`: operate GitHub issue polling and the Work Inbox through the loaded workflow.
 - `restart-reconciliation.md`: inspect daemon startup reconciliation for active runs left by a previous process.
