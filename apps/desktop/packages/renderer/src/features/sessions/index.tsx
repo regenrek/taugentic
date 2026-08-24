@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Clock3, Plus, RefreshCcw } from "lucide-react";
 
 import type { SessionId } from "@taugentic/desktop-shared";
@@ -9,6 +11,119 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 import { useSessionsPanelModel } from "./model";
+
+export function SessionOpenControl({
+  currentSessionId,
+  onSessionChange,
+}: {
+  currentSessionId: SessionId | null;
+  onSessionChange: (sessionId: SessionId | null) => void;
+}) {
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const { cancelWorkspaceTrust, confirmWorkspaceTrust, openSession, setDraftTitle, state } =
+    useSessionsPanelModel(currentSessionId, onSessionChange);
+  const isOpening = state.pendingAction === "open";
+  const isAwaitingTrust = state.trustWorkspacePath !== null;
+
+  function handleDialogChange(open: boolean) {
+    if (!open && isAwaitingTrust) {
+      cancelWorkspaceTrust();
+    }
+    setDialogOpen(open);
+  }
+
+  async function handleOpenSession() {
+    const result = await openSession();
+    if (result === "opened") {
+      setDialogOpen(false);
+    }
+  }
+
+  async function handleConfirmTrust() {
+    if (await confirmWorkspaceTrust()) {
+      setDialogOpen(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-raised)] px-3 py-2">
+        <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-mute)]">
+          Sessions
+        </span>
+        <Button aria-haspopup="dialog" onClick={() => setDialogOpen(true)} size="sm" type="button">
+          <Plus className="size-3.5" />
+          New session
+        </Button>
+      </div>
+
+      <Dialog onOpenChange={handleDialogChange} open={isDialogOpen}>
+        <Dialog.Content>
+          {isAwaitingTrust ? (
+            <>
+              <Dialog.Title>Trust Workspace</Dialog.Title>
+              <Dialog.Description>
+                Taugentic needs your confirmation before this folder can be persisted as a trusted
+                workspace.
+              </Dialog.Description>
+              <div className="mt-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-raised)] p-3 font-mono text-xs text-[var(--fg)]">
+                {state.trustWorkspacePath}
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button onClick={cancelWorkspaceTrust} type="button" variant="secondary">
+                  Cancel
+                </Button>
+                <Button onClick={() => void handleConfirmTrust()} type="button">
+                  Trust and open
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Dialog.Title>New Session</Dialog.Title>
+              <Dialog.Description>
+                Name the session, then choose the workspace folder it may operate in.
+              </Dialog.Description>
+              <label
+                className="mt-5 block text-[11px] uppercase tracking-[0.14em] text-[var(--fg-mute)]"
+                htmlFor="new-session-title"
+              >
+                Session title
+              </label>
+              <Input
+                autoFocus
+                className="mt-2"
+                id="new-session-title"
+                onChange={(event) => setDraftTitle(event.currentTarget.value)}
+                placeholder="Build daemon app server"
+                type="text"
+                value={state.draftTitle}
+              />
+              {state.errorMessage ? (
+                <div className="mt-3 border border-[var(--status-failed)]/40 bg-[var(--bg-raised)] px-3 py-2 text-xs text-[var(--status-failed)]">
+                  error: {state.errorMessage}
+                </div>
+              ) : null}
+              <div className="mt-5 flex justify-end gap-2">
+                <Button onClick={() => setDialogOpen(false)} type="button" variant="secondary">
+                  Cancel
+                </Button>
+                <Button
+                  disabled={isOpening || state.draftTitle.trim().length === 0}
+                  onClick={() => void handleOpenSession()}
+                  type="button"
+                >
+                  <Plus className="size-4" />
+                  {isOpening ? "Opening..." : "Choose workspace"}
+                </Button>
+              </div>
+            </>
+          )}
+        </Dialog.Content>
+      </Dialog>
+    </>
+  );
+}
 
 export function SessionsPanel({
   currentSessionId,

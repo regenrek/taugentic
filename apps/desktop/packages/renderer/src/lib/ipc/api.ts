@@ -17,7 +17,7 @@ import type {
   DaemonAgentRuntimeSetExtensionEnabledParams,
   DaemonDiagnostics,
   DaemonWorkspaceOpenParams,
-  DaemonWorkspaceOpenResult,
+  DesktopWorkspaceOpenResult,
   ForkRunRequest,
   ForkRunResult,
   ReadArtifactContentQuery,
@@ -126,7 +126,7 @@ export function pickWorkspaceFolder(): Promise<string | null> {
 
 export function openWorkspace(
   params: DaemonWorkspaceOpenParams,
-): Promise<DaemonWorkspaceOpenResult> {
+): Promise<DesktopWorkspaceOpenResult> {
   return window.desktopApi.openWorkspace(params);
 }
 

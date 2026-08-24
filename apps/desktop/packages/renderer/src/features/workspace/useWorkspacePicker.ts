@@ -16,10 +16,11 @@ export function useWorkspacePicker() {
   const [trustPath, setTrustPath] = useState<string | null>(null);
   const qc = useQueryClient();
   const openWorkspaceMutation = useMutation({
-    mutationFn: (params: { path: string; trustAcknowledged: boolean }) =>
-      openWorkspace(params).then((result) => result.workspace),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.workspaces });
+    mutationFn: (params: { path: string; trustAcknowledged: boolean }) => openWorkspace(params),
+    onSuccess: (result) => {
+      if (result.status === "opened") {
+        void qc.invalidateQueries({ queryKey: queryKeys.workspaces });
+      }
     },
   });
 
@@ -29,11 +30,14 @@ export function useWorkspacePicker() {
         return { status: "cancelled" };
       }
       try {
-        const workspace = await openWorkspaceMutation.mutateAsync({
+        const result = await openWorkspaceMutation.mutateAsync({
           path: trustPath,
           trustAcknowledged: true,
         });
-        return { status: "opened", workspace };
+        if (result.status !== "opened") {
+          throw new Error("Trusted workspace acknowledgement was rejected by the daemon.");
+        }
+        return { status: "opened", workspace: result.workspace };
       } finally {
         setTrustPath(null);
       }
@@ -45,33 +49,16 @@ export function useWorkspacePicker() {
       if (path === null) {
         return { status: "cancelled" };
       }
-      try {
-        const workspace = await openWorkspaceMutation.mutateAsync({
-          path,
-          trustAcknowledged: false,
-        });
-        return { status: "opened", workspace };
-      } catch (error) {
-        if (isWorkspaceTrustRequired(error)) {
-          setTrustPath(path);
-          return { status: "trustRequired", path };
-        }
-        throw error;
+      const result = await openWorkspaceMutation.mutateAsync({
+        path,
+        trustAcknowledged: false,
+      });
+      if (result.status === "trustRequired") {
+        setTrustPath(result.path);
+        return result;
       }
+      return { status: "opened", workspace: result.workspace };
     },
     trustPath,
   };
-}
-
-function isWorkspaceTrustRequired(error: unknown): boolean {
-  const data =
-    error instanceof Error && "data" in error ? (error as { data?: unknown }).data : null;
-  if (isRecord(data) && data.code === "WorkspaceTrustRequired") {
-    return true;
-  }
-  return error instanceof Error && error.message.includes("WorkspaceTrustRequired");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

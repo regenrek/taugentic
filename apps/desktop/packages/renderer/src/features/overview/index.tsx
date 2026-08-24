@@ -10,6 +10,7 @@ import { RailHeaderCountsView } from "./RailHeaderCounts";
 import { SessionRailItem } from "./SessionRailItem";
 import { aggregateLaneCounts, sortSessionsForOperator } from "./formatters";
 import { WorkInbox } from "../work-inbox";
+import { SessionOpenControl } from "../sessions";
 
 export { LaneStatusBadge } from "./LaneStatusBadge";
 export type { LaneStatusBadgeProps } from "./LaneStatusBadge";
@@ -134,7 +135,7 @@ export function SessionRailView({
 
   return (
     <div className="flex h-full w-full flex-col">
-      <SessionRailWorkspaceNotice />
+      <SessionOpenControl currentSessionId={selectedSessionId} onSessionChange={onSelect} />
       <RailHeaderCountsView counts={counts} />
       <WorkInbox selectedSessionId={selectedSessionId} />
       <SessionRailBody
@@ -203,7 +204,7 @@ function SessionRailBody({
     return (
       <div aria-label="Sessions" className="flex flex-1 flex-col" data-state="empty" role="listbox">
         <div className="px-3 py-2 font-[var(--font-mono)] text-[12px] text-[var(--fg-dim)]">
-          No sessions yet. Open a trusted workspace from the Sessions panel.
+          No sessions yet. Create one above to choose a workspace.
         </div>
       </div>
     );
@@ -235,14 +236,6 @@ function SessionRailBody({
           stale · {errorMessage}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function SessionRailWorkspaceNotice() {
-  return (
-    <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-raised)] px-3 py-2 font-[var(--font-mono)] text-[11px] text-[var(--fg-mute)] backdrop-blur-sm">
-      Open sessions from the Sessions panel after choosing a trusted workspace.
     </div>
   );
 }

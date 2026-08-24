@@ -136,7 +136,10 @@ describe("SessionRailView", () => {
       sessions: [],
     });
 
+    expect(markup).toContain("New session");
+    expect(markup).toContain('aria-haspopup="dialog"');
     expect(markup).toContain("No sessions yet");
+    expect(markup).toContain("Create one above to choose a workspace");
     expect(markup).toContain('data-state="empty"');
   });
 

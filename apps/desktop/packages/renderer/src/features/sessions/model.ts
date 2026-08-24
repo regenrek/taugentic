@@ -36,6 +36,8 @@ export interface SessionsPanelViewState {
   trustWorkspacePath: string | null;
 }
 
+export type SessionOpenResult = "opened" | "cancelled" | "trustRequired" | "failed";
+
 export function selectSessionsPanelSnapshotContext(
   snapshot: ReturnType<SessionsPanelStore["getSnapshot"]>,
 ): SessionsPanelSnapshotContext {
@@ -98,9 +100,9 @@ export function useSessionsPanelModel(
       }
       setPendingTrust(null);
     },
-    confirmWorkspaceTrust: async () => {
+    confirmWorkspaceTrust: async (): Promise<boolean> => {
       if (pendingTrust === null) {
-        return;
+        return false;
       }
       try {
         const result = await workspacePicker.confirmTrust();
@@ -108,19 +110,21 @@ export function useSessionsPanelModel(
           throw new Error("Workspace trust confirmation did not open a workspace.");
         }
         await finishOpenSession(result.workspace, pendingTrust.title, pendingTrust.sequence);
+        return true;
       } catch (error) {
         store.trigger.openFailed({
           errorMessage: error instanceof Error ? error.message : String(error),
           sequence: pendingTrust.sequence,
         });
+        return false;
       } finally {
         setPendingTrust(null);
       }
     },
-    openSession: async () => {
+    openSession: async (): Promise<SessionOpenResult> => {
       const snapshot = store.getSnapshot().context;
       if (snapshot.pendingAction === "open") {
-        return;
+        return "failed";
       }
       const title = snapshot.draftTitle.trim();
       if (!title) {
@@ -128,7 +132,7 @@ export function useSessionsPanelModel(
           errorMessage: "Session title is required.",
           sequence: snapshot.requestSequence,
         });
-        return;
+        return "failed";
       }
 
       const sequence = snapshot.requestSequence + 1;
@@ -140,18 +144,20 @@ export function useSessionsPanelModel(
             errorMessage: "Workspace selection cancelled.",
             sequence,
           });
-          return;
+          return "cancelled";
         }
         if (result.status === "trustRequired") {
           setPendingTrust({ sequence, title });
-          return;
+          return "trustRequired";
         }
         await finishOpenSession(result.workspace, title, sequence);
+        return "opened";
       } catch (error) {
         store.trigger.openFailed({
           errorMessage: error instanceof Error ? error.message : String(error),
           sequence,
         });
+        return "failed";
       }
     },
     refreshSessions: () =>

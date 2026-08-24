@@ -19,7 +19,6 @@ import type {
   DaemonAgentRuntimeSetExtensionEnabledParams,
   DaemonDiagnostics,
   DaemonWorkspaceOpenParams,
-  DaemonWorkspaceOpenResult,
   SessionOverviewQuery,
   SessionOverviewResult,
   ArtifactSnapshotResult,
@@ -41,6 +40,7 @@ import type {
   RunSummary,
   SessionSummary,
   WorkspaceSelector,
+  Workspace,
   StartRunCommand,
   SubscribeRunEventsResult,
   WorkItemDismissParams,
@@ -118,6 +118,16 @@ export type SaveArtifactAsResult =
     };
 
 export type DaemonControlSnapshot = DaemonControlStatusResult;
+
+export type DesktopWorkspaceOpenResult =
+  | {
+      readonly status: "opened";
+      readonly workspace: Workspace;
+    }
+  | {
+      readonly status: "trustRequired";
+      readonly path: string;
+    };
 
 export type RunEventStreamStatus = {
   latestEventSeq?: bigint | null;
@@ -244,7 +254,7 @@ export const DESKTOP_IPC_SCHEMA = {
     AgentRuntimeSnapshot
   >("desktop:set-agent-runtime-extension-enabled", 1),
   pickWorkspaceFolder: invokeChannel<[], string | null>("desktop:pick-workspace-folder", 0),
-  openWorkspace: invokeChannel<[params: DaemonWorkspaceOpenParams], DaemonWorkspaceOpenResult>(
+  openWorkspace: invokeChannel<[params: DaemonWorkspaceOpenParams], DesktopWorkspaceOpenResult>(
     "desktop:open-workspace",
     1,
   ),

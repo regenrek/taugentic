@@ -20,7 +20,7 @@ import type {
   DaemonEventCursor,
   DaemonApprovalDecideResult,
   DaemonWorkspaceOpenParams,
-  DaemonWorkspaceOpenResult,
+  DesktopWorkspaceOpenResult,
   DesktopInvokeHandlers,
   ForkRunRequest,
   ForkRunResult,
@@ -257,8 +257,33 @@ async function pickWorkspaceFolder(): Promise<string | null> {
 
 async function openWorkspace(
   params: DaemonWorkspaceOpenParams,
-): Promise<DaemonWorkspaceOpenResult> {
-  return sharedDaemonSession.openWorkspace(parseDaemonWorkspaceOpenParams(params));
+): Promise<DesktopWorkspaceOpenResult> {
+  const request = parseDaemonWorkspaceOpenParams(params);
+  try {
+    const result = await sharedDaemonSession.openWorkspace(request);
+    return {
+      status: "opened",
+      workspace: result.workspace,
+    };
+  } catch (error) {
+    if (isWorkspaceTrustRequiredError(error)) {
+      return {
+        status: "trustRequired",
+        path: request.path,
+      };
+    }
+    throw error;
+  }
+}
+
+function isWorkspaceTrustRequiredError(error: unknown): boolean {
+  if (!(error instanceof DaemonJsonRpcError) || error.code !== -32_602) {
+    return false;
+  }
+  const data = error.data;
+  return typeof data === "object" && data !== null && "code" in data
+    ? data.code === "WorkspaceTrustRequired"
+    : false;
 }
 
 async function openSession(title: string, workspace: WorkspaceSelector): Promise<SessionSummary> {
