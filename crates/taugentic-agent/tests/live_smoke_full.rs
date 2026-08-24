@@ -94,7 +94,7 @@ async fn run_native_tool_smoke(runtime_profile: &str, model: &str) {
     request.runtime_profile_id = runtime_profile_id(runtime_profile);
     request.provider_id = provider_id(provider_for_native_runtime_profile(runtime_profile));
     request.model_id = Some(model_id(model));
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     request.objective = concat!(
         "Use the read_file tool to read Cargo.toml, then answer with exactly ",
         "'live smoke ok'. Do not answer until the tool call completes."

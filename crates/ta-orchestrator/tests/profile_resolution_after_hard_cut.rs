@@ -286,6 +286,7 @@ fn seed_openai_runtime_profile_store(store_path: &Path) {
                 status: RunStatus::Queued,
                 harness: ta_protocol::wire::RunHarnessKind::Native,
                 source: RunSource::default(),
+                execution_context: ta_store::default_test_execution_context(),
                 result: None,
                 contract_violation: None,
                 started_at_ms: None,

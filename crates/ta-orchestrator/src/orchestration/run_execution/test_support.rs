@@ -31,6 +31,17 @@ pub(super) fn app_and_execution_with_runtime(
     (app, execution)
 }
 
+pub(super) fn set_default_test_workspace_root(
+    app: &AppService<InMemoryStore>,
+    root: &std::path::Path,
+) {
+    app.upsert_workspace(ta_store::confirmed_test_workspace(
+        ta_store::DEFAULT_TEST_WORKSPACE_ID,
+        &root.to_string_lossy(),
+    ))
+    .expect("test workspace should update");
+}
+
 pub(super) fn ensure_running_run(
     execution: &RunExecutionService<InMemoryStore>,
     session_id: &SessionId,
@@ -57,6 +68,7 @@ pub(super) fn ensure_running_run(
                     status: RunStatus::Running,
                     harness: RunHarnessKind::Native,
                     source: RunSource::default(),
+                    execution_context: ta_store::default_test_execution_context(),
                     result: None,
                     contract_violation: None,
                     started_at_ms: None,

@@ -57,6 +57,7 @@ where
                     status: RunStatus::Running,
                     harness: RunHarnessKind::Native,
                     source: RunSource::default(),
+                    execution_context: ta_store::default_test_execution_context(),
                     result: None,
                     contract_violation: None,
                     started_at_ms: None,

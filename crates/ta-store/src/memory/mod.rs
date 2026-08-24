@@ -26,7 +26,8 @@ use crate::{
     approval_lifecycle::ApprovalLifecycleState, build_returned_receipt,
     compute_session_status_from_runs, event_persistence, list_native_runs_from_projections,
     projections::PrincipalProjection, receipt_matches_query, receipt_unique_key, row_sequence,
-    row_session_id, run_event_range_from_records, validate_run_transition_events,
+    row_session_id, run_event_range_from_records, validate_run_execution_context,
+    validate_run_transition_events,
 };
 
 mod artifacts;

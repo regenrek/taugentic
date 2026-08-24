@@ -46,7 +46,7 @@ print(json.dumps({{"jsonrpc":"2.0","id":3,"result":{{"stopReason":"end_turn"}}}}
 
     let mut request = support::request();
     support::configure_codex_acp_request(&mut request);
-    request.working_directory = dir.clone();
+    support::set_request_cwd(&mut request, &dir);
     let sink = support::TestSink::new();
     let handle = dispatch_with_config(
         request,

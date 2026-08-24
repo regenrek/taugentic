@@ -60,11 +60,7 @@ where
             .runtime
             .runtime_profile(&parent.runtime_profile_id)
             .map_err(map_agent_runtime_error)?;
-        let execution_harness = self
-            .runtime
-            .execution_harness_for_runtime_profile(&runtime_profile)
-            .map_err(map_agent_runtime_error)?;
-        if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
+        if parent.harness != RunHarnessKind::Native {
             return Err(RunExecutionError::RunNotNativeHarness(
                 parent.id.as_str().to_string(),
             ));
@@ -84,13 +80,46 @@ where
                     RunExecutionError::RunQueueFull(session_id)
                 }
             })?;
+        let fail_scheduled_run = |error| {
+            self.runtime
+                .finish_scheduled_run(&session_id, &child_run_id, RunStatus::Failed);
+            error
+        };
         let operation = Operation::new(ApprovalScope::ProcessExec, "execute native child run");
         let decision = self
             .runtime
             .evaluate_operation_for_policy_mode(&operation, runtime_profile.policy_mode);
+        let prepared_context = self
+            .prepare_execution_context(
+                &session_id,
+                &child_run_id,
+                &runtime_profile,
+                ExecutionContextRequest {
+                    workspace_mode: request.workspace_scope,
+                    cleanup_policy: request.cleanup_policy,
+                    planned_write_files: request.planned_write_files.clone(),
+                },
+            )
+            .map_err(&fail_scheduled_run)?;
+        let execution_harness = self
+            .runtime
+            .execution_harness_for_runtime_profile(&runtime_profile)
+            .map_err(map_agent_runtime_error)
+            .map_err(&fail_scheduled_run)?;
+        if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
+            return Err(fail_scheduled_run(RunExecutionError::RunNotNativeHarness(
+                parent.id.as_str().to_string(),
+            )));
+        }
+        let conflict_event = prepared_context.conflict_warning.clone().map(|warning| {
+            DaemonEvent::Conflict(crate::ConflictEvent::Warning {
+                run_id: child_run_id.clone(),
+                warning,
+            })
+        });
         let (mut run, events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");
-            let (status, events) = match disposition {
+            let (status, mut events) = match disposition {
                 crate::RunScheduleDisposition::StartNow => build_start_transition(
                     child_run_id.clone(),
                     decision,
@@ -102,6 +131,9 @@ where
                     resolved_request.recipe_id.clone(),
                 ),
             };
+            if let Some(conflict_event) = conflict_event {
+                events.push(conflict_event);
+            }
             let child = RunProjection {
                 id: child_run_id.clone(),
                 session_id: session_id.clone(),
@@ -120,21 +152,24 @@ where
                     cleanup_policy: request.cleanup_policy,
                     planned_write_files: request.planned_write_files.clone(),
                 },
+                execution_context: prepared_context.execution_context,
                 result: None,
                 contract_violation: None,
                 started_at_ms: None,
                 ended_at_ms: None,
                 last_event_seq: None,
-                workspace_info: None,
-                claimed_files: Vec::new(),
-                conflict_summary: None,
+                workspace_info: prepared_context.workspace_info,
+                claimed_files: prepared_context.claimed_files,
+                conflict_summary: prepared_context.conflict_summary,
             };
-            let committed = store.commit_run_transition(CommitRunTransition {
-                session_id: session_id.clone(),
-                run: child,
-                events,
-                occurred_at_ms: current_time_ms(),
-            })?;
+            let committed = store
+                .commit_run_transition(CommitRunTransition {
+                    session_id: session_id.clone(),
+                    run: child,
+                    events,
+                    occurred_at_ms: current_time_ms(),
+                })
+                .map_err(|error| fail_scheduled_run(error.into()))?;
             if committed.run.status == RunStatus::Running {
                 self.runtime
                     .claim_live_run(committed.run.id.clone(), session_id.clone());
@@ -432,6 +467,7 @@ mod tests {
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
                             planned_write_files: Vec::new(),
                         },
+                        execution_context: ta_store::default_test_execution_context(),
                         result: None,
                         contract_violation: None,
                         started_at_ms: None,
@@ -476,6 +512,7 @@ mod tests {
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
                             planned_write_files: Vec::new(),
                         },
+                        execution_context: ta_store::default_test_execution_context(),
                         result: None,
                         contract_violation: None,
                         started_at_ms: None,

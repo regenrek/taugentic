@@ -108,6 +108,7 @@ pub(super) fn project_run_detail(
         output_contract,
         recipe_id,
         parent_run_id,
+        execution_context: run.execution_context.clone(),
         workspace_info: run.workspace_info.clone(),
         claimed_files: run.claimed_files.clone(),
         conflict_summary: run.conflict_summary.clone(),

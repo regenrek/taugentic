@@ -743,6 +743,7 @@ mod tests {
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
                             planned_write_files: Vec::new(),
                         },
+                        execution_context: ta_store::default_test_execution_context(),
                         result: None,
                         contract_violation: None,
                         started_at_ms: None,

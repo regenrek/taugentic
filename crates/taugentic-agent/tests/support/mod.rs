@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::collections::VecDeque;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -10,7 +10,9 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use ta_protocol::wire::{
     AgentRuntimeModelId, ApprovalRequest, ApprovalResolution, ArtifactKind, AuthProfileId,
-    RuntimeProfileId, SessionId, StreamEmission,
+    EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy,
+    RuntimeProfileId, SandboxProfile, SessionId, StreamEmission, WorkspaceId, WorkspacePath,
+    WorkspaceScope,
 };
 use ta_provider_llm::client::{
     LlmClient, LlmStream, StopReason, StreamEvent, StreamMessage, StreamRequest, VecLlmStream,
@@ -462,14 +464,11 @@ pub fn request() -> ExecutionRequest {
         objective: "test objective".to_string(),
         model_id: Some(must(AgentRuntimeModelId::new("test-model"))),
         auth_profile_id: Some(must(AuthProfileId::new("auth-test"))),
-        policy_mode: ta_protocol::wire::RuntimePolicyMode::RequireApproval,
         resume_provider_session_id: None,
         runtime_extensions: Vec::new(),
-        working_directory: PathBuf::from("."),
-        artifact_root: PathBuf::from("target/test-artifacts"),
+        execution_context: Arc::new(test_execution_context(Path::new("/tmp"))),
         fork_initial_state: None,
         output_contract: None,
-        sandbox_profile: None,
         subagent_recipes: Vec::new(),
     }
 }
@@ -481,7 +480,52 @@ pub fn configure_codex_app_server_request(request: &mut ExecutionRequest) {
     request.provider_id = must(ta_protocol::wire::AgentRuntimeStrategyId::new("codex"));
     request.execution_harness = taugentic_agent::AgentExecutionHarness::CodexAppServer;
     request.auth_profile_id = None;
-    request.working_directory = PathBuf::from("/tmp");
+    set_request_cwd(request, Path::new("/tmp"));
+}
+
+pub fn set_request_cwd(request: &mut ExecutionRequest, cwd: &Path) {
+    let cwd = workspace_path(cwd);
+    let context = Arc::make_mut(&mut request.execution_context);
+    context.workspace_root = cwd.clone();
+    context.effective_cwd = cwd.clone();
+    context.workspace_scope = WorkspaceScope::Local { root: cwd.clone() };
+    context.sandbox_profile.read_roots = vec![cwd.clone()];
+    context.sandbox_profile.write_roots = vec![cwd];
+}
+
+pub fn set_request_artifact_root(request: &mut ExecutionRequest, artifact_root: &Path) {
+    let artifact_root = workspace_path(artifact_root);
+    let context = Arc::make_mut(&mut request.execution_context);
+    context.artifact_root = artifact_root.clone();
+    if !context.sandbox_profile.write_roots.contains(&artifact_root) {
+        context.sandbox_profile.write_roots.push(artifact_root);
+    }
+}
+
+fn test_execution_context(cwd: &Path) -> ExecutionContext {
+    let root = workspace_path(cwd);
+    ExecutionContext {
+        workspace_id: WorkspaceId::new("workspace-test").expect("workspace id"),
+        workspace_root: root.clone(),
+        effective_cwd: root.clone(),
+        artifact_root: WorkspacePath::from_canonical_wire_value("/tmp/taugentic-agent-artifacts")
+            .expect("artifact root"),
+        workspace_scope: WorkspaceScope::Local { root: root.clone() },
+        sandbox_profile: SandboxProfile {
+            read_roots: vec![root.clone()],
+            write_roots: vec![root.clone()],
+            denied_roots: Vec::new(),
+            process_exec: ProcessExecPolicy::AllowAll,
+        },
+        permission_policy: PermissionPolicy::Unrestricted,
+        network_policy: NetworkPolicy::Open,
+        env_policy: EnvPolicy::workspace_default(),
+    }
+}
+
+fn workspace_path(path: &Path) -> WorkspacePath {
+    WorkspacePath::from_canonical_wire_value(path.to_string_lossy().into_owned())
+        .expect("test path must be absolute and canonical")
 }
 
 pub fn sandbox_safe_temp_dir(prefix: &str) -> tempfile::TempDir {
@@ -596,7 +640,7 @@ pub fn run_loop_with_bridge(
         .expect("test session approval bridge should attach");
     let artifact_writer = Arc::new(
         ArtifactWriter::new(
-            &context.request.artifact_root,
+            context.request.execution_context.artifact_root.as_path(),
             context.request.run_id.clone(),
         )
         .expect("test artifact writer should initialize"),

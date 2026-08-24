@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::ExecutionError;
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeStrategyId, AgentStreamTurnId, ApprovalResolution,
-    AuthProfileId, CapsuleRecipe, OutputContractKind, RunId, RunStatus, RuntimeExtensionState,
-    RuntimePolicyMode, RuntimeProfileId, SessionId, WorkspaceMode, WorktreeCleanupPolicy,
+    AuthProfileId, CapsuleRecipe, ExecutionContext, OutputContractKind, RunId, RunStatus,
+    RuntimeExtensionState, RuntimeProfileId, SessionId, WorkspaceMode, WorktreeCleanupPolicy,
 };
 use ta_provider_acp::descriptor::AcpProviderSpec;
 use ta_provider_llm::client::StreamMessage;
@@ -74,15 +74,18 @@ pub struct ExecutionRequest {
     pub objective: String,
     pub model_id: Option<AgentRuntimeModelId>,
     pub auth_profile_id: Option<AuthProfileId>,
-    pub policy_mode: RuntimePolicyMode,
     pub resume_provider_session_id: Option<String>,
     pub runtime_extensions: Vec<RuntimeExtensionState>,
-    pub working_directory: PathBuf,
-    pub artifact_root: PathBuf,
+    pub execution_context: Arc<ExecutionContext>,
     pub fork_initial_state: Option<ForkInitialState>,
     pub output_contract: Option<OutputContractKind>,
-    pub sandbox_profile: Option<String>,
     pub subagent_recipes: Vec<CapsuleRecipe>,
+}
+
+impl ExecutionRequest {
+    pub fn effective_cwd(&self) -> &std::path::Path {
+        self.execution_context.effective_cwd.as_path()
+    }
 }
 
 /// Initial native-loop history for forked runs.

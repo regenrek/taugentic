@@ -56,6 +56,8 @@ impl CommitRepository for InMemoryStore {
                 actual: input.run.session_id.as_str().to_string(),
             });
         }
+        let existing_run = self.runs.get(&input.run.id).cloned();
+        validate_run_execution_context(existing_run.as_ref(), &input.run)?;
         validate_run_transition_events(&input)?;
         ApprovalLifecycleState::fold_session_records(
             self.events
@@ -92,7 +94,6 @@ impl CommitRepository for InMemoryStore {
             emitted.push(event);
         }
 
-        let existing_run = self.runs.get(&input.run.id).cloned();
         let run = input.run.with_commit_metadata(
             existing_run.as_ref(),
             input.occurred_at_ms,

@@ -1,8 +1,32 @@
 use ta_protocol::wire::{
-    AgentStreamTurnId, ContextReceipt, OutputContractKind, ReceiptKind, ReceiptProvenance,
-    ReceiptState, RunDetail, RunId, RunStatus, RunSummary, RuntimeProfileId, SessionId,
-    ValidationError,
+    AgentStreamTurnId, ContextReceipt, EnvPolicy, ExecutionContext, NetworkPolicy,
+    OutputContractKind, PermissionPolicy, ProcessExecPolicy, ReceiptKind, ReceiptProvenance,
+    ReceiptState, RunDetail, RunId, RunStatus, RunSummary, RuntimeProfileId, SandboxProfile,
+    SessionId, ValidationError, WorkspaceId, WorkspacePath, WorkspaceScope,
 };
+
+fn execution_context() -> ExecutionContext {
+    let root = WorkspacePath::canonicalize_existing(
+        std::env::current_dir().expect("test process should have a current directory"),
+    )
+    .expect("current directory should canonicalize");
+    ExecutionContext {
+        workspace_id: WorkspaceId::new("workspace-test").expect("workspace id"),
+        workspace_root: root.clone(),
+        effective_cwd: root.clone(),
+        artifact_root: root.clone(),
+        workspace_scope: WorkspaceScope::Local { root: root.clone() },
+        sandbox_profile: SandboxProfile {
+            read_roots: vec![root.clone()],
+            write_roots: vec![root],
+            denied_roots: Vec::new(),
+            process_exec: ProcessExecPolicy::AllowAll,
+        },
+        permission_policy: PermissionPolicy::WorkspaceWrite,
+        network_policy: NetworkPolicy::Open,
+        env_policy: EnvPolicy::workspace_default(),
+    }
+}
 
 #[test]
 fn run_detail_roundtrips_with_typed_result_violation_and_receipt() {
@@ -41,6 +65,7 @@ fn run_detail_roundtrips_with_typed_result_violation_and_receipt() {
         output_contract: Some(OutputContractKind::Patch),
         recipe_id: Some("patch-native-subagent".to_string()),
         parent_run_id: Some(RunId::new("run-parent").expect("parent run id")),
+        execution_context: execution_context(),
         workspace_info: None,
         claimed_files: Vec::new(),
         conflict_summary: None,
@@ -73,6 +98,7 @@ fn run_detail_skips_absent_optional_fields() {
         output_contract: None,
         recipe_id: None,
         parent_run_id: None,
+        execution_context: execution_context(),
         workspace_info: None,
         claimed_files: Vec::new(),
         conflict_summary: None,

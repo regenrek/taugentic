@@ -1,4 +1,7 @@
-use super::test_support::{app_and_execution_with_runtime, open_session, select_runtime_profile};
+use super::test_support::{
+    app_and_execution_with_runtime, open_session, select_runtime_profile,
+    set_default_test_workspace_root,
+};
 use super::*;
 use crate::{ListReceiptsRequest, ReceiptState};
 use ta_protocol::wire::{
@@ -306,6 +309,7 @@ fn worktree_parallel_delegation_records_conflicts_receipts_and_cleanup() {
     let repo = clean_git_repo_fixture();
     let runtime = runtime_for_clean_repo(repo.path());
     let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Parallel worktree delegation");
     select_runtime_profile(&app, "runtime-openai-safe");
     let parent = execution
@@ -337,19 +341,13 @@ fn worktree_parallel_delegation_records_conflicts_receipts_and_cleanup() {
 
     mark_child_running_for_capsule_completion(&execution, &session.id, &first.run_id);
     mark_child_running_for_capsule_completion(&execution, &session.id, &second.run_id);
-    let first_preflight = execution
-        .dispatch_preflight(&session.id, &first.run_id)
-        .expect("first dispatch should prepare workspace");
-    let second_preflight = execution
-        .dispatch_preflight(&session.id, &second.run_id)
-        .expect("second dispatch should prepare workspace and warn");
-    assert_ne!(
-        first_preflight.working_directory,
-        second_preflight.working_directory
-    );
-
     let first_run = run(&execution, &first.run_id);
     let second_run = run(&execution, &second.run_id);
+    assert_ne!(
+        first_run.execution_context.effective_cwd,
+        second_run.execution_context.effective_cwd
+    );
+
     let first_worktree = std::path::PathBuf::from(
         first_run
             .workspace_info
@@ -478,9 +476,6 @@ fn worktree_parallel_delegation_records_conflicts_receipts_and_cleanup() {
         OVERLAP_FILE,
     );
     mark_child_running_for_capsule_completion(&execution, &session.id, &third.run_id);
-    execution
-        .dispatch_preflight(&session.id, &third.run_id)
-        .expect("released claims should allow a later child");
     assert!(run(&execution, &third.run_id).conflict_summary.is_none());
     execution
         .complete_run_with_result(
@@ -609,7 +604,6 @@ fn runtime_for_clean_repo(repo: &std::path::Path) -> crate::RuntimeService {
     crate::RuntimeService::from_host_platform_with_paths(
         ta_host_platform::detect_current_platform(),
         crate::RuntimeExecutionPaths {
-            working_directory: repo.to_path_buf(),
             artifact_root: repo.join("target/daemon-artifacts"),
         },
     )

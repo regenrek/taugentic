@@ -13,6 +13,9 @@ mod completion_result;
 #[cfg(test)]
 mod e2e_hierarchical_replay_tests;
 mod errors;
+mod execution_context;
+#[cfg(test)]
+mod execution_context_tests;
 mod fork_snapshot;
 mod native_children;
 mod promote;
@@ -38,6 +41,7 @@ use taugentic_agent::AgentExecutionHarness;
 
 pub use errors::RunExecutionError;
 use errors::map_agent_runtime_error;
+use execution_context::ExecutionContextRequest;
 use provider_sink::ProviderRunExecutionSink;
 
 use crate::{ArtifactSummary, RecipeRegistry, RunExecutionRuntime, RunSummary};
@@ -89,7 +93,6 @@ pub struct ArtifactMutationResult {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ExecutionRequestOverrides {
     model_id: Option<AgentRuntimeModelId>,
-    sandbox_profile: Option<String>,
 }
 
 impl<S> RunExecutionService<S>
@@ -257,6 +260,7 @@ fn project_run_record(run: RunProjection) -> RunRecord {
         status: run.status,
         harness: run.harness,
         source: run.source,
+        execution_context: run.execution_context,
         started_at_ms: run.started_at_ms,
         ended_at_ms: run.ended_at_ms,
         last_event_seq: run.last_event_seq,
@@ -280,19 +284,11 @@ fn output_contract_for_run(run: &RunProjection) -> Option<OutputContractKind> {
 
 fn execution_overrides_for_run(run: &RunProjection) -> ExecutionRequestOverrides {
     match &run.source {
-        RunSource::NativeSubagent {
-            model_id,
-            sandbox_profile,
-            ..
+        RunSource::NativeSubagent { model_id, .. } | RunSource::User { model_id, .. } => {
+            ExecutionRequestOverrides {
+                model_id: model_id.clone(),
+            }
         }
-        | RunSource::User {
-            model_id,
-            sandbox_profile,
-            ..
-        } => ExecutionRequestOverrides {
-            model_id: model_id.clone(),
-            sandbox_profile: sandbox_profile.clone(),
-        },
         RunSource::Forked { .. } => ExecutionRequestOverrides::default(),
     }
 }

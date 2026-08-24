@@ -35,6 +35,14 @@ pub enum RunExecutionError {
     RunNotCancellable(String),
     #[error("run queue is full for session: {0}")]
     RunQueueFull(String),
+    #[error("session workspace does not exist: {0}")]
+    SessionWorkspaceNotFound(String),
+    #[error("workspace trust confirmation is required: {0}")]
+    WorkspaceTrustRequired(String),
+    #[error("workspace execution scope is not supported: {0}")]
+    WorkspaceScopeUnsupported(String),
+    #[error("execution context path is invalid: {0}")]
+    ExecutionContextPathInvalid(String),
     #[error("unknown recipe id: {0}")]
     UnknownRecipeId(String),
     #[error(

@@ -155,7 +155,7 @@ cargo test -p ta-orchestrator acp
 cargo test -p ta-orchestrator agent_runtime
 cargo test -p ta-orchestrator provider_run_request
 cargo test -p taugentic-agent --lib --tests
-cd apps/desktop && pnpm vitest --run tests/renderer/agent-visualization-focused.test.ts tests/renderer/agent-visualization-tab-switch.test.ts
+cd apps/desktop && pnpm test
 git diff --check
 ```
 

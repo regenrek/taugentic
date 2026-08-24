@@ -209,6 +209,7 @@ fn open_persists_and_reloads_existing_rows() {
             objective: "Persist checkpoint".to_string(),
             status: RunStatus::Running,
             source: RunSource::default(),
+            execution_context: crate::default_test_execution_context(),
             harness: RunHarnessKind::Unknown,
             result: None,
             contract_violation: None,

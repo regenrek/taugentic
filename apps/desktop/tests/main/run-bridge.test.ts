@@ -86,6 +86,28 @@ describe("native run bridge", () => {
       outputContract: "review",
       recipeId: "review-native-subagent",
       parentRunId: "run-parent",
+      executionContext: {
+        workspaceId: "workspace-default",
+        workspaceRoot: "/tmp/taugentic-workspace",
+        effectiveCwd: "/tmp/taugentic-workspace",
+        artifactRoot: "/tmp/taugentic-artifacts",
+        workspaceScope: {
+          kind: "local",
+          root: "/tmp/taugentic-workspace",
+        },
+        sandboxProfile: {
+          readRoots: ["/tmp/taugentic-workspace"],
+          writeRoots: ["/tmp/taugentic-workspace", "/tmp/taugentic-artifacts"],
+          deniedRoots: [],
+          processExec: { kind: "allowAll" },
+        },
+        permissionPolicy: "workspaceWrite",
+        networkPolicy: { kind: "open" },
+        envPolicy: {
+          kind: "allowlist",
+          vars: ["PATH", "HOME", "TMPDIR"],
+        },
+      },
     };
     const session = new DaemonSessionRequestClient("session-1") as unknown as TestableRequestClient;
 

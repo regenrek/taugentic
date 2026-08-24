@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use ta_protocol::wire::{ApprovalResolution, ApprovalScope};
+use ta_protocol::wire::{ApprovalResolution, ApprovalScope, PermissionPolicy, RuntimePolicyMode};
 use ta_provider_acp::adapter::{
     AcpClientTrace, AcpPermissionDecision, AcpPermissionDecisionFuture, AcpPermissionRequest,
     AcpProcessAdapter, AcpProcessConfig, AcpSessionModelUpdate,
@@ -22,8 +22,8 @@ pub(crate) async fn dispatch(
     let config = launch::build_config(
         &provider,
         AcpLaunchInput {
-            policy_mode: request.policy_mode,
-            working_directory: &request.working_directory,
+            policy_mode: runtime_policy_mode(&request.execution_context.permission_policy),
+            working_directory: request.execution_context.effective_cwd.as_path(),
             runtime_extensions: &request.runtime_extensions,
             model_id: request.model_id.as_ref(),
         },
@@ -233,5 +233,17 @@ fn acp_approval_scope(request: &AcpPermissionRequest) -> ApprovalScope {
         ApprovalScope::NetworkAccess
     } else {
         ApprovalScope::ProcessExec
+    }
+}
+
+fn runtime_policy_mode(permission_policy: &PermissionPolicy) -> RuntimePolicyMode {
+    match permission_policy {
+        PermissionPolicy::ReadOnly => RuntimePolicyMode::Deny,
+        PermissionPolicy::WorkspaceWrite | PermissionPolicy::Unrestricted => {
+            RuntimePolicyMode::Allow
+        }
+        PermissionPolicy::WorkspaceWriteWithApproval | PermissionPolicy::RepoWriteWithApproval => {
+            RuntimePolicyMode::RequireApproval
+        }
     }
 }

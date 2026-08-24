@@ -6,9 +6,7 @@ impl SqliteStore {
             self.initialize_current_schema()?;
             return Ok(());
         }
-        self.ensure_current_schema()?;
-        self.validate_current_schema()?;
-        Ok(())
+        self.validate_current_schema()
     }
 
     #[cfg(test)]
@@ -156,6 +154,8 @@ impl SqliteStore {
                     ON context_receipts (session_id, state);
                 CREATE INDEX IF NOT EXISTS idx_context_receipts_session_kind
                     ON context_receipts (session_id, kind);
+                CREATE INDEX IF NOT EXISTS idx_context_receipts_session_parent_run
+                    ON context_receipts (session_id, parent_run_id);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_context_receipts_artifact_unique
                     ON context_receipts (
                         session_id,
@@ -189,68 +189,6 @@ impl SqliteStore {
                     data_json TEXT NOT NULL
                 );
                 COMMIT;
-                ",
-            )
-            .map_err(|source| StoreError::PrepareStore {
-                path: self.path.clone(),
-                source,
-            })?;
-        self.ensure_context_receipt_parent_run_id_column()?;
-        self.ensure_context_receipt_indexes()
-    }
-
-    fn ensure_context_receipt_parent_run_id_column(&self) -> Result<(), StoreError> {
-        let has_parent_run_id = self
-            .table_column_names("context_receipts")?
-            .iter()
-            .any(|column| column == "parent_run_id");
-
-        if !has_parent_run_id {
-            self.conn
-                .execute(
-                    "ALTER TABLE context_receipts ADD COLUMN parent_run_id TEXT",
-                    [],
-                )
-                .map_err(|source| StoreError::PrepareStore {
-                    path: self.path.clone(),
-                    source,
-                })?;
-        }
-
-        self.conn
-            .execute(
-                "UPDATE context_receipts
-                 SET parent_run_id = json_extract(data_json, '$.parentRunId')
-                 WHERE parent_run_id IS NULL
-                   AND json_valid(data_json)
-                   AND json_extract(data_json, '$.parentRunId') IS NOT NULL",
-                [],
-            )
-            .map_err(|source| StoreError::PrepareStore {
-                path: self.path.clone(),
-                source,
-            })?;
-        Ok(())
-    }
-
-    fn ensure_context_receipt_indexes(&self) -> Result<(), StoreError> {
-        self.conn
-            .execute_batch(
-                "
-                DROP INDEX IF EXISTS idx_context_receipts_event_turn_unique;
-                CREATE UNIQUE INDEX idx_context_receipts_event_turn_unique
-                    ON context_receipts (
-                        session_id,
-                        run_id,
-                        kind,
-                        json_extract(provenance_json, '$.eventSeq'),
-                        json_extract(provenance_json, '$.agentTurnId')
-                    )
-                    WHERE json_extract(provenance_json, '$.artifactId') IS NULL
-                      AND json_extract(provenance_json, '$.eventSeq') IS NOT NULL
-                      AND json_extract(provenance_json, '$.agentTurnId') IS NOT NULL;
-                CREATE INDEX IF NOT EXISTS idx_context_receipts_session_parent_run
-                    ON context_receipts (session_id, parent_run_id);
                 ",
             )
             .map_err(|source| StoreError::PrepareStore {

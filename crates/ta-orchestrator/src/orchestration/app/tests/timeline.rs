@@ -115,6 +115,7 @@ fn child_run_projection(
             cleanup_policy: Default::default(),
             planned_write_files: vec!["apps/desktop/package.json".to_string()],
         },
+        execution_context: ta_store::default_test_execution_context(),
         result: None,
         contract_violation: None,
         started_at_ms: Some(started_at_ms),

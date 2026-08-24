@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
-    CapsuleResult, ConflictSummary, RunHarnessKind, RunId, RunSource, RunStatus, RuntimeProfileId,
-    SessionId, SessionStatus, TrustState, ValidationError, Workspace, WorkspaceId, WorkspacePath,
-    WorktreeInfo,
+    CapsuleResult, ConflictSummary, ExecutionContext, RunHarnessKind, RunId, RunSource, RunStatus,
+    RuntimeProfileId, SessionId, SessionStatus, TrustState, ValidationError, Workspace,
+    WorkspaceId, WorkspacePath, WorktreeInfo,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +96,7 @@ pub struct RunProjection {
     pub harness: RunHarnessKind,
     #[serde(default)]
     pub source: RunSource,
+    pub execution_context: ExecutionContext,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<CapsuleResult>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -177,15 +178,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn run_projection_defaults_missing_source_to_user() {
-        let projection: RunProjection = serde_json::from_value(json!({
+    fn run_projection_defaults_missing_source_to_user_when_context_is_present() {
+        let mut value = json!({
             "id": "run-1",
             "session_id": "session-1",
             "runtime_profile_id": "runtime-openai-safe",
             "objective": "Ship native child runs",
             "status": "queued"
-        }))
-        .expect("legacy run projection should decode");
+        });
+        value["execution_context"] =
+            serde_json::to_value(crate::default_test_execution_context()).expect("test context");
+        let projection: RunProjection =
+            serde_json::from_value(value).expect("run projection should decode");
 
         assert_eq!(projection.source, RunSource::default());
         assert_eq!(projection.harness, RunHarnessKind::Unknown);
@@ -212,6 +216,7 @@ mod tests {
                 cleanup_policy: Default::default(),
                 planned_write_files: Vec::new(),
             },
+            execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,
             started_at_ms: None,
@@ -243,6 +248,7 @@ mod tests {
                 parent_run_id: RunId::new("run-parent").expect("parent run id"),
                 parent_event_seq: 42,
             },
+            execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,
             started_at_ms: None,
@@ -271,6 +277,7 @@ mod tests {
             status: RunStatus::Running,
             harness: RunHarnessKind::Native,
             source: RunSource::default(),
+            execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,
             started_at_ms: None,
@@ -303,6 +310,7 @@ mod tests {
             status,
             harness: RunHarnessKind::Native,
             source: RunSource::default(),
+            execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,
             started_at_ms: None,

@@ -91,6 +91,7 @@ pub(crate) fn native_run_projection(
         status,
         harness: RunHarnessKind::Native,
         source: RunSource::default(),
+        execution_context: ta_store::default_test_execution_context(),
         result: None,
         contract_violation: None,
         started_at_ms: Some(started_at_ms),

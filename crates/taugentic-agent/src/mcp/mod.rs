@@ -32,8 +32,12 @@ impl McpToolRegistry {
                 ))
             })? {
                 RuntimeExtensionMcpServer::Stdio(spec) => {
-                    McpClient::connect_stdio(server_id.clone(), spec, &request.working_directory)
-                        .await?
+                    McpClient::connect_stdio(
+                        server_id.clone(),
+                        spec,
+                        request.execution_context.effective_cwd.as_path(),
+                    )
+                    .await?
                 }
                 RuntimeExtensionMcpServer::Http(spec) => {
                     McpClient::connect_http(server_id.clone(), spec).await?

@@ -33,7 +33,6 @@ pub(crate) struct RunExecutionRuntime {
     active_executions: ActiveExecutionOwner,
     scheduler: RunScheduler,
     event_publisher: RuntimeEventPublisher,
-    working_directory: PathBuf,
     artifact_root: PathBuf,
     worktree_manager: WorktreeManager,
     claim_registry: ClaimRegistry,
@@ -43,7 +42,7 @@ pub(crate) struct RunExecutionRuntime {
 
 #[derive(Debug, Clone)]
 pub(crate) struct DispatchWorkspace {
-    pub working_directory: PathBuf,
+    pub effective_cwd: PathBuf,
     pub worktree_info: Option<ta_protocol::wire::WorktreeInfo>,
     pub claimed_files: Vec<String>,
     pub conflict_warning: Option<ta_protocol::wire::ConflictWarning>,
@@ -61,7 +60,6 @@ struct WorkspaceRunResources {
 
 #[derive(Debug, Clone)]
 pub struct RuntimeExecutionPaths {
-    pub working_directory: PathBuf,
     pub artifact_root: PathBuf,
 }
 
@@ -70,11 +68,10 @@ pub(crate) struct ProviderRunStart<'a> {
     pub session_id: &'a SessionId,
     pub run_id: &'a RunId,
     pub objective: &'a str,
-    pub working_directory: PathBuf,
+    pub execution_context: Arc<ta_protocol::wire::ExecutionContext>,
     pub fork_initial_state: Option<ForkInitialState>,
     pub output_contract: Option<ta_protocol::wire::OutputContractKind>,
     pub model_id: Option<&'a ta_protocol::wire::AgentRuntimeModelId>,
-    pub sandbox_profile: Option<&'a str>,
     pub subagent_recipes: Vec<ta_protocol::wire::CapsuleRecipe>,
 }
 
@@ -90,10 +87,7 @@ impl RuntimeExecutionPaths {
         let working_directory =
             std::env::current_dir().expect("current working directory should be available");
         let artifact_root = working_directory.join("target/daemon-artifacts");
-        Self {
-            working_directory,
-            artifact_root,
-        }
+        Self { artifact_root }
     }
 }
 
@@ -102,7 +96,6 @@ impl std::fmt::Debug for RunExecutionRuntime {
         formatter
             .debug_struct("RunExecutionRuntime")
             .field("capabilities", &self.capabilities)
-            .field("working_directory", &self.working_directory)
             .field("artifact_root", &self.artifact_root)
             .finish_non_exhaustive()
     }
@@ -167,7 +160,6 @@ impl RunExecutionRuntime {
             active_executions: ActiveExecutionOwner::new(),
             scheduler: RunScheduler::new(),
             event_publisher,
-            working_directory: execution_paths.working_directory,
             artifact_root: execution_paths.artifact_root,
             worktree_manager: WorktreeManager::with_git_binary(PathBuf::from("git")),
             claim_registry: ClaimRegistry::new(),
@@ -234,11 +226,10 @@ impl RunExecutionRuntime {
             session_id,
             run_id,
             objective,
-            working_directory,
+            execution_context,
             fork_initial_state,
             output_contract,
             model_id,
-            sandbox_profile,
             subagent_recipes,
         } = start;
         let runtime_profile = normalize_for_snapshot(runtime_profile, &self.strategy_registry)?;
@@ -260,14 +251,11 @@ impl RunExecutionRuntime {
                 .cloned()
                 .or_else(|| runtime_profile.model_id.clone()),
             auth_profile_id: runtime_profile.auth_profile_id.clone(),
-            policy_mode: runtime_profile.policy_mode,
             resume_provider_session_id: None,
             runtime_extensions: self.policy.runtime_extensions(),
-            working_directory,
-            artifact_root: self.artifact_root.clone(),
+            execution_context,
             fork_initial_state,
             output_contract,
-            sandbox_profile: sandbox_profile.map(str::to_string),
             subagent_recipes,
         })
     }
@@ -325,21 +313,23 @@ impl RunExecutionRuntime {
             .schedule_start_with_policy(session_id, run_id, policy)
     }
 
-    pub(crate) fn prepare_dispatch_workspace(
+    pub(crate) fn allocate_execution_workspace(
         &self,
         run_id: &RunId,
+        parent_repo: &std::path::Path,
+        workspace_root: &std::path::Path,
         workspace_scope: ta_protocol::wire::WorkspaceMode,
         cleanup_policy: ta_protocol::wire::WorktreeCleanupPolicy,
         planned_write_files: &[String],
     ) -> Result<DispatchWorkspace, crate::orchestration::AgentRuntimeServiceError> {
         let mut worktree = None;
         let mut worktree_info = None;
-        let working_directory = match workspace_scope {
+        let effective_cwd = match workspace_scope {
             ta_protocol::wire::WorkspaceMode::WorktreeWrite => {
                 let handle = self
                     .worktree_manager
                     .create(WorktreeRequest {
-                        parent_repo: self.working_directory.clone(),
+                        parent_repo: parent_repo.to_path_buf(),
                         capsule_short_id: run_id.as_str().to_string(),
                         recipe_hint: None,
                         cleanup_policy: cleanup_policy.into(),
@@ -349,16 +339,37 @@ impl RunExecutionRuntime {
                             error.to_string(),
                         )
                     })?;
-                let path = handle.path().to_path_buf();
+                let worktree_root = handle.path().to_path_buf();
+                let workspace_relative_path =
+                    workspace_root.strip_prefix(parent_repo).map_err(|_| {
+                        crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                            format!(
+                                "workspace root {} is outside git repository {}",
+                                workspace_root.display(),
+                                parent_repo.display()
+                            ),
+                        )
+                    })?;
+                let path = worktree_root.join(workspace_relative_path);
+                if !path.is_dir() {
+                    return Err(
+                        crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                            format!(
+                                "workspace path {} does not exist in prepared worktree",
+                                path.display()
+                            ),
+                        ),
+                    );
+                }
                 worktree_info = Some(ta_protocol::wire::WorktreeInfo {
-                    path: path.to_string_lossy().into_owned(),
+                    path: worktree_root.to_string_lossy().into_owned(),
                     branch: handle.branch().to_string(),
                     cleanup_policy,
                 });
                 worktree = Some(handle);
                 path
             }
-            _ => self.working_directory.clone(),
+            _ => workspace_root.to_path_buf(),
         };
 
         let (claim, claimed_files, conflict_warning) = if planned_write_files.is_empty() {
@@ -391,11 +402,19 @@ impl RunExecutionRuntime {
         }
 
         Ok(DispatchWorkspace {
-            working_directory,
+            effective_cwd,
             worktree_info,
             claimed_files,
             conflict_warning,
         })
+    }
+
+    pub(crate) fn artifact_root(&self) -> &std::path::Path {
+        &self.artifact_root
+    }
+
+    pub(crate) fn supports_network(&self) -> bool {
+        self.capabilities.supports_network
     }
 
     pub(crate) fn is_live_run_running(&self, run_id: &RunId, session_id: &SessionId) -> bool {

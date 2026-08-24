@@ -88,7 +88,7 @@ fn execution_context_roundtrips_with_all_workspace_scope_variants() {
             network_policy: NetworkPolicy::Allowlist {
                 domains: vec!["example.com".to_string()],
             },
-            env_policy: EnvPolicy::native_default(),
+            env_policy: EnvPolicy::workspace_default(),
         };
 
         let json = serde_json::to_value(&context).expect("execution context should serialize");

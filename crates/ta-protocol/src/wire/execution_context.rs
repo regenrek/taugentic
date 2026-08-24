@@ -4,7 +4,7 @@ use ts_rs::TS;
 
 use crate::wire::{WorkspaceId, WorkspacePath};
 
-const NATIVE_DEFAULT_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "USER", "LANG", "TZ"];
+const WORKSPACE_DEFAULT_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "USER", "LANG", "TZ"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
@@ -107,17 +107,13 @@ pub enum EnvPolicy {
 }
 
 impl EnvPolicy {
-    pub fn native_default() -> Self {
+    pub fn workspace_default() -> Self {
         Self::Allowlist {
-            vars: NATIVE_DEFAULT_ENV_ALLOWLIST
+            vars: WORKSPACE_DEFAULT_ENV_ALLOWLIST
                 .iter()
                 .map(|name| (*name).to_string())
                 .collect(),
         }
-    }
-
-    pub fn acp_default() -> Self {
-        Self::All
     }
 }
 

@@ -94,6 +94,18 @@ pub(crate) fn validate_run_transition_events(
     Ok(())
 }
 
+pub(crate) fn validate_run_execution_context(
+    existing: Option<&RunProjection>,
+    next: &RunProjection,
+) -> Result<(), StoreError> {
+    if existing.is_some_and(|run| run.execution_context != next.execution_context) {
+        return Err(StoreError::ImmutableRunExecutionContext {
+            run_id: next.id.as_str().to_string(),
+        });
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitSessionOpen {
     pub session: SessionProjection,
@@ -143,4 +155,45 @@ pub struct CommitCheckpointPersist {
 pub struct CheckpointPersistCommitResult {
     pub commit: CommitBoundary,
     pub checkpoint: CheckpointRecord,
+}
+
+#[cfg(test)]
+mod tests {
+    use ta_protocol::wire::{
+        PermissionPolicy, RunHarnessKind, RunId, RunSource, RunStatus, RuntimeProfileId, SessionId,
+    };
+
+    use super::*;
+
+    #[test]
+    fn run_execution_context_cannot_change_after_creation() {
+        let existing = RunProjection {
+            id: RunId::new("run-context-immutable").expect("run id"),
+            session_id: SessionId::new("session-context-immutable").expect("session id"),
+            runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+                .expect("runtime profile id"),
+            objective: "Keep the resolved context".to_string(),
+            status: RunStatus::Running,
+            harness: RunHarnessKind::Native,
+            source: RunSource::default(),
+            execution_context: crate::default_test_execution_context(),
+            result: None,
+            contract_violation: None,
+            started_at_ms: None,
+            ended_at_ms: None,
+            last_event_seq: None,
+            workspace_info: None,
+            claimed_files: Vec::new(),
+            conflict_summary: None,
+        };
+        let mut next = existing.clone();
+        next.execution_context.permission_policy = PermissionPolicy::ReadOnly;
+
+        assert_eq!(
+            validate_run_execution_context(Some(&existing), &next),
+            Err(StoreError::ImmutableRunExecutionContext {
+                run_id: existing.id.as_str().to_string(),
+            })
+        );
+    }
 }

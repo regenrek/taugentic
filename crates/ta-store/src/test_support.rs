@@ -1,4 +1,7 @@
-use ta_protocol::wire::{TrustState, Workspace, WorkspaceId, WorkspacePath};
+use ta_protocol::wire::{
+    EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy,
+    SandboxProfile, TrustState, Workspace, WorkspaceId, WorkspacePath, WorkspaceScope,
+};
 
 use crate::{
     ArtifactRecord, EventRecord, PrincipalProjection, RunProjection, SessionProjection, StoreError,
@@ -35,6 +38,16 @@ pub fn test_workspace(id: &str, root: &str) -> WorkspaceProjection {
     WorkspaceProjection::new(workspace)
 }
 
+/// Build a deterministic workspace that passed the same trust gate required by
+/// production run creation.
+pub fn confirmed_test_workspace(id: &str, root: &str) -> WorkspaceProjection {
+    let mut workspace = test_workspace(id, root).into_inner();
+    workspace.trust_state = TrustState::UserConfirmed {
+        confirmed_at: "1970-01-01T00:00:00Z".to_string(),
+    };
+    WorkspaceProjection::new(workspace)
+}
+
 /// Platform-specific canonical root used by the default test workspace.
 ///
 /// Workspaces require an absolute, lexically canonical path; `/` is absolute
@@ -47,7 +60,7 @@ pub fn default_test_workspace_root() -> &'static str {
 /// Convenience wrapper around [`test_workspace`] using the default id and a
 /// platform-appropriate canonical root (`/` on Unix, `C:\` on Windows).
 pub fn default_test_workspace() -> WorkspaceProjection {
-    test_workspace(DEFAULT_TEST_WORKSPACE_ID, default_test_workspace_root())
+    confirmed_test_workspace(DEFAULT_TEST_WORKSPACE_ID, default_test_workspace_root())
 }
 
 /// Seed `store` with the default test workspace and return its id. Idempotent
@@ -66,4 +79,26 @@ pub fn seed_default_test_workspace<S: StoreSeedRepository>(
 /// [`seed_default_test_workspace`] to create the row first.
 pub fn default_test_workspace_id() -> WorkspaceId {
     WorkspaceId::new(DEFAULT_TEST_WORKSPACE_ID).expect("default test workspace id")
+}
+
+/// Deterministic execution context for tests that seed run projections directly.
+pub fn default_test_execution_context() -> ExecutionContext {
+    let workspace = default_test_workspace();
+    let root = workspace.root_realpath().clone();
+    ExecutionContext {
+        workspace_id: workspace.id().clone(),
+        workspace_root: root.clone(),
+        effective_cwd: root.clone(),
+        artifact_root: root.clone(),
+        workspace_scope: WorkspaceScope::Local { root: root.clone() },
+        sandbox_profile: SandboxProfile {
+            read_roots: vec![root.clone()],
+            write_roots: vec![root.clone()],
+            denied_roots: Vec::new(),
+            process_exec: ProcessExecPolicy::AllowAll,
+        },
+        permission_policy: PermissionPolicy::Unrestricted,
+        network_policy: NetworkPolicy::Open,
+        env_policy: EnvPolicy::workspace_default(),
+    }
 }

@@ -138,6 +138,24 @@ pub(super) fn map_run_execution_error(error: RunExecutionError) -> AppServiceErr
         RunExecutionError::SessionNotFound(session_id) => {
             AppServiceError::SessionNotFound(session_id)
         }
+        RunExecutionError::SessionWorkspaceNotFound(workspace_id) => {
+            AppServiceError::WorkspaceNotFound(workspace_id)
+        }
+        RunExecutionError::WorkspaceTrustRequired(workspace_id) => {
+            AppServiceError::WorkspaceTrustRequired(workspace_id)
+        }
+        RunExecutionError::WorkspaceScopeUnsupported(requested) => {
+            AppServiceError::WorkspaceCapabilityUnsupported {
+                variant: None,
+                vendor: None,
+                capability: "executionScope".to_string(),
+                requested: requested.clone(),
+                reason: format!("execution scope {requested} is not implemented"),
+            }
+        }
+        RunExecutionError::ExecutionContextPathInvalid(detail) => {
+            AppServiceError::AgentRuntime(AgentRuntimeServiceError::ProviderExecutionFailed(detail))
+        }
         RunExecutionError::RunNotFound(run_id) => AppServiceError::RunNotFound(run_id),
         RunExecutionError::RunSessionMismatch(run_id) => {
             AppServiceError::RunSessionMismatch(run_id)

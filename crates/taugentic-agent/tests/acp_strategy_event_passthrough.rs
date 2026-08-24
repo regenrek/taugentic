@@ -45,7 +45,7 @@ print(json.dumps({"jsonrpc":"2.0","id":3,"result":{"stopReason":"end_turn"}}), f
 
     let mut request = support::request();
     support::configure_codex_acp_request(&mut request);
-    request.working_directory = dir.clone();
+    support::set_request_cwd(&mut request, &dir);
     let (completed_tx, completed_rx) = mpsc::channel();
     let sink = RecordingSink::new(completed_tx);
     let handle = dispatch_with_config(
@@ -147,7 +147,7 @@ print(json.dumps({"jsonrpc":"2.0","id":4,"result":{"stopReason":"end_turn"}}), f
 
     let mut request = support::request();
     support::configure_codex_acp_request(&mut request);
-    request.working_directory = dir.clone();
+    support::set_request_cwd(&mut request, &dir);
     let (completed_tx, completed_rx) = mpsc::channel();
     let sink = RecordingSink::new(completed_tx);
     let handle = dispatch_with_config(

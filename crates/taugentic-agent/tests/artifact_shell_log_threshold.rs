@@ -37,8 +37,8 @@ async fn run_shell(command: &str, run_id: &str) -> Vec<(ArtifactKind, String)> {
     fs::create_dir_all(&workdir).expect("workdir");
     let mut request = request();
     request.run_id = RunId::new(run_id).expect("run id");
-    request.working_directory = workdir;
-    request.artifact_root = artifact_root;
+    set_request_cwd(&mut request, &workdir);
+    set_request_artifact_root(&mut request, &artifact_root);
 
     let mut registry = Registry::new();
     let _ = registry.add(ShellTool);

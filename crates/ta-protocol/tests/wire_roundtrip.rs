@@ -8,22 +8,45 @@ use ta_protocol::wire::{
     DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
     DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
     DaemonWorkspaceGetParams, DaemonWorkspaceGetResult, DaemonWorkspaceListParams,
-    DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult,
-    ForkRunRequest, ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery, ListApprovalsQuery,
-    ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
+    DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult, EnvPolicy,
+    ExecutionContext, ForkRunRequest, ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery,
+    ListApprovalsQuery, ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
     METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_FORK,
     METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
     METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN,
-    OutputContractKind, PatchResult, PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest,
-    ResumeRunResult, ResumeRunState, RunEvent, RunEventDelta, RunEventStreamError,
-    RunEventStreamItem, RunEventStreamPayload, RunHarnessKind, RunId, RunListEntry, RunListFilter,
-    RunRecord, RunSource, RunStatus, RuntimeLanePendingState, RuntimePolicyMode,
-    RuntimeProfileAuthProfilePatch, RuntimeProfileId, RuntimeProfileModelIdPatch,
-    RuntimeProfilePatch, SessionAuthority, SessionId, SessionStatus, SessionSummary,
-    StartRunCommand, StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult,
-    TrustState, Workspace, WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceSelector,
-    WorktreeCleanupPolicy,
+    NetworkPolicy, OutputContractKind, PatchResult, PermissionPolicy, ProcessExecPolicy,
+    PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest, ResumeRunResult, ResumeRunState,
+    RunEvent, RunEventDelta, RunEventStreamError, RunEventStreamItem, RunEventStreamPayload,
+    RunHarnessKind, RunId, RunListEntry, RunListFilter, RunRecord, RunSource, RunStatus,
+    RuntimeLanePendingState, RuntimePolicyMode, RuntimeProfileAuthProfilePatch, RuntimeProfileId,
+    RuntimeProfileModelIdPatch, RuntimeProfilePatch, SandboxProfile, SessionAuthority, SessionId,
+    SessionStatus, SessionSummary, StartRunCommand, StreamEmission, SubscribeRunEventsRequest,
+    SubscribeRunEventsResult, TrustState, Workspace, WorkspaceId, WorkspaceMode, WorkspacePath,
+    WorkspaceScope, WorkspaceSelector, WorktreeCleanupPolicy,
 };
+
+fn execution_context() -> ExecutionContext {
+    let root = WorkspacePath::canonicalize_existing(
+        std::env::current_dir().expect("test process should have a current directory"),
+    )
+    .expect("current directory should canonicalize");
+    ExecutionContext {
+        workspace_id: WorkspaceId::new("workspace-test").expect("workspace id"),
+        workspace_root: root.clone(),
+        effective_cwd: root.clone(),
+        artifact_root: root.clone(),
+        workspace_scope: WorkspaceScope::Local { root: root.clone() },
+        sandbox_profile: SandboxProfile {
+            read_roots: vec![root.clone()],
+            write_roots: vec![root],
+            denied_roots: Vec::new(),
+            process_exec: ProcessExecPolicy::AllowAll,
+        },
+        permission_policy: PermissionPolicy::WorkspaceWrite,
+        network_policy: NetworkPolicy::Open,
+        env_policy: EnvPolicy::workspace_default(),
+    }
+}
 
 #[test]
 fn start_run_command_serializes_with_camel_case_fields() {
@@ -174,6 +197,7 @@ fn resume_run_contract_roundtrips_with_server_event_sequence_only() {
                 cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,
                 planned_write_files: Vec::new(),
             },
+            execution_context: execution_context(),
             started_at_ms: Some(100),
             ended_at_ms: None,
             last_event_seq: Some(42),
@@ -227,6 +251,7 @@ fn fork_run_contract_roundtrips_with_parent_event_seq() {
                 parent_run_id,
                 parent_event_seq: 42,
             },
+            execution_context: execution_context(),
             started_at_ms: None,
             ended_at_ms: None,
             last_event_seq: Some(43),

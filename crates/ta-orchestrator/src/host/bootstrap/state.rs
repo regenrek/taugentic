@@ -96,8 +96,6 @@ where
     let runtime = RuntimeService::from_host_platform_with_paths(
         ta_host_platform::detect_current_platform(),
         RuntimeExecutionPaths {
-            working_directory: std::env::current_dir()
-                .expect("daemon working directory should be available"),
             artifact_root: config.artifact_root(),
         },
     );

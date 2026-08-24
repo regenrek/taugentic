@@ -18640,6 +18640,84 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
     "FindingSeverity": {
       "enum": [
         "low",
@@ -18648,6 +18726,65 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "critical"
       ],
       "type": "string"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "OutputContractKind": {
       "enum": [
@@ -18698,6 +18835,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "blockers"
       ],
       "type": "object"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
     },
     "PlanResult": {
       "properties": {
@@ -18761,6 +18908,53 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "dependsOn"
       ],
       "type": "object"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "ReceiptKind": {
       "enum": [
@@ -18926,6 +19120,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "runtimeProfileId",
         "objective",
         "status"
+      ],
+      "type": "object"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
       ],
       "type": "object"
     },
@@ -19201,6 +19427,114 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "WorktreeCleanupPolicy": {
       "enum": [
         "deleteOnSuccess",
@@ -19257,6 +19591,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "null"
         }
       ]
+    },
+    "executionContext": {
+      "$ref": "#/$defs/ExecutionContext"
     },
     "outputContract": {
       "anyOf": [
@@ -19325,7 +19662,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
     }
   },
   "required": [
-    "summary"
+    "summary",
+    "executionContext"
   ],
   "title": "RunDetail",
   "type": "object"
@@ -19352,6 +19690,143 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -19362,6 +19837,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "RunHarnessKind": {
       "enum": [
@@ -19512,6 +20044,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
     "WorkspaceMode": {
       "enum": [
         "readonly",
@@ -19523,6 +20087,114 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "ephemeral"
       ],
       "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "WorktreeCleanupPolicy": {
       "enum": [
@@ -19582,6 +20254,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "null"
         }
       ]
+    },
+    "executionContext": {
+      "$ref": "#/$defs/ExecutionContext"
     },
     "harness": {
       "$ref": "#/$defs/RunHarnessKind"
@@ -19652,7 +20327,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "objective",
     "status",
     "harness",
-    "source"
+    "source",
+    "executionContext"
   ],
   "title": "RunRecord",
   "type": "object"
@@ -19745,6 +20421,143 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -19755,6 +20568,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "ResumeRunState": {
       "enum": [
@@ -19801,6 +20671,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "null"
             }
           ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
         },
         "harness": {
           "$ref": "#/$defs/RunHarnessKind"
@@ -19871,7 +20744,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "objective",
         "status",
         "harness",
-        "source"
+        "source",
+        "executionContext"
       ],
       "type": "object"
     },
@@ -20015,6 +20889,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
     "WorkspaceMode": {
       "enum": [
         "readonly",
@@ -20026,6 +20932,114 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "ephemeral"
       ],
       "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "WorktreeCleanupPolicy": {
       "enum": [
@@ -20144,6 +21158,143 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -20154,6 +21305,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "RunHarnessKind": {
       "enum": [
@@ -20193,6 +21401,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "null"
             }
           ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
         },
         "harness": {
           "$ref": "#/$defs/RunHarnessKind"
@@ -20263,7 +21474,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "objective",
         "status",
         "harness",
-        "source"
+        "source",
+        "executionContext"
       ],
       "type": "object"
     },
@@ -20407,6 +21619,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
     "WorkspaceMode": {
       "enum": [
         "readonly",
@@ -20418,6 +21662,114 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "ephemeral"
       ],
       "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "WorktreeCleanupPolicy": {
       "enum": [

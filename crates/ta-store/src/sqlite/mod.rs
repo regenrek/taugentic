@@ -29,7 +29,7 @@ use crate::{
     build_returned_receipt, compute_session_status_from_runs, event_persistence, event_run_id,
     list_native_runs_from_projections, projections::PrincipalProjection, receipt_kind_storage,
     receipt_state_storage, receipt_unique_key, row_sequence, row_session_id,
-    validate_run_transition_events,
+    validate_run_execution_context, validate_run_transition_events,
 };
 
 mod agent_turns;

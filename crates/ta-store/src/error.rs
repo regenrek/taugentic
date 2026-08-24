@@ -21,6 +21,8 @@ pub enum StoreError {
     },
     #[error("committed run event run id mismatch: expected {expected}, got {actual}")]
     CommitRunEventMismatch { expected: String, actual: String },
+    #[error("execution context is immutable after run creation: {run_id}")]
+    ImmutableRunExecutionContext { run_id: String },
     #[error("committed store transition requires at least one event")]
     EmptyCommitEvents,
     #[error("session insert requires existing workspace; workspace_id {workspace_id} unknown")]
@@ -162,6 +164,14 @@ impl PartialEq for StoreError {
                     actual: right_actual,
                 },
             ) => left_expected == right_expected && left_actual == right_actual,
+            (
+                Self::ImmutableRunExecutionContext {
+                    run_id: left_run_id,
+                },
+                Self::ImmutableRunExecutionContext {
+                    run_id: right_run_id,
+                },
+            ) => left_run_id == right_run_id,
             (Self::EmptyCommitEvents, Self::EmptyCommitEvents) => true,
             (
                 Self::SessionWorkspaceMissing {

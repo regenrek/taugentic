@@ -11,7 +11,7 @@ use taugentic_agent::{ExecutionSink, NativeChildRunRequest};
 
 use super::test_support::{
     app_and_execution_with_runtime, approval_actor, attach_noop_handle, attach_recording_handle,
-    open_session, provider_sink, select_runtime_profile,
+    open_session, provider_sink, select_runtime_profile, set_default_test_workspace_root,
 };
 use super::*;
 
@@ -22,6 +22,7 @@ fn hierarchical_delegation_smoke_projects_replay_timeline() {
     let repo = clean_git_repo_fixture();
     let runtime = runtime_for_clean_repo(repo.path());
     let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Hierarchical replay smoke");
     select_runtime_profile(&app, "runtime-openai-safe");
     let parent = execution
@@ -72,12 +73,6 @@ fn hierarchical_delegation_smoke_projects_replay_timeline() {
     mark_child_running(&execution, &session.id, &debug.run_id);
     mark_child_running(&execution, &session.id, &patch.run_id);
     mark_child_running(&execution, &session.id, &review.run_id);
-    execution
-        .dispatch_preflight(&session.id, &patch.run_id)
-        .expect("patch dispatch should prepare worktree and claim file");
-    execution
-        .dispatch_preflight(&session.id, &review.run_id)
-        .expect("review dispatch should prepare worktree and warn on claim conflict");
 
     attach_noop_handle(&execution, &debug.run_id);
     execution
@@ -351,7 +346,6 @@ fn runtime_for_clean_repo(repo: &std::path::Path) -> crate::RuntimeService {
     crate::RuntimeService::from_host_platform_with_paths(
         ta_host_platform::detect_current_platform(),
         crate::RuntimeExecutionPaths {
-            working_directory: repo.to_path_buf(),
             artifact_root: repo.join("target/daemon-artifacts"),
         },
     )

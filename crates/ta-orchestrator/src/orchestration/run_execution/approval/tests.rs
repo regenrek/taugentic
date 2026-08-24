@@ -145,6 +145,7 @@ fn list_approvals_expires_stale_waiting_request() {
                         sandbox_profile: None,
                         recipe_id: None,
                     },
+                    execution_context: ta_store::default_test_execution_context(),
                     result: None,
                     contract_violation: None,
                     started_at_ms: None,

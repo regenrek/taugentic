@@ -145,7 +145,7 @@ fn spawn_loop_with_parts(
     parts: LoopRuntimeParts,
 ) -> Result<JoinHandle<()>, ExecutionError> {
     let artifact_writer = Arc::new(ArtifactWriter::new(
-        &request.artifact_root,
+        request.execution_context.artifact_root.as_path(),
         request.run_id.clone(),
     )?);
     std::thread::Builder::new()

@@ -117,7 +117,6 @@ fn provider_run_request_uses_registry_profile_provider_and_harness() {
     let runtime = RuntimeService::from_host_platform_with_paths(
         fixture_host_platform(),
         RuntimeExecutionPaths {
-            working_directory: PathBuf::from("/tmp/taugentic-work"),
             artifact_root: PathBuf::from("/tmp/taugentic-artifacts"),
         },
     );
@@ -156,11 +155,10 @@ fn provider_run_request_uses_registry_profile_provider_and_harness() {
                 session_id: &session_id,
                 run_id: &run_id,
                 objective: "test objective",
-                working_directory: std::env::current_dir().expect("current dir"),
+                execution_context: Arc::new(ta_store::default_test_execution_context()),
                 fork_initial_state: None,
                 output_contract: None,
                 model_id: None,
-                sandbox_profile: None,
                 subagent_recipes: Vec::new(),
             })
             .expect("request should build");
@@ -187,7 +185,6 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
     let runtime = RuntimeService::from_host_platform_with_paths(
         fixture_host_platform(),
         RuntimeExecutionPaths {
-            working_directory: PathBuf::from("/tmp/taugentic-work"),
             artifact_root: PathBuf::from("/tmp/taugentic-artifacts"),
         },
     );
@@ -202,11 +199,10 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
             session_id: &SessionId::new("session-recipe-prompt").expect("session id"),
             run_id: &RunId::new("run-recipe-prompt").expect("run id"),
             objective: "test objective",
-            working_directory: std::env::current_dir().expect("current dir"),
+            execution_context: Arc::new(ta_store::default_test_execution_context()),
             fork_initial_state: None,
             output_contract: None,
             model_id: None,
-            sandbox_profile: None,
             subagent_recipes: vec![CapsuleRecipe {
                 id: "debug-native-subagent".to_string(),
                 name: "Debug Native Subagent".to_string(),
@@ -233,7 +229,6 @@ fn provider_run_request_normalizes_stale_model_and_auth_refs() {
     let runtime = RuntimeService::from_host_platform_with_paths(
         fixture_host_platform(),
         RuntimeExecutionPaths {
-            working_directory: PathBuf::from("/tmp/taugentic-work"),
             artifact_root: PathBuf::from("/tmp/taugentic-artifacts"),
         },
     );
@@ -255,11 +250,10 @@ fn provider_run_request_normalizes_stale_model_and_auth_refs() {
             session_id: &session_id,
             run_id: &run_id,
             objective: "test objective",
-            working_directory: std::env::current_dir().expect("current dir"),
+            execution_context: Arc::new(ta_store::default_test_execution_context()),
             fork_initial_state: None,
             output_contract: None,
             model_id: None,
-            sandbox_profile: None,
             subagent_recipes: Vec::new(),
         })
         .expect("request should normalize stale profile refs");

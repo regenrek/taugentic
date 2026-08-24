@@ -157,6 +157,7 @@ impl CommitRepository for SqliteStore {
             })?
             .map(|json| Self::decode("run_projection", json))
             .transpose()?;
+        validate_run_execution_context(existing_run.as_ref(), &input.run)?;
         validate_run_transition_events(&input)?;
         let session_events = Self::events_for_session_tx(&tx, &input.session_id)?;
         ApprovalLifecycleState::fold_session_records(session_events.iter())?
@@ -374,6 +375,7 @@ impl CommitRepository for SqliteStore {
                 .map(|json| Self::decode("run_projection", json))
                 .transpose()?;
 
+            validate_run_execution_context(existing_run.as_ref(), &transition.run)?;
             validate_run_transition_events(&transition)?;
             let mut emitted = Vec::with_capacity(transition.events.len());
             let mut persisted = Vec::with_capacity(transition.events.len());

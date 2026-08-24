@@ -124,6 +124,7 @@ fn approval_lookup_distinguishes_pending_resolved_and_not_found_after_reopen() {
                 objective: "Lookup approvals".to_string(),
                 status: RunStatus::WaitingForApproval,
                 source: RunSource::default(),
+                execution_context: crate::default_test_execution_context(),
                 harness: RunHarnessKind::Unknown,
                 result: None,
                 contract_violation: None,

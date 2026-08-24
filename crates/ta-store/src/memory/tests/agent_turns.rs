@@ -29,6 +29,7 @@ fn session_agent_turns_page_materializes_committed_rows_from_stream_frames() {
         objective: "stream".to_string(),
         status: RunStatus::Running,
         source: RunSource::default(),
+        execution_context: crate::default_test_execution_context(),
         harness: RunHarnessKind::Unknown,
         result: None,
         contract_violation: None,

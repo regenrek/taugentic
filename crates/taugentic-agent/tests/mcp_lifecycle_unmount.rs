@@ -26,7 +26,7 @@ async fn dropping_mcp_mount_disconnects_stdio_process() {
 
     let mut registry = Registry::new();
     let mut request = support::request();
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     request.runtime_extensions = vec![extension("srv1", script)];
     let mount = McpToolRegistry::mount_from_request(&mut registry, &request)
         .await
@@ -71,7 +71,7 @@ async fn mcp_stdio_spec_env_is_secret_bridge_without_parent_secret_inheritance()
 
     let mut registry = Registry::new();
     let mut request = support::request();
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     request.runtime_extensions = vec![extension_with_env(
         "srv1",
         script,

@@ -79,7 +79,11 @@ fn run_codex_app_server(
 ) -> Result<(), ExecutionError> {
     let mut session = client
         .start_session(CodexAppServerInput {
-            cwd: request.working_directory.clone(),
+            cwd: request
+                .execution_context
+                .effective_cwd
+                .as_path()
+                .to_path_buf(),
             model: request
                 .model_id
                 .as_ref()

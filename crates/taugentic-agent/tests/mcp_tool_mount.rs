@@ -21,7 +21,7 @@ async fn mcp_mount_registers_remote_tools() {
     let _guard = MCP_TEST_LOCK.lock().await;
     let mut registry = Registry::new();
     let mut request = support::request();
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     let mock_dir = mock_mcp_dir();
     request.runtime_extensions = vec![extension("srv1", "some_tool", mock_dir.path())];
     let mount = McpToolRegistry::mount_from_request(&mut registry, &request)
@@ -43,7 +43,7 @@ async fn mcp_tool_name_collision_is_prefixed_and_builtin_wins() {
     let _guard = MCP_TEST_LOCK.lock().await;
     let mut registry = Registry::with_read_only_builtins();
     let mut request = support::request();
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     let mock_dir = mock_mcp_dir();
     request.runtime_extensions = vec![extension("srv1", "read_file", mock_dir.path())];
     let mount = McpToolRegistry::mount_from_request(&mut registry, &request)
@@ -60,7 +60,7 @@ async fn mcp_tool_call_timeout_disconnects_unresponsive_server() {
     let _guard = MCP_TEST_LOCK.lock().await;
     let mut registry = Registry::new();
     let mut request = support::request();
-    request.working_directory = std::env::current_dir().expect("current dir");
+    support::set_request_cwd(&mut request, &std::env::current_dir().expect("current dir"));
     let mock_dir = mock_mcp_dir();
     request.runtime_extensions = vec![extension_with_call_behavior(
         "srv1",

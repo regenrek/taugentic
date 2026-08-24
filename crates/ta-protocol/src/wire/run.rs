@@ -4,8 +4,9 @@ use ts_rs::TS;
 
 use crate::wire::{
     AgentRuntimeModelId, AgentStreamTurnId, CapsuleResult, ConflictSummary, ContextReceipt,
-    OutputContractKind, PublicDaemonEvent, RunId, RuntimeProfileId, SessionId, TokenUsageTotals,
-    ValidationError, WorkspaceMode, WorktreeCleanupPolicy, WorktreeInfo, u64_string,
+    ExecutionContext, OutputContractKind, PublicDaemonEvent, RunId, RuntimeProfileId, SessionId,
+    TokenUsageTotals, ValidationError, WorkspaceMode, WorktreeCleanupPolicy, WorktreeInfo,
+    u64_string,
 };
 
 /// Default page size for native run-list requests.
@@ -151,6 +152,7 @@ pub struct RunDetail {
     pub recipe_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_run_id: Option<RunId>,
+    pub execution_context: ExecutionContext,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_info: Option<WorktreeInfo>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -174,6 +176,7 @@ pub struct RunRecord {
     pub status: RunStatus,
     pub harness: RunHarnessKind,
     pub source: RunSource,
+    pub execution_context: ExecutionContext,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]

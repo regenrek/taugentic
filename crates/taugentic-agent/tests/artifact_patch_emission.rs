@@ -19,8 +19,8 @@ async fn artifact_patch_emission_persists_apply_patch_diff() {
     fs::create_dir_all(&workdir).expect("workdir");
     let mut request = request();
     request.run_id = RunId::new("run-artifact-patch").expect("run id");
-    request.working_directory = workdir;
-    request.artifact_root = artifact_root;
+    set_request_cwd(&mut request, &workdir);
+    set_request_artifact_root(&mut request, &artifact_root);
 
     let patch = "*** Begin Patch\n*** Add File: hello.txt\n+hello\n*** End Patch\n";
     let mut registry = Registry::new();

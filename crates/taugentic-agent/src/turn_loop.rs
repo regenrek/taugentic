@@ -456,7 +456,7 @@ impl TurnLoop {
                 .map_err(|error| ExecutionError::ProcessFailed(error.to_string()))?;
             let ctx = ToolExecutionContext {
                 registry: self.registry.clone_tools(),
-                workdir: self.request.working_directory.clone(),
+                workdir: self.request.effective_cwd().to_path_buf(),
                 cancellation: self.cancellation.clone(),
                 session: self.session.clone(),
                 sink: self.sink.clone(),
@@ -495,7 +495,7 @@ impl TurnLoop {
     ) -> Result<ToolResultMessage, ExecutionError> {
         let ctx = ToolExecutionContext {
             registry: self.registry.clone_tools(),
-            workdir: self.request.working_directory.clone(),
+            workdir: self.request.effective_cwd().to_path_buf(),
             cancellation: self.cancellation.clone(),
             session: self.session.clone(),
             sink: self.sink.clone(),

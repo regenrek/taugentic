@@ -84,11 +84,7 @@ where
             .runtime
             .runtime_profile(&parent.runtime_profile_id)
             .map_err(map_agent_runtime_error)?;
-        let execution_harness = self
-            .runtime
-            .execution_harness_for_runtime_profile(&runtime_profile)
-            .map_err(map_agent_runtime_error)?;
-        if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
+        if parent.harness != RunHarnessKind::Native {
             return Err(RunExecutionError::RunNotNativeHarness(
                 parent.id.as_str().to_string(),
             ));
@@ -113,6 +109,29 @@ where
                     RunExecutionError::RunQueueFull(session_id)
                 }
             })?;
+        let fail_scheduled_run = |error| {
+            self.runtime
+                .finish_scheduled_run(&session_id, &fork_run_id, RunStatus::Failed);
+            error
+        };
+        let prepared_context = self
+            .prepare_execution_context(
+                &session_id,
+                &fork_run_id,
+                &runtime_profile,
+                ExecutionContextRequest::workspace_write(),
+            )
+            .map_err(&fail_scheduled_run)?;
+        let execution_harness = self
+            .runtime
+            .execution_harness_for_runtime_profile(&runtime_profile)
+            .map_err(map_agent_runtime_error)
+            .map_err(&fail_scheduled_run)?;
+        if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
+            return Err(fail_scheduled_run(RunExecutionError::RunNotNativeHarness(
+                parent.id.as_str().to_string(),
+            )));
+        }
         let operation = Operation::new(ApprovalScope::ProcessExec, "execute forked native run");
         let decision = self
             .runtime
@@ -139,21 +158,24 @@ where
                     parent_run_id: parent.id.clone(),
                     parent_event_seq: request.parent_event_seq,
                 },
+                execution_context: prepared_context.execution_context,
                 result: None,
                 contract_violation: None,
                 started_at_ms: None,
                 ended_at_ms: None,
                 last_event_seq: None,
-                workspace_info: None,
-                claimed_files: Vec::new(),
-                conflict_summary: None,
+                workspace_info: prepared_context.workspace_info,
+                claimed_files: prepared_context.claimed_files,
+                conflict_summary: prepared_context.conflict_summary,
             };
-            let committed = store.commit_run_transition(CommitRunTransition {
-                session_id: session_id.clone(),
-                run: fork,
-                events,
-                occurred_at_ms: current_time_ms(),
-            })?;
+            let committed = store
+                .commit_run_transition(CommitRunTransition {
+                    session_id: session_id.clone(),
+                    run: fork,
+                    events,
+                    occurred_at_ms: current_time_ms(),
+                })
+                .map_err(|error| fail_scheduled_run(error.into()))?;
             if committed.run.status == RunStatus::Running {
                 self.runtime
                     .claim_live_run(committed.run.id.clone(), session_id.clone());
@@ -490,6 +512,7 @@ mod tests {
                         status: RunStatus::Failed,
                         harness: RunHarnessKind::Native,
                         source: RunSource::default(),
+                        execution_context: ta_store::default_test_execution_context(),
                         result: None,
                         contract_violation: None,
                         started_at_ms: None,

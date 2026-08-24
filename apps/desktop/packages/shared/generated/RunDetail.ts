@@ -2,6 +2,7 @@
 import type { CapsuleResult } from "./CapsuleResult.js";
 import type { ConflictSummary } from "./ConflictSummary.js";
 import type { ContextReceipt } from "./ContextReceipt.js";
+import type { ExecutionContext } from "./ExecutionContext.js";
 import type { OutputContractKind } from "./OutputContractKind.js";
 import type { RunId } from "./RunId.js";
 import type { RunSummary } from "./RunSummary.js";
@@ -9,4 +10,4 @@ import type { TokenUsageTotals } from "./TokenUsageTotals.js";
 import type { ValidationError } from "./ValidationError.js";
 import type { WorktreeInfo } from "./WorktreeInfo.js";
 
-export type RunDetail = { summary: RunSummary, result?: CapsuleResult | null, contractViolation?: ValidationError | null, quarantineReceipt?: ContextReceipt | null, outputContract?: OutputContractKind | null, recipeId?: string | null, parentRunId?: RunId | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, tokenUsage?: TokenUsageTotals | null, };
+export type RunDetail = { summary: RunSummary, result?: CapsuleResult | null, contractViolation?: ValidationError | null, quarantineReceipt?: ContextReceipt | null, outputContract?: OutputContractKind | null, recipeId?: string | null, parentRunId?: RunId | null, executionContext: ExecutionContext, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, tokenUsage?: TokenUsageTotals | null, };
