@@ -6,7 +6,7 @@ pre-commit:
     gitleaks-staged:
       run: "gitleaks git --staged --no-banner --redact=100 --config .gitleaks.toml ."
     rust-fmt:
-      files: "*.rs"
+      glob: "*.rs"
       run: "cargo fmt --all -- --check"
 
 pre-push:

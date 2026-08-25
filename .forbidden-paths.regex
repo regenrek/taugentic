@@ -5,12 +5,20 @@
 (^|/)\.taugentic/
 (^|/)\.env($|/)
 (^|/)\.env\.(?!example$|sample$|template$).+
+(^|/)\.envrc$
+
+# Runtime logs, traces, and dumps
+(^|/)(logs?|traces?|dumps?)(/|$)
+\.(log|trace|dump)$
 
 # Common credential files
 (^|/)\.aws/credentials$
 (^|/)\.npmrc$
 (^|/)\.netrc$
 (^|/)\.git-credentials$
+(^|/)\.docker/config\.json$
+(^|/)(auth|credentials|tokens|secrets)\.json$
+(^|/)service-account.*\.json$
 
 # Terraform/OpenTofu state/plan
 \.tfstate($|\.|/)

@@ -5,8 +5,12 @@ function git(args) {
   return execFileSync("git", args, { encoding: "utf8" });
 }
 
-function getStagedPaths() {
-  const out = git(["diff", "--cached", "--name-only", "-z"]);
+function getPaths(mode) {
+  const args =
+    mode === "--tracked"
+      ? ["ls-files", "-z"]
+      : ["diff", "--cached", "--name-only", "-z"];
+  const out = git(args);
   return out.split("\0").filter(Boolean);
 }
 
@@ -21,15 +25,22 @@ function loadPatterns() {
   return lines.map((pattern) => new RegExp(pattern));
 }
 
-const staged = getStagedPaths();
-if (staged.length === 0) process.exit(0);
+const mode = process.argv[2] ?? "--staged";
+if (mode !== "--staged" && mode !== "--tracked") {
+  console.error("usage: block-forbidden-staged-files.mjs [--staged|--tracked]");
+  process.exit(2);
+}
+
+const paths = getPaths(mode);
+if (paths.length === 0) process.exit(0);
 
 const patterns = loadPatterns();
-const blocked = staged.filter((path) => patterns.some((pattern) => pattern.test(path)));
+const blocked = paths.filter((path) => patterns.some((pattern) => pattern.test(path)));
 
 if (blocked.length === 0) process.exit(0);
 
-console.error("blocked: forbidden file(s) staged:");
+const scope = mode === "--tracked" ? "tracked" : "staged";
+console.error(`blocked: forbidden file(s) ${scope}:`);
 for (const file of blocked) console.error(`- ${file}`);
 console.error("");
 console.error("fix: unstage/remove the file, or use a safe template path.");

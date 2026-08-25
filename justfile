@@ -1,6 +1,13 @@
 set shell := ["zsh", "-cu"]
 set quiet
 
+@setup:
+  @command -v lefthook >/dev/null || { echo "error: install lefthook before running just setup" >&2; exit 1; }
+  @command -v gitleaks >/dev/null || { echo "error: install gitleaks before running just setup" >&2; exit 1; }
+  @lefthook install
+  @cargo build
+  @pnpm install --dir apps/desktop
+
 @build-cli:
   @cargo build -p ta-cli -p ta-orchestrator
 

@@ -10,13 +10,17 @@
 - Node `24`
 - `pnpm`
 - `just`
+- Lefthook
+- Gitleaks
 
 ## Install
 
 ```bash
-cargo build
-pnpm install --dir apps/desktop
+just setup
 ```
+
+`just setup` installs the local pre-commit and pre-push hooks. The hooks reject
+secrets, credentials, runtime logs, and dumps before Git can publish them.
 
 ## Start
 
