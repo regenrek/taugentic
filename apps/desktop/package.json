@@ -1,51 +1,36 @@
 {
-  "name": "@taugentic/desktop-workspace",
+  "name": "@taugentic/desktop",
+  "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
-    "start": "vp run desktop:start",
-    "dev": "vp run desktop:dev",
-    "build": "vp run @taugentic/desktop-shared#build && vp run @taugentic/desktop-preload#build && vp run @taugentic/desktop-renderer#build && vp run @taugentic/desktop-main#build",
-    "stage:package": "node ./scripts/stage-desktop-package.mjs",
-    "package": "pnpm run stage:package && electron-builder --config ./electron-builder.config.mjs",
-    "package:dir": "pnpm run stage:package && electron-builder --config ./electron-builder.config.mjs --dir",
-    "release:aggregate": "node ./scripts/release-aggregate.mjs",
-    "release:artifacts": "node ./scripts/release-artifacts.mjs",
-    "release:env": "node ./scripts/release-env.mjs --require-signing",
-    "release:publish-mode": "node ./scripts/release-publish-mode.mjs",
-    "release:trust": "node ./scripts/release-trust.mjs",
-    "release:version": "node ./scripts/release-version.mjs",
-    "check:protocol": "cargo xtask check-protocol",
-    "generate:protocol": "cargo xtask export-protocol",
-    "check": "pnpm run lint && pnpm run knip && vp run @taugentic/desktop-shared#build && vp check && vp run @taugentic/desktop-preload#typecheck && vp run @taugentic/desktop-renderer#typecheck && vp run @taugentic/desktop-main#typecheck && cargo xtask check-protocol",
-    "lint": "pnpm run lint:ox && pnpm run lint:eslint",
-    "lint:fix": "pnpm run lint:ox:fix && pnpm run lint:eslint:fix",
-    "lint:ox": "oxlint --config ./.oxlintrc.json .",
-    "lint:ox:fix": "oxlint --config ./.oxlintrc.json --fix .",
-    "lint:eslint": "eslint --config ./eslint.config.mjs .",
-    "lint:eslint:fix": "eslint --config ./eslint.config.mjs . --fix",
-    "test": "vp run @taugentic/desktop-shared#build && vp test run",
-    "typecheck": "vp run @taugentic/desktop-shared#build && vp run @taugentic/desktop-preload#typecheck && vp run @taugentic/desktop-renderer#typecheck && vp run @taugentic/desktop-main#typecheck",
-    "knip": "knip --config ../../knip.json --no-config-hints"
+    "dev": "bun --hot src/main.tsx",
+    "start": "bun src/main.tsx",
+    "build:protocol": "pnpm --filter @taugentic/desktop-protocol build",
+    "typecheck": "pnpm run build:protocol && tsc --noEmit",
+    "check": "pnpm run typecheck && cargo xtask check-protocol",
+    "test": "pnpm run build:protocol && bun test"
+  },
+  "dependencies": {
+    "@gpuix/native": "0.4.0",
+    "@gpuix/react": "0.4.0",
+    "@taugentic/desktop-protocol": "workspace:*",
+    "react": "19.2.4"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@testing-library/dom": "^10.4.1",
-    "@types/node": "^24.12.2",
-    "electron": "41.2.0",
-    "electron-builder": "^26.8.1",
-    "eslint": "^10.2.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.4.0",
-    "jsdom": "^29.1.1",
-    "knip": "^6.3.1",
-    "oxlint": "^1.59.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.58.1",
-    "vite-plus": "0.1.16",
-    "xstate": "^5.30.0"
+    "@types/bun": "1.3.14",
+    "@types/node": "25.0.10",
+    "@types/react": "19.2.10",
+    "typescript": "5.9.3"
   },
   "engines": {
-    "node": ">=24.14.1 <26"
+    "bun": ">=1.3.0"
   },
-  "packageManager": "pnpm@10.19.0"
+  "packageManager": "pnpm@10.33.4",
+  "pnpm": {
+    "overrides": {
+      "@gpuix/native": "0.4.0",
+      "@gpuix/react": "0.4.0"
+    }
+  }
 }

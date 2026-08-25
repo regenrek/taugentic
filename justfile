@@ -28,13 +28,7 @@ set quiet
   "$binary"
 
 @desktop-dev:
-  @pnpm --dir apps/desktop dev
-
-@desktop-dev-agent:
-  @TAUGENTIC_ELECTRON_REMOTE_DEBUGGING_PORT=8315 \
-  TAUGENTIC_ELECTRON_INSPECT_PORT=9229 \
-  TAUGENTIC_ELECTRON_ENABLE_LOGGING=1 \
-  TAUGENTIC_ELECTRON_LOG_FILE="${TMPDIR:-/tmp}/my-electron.log" \
+  @TAUGENTIC_DAEMON_SOCKET_NAME="${TAUGENTIC_DAEMON_SOCKET_NAME:-ta-daemon-gpui}" \
   pnpm --dir apps/desktop dev
 
 @smoke:

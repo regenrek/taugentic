@@ -1,5 +1,15 @@
 packages:
   - packages/*
+
 overrides:
-  vite: npm:@voidzero-dev/vite-plus-core@0.1.16
-  vitest: npm:@voidzero-dev/vite-plus-test@0.1.16
+  "@gpuix/native": 0.4.0
+  "@gpuix/react": 0.4.0
+
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+
+minimumReleaseAgeExclude:
+  - "@gpuix/native"
+  - "@gpuix/native-*"
+  - "@gpuix/react"
+  - "eventsource-parser"

@@ -8,6 +8,7 @@
 
 - Rust `1.90`
 - Node `24`
+- Bun `1.3`
 - `pnpm`
 - `just`
 - Lefthook

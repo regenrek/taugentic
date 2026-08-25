@@ -1,240 +1,99 @@
-# Runtime Ownership
+# Runtime ownership
 
-Use this document to decide who owns state, lifecycle, policy, and long-running
-behavior in the current Taugentic architecture.
+Use this reference to place state, policy, and lifecycle code.
 
-## Renderer owns
+## Desktop owns presentation
 
-- layout state
-- tabs and panel visibility
-- temporary form state
-- optimistic UI projections
-- feature-local orchestration that exists only to drive presentation
+The GPUI desktop owns:
 
-Renderer ownership splits further into three explicit sub-owners:
+- navigation, panel visibility, and focus
+- temporary form state and drafts
+- selected rows and other presentation-only state
+- projection of daemon snapshots and events into views
+- direct transport connection lifecycle
+- native window options passed to GPUIX
 
-- app/bootstrap ownership for startup hydration and persisted UI selection restore
-- TanStack Query ownership for renderer-side remote snapshots derived from daemon
-  reads and daemon-backed live updates
-- `@xstate/store` or XState ownership for local UI state and stream or command
-  lifecycle that exists only inside the renderer
+Desktop state may cache a daemon snapshot for rendering. It must not become a
+second durable or canonical store.
 
-Renderer code must not create a second durable owner for daemon-derived domain
-data. If the daemon owns a list or snapshot, the renderer may cache or project
-it, but must not invent a parallel canonical store for the same domain.
+The desktop consumes runtime-control results. It does not derive runtime mode,
+ownership, recovery policy, socket paths, or allowed actions.
 
-### Renderer bootstrap owns
+## GPUIX owns native rendering
 
-- persisted session selection restore and initial validation against daemon-owned
-  session results
-- app-level startup hydration that must run before feature leaves assume current
-  selection or theme state
-- shell-level current session routing state via the workspace shell store
+GPUIX owns the React reconciler, the native element tree, the GPUI bridge,
+window rendering, text input, focus, scrolling, events, and native automation.
 
-Renderer bootstrap must not be hidden inside feature leaf models or panel hooks.
-Persisted selection restore belongs at the app boundary, not inside
-`useSessionsPanelModel()` or other panel-local hooks.
+Taugentic does not fork these mechanics into application code. GPUIX does not
+own Taugentic sessions, commands, permissions, or persistence.
 
-### TanStack Query owns
+## Protocol owns transport contracts
 
-- `sessions`
-- `sessionOverview`
-- session `runs`
-- session `activity`
-- session `approvals`
-- session `artifacts`
-- `agentRuntime`
+`ta-protocol` owns JSON-RPC methods, wire types, approval scope names, runtime
+profile identifiers, and generated TypeScript types.
 
-TanStack Query is the renderer SSOT for daemon-owned remote data. Query keys and
-cache updates must be the canonical renderer read model for these domains.
+`apps/desktop/packages/shared` contains only generated protocol output. Do not
+add handwritten policy, defaults, platform path logic, or duplicate validators
+to that package.
 
-### `@xstate/store` and XState own
+## Daemon owns runtime behavior
 
-- current route and current selected session id
-- theme mode
-- local drafts and panel-local form state
-- pending command state
-- stream connection lifecycle
-- reconnect, decode-failure, and history-gap orchestration
-- local selection that exists only to drive presentation, such as a currently
-  focused artifact id inside one panel
+`ta-orchestrator` owns:
 
-`@xstate/store` and XState must not remain long-term owners of daemon-derived
-lists or snapshots when those same domains already live in Query.
+- sessions, runs, steps, and conversation branches
+- assistant and tool event normalization
+- approvals and execution policy orchestration
+- provider profiles, authentication state, and extensions
+- harness selection and child-agent execution
+- scheduling, cancellation, replay, and restart recovery
+- daemon configuration and runtime-control state
+- transport sessions, subscriptions, cursors, and backlog policy
 
-## Preload owns
+The daemon is the first fix owner when a correct client intent produces wrong
+runtime behavior.
 
-- the `contextBridge` surface exposed to the renderer
-- narrow request and stream entrypoints over explicit IPC channels
-- no domain policy, retry policy, cache ownership, or long-lived business state
+## Domain crates own durable rules
 
-## Electron main owns
+- `ta-store` owns record shapes, repositories, and durable integrity.
+- `ta-policy` evaluates protocol-owned approval scopes.
+- `ta-model-catalog` owns native-harness model metadata, validation, and default
+  selection.
+- `ta-host-platform` owns host facts, OS detection, and capability probes.
 
-- desktop application lifecycle
-- native window creation
-- direct calls into the Rust-owned runtime-control surface
-- IPC handler registration and shell-facing window controls exposed to preload
-- desktop-side connection lifecycle and bridging stream ports into the renderer
+The orchestrator composes these crates. It must not copy their rules into host
+or UI code.
 
-Electron main does **not** own runtime product semantics anymore. It acts as a
-thin adapter over the Rust control plane:
+## Adapters own vendor translation
 
-- desktop sends intents: `start`, `stop`, `enableBackground`,
-  `disableBackground`, `reconcile`
-- desktop consumes one Rust-derived control snapshot
-- desktop must not derive ownership, degraded state, or recovery policy from
-  raw process facts
-- desktop quit still stops the daemon only when Rust says the desired mode is
-  `local`
-- if a dedicated desktop-side runtime-control serializer is introduced later, it
-  must be documented here explicitly rather than implied as an ambient rule
+Provider adapters own vendor protocol details, vendor process startup, and
+translation into protocol-owned runtime events. They do not own runtime profile
+semantics, harness selection, approval policy, or model catalog policy.
 
-## Runtime owns
+## Runtime control has one owner
 
-- sessions
-- runs
-- steps
-- live assistant-turn and tool-progress stream semantics
-- approvals
-- checkpoints
-- execution policy
-- agent runtime provider, auth, profile, and extension configuration as one
-  daemon-global runtime configuration surface
-- runtime lane scheduling, pending-turn lifecycle, and provider-neutral stream
-  event normalization
-- runtime capability derivation from host facts
-- agent lifecycle and turn lifecycle
-- typed harness selection and heavy background processes
-- ACP runtime profile normalization and provider registration wiring
-- compatibility and capability negotiation for connected clients
+Rust owns runtime-control persistence and derivation:
 
-`ta-model-catalog` is the single domain owner for native-harness model metadata,
-validation, and default selection. The daemon owns its refresh lifecycle and
-projects the active snapshot to clients. Codex app-server and ACP sessions own
-their protocol-discovered model availability. Provider adapters and clients do
-not keep parallel static catalogs.
+- `backgroundOptIn` stores user consent.
+- `desiredMode` stores the requested mode.
+- `pendingTransition` stores an incomplete mutation.
+- `generation` identifies the mutation epoch.
+- `actualMode`, `allowedActions`, `transitionStatus`, and `reconcileRequired`
+  are derived results.
 
-The runtime is the product core. Desktop, mobile, CLI, and future menu-bar
-surfaces are thin clients over the same daemon-owned state and execution model.
+Desktop and CLI present these fields and send allowed intents. Neither client
+reimplements the state machine.
 
-### Current renderer remote-domain rule
+## First-fix rule
 
-The duplicate renderer ownership hard cut for these daemon-owned domains has
-landed:
+Place a fix at the first owner that produced the wrong value:
 
-- `runs`
-- `activity`
-- `approvals`
-- `artifacts`
+- Fix layout, focus, or temporary selection in `apps/desktop`.
+- Fix native rendering or input mechanics in GPUIX.
+- Fix a wire mismatch in `ta-protocol`.
+- Fix persistence in `ta-store`.
+- Fix permission decisions in `ta-policy`.
+- Fix model metadata in `ta-model-catalog`.
+- Fix runtime orchestration in `ta-orchestrator`.
+- Fix vendor translation in the matching provider adapter.
 
-The canonical renderer rule is now:
-
-- Query is the only renderer owner of these remote domains
-- stream or actor layers must not keep second remote-domain lists or snapshots
-- stream layers keep lifecycle, reconnect, retry, history-gap, decode-failure,
-  and pending-command orchestration only
-- local presentation state may remain actor-owned when it does not duplicate
-  daemon truth, for example currently selected artifact id
-- live stream messages rehydrate, patch, or invalidate Query-owned data rather
-  than becoming a second domain store
-
-Future work such as `t-lr4l` must preserve this split rather than reintroducing
-stream-owned mirrors of daemon data.
-
-## Policy boundary
-
-- `ta-protocol` owns the canonical approval scope taxonomy for
-  file/process/network
-- `ta-policy` evaluates those protocol-owned scopes into
-  allow/deny/require-approval decisions
-
-## Store boundary
-
-- `ta-store` owns persistence interfaces, record schemas, and current-shape
-  durable integrity
-- runtime consumers should talk to `ta-store` repositories, not directly to
-  record bags
-
-## Orchestrator daemon host owns
-
-- process shell
-- JSON-RPC host adapter
-- transport session hosting
-- client subscription fan-out
-- seq, cursor, backlog, replay, and bounded-subscriber fan-out for live runtime
-  lane events
-- persisted runtime control plane
-- background service control helpers used by CLI or packaged desktop surfaces
-- canonical typed daemon config loading, normalization, and launch projection for
-  runtime mode, socket/log policy, observability, control token, and remote WS
-
-### Live lane delivery policy
-
-- durable lane frames are the replay boundary
-- assistant deltas and tool-progress frames are live-only best-effort transport
-- backlog eviction prefers transient frames before durable frames
-- per-subscriber queues are bounded; an overflowed subscriber is dropped and the
-  JSON-RPC session is closed rather than blocking publish
-- reconnect recovery uses the existing backlog or `historyGap` path; there is no
-  separate in-band lag marker today
-
-This is aligned with the current Codex app-server narrow-lossless tier. In the
-local 2026-04-19 Codex checkout, `codex-rs/app-server/src/in_process.rs`
-`server_notification_requires_delivery(...)` requires delivery only for
-`TurnCompleted`, so agent-message deltas are no longer treated as lossless
-upstream.
-
-The daemon host defines the canonical runtime control contract:
-
-- `background_opt_in` is persisted product consent and only Rust may write it
-- `desired_mode` is the persisted target runtime mode
-- `pending_transition` is persisted whenever a multi-step runtime mutation is
-  in flight or degraded
-- `last_error` records the last control-plane divergence
-- `generation` is the monotonic mutation epoch
-- `actual_mode`, `allowed_actions`, `transition_status`, and
-  `reconcile_required` are Rust-derived snapshot fields, not desktop-derived
-  heuristics
-- `local` means a directly started local daemon process
-- `background` means an explicitly enabled OS-managed service
-- desktop and CLI may present controls, but only Rust proves lifecycle
-  invariants and decides whether destructive control is allowed
-- a daemon in `foreign` ownership is inspect-only from the public control
-  surface
-
-Public clients consume one stable snapshot:
-
-- `backgroundOptIn`
-- `desiredMode`
-- `actualMode`
-- `transitionStatus`
-- `reconcileRequired`
-- `allowedActions`
-- `errorCode`
-- `message`
-- optional `pendingTransition`
-- `socketPath`
-- `logPath`
-- optional `daemonVersion`
-- `protocolVersion`
-
-## Adapters own
-
-- vendor protocol details
-- process startup and message mapping
-- capability detection for their specific lane
-- translation from vendor-native stream/progress events into protocol-owned
-  runtime lane event shapes
-
-Adapters do not own runtime profile semantics or harness selection. ACP
-adapters consume `AcpProviderSpec` and adapter-local launch data, while
-`ta-orchestrator` remains the owner that chooses `AgentExecutionHarness`.
-
-## Cross-reference
-
-- Use `docs/architecture/acp-runtime.md` for ACP typed harness dispatch,
-  descriptor-owned provider registration, approval projection, and future
-  sandbox/capsule boundaries.
-- Use `docs/architecture/desktop-boundaries.md` for TypeScript package and
-  import rules inside `apps/desktop`.
-- Use `docs/contracts/ipc.md` for transport and desktop IPC contracts.
+Delete competing implementations when you move a rule to its canonical owner.

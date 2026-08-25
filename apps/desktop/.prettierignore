@@ -1,4 +1,0 @@
-.artifacts/
-release/
-packages/shared/generated/
-packages/shared/contracts-check-*.ts

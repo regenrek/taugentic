@@ -1,126 +1,78 @@
-# Desktop Boundaries
+# Desktop boundaries
 
-This document is the canonical source of truth for the `apps/desktop/packages`
-layer split.
+`apps/desktop` contains one macOS desktop app. React describes the interface,
+GPUIX renders it through GPUI, and the app connects directly to the Taugentic
+daemon.
 
-The split is not about arbitrary package count. It is about keeping four
-different trust and responsibility boundaries clean:
+## Ownership
 
-- `main`: privileged Electron shell and native orchestration
-- `preload`: capability membrane between renderer and main
-- `renderer`: UI and feature presentation
-- `shared`: transport-facing contracts and validation SSOT
+### Taugentic desktop owns
 
-## Package ownership
+- window composition and navigation
+- temporary form, focus, and panel state
+- presentation of daemon snapshots and events
+- the direct JSON-RPC client lifecycle
+- starting the canonical Taugentic runtime-control command in development and
+  from the packaged app
 
-### `packages/main`
+The desktop does not own sessions, runs, approvals, permissions, persistence,
+harness selection, model metadata, replay order, or daemon recovery policy.
 
-Owns:
+### GPUIX owns
 
-- `BrowserWindow` creation
-- Electron app lifecycle
-- daemon bootstrap or reuse
-- `ipcMain` handlers
-- native stream plumbing with `MessagePort`
-- packaging-aware process ownership decisions
+- the React reconciler
+- the retained native element tree
+- GPUI window creation, rendering, focus, text input, scrolling, and events
+- the JavaScript-to-Rust bridge
+- native desktop test automation
 
-Must not own:
+GPUIX must not contain Taugentic product state or daemon policy.
 
-- renderer presentation state
-- React components
-- preload bridge surface design beyond the IPC it serves
-- duplicated contract types that already live in `shared`
+### `packages/shared` owns
 
-### `packages/preload`
+`packages/shared` is generated output from `ta-protocol`. It exposes transport
+types to TypeScript and contains no handwritten policy, validation, defaults, or
+runtime code.
 
-Owns:
+Run these commands after a protocol change:
 
-- `contextBridge.exposeInMainWorld(...)`
-- narrow `ipcRenderer.invoke(...)` and stream-open wrappers
-- no more power than the renderer actually needs
-
-Must not own:
-
-- UI state
-- retry or cache policy
-- daemon orchestration logic
-- independent business validation or policy
-
-### `packages/renderer`
-
-Owns:
-
-- routes, panels, view state, and feature-local orchestration
-- calls into the desktop bridge through renderer-owned adapters
-- mapping daemon results into presentation state
-
-Must not own:
-
-- direct `electron` imports
-- `ipcRenderer` or `contextBridge`
-- Node.js APIs
-- daemon lifecycle policy beyond invoking desktop intents
-
-### `packages/shared`
-
-Owns:
-
-- desktop IPC channel names
-- renderer-visible desktop TypeScript contracts
-- generated protocol bindings consumed by desktop TypeScript
-- validation surfaces shared across desktop packages
-
-Must not own:
-
-- Electron runtime APIs
-- Node.js runtime APIs
-- React or renderer-specific UI logic
-- main-process orchestration logic
+```sh
+cargo xtask export-protocol
+cargo xtask check-protocol
+```
 
 ## Dependency direction
 
-Keep the dependency graph one-way:
+The dependency direction is fixed:
 
-- `main` -> `shared`
-- `preload` -> `shared`
-- `renderer` -> `shared`
-- `renderer` -> renderer-local `lib/ipc/*` facades
+```text
+Taugentic React app -> GPUIX -> GPUI
+Taugentic React app -> generated ta-protocol types
+Taugentic React app -> daemon JSON-RPC transport
+```
 
-Do not import in the opposite direction:
+Do not add a preload layer, desktop IPC bridge, browser renderer, or second
+desktop state owner. Put product behavior in the Taugentic app, native rendering
+behavior in GPUIX, and runtime behavior in the daemon.
 
-- `renderer` must not import `main`, `preload`, `electron`, or `node:*`
-- `preload` must not import `renderer`
-- `main` must not import `renderer` or `preload`
-- `shared` must not import `electron`, `node:*`, React, or other desktop
-  runtime packages
+## Runtime identity
 
-## Canonical renderer bridge entrypoints
+`TAUGENTIC_DAEMON_SOCKET_NAME` selects the local daemon identity. The
+`desktop-dev` recipe defaults to `ta-daemon-gpui`. Override the variable only
+when you intentionally connect to another daemon.
 
-Renderer code must use these canonical facades:
+The desktop must consume the socket path reported by the Rust runtime-control
+owner. TypeScript must not reimplement platform socket-path rules.
 
-- `apps/desktop/packages/renderer/src/lib/ipc/api.ts`
-- `apps/desktop/packages/renderer/src/lib/ipc/stream.ts`
-- `apps/desktop/packages/renderer/src/features/window/state.ts`
+## Dependency policy
 
-Direct `window.desktopApi` access is only allowed inside the canonical desktop
-IPC boundary modules. Direct `window.desktopWindow` access is only allowed
-inside the renderer-local window boundary modules that own window chrome and
-window-state bridging.
+Taugentic pins both `@gpuix/react` and `@gpuix/native` to exact versions. Keep
+the direct native dependency even though React also depends on it. The direct
+pin prevents the bridge and the native binary from moving independently.
 
-## Enforcement
+Upgrade both packages in one change. Run the type check, the native live-window
+test, and the manual milestone test before accepting the upgrade.
 
-These rules are enforced in code, not just prose:
-
-- ESLint enforces package import boundaries and bans direct `window.desktopApi`
-  access outside the canonical renderer bridge modules
-- Oxlint provides fast baseline correctness and suspicious-code checks
-- Knip keeps config and boundary-owner entrypoints visible so drift does not hide
-  behind unused private modules
-
-## Change rule
-
-If a new desktop capability needs documentation:
-
-- update this document when package ownership or import direction changes
-- update `docs/contracts/ipc.md` when the actual IPC surface changes
-- update `docs/architecture/runtime-ownership.md` when runtime ownership shifts
+pnpm delays other new package releases for seven days and rejects downgraded
+registry trust signals. The GPUIX packages and their direct event parser are
+explicit exceptions because Taugentic pins and reviews each GPUIX release.

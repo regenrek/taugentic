@@ -16,29 +16,27 @@ pub fn check_daemon_foundation(repo_root: &Path) -> Result<(), Box<dyn Error>> {
         "CLI must consume public daemon contract types from ta-protocol, not ta-orchestrator::boundary",
     )?;
 
-    let desktop_main_src = repo_root.join("apps/desktop/packages/main/src");
+    let desktop_src = repo_root.join("apps/desktop/src");
     collect_disallowed_create_connection_matches(
-        &desktop_main_src,
-        &[
-            desktop_main_src.join("daemon-rpc-client.ts"),
-            desktop_main_src.join("daemon-session.ts"),
-        ],
+        &desktop_src,
+        &[desktop_src.join("runtime/daemon/connection.ts")],
         &mut violations,
     )?;
 
-    let desktop_rpc = desktop_main_src.join("rpc.ts");
-    require_literal(
-        &desktop_rpc,
-        "listSessions: listDaemonSessions,",
-        &mut violations,
-        "desktop listSessions IPC must route to daemon-session canonical client",
-    )?;
-    require_literal(
-        &desktop_rpc,
-        "listRuns: listDaemonRuns,",
-        &mut violations,
-        "desktop listRuns IPC must route to daemon-session canonical client",
-    )?;
+    for legacy_path in [
+        "apps/desktop/packages/main",
+        "apps/desktop/packages/preload",
+        "apps/desktop/packages/renderer",
+        "apps/desktop/packages/shared/src",
+    ] {
+        let path = repo_root.join(legacy_path);
+        if path.exists() {
+            violations.push(format!(
+                "{}: legacy desktop owner must not exist",
+                path.display()
+            ));
+        }
+    }
 
     if violations.is_empty() {
         println!("daemon foundation checks passed");
@@ -84,24 +82,7 @@ fn collect_disallowed_create_connection_matches(
         }
 
         violations.push(format!(
-            "{}: createConnection( (desktop main must open daemon sockets only through daemon-rpc-client.ts or daemon-session.ts)",
-            path.display()
-        ));
-    }
-
-    Ok(())
-}
-
-fn require_literal(
-    path: &Path,
-    pattern: &str,
-    violations: &mut Vec<String>,
-    message: &str,
-) -> Result<(), Box<dyn Error>> {
-    let contents = fs::read_to_string(path)?;
-    if !contents.contains(pattern) {
-        violations.push(format!(
-            "{}: missing `{pattern}` ({message})",
+            "{}: createConnection( (desktop must open daemon sockets only through runtime/daemon/connection.ts)",
             path.display()
         ));
     }
@@ -144,7 +125,7 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use super::{collect_disallowed_create_connection_matches, require_literal};
+    use super::collect_disallowed_create_connection_matches;
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let nanos = SystemTime::now()
@@ -152,26 +133,6 @@ mod tests {
             .expect("system clock should be after unix epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("xtask-foundation-{prefix}-{nanos}"))
-    }
-
-    #[test]
-    fn require_literal_reports_missing_pattern() {
-        let dir = temp_dir("require-literal");
-        fs::create_dir_all(&dir).expect("temp dir should exist");
-        let file = dir.join("rpc.ts");
-        fs::write(&file, "export function example() {}\n").expect("fixture should write");
-
-        let mut violations = Vec::new();
-        require_literal(
-            &file,
-            "listSessions: listDaemonSessions,",
-            &mut violations,
-            "message",
-        )
-        .expect("require literal should succeed");
-
-        assert_eq!(violations.len(), 1);
-        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

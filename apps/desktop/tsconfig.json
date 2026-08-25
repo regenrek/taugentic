@@ -1,14 +1,10 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@gpuix/react",
     "noEmit": true,
-    "types": ["node", "electron"]
+    "types": ["node", "bun"]
   },
-  "include": [
-    "vite.config.ts",
-    "tests/**/*.ts",
-    "packages/**/*.ts",
-    "packages/**/*.tsx",
-    "scripts/**/*.d.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
 }

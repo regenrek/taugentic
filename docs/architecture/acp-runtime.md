@@ -23,8 +23,8 @@ legacy ACP flavor paths, or UI-owned runtime truth.
 - `ta-provider-acp` owns ACP provider descriptors, ACP subprocess launch
   details, raw ACP JSON-RPC mapping, and provider-controlled error-data
   sanitization.
-- `apps/desktop` renders daemon snapshots and TanStack Query projections. It
-  does not own runtime profile semantics, approval truth, or harness selection.
+- `apps/desktop` presents daemon snapshots. It does not own runtime profile
+  semantics, approval truth, or harness selection.
 
 ## Harness Ownership Boundary
 
@@ -120,17 +120,10 @@ Approval truth is daemon/store owned. Provider strategies request approvals
 through runtime approval handles; resolving an approval goes back to the live
 daemon-owned run handle.
 
-The renderer only displays Query-owned projections:
-
-- `useSessionApprovalsQuery` reads daemon approval snapshots with TanStack Query.
-- `ApprovalsSection` renders that projection and calls the daemon-backed
-  approval mutation.
-- Mission Control's default Steps tab includes `ApprovalsSection` above the
-  turn stream so pending approvals are visible and actionable without switching
-  to a secondary tab.
-
-Renderer code must not mirror approvals into a second durable UI store or infer
-approval state from local component lifecycle.
+The desktop reads approval snapshots from the daemon and sends approval
+decisions back through the daemon contract. Desktop code must not mirror
+approvals into a second durable store or infer approval state from component
+lifecycle.
 
 ## Future Sandbox And Capsules Boundary
 

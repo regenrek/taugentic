@@ -107,26 +107,13 @@ boots and answers, not every edge case.
 
 ### `apps/desktop`
 
-- keep desktop tests focused on Electron-owned behavior only:
-  `contextBridge` adapters, desktop pre-RPC locator/launch-spec ownership,
-  daemon bootstrap or RPC routing, quit orchestration, and renderer state
-  derivation from the canonical Rust snapshot
-- keep desktop pre-RPC policy tests on `desktop-locator-config` and
-  `desktop-bootstrap-config`; do not rebuild that policy in
-  `daemon-bootstrap` or other wrapper layers
-- do not mirror Rust lifecycle invariants here once `ta-cli` or
-  `ta-orchestrator` already proves them
-- canonical desktop runtime-control cases are:
-  - renderer disables destructive actions for foreign daemons
-  - Electron main routes `start` through the canonical bootstrap owner in
-    `desktop-bootstrap-config`, while `stop`, `enableBackground`,
-    `disableBackground`, and `reconcile` remain canonical RPC-only
-  - Electron main summary reads such as `listSessions` and `listRuns` stay on
-    the daemon-backed session path, not Electron-owned stub state
-  - persistent daemon sessions recover run-stream subscriptions after transport
-    loss without losing daemon-owned replay ordering
-  - quit re-reads live control state before deciding whether local-mode shutdown
-    applies
+- use GPUIX live-process automation against the production app entrypoint
+- prove native launch, focus, input, navigation, and the direct daemon seam
+- test presentation rules in desktop tests
+- test daemon lifecycle, policy, persistence, and replay rules in their Rust
+  owners
+- do not use browser DOM tests, platform-shell shims, or a second test renderer
+- keep one launch smoke per release-critical desktop path
 
 ## Workspace smoke
 
@@ -184,8 +171,8 @@ cargo xtask check-protocol
 cargo xtask check-daemon-foundation
 cargo test -p ta-orchestrator --test daemon_integration
 cargo test -p ta-cli --lib --tests
-cd apps/desktop && pnpm test -- --run tests/main/daemon.test.ts
-cd apps/desktop && pnpm typecheck
+pnpm --dir apps/desktop check
+pnpm --dir apps/desktop test
 cargo xtask smoke-local-daemon
 ```
 

@@ -62,10 +62,9 @@ coverage/
 .cursor-target/
 node_modules/
 apps/desktop/node_modules/
-apps/desktop/.artifacts/
 apps/desktop/packages/*/dist/
 apps/desktop/packages/*/*.tsbuildinfo
-apps/desktop/release/
+apps/desktop/screenshots/
 apps/desktop/packages/shared/generated/**/*.d.ts
 apps/desktop/packages/shared/generated/**/*.js
 !apps/desktop/packages/shared/generated/index.js
