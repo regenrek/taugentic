@@ -225,7 +225,7 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
 }
 
 #[test]
-fn provider_run_request_normalizes_stale_model_and_auth_refs() {
+fn provider_run_request_rejects_stale_model_and_auth_refs() {
     let runtime = RuntimeService::from_host_platform_with_paths(
         fixture_host_platform(),
         RuntimeExecutionPaths {
@@ -244,7 +244,7 @@ fn provider_run_request_normalizes_stale_model_and_auth_refs() {
     profile.auth_profile_id =
         Some(AuthProfileId::new("missing-auth-profile").expect("auth profile id"));
 
-    let request = execution
+    let model_error = execution
         .build_execution_request(ProviderRunStart {
             runtime_profile: &profile,
             session_id: &session_id,
@@ -256,12 +256,36 @@ fn provider_run_request_normalizes_stale_model_and_auth_refs() {
             model_id: None,
             subagent_recipes: Vec::new(),
         })
-        .expect("request should normalize stale profile refs");
+        .expect_err("request should reject a stale model ref");
+    assert!(matches!(
+        model_error,
+        crate::orchestration::AgentRuntimeServiceError::UnknownModel {
+            ref provider_id,
+            ref model_id,
+        } if provider_id == "openai" && model_id == "missing-model"
+    ));
 
-    assert_eq!(request.provider_id.as_str(), "openai");
-    assert_eq!(request.execution_harness, AgentExecutionHarness::NativeLoop);
-    assert_eq!(request.model_id, None);
-    assert_eq!(request.auth_profile_id, None);
+    profile.model_id = None;
+    let auth_error = execution
+        .build_execution_request(ProviderRunStart {
+            runtime_profile: &profile,
+            session_id: &session_id,
+            run_id: &run_id,
+            objective: "test objective",
+            execution_context: Arc::new(ta_store::default_test_execution_context()),
+            fork_initial_state: None,
+            output_contract: None,
+            model_id: None,
+            subagent_recipes: Vec::new(),
+        })
+        .expect_err("request should reject a stale auth profile ref");
+    assert!(matches!(
+        auth_error,
+        crate::orchestration::AgentRuntimeServiceError::UnknownAuthProfile {
+            ref provider_id,
+            ref auth_profile_id,
+        } if provider_id == "openai" && auth_profile_id == "missing-auth-profile"
+    ));
 }
 
 fn fixture_host_platform() -> HostPlatform {
