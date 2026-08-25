@@ -130,33 +130,6 @@ fn execution_context_preparation_emits_conflict_warning_for_overlapping_claims()
     );
 }
 
-fn init_dispatch_repo() -> tempfile::TempDir {
-    let repo = tempfile::tempdir().expect("temp repo");
-    dispatch_git(repo.path(), ["init"]);
-    dispatch_git(repo.path(), ["config", "user.email", "agent@example.test"]);
-    dispatch_git(repo.path(), ["config", "user.name", "Agent Test"]);
-    std::fs::write(repo.path().join(".gitignore"), "target/\n").expect("gitignore");
-    std::fs::create_dir_all(repo.path().join("src")).expect("src dir");
-    std::fs::write(repo.path().join("src/lib.rs"), "pub fn fixture() {}\n").expect("fixture");
-    dispatch_git(repo.path(), ["add", "."]);
-    dispatch_git(repo.path(), ["commit", "-m", "initial"]);
-    repo
-}
-
-fn dispatch_git<const N: usize>(repo: &std::path::Path, args: [&str; N]) {
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(repo)
-        .args(args)
-        .output()
-        .expect("git should run");
-    assert!(
-        output.status.success(),
-        "git failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-}
-
 fn runtime_for_dispatch_repo(repo: &std::path::Path) -> crate::RuntimeService {
     crate::RuntimeService::from_host_platform_with_paths(
         ta_host_platform::detect_current_platform(),

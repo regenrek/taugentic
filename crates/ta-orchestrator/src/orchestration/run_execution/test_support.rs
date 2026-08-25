@@ -42,6 +42,33 @@ pub(super) fn set_default_test_workspace_root(
     .expect("test workspace should update");
 }
 
+pub(super) fn init_dispatch_repo() -> tempfile::TempDir {
+    let repo = tempfile::tempdir().expect("temp repo");
+    dispatch_git(repo.path(), ["init"]);
+    dispatch_git(repo.path(), ["config", "user.email", "agent@example.test"]);
+    dispatch_git(repo.path(), ["config", "user.name", "Agent Test"]);
+    std::fs::write(repo.path().join(".gitignore"), "target/\n").expect("gitignore");
+    std::fs::create_dir_all(repo.path().join("src")).expect("src dir");
+    std::fs::write(repo.path().join("src/lib.rs"), "pub fn fixture() {}\n").expect("fixture");
+    dispatch_git(repo.path(), ["add", "."]);
+    dispatch_git(repo.path(), ["commit", "-m", "initial"]);
+    repo
+}
+
+fn dispatch_git<const N: usize>(repo: &std::path::Path, args: [&str; N]) {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .args(args)
+        .output()
+        .expect("git should run");
+    assert!(
+        output.status.success(),
+        "git failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 pub(super) fn ensure_running_run(
     execution: &RunExecutionService<InMemoryStore>,
     session_id: &SessionId,

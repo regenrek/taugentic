@@ -144,8 +144,10 @@ fn wall_clock_budget_breach_fails_running_run_mid_stream() {
 
 #[test]
 fn parent_aggregate_budget_prevents_child_dispatch() {
+    let repo = init_dispatch_repo();
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Inherited budget");
     select_runtime_profile(&app, "runtime-openai-allow");
     let parent = ensure_running_run(&execution, &session.id, "Parent budget owner");
