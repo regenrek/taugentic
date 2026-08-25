@@ -10,6 +10,7 @@ identifier!(AuthProfileId, "auth profile");
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
 pub enum AuthProfileConnectionState {
+    Loading,
     LoggedOut,
     PendingLogin,
     Connected,

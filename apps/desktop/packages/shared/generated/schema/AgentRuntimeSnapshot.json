@@ -167,6 +167,7 @@
     },
     "AuthProfileConnectionState": {
       "enum": [
+        "loading",
         "loggedOut",
         "pendingLogin",
         "connected",

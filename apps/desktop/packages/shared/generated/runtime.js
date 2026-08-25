@@ -31658,6 +31658,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   AuthProfileConnectionState: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "enum": [
+    "loading",
     "loggedOut",
     "pendingLogin",
     "connected",
@@ -31724,6 +31725,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileConnectionState": {
       "enum": [
+        "loading",
         "loggedOut",
         "pendingLogin",
         "connected",
@@ -31915,6 +31917,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileConnectionState": {
       "enum": [
+        "loading",
         "loggedOut",
         "pendingLogin",
         "connected",
@@ -32982,6 +32985,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileConnectionState": {
       "enum": [
+        "loading",
         "loggedOut",
         "pendingLogin",
         "connected",

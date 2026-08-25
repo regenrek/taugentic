@@ -125,7 +125,7 @@ impl OpenAiSubscriptionAuth {
         manager: Arc<TokenManager>,
         launch_browser: Arc<BrowserLauncher>,
     ) -> Self {
-        Self {
+        let auth = Self {
             inner: Arc::new(OpenAiSubscriptionAuthInner {
                 runtime,
                 manager,
@@ -133,13 +133,15 @@ impl OpenAiSubscriptionAuth {
                 http,
                 config,
                 key,
-                profile_state: Mutex::new(profile::ProfileRuntimeState::default()),
+                profile_state: Mutex::new(profile::ProfileRuntimeState::loading()),
                 pending_login: Mutex::new(None),
                 lifecycle_spawned: AtomicBool::new(false),
                 shutdown_token: CancellationToken::new(),
                 launch_browser,
             }),
-        }
+        };
+        auth.initialize_profile_state();
+        auth
     }
 
     pub fn default_with_store(
@@ -264,6 +266,31 @@ impl OpenAiSubscriptionAuth {
         self.inner.runtime.spawn(async move {
             lifecycle::listen(manager, auth, shutdown_token).await;
         });
+    }
+
+    fn initialize_profile_state(&self) {
+        let auth = Arc::downgrade(&self.inner);
+        let store = Arc::clone(&self.inner.store);
+        let key = self.inner.key.clone();
+        let spawn = std::thread::Builder::new()
+            .name("openai-credential-state".to_string())
+            .spawn(move || {
+                let credentials = store.load(&key).map_err(|error| error.to_string());
+                if let Some(inner) = auth.upgrade() {
+                    profile::record_initial_credentials(
+                        &OpenAiSubscriptionAuth { inner },
+                        credentials,
+                    );
+                }
+            });
+        if let Err(error) = spawn {
+            profile::record_initial_credentials(
+                self,
+                Err(format!(
+                    "failed to start OpenAI credential state worker: {error}"
+                )),
+            );
+        }
     }
 }
 

@@ -18,22 +18,26 @@ use url::Url;
 use super::{OpenAiSubscriptionAuth, profile};
 
 #[tokio::test]
-async fn current_state_tracks_credentials_and_reauth() {
+async fn current_state_is_initialized_once_and_tracks_lifecycle() {
     let store = Arc::new(TestStore::default());
+    store.replace(Some(stored_credentials("existing-access", "refresh")));
     let auth = test_auth(Arc::clone(&store), Arc::new(ScriptedHttp::default()));
 
-    assert_eq!(
-        auth.current_state().connection_state,
-        AuthProfileConnectionState::LoggedOut
-    );
-
-    store.replace(Some(stored_credentials("existing-access", "refresh")));
+    wait_for_connection_state(&auth, AuthProfileConnectionState::Connected).await;
     let connected = auth.current_state();
     assert_eq!(
         connected.connection_state,
         AuthProfileConnectionState::Connected
     );
     assert_eq!(connected.platform_org_linked, Some(false));
+    assert_eq!(store.load_count(), 1);
+
+    store.replace(None);
+    assert_eq!(
+        auth.current_state().connection_state,
+        AuthProfileConnectionState::Connected
+    );
+    assert_eq!(store.load_count(), 1);
 
     profile::record_needs_reauth(&auth, "refresh token rejected".to_string());
     let state = auth.current_state();
@@ -44,6 +48,22 @@ async fn current_state_tracks_credentials_and_reauth() {
             .as_deref()
             .is_some_and(|message| message.contains("needs re-authentication"))
     );
+}
+
+async fn wait_for_connection_state(
+    auth: &OpenAiSubscriptionAuth,
+    expected: AuthProfileConnectionState,
+) {
+    tokio::time::timeout(Duration::from_secs(1), async {
+        loop {
+            if auth.current_state().connection_state == expected {
+                return;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("profile did not reach {expected:?}"));
 }
 
 #[tokio::test]
@@ -614,11 +634,16 @@ fn id_token_without_organization() -> &'static str {
 #[derive(Default)]
 struct TestStore {
     credentials: Mutex<Option<StoredCredentials>>,
+    load_count: AtomicUsize,
 }
 
 impl TestStore {
     fn replace(&self, credentials: Option<StoredCredentials>) {
         *self.credentials.lock().expect("store lock") = credentials;
+    }
+
+    fn load_count(&self) -> usize {
+        self.load_count.load(Ordering::SeqCst)
     }
 }
 
@@ -636,6 +661,7 @@ impl CredentialStore for TestStore {
         &self,
         _key: &CredentialKey,
     ) -> Result<Option<StoredCredentials>, CredentialStoreError> {
+        self.load_count.fetch_add(1, Ordering::SeqCst);
         Ok(self.credentials.lock().expect("store lock").clone())
     }
 

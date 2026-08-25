@@ -4,38 +4,69 @@ use ta_protocol::wire::{
     AuthProfileMethodInfo, AuthProfileRef, AuthProfileState,
 };
 
-use super::{
-    OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID, OpenAiSubscriptionAuth, map_store_error,
-    profile_lock,
-};
+use super::{OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID, OpenAiSubscriptionAuth, profile_lock};
 use crate::families::openai::OPENAI_PROVIDER_ID;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
+enum CredentialRuntimeState {
+    Loading,
+    LoggedOut,
+    Connected(AccountInfo),
+    Unavailable(String),
+}
+
+#[derive(Debug)]
 pub(crate) struct ProfileRuntimeState {
+    credentials: CredentialRuntimeState,
     pending_login: bool,
     needs_reauth: Option<String>,
     last_error: Option<String>,
-    last_account: Option<AccountInfo>,
+}
+
+impl ProfileRuntimeState {
+    pub(crate) fn loading() -> Self {
+        Self {
+            credentials: CredentialRuntimeState::Loading,
+            pending_login: false,
+            needs_reauth: None,
+            last_error: None,
+        }
+    }
+
+    pub(crate) fn from_credentials(credentials: Result<Option<StoredCredentials>, String>) -> Self {
+        let credentials = match credentials {
+            Ok(Some(credentials)) => CredentialRuntimeState::Connected(credentials.account),
+            Ok(None) => CredentialRuntimeState::LoggedOut,
+            Err(error) => CredentialRuntimeState::Unavailable(error),
+        };
+        Self {
+            credentials,
+            pending_login: false,
+            needs_reauth: None,
+            last_error: None,
+        }
+    }
 }
 
 pub(crate) fn current_state(auth: &OpenAiSubscriptionAuth) -> AuthProfileState {
-    let credentials = auth
-        .inner
-        .store
-        .load(auth.key())
-        .map_err(map_store_error)
-        .map_err(|error| error.to_string());
     let runtime = profile_lock(auth);
-    match credentials {
-        Ok(credentials) => state_from_credentials(credentials.as_ref(), &runtime),
-        Err(error) => profile_state(AuthProfileConnectionState::Error, Some(error), true, false),
-    }
+    state_from_runtime(&runtime)
 }
 
 pub(crate) fn record_pending_login(auth: &OpenAiSubscriptionAuth) {
     let mut state = profile_lock(auth);
     state.pending_login = true;
     state.last_error = None;
+}
+
+pub(crate) fn record_initial_credentials(
+    auth: &OpenAiSubscriptionAuth,
+    credentials: Result<Option<StoredCredentials>, String>,
+) {
+    let mut state = profile_lock(auth);
+    if matches!(state.credentials, CredentialRuntimeState::Loading) {
+        state.credentials = ProfileRuntimeState::from_credentials(credentials).credentials;
+    }
 }
 
 pub(crate) fn record_login_failed(auth: &OpenAiSubscriptionAuth, message: String) {
@@ -49,7 +80,7 @@ pub(crate) fn record_connected(auth: &OpenAiSubscriptionAuth, account: AccountIn
     state.pending_login = false;
     state.needs_reauth = None;
     state.last_error = None;
-    state.last_account = Some(account);
+    state.credentials = CredentialRuntimeState::Connected(account);
 }
 
 pub(crate) fn record_logged_out(auth: &OpenAiSubscriptionAuth) {
@@ -57,7 +88,7 @@ pub(crate) fn record_logged_out(auth: &OpenAiSubscriptionAuth) {
     state.pending_login = false;
     state.needs_reauth = None;
     state.last_error = None;
-    state.last_account = None;
+    state.credentials = CredentialRuntimeState::LoggedOut;
 }
 
 pub(crate) fn record_needs_reauth(auth: &OpenAiSubscriptionAuth, reason: String) {
@@ -71,35 +102,42 @@ pub(crate) fn record_refresh_failed(auth: &OpenAiSubscriptionAuth, message: Stri
     state.last_error = Some(message);
 }
 
-fn state_from_credentials(
-    credentials: Option<&StoredCredentials>,
-    runtime: &ProfileRuntimeState,
-) -> AuthProfileState {
+fn state_from_runtime(runtime: &ProfileRuntimeState) -> AuthProfileState {
     if runtime.pending_login {
         return profile_state(AuthProfileConnectionState::PendingLogin, None, false, false);
     }
     if let Some(reason) = runtime.needs_reauth.as_ref() {
+        let can_logout = matches!(runtime.credentials, CredentialRuntimeState::Connected(_));
         return profile_state(
             AuthProfileConnectionState::Error,
             Some(format!(
                 "OpenAI ChatGPT subscription needs re-authentication: {reason}"
             )),
             true,
-            credentials.is_some(),
+            can_logout,
         );
     }
-    match credentials {
-        Some(credentials) => profile_state(
+    match &runtime.credentials {
+        CredentialRuntimeState::Loading => {
+            profile_state(AuthProfileConnectionState::Loading, None, false, false)
+        }
+        CredentialRuntimeState::Connected(account) => profile_state(
             AuthProfileConnectionState::Connected,
             runtime.last_error.clone(),
             false,
             true,
         )
-        .with_platform_org_linked(credentials.account.organization_id.is_some())
+        .with_platform_org_linked(account.organization_id.is_some())
         .without_setup_steps(),
-        None => profile_state(
+        CredentialRuntimeState::LoggedOut => profile_state(
             AuthProfileConnectionState::LoggedOut,
             runtime.last_error.clone(),
+            true,
+            false,
+        ),
+        CredentialRuntimeState::Unavailable(error) => profile_state(
+            AuthProfileConnectionState::Error,
+            Some(error.clone()),
             true,
             false,
         ),
