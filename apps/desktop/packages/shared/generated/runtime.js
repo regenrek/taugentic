@@ -13651,12 +13651,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "null"
       ]
     },
-    "sandboxProfile": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "workspaceScope": {
       "$ref": "#/$defs/WorkspaceMode",
       "default": "worktreeWrite"
@@ -15854,12 +15848,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "null"
       ]
     },
-    "defaultSandboxProfile": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "description": {
       "type": [
         "string",
@@ -15898,12 +15886,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "$ref": "#/$defs/OutputContractKind"
         },
         "defaultModel": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "defaultSandboxProfile": {
           "type": [
             "string",
             "null"
@@ -16003,18 +15985,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "properties": {
         "kind": {
           "const": "emptyDefaultModel",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    {
-      "properties": {
-        "kind": {
-          "const": "emptyDefaultSandboxProfile",
           "type": "string"
         }
       },
@@ -19933,12 +19903,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
-            },
-            "sandboxProfile": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "required": [
@@ -19985,12 +19949,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "array"
             },
             "recipeId": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sandboxProfile": {
               "type": [
                 "string",
                 "null"
@@ -20778,12 +20736,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
-            },
-            "sandboxProfile": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "required": [
@@ -20830,12 +20782,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "array"
             },
             "recipeId": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sandboxProfile": {
               "type": [
                 "string",
                 "null"
@@ -21508,12 +21454,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
-            },
-            "sandboxProfile": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "required": [
@@ -21560,12 +21500,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "array"
             },
             "recipeId": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sandboxProfile": {
               "type": [
                 "string",
                 "null"
@@ -29902,12 +29836,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "recipeId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "sandboxProfile": {
       "type": [
         "string",
         "null"

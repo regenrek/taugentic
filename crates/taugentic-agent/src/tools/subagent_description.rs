@@ -177,7 +177,6 @@ mod tests {
             contract,
             prompt_template: "Return a capsule result.".to_string(),
             default_model: None,
-            default_sandbox_profile: None,
         }
     }
 }

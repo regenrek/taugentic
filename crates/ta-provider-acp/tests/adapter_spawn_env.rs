@@ -1,3 +1,5 @@
+mod support;
+
 use std::{
     fs,
     os::unix::fs::PermissionsExt,
@@ -9,7 +11,6 @@ use ta_provider_acp::{
     adapter::{AcpClientTrace, AcpProcessAdapter, AcpProcessConfig},
     descriptor::{AcpLaunchKind, AcpProviderSpec},
     launch::build_perimeter_profile,
-    mode_mapping::ModeMapping,
 };
 
 #[tokio::test]
@@ -46,7 +47,8 @@ async fn adapter_env_remove_hides_explicit_child_env() {
 fn config(work_dir: &Path, command: PathBuf, env: Vec<(String, String)>) -> AcpProcessConfig {
     let provider = AcpProviderSpec::from_builtin(AcpLaunchKind::Cursor);
     let sandbox_profile =
-        build_perimeter_profile(&provider, work_dir, &command).expect("test ACP perimeter profile");
+        build_perimeter_profile(&provider, &support::execution_context(work_dir), &command)
+            .expect("test ACP perimeter profile");
     AcpProcessConfig {
         flavor_id: "test-acp".to_string(),
         command,
@@ -58,7 +60,6 @@ fn config(work_dir: &Path, command: PathBuf, env: Vec<(String, String)>) -> AcpP
         mcp_servers: Vec::new(),
         session_mode_id: None,
         session_model_id: None,
-        mode_mapping: ModeMapping::new(),
         cancel_grace: Duration::from_millis(100),
     }
 }

@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use ta_protocol::wire::{ApprovalResolution, ApprovalScope, PermissionPolicy, RuntimePolicyMode};
+use ta_policy::{Operation, PolicyDecision, evaluate_execution_context};
+use ta_protocol::wire::{ApprovalResolution, ApprovalScope, ExecutionContext};
 use ta_provider_acp::adapter::{
     AcpClientTrace, AcpPermissionDecision, AcpPermissionDecisionFuture, AcpPermissionRequest,
     AcpProcessAdapter, AcpProcessConfig, AcpSessionModelUpdate,
@@ -22,8 +23,7 @@ pub(crate) async fn dispatch(
     let config = launch::build_config(
         &provider,
         AcpLaunchInput {
-            policy_mode: runtime_policy_mode(&request.execution_context.permission_policy),
-            working_directory: request.execution_context.effective_cwd.as_path(),
+            execution_context: &request.execution_context,
             runtime_extensions: &request.runtime_extensions,
             model_id: request.model_id.as_ref(),
         },
@@ -150,9 +150,13 @@ async fn run_acp(
     };
     let mut on_permission = {
         let approval_bridge = approval_bridge.clone();
+        let execution_context = request.execution_context.clone();
         move |request: AcpPermissionRequest| -> AcpPermissionDecisionFuture {
             let approval_bridge = approval_bridge.clone();
-            Box::pin(async move { resolve_acp_permission(approval_bridge, request).await })
+            let execution_context = execution_context.clone();
+            Box::pin(async move {
+                resolve_acp_permission(approval_bridge, execution_context, request).await
+            })
         }
     };
     tokio::select! {
@@ -178,15 +182,23 @@ async fn run_acp(
 
 async fn resolve_acp_permission(
     approval_bridge: Arc<ApprovalBridge>,
+    execution_context: Arc<ExecutionContext>,
     request: AcpPermissionRequest,
 ) -> Result<AcpPermissionDecision, ta_provider_acp::error::AcpClientError> {
+    let scope = acp_approval_scope(&request);
+    let operation = Operation::new(scope, request.reason.clone());
+    match evaluate_execution_context(&execution_context, &operation) {
+        PolicyDecision::Allow => return select_acp_allow(&request),
+        PolicyDecision::Deny { .. } => return Ok(select_acp_reject(&request)),
+        PolicyDecision::RequireApproval { .. } => {}
+    }
     let descriptor = ApprovalDescriptor::new(
         request.tool_call_id.clone(),
         request.tool_name.clone(),
         request.reason.clone(),
     );
     let approval_id = approval_bridge
-        .request(acp_approval_scope(&request), &descriptor)
+        .request(scope, &descriptor)
         .map_err(|error| {
             ta_provider_acp::error::AcpClientError::ProcessFailed(error.to_string())
         })?;
@@ -195,25 +207,35 @@ async fn resolve_acp_permission(
         .await
         .map_err(|error| ta_provider_acp::error::AcpClientError::Cancelled(error.to_string()))?;
     match outcome {
-        ApprovalOutcome::Allow => request
-            .allow_once_option_id()
-            .map(|option_id| AcpPermissionDecision::Selected {
-                option_id: option_id.to_string(),
-            })
-            .ok_or_else(|| {
-                ta_provider_acp::error::AcpClientError::InvalidConfig(format!(
-                    "ACP permission request {} has no allow option",
-                    request.tool_call_id
-                ))
-            }),
-        ApprovalOutcome::Deny => Ok(request
-            .reject_once_option_id()
-            .map(|option_id| AcpPermissionDecision::Selected {
-                option_id: option_id.to_string(),
-            })
-            .unwrap_or(AcpPermissionDecision::Cancelled)),
+        ApprovalOutcome::Allow => select_acp_allow(&request),
+        ApprovalOutcome::Deny => Ok(select_acp_reject(&request)),
         ApprovalOutcome::TurnInterrupted => Ok(AcpPermissionDecision::Cancelled),
     }
+}
+
+fn select_acp_allow(
+    request: &AcpPermissionRequest,
+) -> Result<AcpPermissionDecision, ta_provider_acp::error::AcpClientError> {
+    request
+        .allow_once_option_id()
+        .map(|option_id| AcpPermissionDecision::Selected {
+            option_id: option_id.to_string(),
+        })
+        .ok_or_else(|| {
+            ta_provider_acp::error::AcpClientError::InvalidConfig(format!(
+                "ACP permission request {} has no allow option",
+                request.tool_call_id
+            ))
+        })
+}
+
+fn select_acp_reject(request: &AcpPermissionRequest) -> AcpPermissionDecision {
+    request
+        .reject_once_option_id()
+        .map(|option_id| AcpPermissionDecision::Selected {
+            option_id: option_id.to_string(),
+        })
+        .unwrap_or(AcpPermissionDecision::Cancelled)
 }
 
 fn acp_approval_scope(request: &AcpPermissionRequest) -> ApprovalScope {
@@ -233,17 +255,5 @@ fn acp_approval_scope(request: &AcpPermissionRequest) -> ApprovalScope {
         ApprovalScope::NetworkAccess
     } else {
         ApprovalScope::ProcessExec
-    }
-}
-
-fn runtime_policy_mode(permission_policy: &PermissionPolicy) -> RuntimePolicyMode {
-    match permission_policy {
-        PermissionPolicy::ReadOnly => RuntimePolicyMode::Deny,
-        PermissionPolicy::WorkspaceWrite | PermissionPolicy::Unrestricted => {
-            RuntimePolicyMode::Allow
-        }
-        PermissionPolicy::WorkspaceWriteWithApproval | PermissionPolicy::RepoWriteWithApproval => {
-            RuntimePolicyMode::RequireApproval
-        }
     }
 }

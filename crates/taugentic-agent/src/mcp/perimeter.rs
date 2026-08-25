@@ -3,23 +3,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ta_exec::{NetworkPolicy, SandboxProfile};
-use ta_protocol::provider_id;
+use ta_protocol::{provider_id, wire::ExecutionContext};
 
 use crate::ExecutionError;
+use crate::native_execution::{
+    NativeExecutionRequirements, NativeExecutionSpec, compile_native_execution_spec,
+};
 
-/// Builds the MCP stdio sandbox perimeter with base parent-env rehydration only.
-///
-/// `env_allowlist` is intentionally limited to baseline OS variables. MCP
-/// `spec.env` is the user-controlled secret bridge into the child and
-/// deliberately bypasses that allowlist, so operators should configure only the
-/// server-specific secrets each MCP server actually needs.
-pub fn build_mcp_perimeter_profile(
+/// Builds the complete MCP stdio execution spec from the frozen run policy and
+/// the process paths needed to launch this server.
+pub(crate) fn build_mcp_execution_spec(
     server_id: &str,
-    workspace_cwd: &Path,
+    execution_context: &ExecutionContext,
     command: &Path,
-) -> Result<SandboxProfile, ExecutionError> {
+) -> Result<NativeExecutionSpec, ExecutionError> {
     validate_mcp_server_id(server_id)?;
+    let workspace_cwd = execution_context.effective_cwd.as_path();
     require_absolute_path("workspace cwd", workspace_cwd)?;
     require_absolute_path("MCP stdio command", command)?;
 
@@ -35,29 +34,23 @@ pub fn build_mcp_perimeter_profile(
     let temp_dir = std::env::temp_dir();
     require_absolute_path("temp dir", &temp_dir)?;
 
-    // Most third-party MCP servers need network access. Linux remains fail-closed
-    // through the sandbox backend until the network allowlist slice lands.
-    let mut profile = SandboxProfile::new()
-        .network(NetworkPolicy::Open)
-        .child_inherits_tty(false)
-        .read_path(&workspace_root)
-        .write_path(&workspace_root)
-        .read_path(&cache_dir)
-        .write_path(&cache_dir)
-        .read_path(&temp_dir)
-        .write_path(temp_dir);
-
-    for path in system_read_paths() {
-        profile = profile.read_path(path);
-    }
-    for path in command_read_paths(command, &home, &workspace_root, &cache_dir)? {
-        profile = profile.read_path(path);
-    }
-    for name in perimeter_env_allowlist() {
-        profile = profile.env(name);
-    }
-
-    Ok(profile)
+    let mut read_roots = vec![cache_dir.clone(), temp_dir.clone()];
+    read_roots.extend(system_read_paths());
+    read_roots.extend(command_read_paths(
+        command,
+        &home,
+        &workspace_root,
+        &cache_dir,
+    )?);
+    let write_roots = vec![cache_dir, temp_dir];
+    compile_native_execution_spec(
+        execution_context,
+        NativeExecutionRequirements {
+            cwd: &workspace_root,
+            adapter_read_roots: &read_roots,
+            adapter_write_roots: &write_roots,
+        },
+    )
 }
 
 fn validate_mcp_server_id(server_id: &str) -> Result<(), ExecutionError> {
@@ -263,22 +256,44 @@ fn candidate_paths(path: &Path) -> Vec<PathBuf> {
     paths
 }
 
-fn perimeter_env_allowlist() -> [&'static str; 4] {
-    ["PATH", "HOME", "LANG", "TMPDIR"]
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::process::Command;
+    use ta_exec::NetworkPolicy;
+    use ta_protocol::wire::{
+        EnvPolicy, NetworkPolicy as ContextNetworkPolicy, PermissionPolicy, ProcessExecPolicy,
+        SandboxProfile, WorkspaceId, WorkspacePath, WorkspaceScope,
+    };
+
+    fn execution_context(workspace: &Path) -> ExecutionContext {
+        let root = WorkspacePath::canonicalize_existing(workspace).expect("workspace path");
+        ExecutionContext {
+            workspace_id: WorkspaceId::new("workspace-mcp-perimeter").expect("workspace id"),
+            workspace_root: root.clone(),
+            effective_cwd: root.clone(),
+            artifact_root: root.clone(),
+            workspace_scope: WorkspaceScope::Local { root: root.clone() },
+            sandbox_profile: SandboxProfile {
+                read_roots: vec![root.clone()],
+                write_roots: vec![root],
+                denied_roots: Vec::new(),
+                process_exec: ProcessExecPolicy::AllowAll,
+            },
+            permission_policy: PermissionPolicy::WorkspaceWrite,
+            network_policy: ContextNetworkPolicy::Open,
+            env_policy: EnvPolicy::workspace_default(),
+        }
+    }
 
     #[test]
     fn mcp_perimeter_profile_allows_expected_boundary() {
         let workspace = std::env::temp_dir();
         let command = Path::new("/opt/homebrew/bin/mcp-server");
 
-        let profile =
-            build_mcp_perimeter_profile("github-mcp", &workspace, command).expect("profile");
+        let context = execution_context(&workspace);
+        let spec = build_mcp_execution_spec("github-mcp", &context, command).expect("spec");
+        let profile = spec.sandbox_profile;
 
         assert_eq!(profile.network_policy(), &NetworkPolicy::Open);
         assert!(!profile.child_inherits_tty_enabled());
@@ -297,9 +312,12 @@ mod tests {
 
     #[test]
     fn mcp_perimeter_profile_rejects_relative_command() {
-        let error =
-            build_mcp_perimeter_profile("github-mcp", &std::env::temp_dir(), Path::new("npx"))
-                .expect_err("relative command should fail closed");
+        let error = build_mcp_execution_spec(
+            "github-mcp",
+            &execution_context(&std::env::temp_dir()),
+            Path::new("npx"),
+        )
+        .expect_err("relative command should fail closed");
 
         assert!(matches!(
             error,
@@ -313,9 +331,9 @@ mod tests {
         const CHILD_MARKER: &str = "TAUGENTIC_AGENT_MCP_RELATIVE_HOME_CHILD";
 
         if std::env::var_os(CHILD_MARKER).is_some() {
-            let error = build_mcp_perimeter_profile(
+            let error = build_mcp_execution_spec(
                 "github-mcp",
-                &std::env::temp_dir(),
+                &execution_context(&std::env::temp_dir()),
                 Path::new("/usr/bin/mcp-server"),
             )
             .expect_err("relative HOME should fail closed");
@@ -362,9 +380,9 @@ mod tests {
 
     #[test]
     fn mcp_perimeter_profile_rejects_escape_server_id() {
-        let error = build_mcp_perimeter_profile(
+        let error = build_mcp_execution_spec(
             "../escape",
-            &std::env::temp_dir(),
+            &execution_context(&std::env::temp_dir()),
             Path::new("/usr/bin/mcp-server"),
         )
         .expect_err("unsafe server id should fail closed");
@@ -378,15 +396,23 @@ mod tests {
     }
 
     #[test]
-    fn mcp_perimeter_env_allowlist_is_base_only() {
-        let profile = build_mcp_perimeter_profile(
+    fn mcp_perimeter_env_allowlist_comes_from_execution_context() {
+        let context = execution_context(&std::env::temp_dir());
+        let profile = build_mcp_execution_spec(
             "github-mcp",
-            &std::env::temp_dir(),
+            &context,
             Path::new("/opt/homebrew/bin/mcp-server"),
         )
-        .expect("profile");
+        .expect("spec")
+        .sandbox_profile;
 
-        assert_eq!(profile.env_allowlist(), ["PATH", "HOME", "LANG", "TMPDIR"]);
+        assert_eq!(
+            profile.env_allowlist(),
+            match &context.env_policy {
+                EnvPolicy::Allowlist { vars } => vars.as_slice(),
+                EnvPolicy::All => unreachable!("test context uses an allowlist"),
+            }
+        );
         assert!(!profile.allows_env("GITHUB_TOKEN"));
         assert!(!profile.allows_env("OPENAI_API_KEY"));
         assert!(!profile.allows_env("ANTHROPIC_API_KEY"));

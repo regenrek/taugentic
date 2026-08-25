@@ -1,5 +1,7 @@
 #![cfg(target_os = "macos")]
 
+mod support;
+
 use std::{
     fs,
     os::unix::fs::PermissionsExt,
@@ -24,7 +26,6 @@ use ta_provider_acp::{
     mcp::{
         AcpMcpServerSpec, AcpMcpStdioServer, extension_to_mcp_server, extensions_to_mcp_servers,
     },
-    mode_mapping::ModeMapping,
 };
 
 #[tokio::test]
@@ -513,14 +514,14 @@ fn config(work_dir: &Path, command: PathBuf, env: Vec<(String, String)>) -> AcpP
         mcp_servers: Vec::new(),
         session_mode_id: None,
         session_model_id: None,
-        mode_mapping: ModeMapping::new(),
         cancel_grace: Duration::from_millis(100),
     }
 }
 
 fn test_perimeter_profile(work_dir: &Path, command: &Path) -> ta_exec::SandboxProfile {
     let provider = AcpProviderSpec::from_builtin(AcpLaunchKind::Cursor);
-    build_perimeter_profile(&provider, work_dir, command).expect("test ACP perimeter profile")
+    build_perimeter_profile(&provider, &support::execution_context(work_dir), command)
+        .expect("test ACP perimeter profile")
 }
 
 fn http_extension() -> RuntimeExtensionState {

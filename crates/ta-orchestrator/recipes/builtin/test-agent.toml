@@ -3,7 +3,6 @@ name = "Test Agent"
 description = "Writes or runs focused verification and returns TestResult with passed, failed, and skipped counts."
 contract = "test"
 defaultModel = "claude-4.6-sonnet-medium-thinking"
-defaultSandboxProfile = "balanced"
 
 promptTemplate = """
 You are a focused test agent. Run the requested verification, summarize the test outcome faithfully, and emit a structured CapsuleResult.

@@ -23,12 +23,6 @@
         "null"
       ]
     },
-    "defaultSandboxProfile": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "description": {
       "type": [
         "string",

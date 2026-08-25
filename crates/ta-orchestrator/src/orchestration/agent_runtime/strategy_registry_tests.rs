@@ -48,6 +48,26 @@ fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
     )
 }
 
+#[test]
+fn execution_capability_error_remains_typed_at_the_runtime_boundary() {
+    let detail = ta_protocol::wire::WorkspaceCapabilityUnsupported {
+        variant: None,
+        vendor: Some("cursor".to_string()),
+        capability: "network".to_string(),
+        requested: "none".to_string(),
+        reason: "provider cannot separate model and tool network".to_string(),
+    };
+
+    let mapped = map_execution_error(ExecutionError::WorkspaceCapabilityUnsupported(
+        detail.clone(),
+    ));
+
+    assert!(matches!(
+        mapped,
+        AgentRuntimeServiceError::WorkspaceCapabilityUnsupported(actual) if actual == detail
+    ));
+}
+
 fn fake_runtime_profile(provider: &str, runtime_profile: &str) -> RuntimeProfileSummary {
     RuntimeProfileSummary {
         id: profile_id(runtime_profile),

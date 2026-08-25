@@ -50,6 +50,5 @@ function makeRecipe(id: string, name: string, contract: string) {
     contract,
     promptTemplate: `${name} prompt`,
     defaultModel: null,
-    defaultSandboxProfile: null,
   };
 }

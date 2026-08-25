@@ -1,4 +1,4 @@
-use ta_policy::Operation;
+use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::StartRunCommand;
 use ta_store::CommitRunTransition;
 use uuid::Uuid;
@@ -34,11 +34,6 @@ where
 
         let run_id = crate::RunId::new(format!("run-{}", Uuid::new_v4().simple()))
             .expect("generated run id should be valid");
-        let operation = Operation::new(ApprovalScope::ProcessExec, "execute run");
-        let decision = self
-            .runtime
-            .evaluate_operation(&operation)
-            .map_err(map_agent_runtime_error)?;
         let runtime_profile = self
             .runtime
             .selected_runtime_profile()
@@ -63,7 +58,11 @@ where
                 &runtime_profile,
                 ExecutionContextRequest::workspace_write(),
             )
-            .map_err(&fail_scheduled_run)?;
+            .map_err(fail_scheduled_run)?;
+        let decision = evaluate_execution_context(
+            &prepared_context.execution_context,
+            &Operation::new(ApprovalScope::ProcessExec, "execute run"),
+        );
         let harness = self
             .runtime
             .execution_harness_for_runtime_profile(&runtime_profile)
@@ -94,7 +93,6 @@ where
                 source: RunSource::User {
                     output_contract: resolved_command.output_contract,
                     model_id: resolved_command.model_id.clone(),
-                    sandbox_profile: resolved_command.sandbox_profile.clone(),
                     recipe_id: resolved_command.recipe_id.clone(),
                 },
                 execution_context: prepared_context.execution_context,
@@ -162,7 +160,6 @@ where
                 objective: command.objective,
                 output_contract: None,
                 model_id: command.model_id,
-                sandbox_profile: command.sandbox_profile,
                 recipe_id: command.recipe_id,
             },
         )
@@ -296,6 +293,57 @@ mod tests {
     }
 
     #[test]
+    fn native_and_acp_runs_persist_the_same_workspace_context_identity() {
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        let session = open_session(&app, "Cross-harness context");
+
+        select_runtime_profile(&app, "runtime-openai-safe");
+        let native = execution
+            .start_run(
+                session.id.clone(),
+                StartRunCommand {
+                    objective: "Native context proof".to_string(),
+                    ..StartRunCommand::default()
+                },
+            )
+            .expect("native run should persist before approval");
+
+        select_runtime_profile(&app, "runtime-codex-acp-safe");
+        let acp = execution
+            .start_run(
+                session.id.clone(),
+                StartRunCommand {
+                    objective: "ACP context proof".to_string(),
+                    ..StartRunCommand::default()
+                },
+            )
+            .expect("ACP run should queue and persist");
+
+        let native = execution
+            .load_run_projection(&native.run.id)
+            .expect("native run projection");
+        let acp = execution
+            .load_run_projection(&acp.run.id)
+            .expect("ACP run projection");
+
+        assert_eq!(native.harness, RunHarnessKind::Native);
+        assert_eq!(acp.harness, RunHarnessKind::Acp);
+        assert_eq!(
+            acp.execution_context.workspace_id,
+            native.execution_context.workspace_id
+        );
+        assert_eq!(
+            acp.execution_context.workspace_root,
+            native.execution_context.workspace_root
+        );
+        assert_eq!(
+            acp.execution_context.effective_cwd,
+            native.execution_context.effective_cwd
+        );
+    }
+
+    #[test]
     fn start_run_with_allow_mode_runs_without_approval() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
@@ -348,7 +396,6 @@ mod tests {
                     objective: "Find the failing login redirect".to_string(),
                     recipe_id: Some("debug-agent".to_string()),
                     model_id: None,
-                    sandbox_profile: Some("read-only".to_string()),
                 },
             )
             .expect("recipe-backed run should start");
@@ -366,9 +413,8 @@ mod tests {
             &run.source,
             RunSource::User {
                 recipe_id: Some(recipe_id),
-                sandbox_profile: Some(sandbox_profile),
                 ..
-            } if recipe_id == "debug-agent" && sandbox_profile == "read-only"
+            } if recipe_id == "debug-agent"
         ));
     }
 

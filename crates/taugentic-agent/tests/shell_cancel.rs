@@ -1,10 +1,12 @@
 #![cfg(target_os = "macos")]
 
+mod tool_support;
+
 use std::error::Error;
 use std::time::{Duration, Instant};
 
 use serde_json::json;
-use taugentic_agent::tools::{ShellTool, Tool, ToolContext};
+use taugentic_agent::tools::{ShellTool, Tool};
 use tempfile::tempdir;
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
@@ -15,12 +17,11 @@ type TestResult = Result<(), Box<dyn Error + Send + Sync>>;
 async fn shell_cancel_kills_process_group() -> TestResult {
     let dir = tempdir()?;
     let cancellation = CancellationToken::new();
-    let ctx = ToolContext {
-        workdir: dir.path().to_path_buf(),
-        cancellation_token: cancellation.clone(),
-        timeout: Duration::from_secs(30),
-        parent_turn_id: None,
-    };
+    let ctx = tool_support::context_with_cancellation(
+        dir.path(),
+        Duration::from_secs(30),
+        cancellation.clone(),
+    );
 
     let handle = tokio::spawn(async move {
         ShellTool

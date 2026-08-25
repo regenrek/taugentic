@@ -138,11 +138,13 @@ fn apply_child_environment(
     env_remove: Vec<OsString>,
 ) {
     if let Some(profile) = sandbox_profile {
-        command.env_clear();
-        // Rehydrate only the profile's parent-env allowlist before applying explicit env below.
-        for name in profile.env_allowlist() {
-            if let Some(value) = std::env::var_os(name) {
-                command.env(name, value);
+        if !profile.inherits_all_env() {
+            command.env_clear();
+            // Rehydrate only the profile's parent-env allowlist before applying explicit env below.
+            for name in profile.env_allowlist() {
+                if let Some(value) = std::env::var_os(name) {
+                    command.env(name, value);
+                }
             }
         }
     } else if env_clear {

@@ -370,12 +370,6 @@
                 "string",
                 "null"
               ]
-            },
-            "sandboxProfile": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           },
           "required": [
@@ -422,12 +416,6 @@
               "type": "array"
             },
             "recipeId": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sandboxProfile": {
               "type": [
                 "string",
                 "null"

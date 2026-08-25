@@ -8,6 +8,7 @@ pub struct SandboxProfile {
     fs_write_paths: Vec<PathBuf>,
     network: NetworkPolicy,
     env_allowlist: Vec<String>,
+    inherit_all_env: bool,
     child_inherits_tty: bool,
 }
 
@@ -41,6 +42,11 @@ impl SandboxProfile {
         self
     }
 
+    pub fn inherit_all_env(mut self) -> Self {
+        self.inherit_all_env = true;
+        self
+    }
+
     pub fn child_inherits_tty(mut self, inherits_tty: bool) -> Self {
         self.child_inherits_tty = inherits_tty;
         self
@@ -63,7 +69,11 @@ impl SandboxProfile {
     }
 
     pub fn allows_env(&self, name: &str) -> bool {
-        self.env_allowlist.iter().any(|allowed| allowed == name)
+        self.inherit_all_env || self.env_allowlist.iter().any(|allowed| allowed == name)
+    }
+
+    pub fn inherits_all_env(&self) -> bool {
+        self.inherit_all_env
     }
 
     pub fn child_inherits_tty_enabled(&self) -> bool {
@@ -90,6 +100,7 @@ impl Default for SandboxProfile {
             fs_write_paths: Vec::new(),
             network: NetworkPolicy::Off,
             env_allowlist: Vec::new(),
+            inherit_all_env: false,
             child_inherits_tty: false,
         }
     }
@@ -128,6 +139,7 @@ mod tests {
 
         assert_eq!(profile.network_policy(), &NetworkPolicy::Off);
         assert!(!profile.child_inherits_tty_enabled());
+        assert!(!profile.inherits_all_env());
         assert!(profile.fs_read_paths().is_empty());
         assert!(profile.fs_write_paths().is_empty());
     }
@@ -147,5 +159,13 @@ mod tests {
         assert_eq!(profile.network_policy(), &NetworkPolicy::Loopback);
         assert!(profile.allows_env("HOME"));
         assert!(profile.child_inherits_tty_enabled());
+    }
+
+    #[test]
+    fn inherit_all_env_marks_every_parent_name_allowed() {
+        let profile = SandboxProfile::new().inherit_all_env();
+
+        assert!(profile.inherits_all_env());
+        assert!(profile.allows_env("OPENAI_API_KEY"));
     }
 }

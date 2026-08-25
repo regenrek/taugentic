@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use ts_rs::TS;
 
 use crate::wire::{WorkspaceId, WorkspacePath};
@@ -138,4 +139,14 @@ pub struct WorkspaceCapabilityUnsupported {
     pub capability: String,
     pub requested: String,
     pub reason: String,
+}
+
+impl fmt::Display for WorkspaceCapabilityUnsupported {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "WorkspaceCapabilityUnsupported: capability={}, requested={}, reason={}",
+            self.capability, self.requested, self.reason
+        )
+    }
 }

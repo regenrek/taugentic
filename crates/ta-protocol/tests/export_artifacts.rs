@@ -139,10 +139,11 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     let command_binding = fs::read_to_string(export_root.join("generated/StartRunCommand.ts"))
         .expect("start run binding should exist");
     assert!(command_binding.contains("export type StartRunCommand"));
+    assert!(!command_binding.contains("sandboxProfile"));
     let delegate_binding = fs::read_to_string(export_root.join("generated/DelegateRequest.ts"))
         .expect("delegate request binding should exist");
     assert!(delegate_binding.contains("modelId?: AgentRuntimeModelId | null"));
-    assert!(delegate_binding.contains("sandboxProfile?: string | null"));
+    assert!(!delegate_binding.contains("sandboxProfile"));
     assert!(delegate_binding.contains("recipeId?: string | null"));
     let agent_runtime_binding =
         fs::read_to_string(export_root.join("generated/AgentRuntimeSnapshot.ts"))
@@ -201,7 +202,7 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(recipe_schema.contains("\"title\": \"CapsuleRecipe\""));
     assert!(recipe_schema.contains("\"promptTemplate\""));
     assert!(recipe_schema.contains("\"defaultModel\""));
-    assert!(recipe_schema.contains("\"defaultSandboxProfile\""));
+    assert!(!recipe_schema.contains("\"defaultSandboxProfile\""));
     assert!(!recipe_schema.contains("\"prompt_template\""));
     assert!(!recipe_schema.contains("\"default_model\""));
     assert!(!recipe_schema.contains("\"default_sandbox_profile\""));

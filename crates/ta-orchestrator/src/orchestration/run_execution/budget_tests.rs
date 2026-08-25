@@ -176,7 +176,6 @@ fn parent_aggregate_budget_prevents_child_dispatch() {
                 None,
                 None,
                 None,
-                None,
             )
             .expect("child request")
             .with_workspace_scope(crate::WorkspaceMode::WorktreeWrite),

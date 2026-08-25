@@ -1,3 +1,4 @@
+use ta_protocol::wire::{ApprovalScope, WorkspaceCapabilityUnsupported};
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -33,6 +34,13 @@ pub enum ExecutionError {
     Cancelled(String),
     #[error("unsupported provider operation: {0}")]
     Unsupported(String),
+    #[error("execution policy denied {scope:?}: {reason}")]
+    PolicyDenied {
+        scope: ApprovalScope,
+        reason: String,
+    },
+    #[error("{0}")]
+    WorkspaceCapabilityUnsupported(WorkspaceCapabilityUnsupported),
     #[error("provider server error: {0}")]
     ServerError(String),
     #[error("invalid tool input: {0}")]
@@ -82,6 +90,9 @@ impl From<ta_provider_acp::error::AcpClientError> for ExecutionError {
         use ta_provider_acp::error::AcpClientError;
 
         match error {
+            AcpClientError::WorkspaceCapabilityUnsupported(detail) => {
+                Self::WorkspaceCapabilityUnsupported(detail)
+            }
             AcpClientError::InvalidConfig(detail) => Self::InvalidConfig(detail),
             AcpClientError::ProcessFailed(detail) => Self::ProcessFailed(detail),
             AcpClientError::JsonRpcRequestFailed { .. } => Self::ProcessFailed(error.to_string()),
@@ -90,5 +101,30 @@ impl From<ta_provider_acp::error::AcpClientError> for ExecutionError {
                 Self::ProcessFailed(format!("ACP JSON-RPC error {code}: {message}"))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn acp_capability_error_remains_typed_at_the_agent_boundary() {
+        let detail = WorkspaceCapabilityUnsupported {
+            variant: None,
+            vendor: Some("cursor".to_string()),
+            capability: "network".to_string(),
+            requested: "none".to_string(),
+            reason: "provider cannot separate model and tool network".to_string(),
+        };
+
+        assert_eq!(
+            ExecutionError::from(
+                ta_provider_acp::error::AcpClientError::WorkspaceCapabilityUnsupported(
+                    detail.clone(),
+                ),
+            ),
+            ExecutionError::WorkspaceCapabilityUnsupported(detail)
+        );
     }
 }

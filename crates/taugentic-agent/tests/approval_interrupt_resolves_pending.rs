@@ -16,9 +16,11 @@ async fn approval_interrupt_resolves_pending() {
         false,
     );
     let sink = TestSink::new();
-    let session = Session::new(&request());
+    let request = request_requiring_approval();
+    let session = Session::new(&request);
     let cancellation = CancellationToken::new();
-    let mut loop_state = run_loop(
+    let mut loop_state = run_loop_with_request(
+        request,
         client,
         registry,
         MessageQueue::default(),
@@ -39,7 +41,10 @@ async fn approval_interrupt_resolves_pending() {
         .await
         .unwrap_or_else(|error| Err(ExecutionError::ProcessFailed(error.to_string())));
 
-    assert!(matches!(result, Err(ExecutionError::Cancelled(_))));
+    assert!(
+        matches!(result, Err(ExecutionError::Cancelled(_))),
+        "expected cancellation, got {result:?}"
+    );
     let pending = session.pending_approvals().unwrap_or_default();
     assert_eq!(pending.len(), 1);
     assert!(matches!(

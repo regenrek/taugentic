@@ -652,7 +652,12 @@ fn invalid_config(message: String) -> AgentRuntimeServiceError {
 }
 
 fn map_execution_error(error: ExecutionError) -> AgentRuntimeServiceError {
-    AgentRuntimeServiceError::ProviderExecutionFailed(error.to_string())
+    match error {
+        ExecutionError::WorkspaceCapabilityUnsupported(detail) => {
+            AgentRuntimeServiceError::WorkspaceCapabilityUnsupported(detail)
+        }
+        error => AgentRuntimeServiceError::ProviderExecutionFailed(error.to_string()),
+    }
 }
 
 fn execution_error_from_llm_client(error: LlmClientError) -> ExecutionError {

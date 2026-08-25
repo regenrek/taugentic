@@ -9,7 +9,6 @@ fn valid_recipe() -> CapsuleRecipe {
         contract: OutputContractKind::Debug,
         prompt_template: "Find the root cause and propose a patch.".to_string(),
         default_model: Some("claude-sonnet".to_string()),
-        default_sandbox_profile: Some("workspace-write".to_string()),
     }
 }
 
@@ -27,13 +26,12 @@ fn roundtrip_serialization_preserves_camel_case() {
             "contract": "debug",
             "promptTemplate": "Find the root cause and propose a patch.",
             "defaultModel": "claude-sonnet",
-            "defaultSandboxProfile": "workspace-write"
         })
     );
     assert!(value.get("prompt_template").is_none(), "{value}");
     assert!(value.get("description").is_some(), "{value}");
     assert!(value.get("default_model").is_none(), "{value}");
-    assert!(value.get("default_sandbox_profile").is_none(), "{value}");
+    assert!(value.get("defaultSandboxProfile").is_none(), "{value}");
 
     let decoded: CapsuleRecipe =
         serde_json::from_value(value).expect("recipe should deserialize from camelCase json");
@@ -86,7 +84,6 @@ fn validate_accepts_minimal_valid_recipe() {
         contract: OutputContractKind::Review,
         prompt_template: "Review the implementation plan.".to_string(),
         default_model: None,
-        default_sandbox_profile: None,
     };
 
     recipe.validate().expect("minimal recipe should validate");

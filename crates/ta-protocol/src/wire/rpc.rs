@@ -76,8 +76,6 @@ pub struct DelegateRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_id: Option<AgentRuntimeModelId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sandbox_profile: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
     #[serde(default)]
     pub workspace_scope: WorkspaceMode,

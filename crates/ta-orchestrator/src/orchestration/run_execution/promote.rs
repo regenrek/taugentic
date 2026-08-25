@@ -1,4 +1,4 @@
-use ta_policy::Operation;
+use ta_policy::{Operation, evaluate_execution_context};
 use ta_store::CommitRunTransition;
 
 use super::*;
@@ -45,6 +45,12 @@ where
             .runtime
             .selected_runtime_profile()
             .map_err(map_agent_runtime_error)?;
+        let prepared_context = self.prepare_execution_context(
+            &session_id,
+            &run_id,
+            &runtime_profile,
+            ExecutionContextRequest::workspace_write(),
+        )?;
         let (run, events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");
             let committed = store.commit_run_transition(CommitRunTransition {
@@ -57,15 +63,15 @@ where
                     status: RunStatus::Running,
                     harness: RunHarnessKind::Native,
                     source: RunSource::default(),
-                    execution_context: ta_store::default_test_execution_context(),
+                    execution_context: prepared_context.execution_context,
                     result: None,
                     contract_violation: None,
                     started_at_ms: None,
                     ended_at_ms: None,
                     last_event_seq: None,
-                    workspace_info: None,
-                    claimed_files: Vec::new(),
-                    conflict_summary: None,
+                    workspace_info: prepared_context.workspace_info,
+                    claimed_files: prepared_context.claimed_files,
+                    conflict_summary: prepared_context.conflict_summary,
                 },
                 events: vec![DaemonEvent::Run(crate::RunEvent {
                     run_id: run_id.clone(),
@@ -170,9 +176,7 @@ where
             .runtime
             .runtime_profile(&queued_run.runtime_profile_id)
             .map_err(map_agent_runtime_error)?;
-        let decision = self
-            .runtime
-            .evaluate_operation_for_policy_mode(&operation, runtime_profile.policy_mode);
+        let decision = evaluate_execution_context(&queued_run.execution_context, &operation);
         let (mut run, mut events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");
             let Some(existing_run) = store.run(run_id)? else {

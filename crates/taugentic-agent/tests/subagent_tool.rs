@@ -6,9 +6,8 @@ use ta_protocol::wire::{
     AgentStreamTurnId, ApprovalRequest, ApprovalResolution, ArtifactKind, OutputContractKind,
     RunId, RunStatus, StreamEmission,
 };
-use taugentic_agent::tools::{SubagentTool, Tool, ToolContext};
+use taugentic_agent::tools::{SubagentTool, Tool};
 use taugentic_agent::{ExecutionError, ExecutionSink, NativeChildRunRequest, NativeChildRunResult};
-use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
 async fn subagent_tool_delegates_child_run_start_to_sink() {
@@ -16,17 +15,14 @@ async fn subagent_tool_delegates_child_run_start_to_sink() {
     let parent_turn_id = AgentStreamTurnId::new("turn-parent").expect("parent turn id");
     let sink = Arc::new(RecordingSink::default());
     let tool = SubagentTool::new(parent_run_id.clone(), sink.clone(), Vec::new());
+    let mut context = tool_support::context(
+        &std::env::current_dir().expect("current dir"),
+        Duration::from_secs(1),
+    );
+    context.parent_turn_id = Some(parent_turn_id.clone());
 
     let output = tool
-        .run(
-            json!({ "objective": "Inspect focused files" }),
-            ToolContext {
-                workdir: ".".into(),
-                cancellation_token: CancellationToken::new(),
-                timeout: Duration::from_secs(1),
-                parent_turn_id: Some(parent_turn_id.clone()),
-            },
-        )
+        .run(json!({ "objective": "Inspect focused files" }), context)
         .await
         .expect("subagent tool should start child run through sink");
 
@@ -41,7 +37,6 @@ async fn subagent_tool_delegates_child_run_start_to_sink() {
             objective: "Inspect focused files".to_string(),
             output_contract: None,
             model_id: None,
-            sandbox_profile: None,
             recipe_id: None,
             workspace_scope: Default::default(),
             cleanup_policy: Default::default(),
@@ -63,18 +58,18 @@ async fn subagent_tool_passes_output_contract_to_child_request() {
     let parent_turn_id = AgentStreamTurnId::new("turn-parent").expect("parent turn id");
     let sink = Arc::new(RecordingSink::default());
     let tool = SubagentTool::new(parent_run_id.clone(), sink.clone(), Vec::new());
+    let mut context = tool_support::context(
+        &std::env::current_dir().expect("current dir"),
+        Duration::from_secs(1),
+    );
+    context.parent_turn_id = Some(parent_turn_id.clone());
 
     tool.run(
         json!({
             "objective": "Produce patch result",
             "outputContract": "patch"
         }),
-        ToolContext {
-            workdir: ".".into(),
-            cancellation_token: CancellationToken::new(),
-            timeout: Duration::from_secs(1),
-            parent_turn_id: Some(parent_turn_id.clone()),
-        },
+        context,
     )
     .await
     .expect("subagent tool should accept output contract");
@@ -145,3 +140,4 @@ impl ExecutionSink for RecordingSink {
         Ok(())
     }
 }
+mod tool_support;

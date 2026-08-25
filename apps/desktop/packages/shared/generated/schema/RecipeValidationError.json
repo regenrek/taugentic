@@ -52,18 +52,6 @@
     {
       "properties": {
         "kind": {
-          "const": "emptyDefaultSandboxProfile",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    {
-      "properties": {
-        "kind": {
           "const": "invalidIdCharacters",
           "type": "string"
         },

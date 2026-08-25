@@ -28,10 +28,6 @@ pub enum RunSource {
         #[ts(rename = "modelId")]
         model_id: Option<AgentRuntimeModelId>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[serde(rename = "sandboxProfile")]
-        #[ts(rename = "sandboxProfile")]
-        sandbox_profile: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         #[serde(rename = "recipeId")]
         #[ts(rename = "recipeId")]
         recipe_id: Option<String>,
@@ -51,10 +47,6 @@ pub enum RunSource {
         #[serde(rename = "modelId")]
         #[ts(rename = "modelId")]
         model_id: Option<AgentRuntimeModelId>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[serde(rename = "sandboxProfile")]
-        #[ts(rename = "sandboxProfile")]
-        sandbox_profile: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[serde(rename = "recipeId")]
         #[ts(rename = "recipeId")]
@@ -90,7 +82,6 @@ impl Default for RunSource {
         Self::User {
             output_contract: None,
             model_id: None,
-            sandbox_profile: None,
             recipe_id: None,
         }
     }
@@ -279,8 +270,6 @@ pub struct StartRunCommand {
     pub recipe_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_id: Option<AgentRuntimeModelId>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sandbox_profile: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]

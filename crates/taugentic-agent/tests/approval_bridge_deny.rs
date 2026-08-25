@@ -16,7 +16,7 @@ async fn approval_bridge_deny_cancels_tool() {
         false,
     );
     let sink = TestSink::new();
-    let request = request();
+    let request = request_requiring_approval();
     let cancellation = CancellationToken::new();
     let context = LoopApprovalContext::new(request, sink.clone(), cancellation);
     let bridge = context.approval_bridge.clone();

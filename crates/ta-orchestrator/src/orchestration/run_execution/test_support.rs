@@ -79,6 +79,14 @@ pub(super) fn ensure_running_run(
         .runtime
         .selected_runtime_profile()
         .expect("selected runtime profile should exist");
+    let prepared_context = execution
+        .prepare_execution_context(
+            session_id,
+            &run_id,
+            &runtime_profile,
+            ExecutionContextRequest::workspace_write(),
+        )
+        .expect("seeded run execution context should resolve");
     {
         let mut store = execution
             .store
@@ -95,15 +103,15 @@ pub(super) fn ensure_running_run(
                     status: RunStatus::Running,
                     harness: RunHarnessKind::Native,
                     source: RunSource::default(),
-                    execution_context: ta_store::default_test_execution_context(),
+                    execution_context: prepared_context.execution_context,
                     result: None,
                     contract_violation: None,
                     started_at_ms: None,
                     ended_at_ms: None,
                     last_event_seq: None,
-                    workspace_info: None,
-                    claimed_files: Vec::new(),
-                    conflict_summary: None,
+                    workspace_info: prepared_context.workspace_info,
+                    claimed_files: prepared_context.claimed_files,
+                    conflict_summary: prepared_context.conflict_summary,
                 },
                 events: vec![DaemonEvent::Run(crate::RunEvent {
                     run_id: run_id.clone(),

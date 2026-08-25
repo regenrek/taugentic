@@ -210,7 +210,6 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
                 contract: OutputContractKind::Debug,
                 prompt_template: "Return a debug result.".to_string(),
                 default_model: None,
-                default_sandbox_profile: None,
             }],
         })
         .expect("request should build");

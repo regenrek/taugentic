@@ -2,7 +2,7 @@ use std::{path::PathBuf, time::Duration};
 
 use ta_exec::SandboxProfile;
 
-use crate::{mcp::AcpMcpServerSpec, mode_mapping::ModeMapping};
+use crate::mcp::AcpMcpServerSpec;
 
 pub const DEFAULT_CANCEL_GRACE: Duration = Duration::from_secs(2);
 
@@ -18,6 +18,5 @@ pub struct AcpProcessConfig {
     pub mcp_servers: Vec<AcpMcpServerSpec>,
     pub session_mode_id: Option<String>,
     pub session_model_id: Option<String>,
-    pub mode_mapping: ModeMapping,
     pub cancel_grace: Duration,
 }

@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
-use ta_protocol::wire::AgentStreamTurnId;
+use ta_protocol::wire::{AgentStreamTurnId, ExecutionContext};
 
 use crate::ExecutionError;
 
@@ -33,20 +33,24 @@ pub use subagent_description::render_subagent_tool_description;
 
 #[derive(Debug, Clone)]
 pub struct ToolContext {
-    pub workdir: PathBuf,
+    pub execution_context: Arc<ExecutionContext>,
     pub cancellation_token: CancellationToken,
     pub timeout: Duration,
     pub parent_turn_id: Option<AgentStreamTurnId>,
 }
 
 impl ToolContext {
-    pub fn new(workdir: impl Into<PathBuf>) -> Self {
+    pub fn new(execution_context: Arc<ExecutionContext>) -> Self {
         Self {
-            workdir: workdir.into(),
+            execution_context,
             cancellation_token: CancellationToken::new(),
             timeout: Duration::from_secs(10),
             parent_turn_id: None,
         }
+    }
+
+    pub fn workdir(&self) -> &Path {
+        self.execution_context.effective_cwd.as_path()
     }
 }
 

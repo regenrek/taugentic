@@ -201,7 +201,6 @@ fn seed_dispatch_child(
                         .expect("turn id"),
                     output_contract: None,
                     model_id: None,
-                    sandbox_profile: None,
                     recipe_id: None,
                     workspace_scope: crate::WorkspaceMode::WorktreeWrite,
                     cleanup_policy,

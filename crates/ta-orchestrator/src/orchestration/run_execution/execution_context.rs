@@ -2,9 +2,10 @@ use ta_policy::{Operation, PolicyDecision, PolicyEngine};
 use ta_protocol::wire::{
     ApprovalScope, ConflictSummary, EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy,
     ProcessExecPolicy, RuntimePolicyMode, RuntimeProfileSummary, SandboxProfile, TrustState,
-    WorkspaceMode, WorkspacePath, WorkspaceScope, WorktreeCleanupPolicy, WorktreeInfo,
+    WorkspaceCapabilityUnsupported, WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceScope,
+    WorktreeCleanupPolicy, WorktreeInfo,
 };
-use ta_store::PersistenceStore;
+use ta_store::{PersistenceStore, WorkspaceProjection};
 
 use super::*;
 
@@ -34,6 +35,17 @@ pub(super) struct PreparedExecutionContext {
     pub conflict_summary: Option<ConflictSummary>,
 }
 
+struct ExecutionWorkspaceInput<'a> {
+    workspace_id: &'a WorkspaceId,
+    workspace_root: &'a WorkspacePath,
+    parent_repo: &'a WorkspacePath,
+    artifact_root: WorkspacePath,
+    request: ExecutionContextRequest,
+    compiled_policy: CompiledExecutionPolicy,
+    env_policy: EnvPolicy,
+    denied_roots: Vec<WorkspacePath>,
+}
+
 impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
@@ -46,18 +58,7 @@ where
         request: ExecutionContextRequest,
     ) -> Result<PreparedExecutionContext, RunExecutionError> {
         reject_unsupported_scope(request.workspace_mode)?;
-
-        let workspace = {
-            let store = self.store.lock().expect("app store should not be poisoned");
-            let session = store.session(session_id)?.ok_or_else(|| {
-                RunExecutionError::SessionNotFound(session_id.as_str().to_string())
-            })?;
-            store.workspace(&session.workspace_id)?.ok_or_else(|| {
-                RunExecutionError::SessionWorkspaceNotFound(
-                    session.workspace_id.as_str().to_string(),
-                )
-            })?
-        };
+        let workspace = self.session_workspace(session_id)?;
 
         if !matches!(workspace.trust_state(), TrustState::UserConfirmed { .. }) {
             return Err(RunExecutionError::WorkspaceTrustRequired(
@@ -69,6 +70,93 @@ where
         let parent_repo = workspace
             .git_repo_root()
             .unwrap_or_else(|| workspace.root_realpath());
+        let artifact_root = prepare_artifact_root(self.runtime.artifact_root())?;
+        let compiled_policy = compile_execution_policy(
+            request.workspace_mode,
+            runtime_profile.policy_mode,
+            self.runtime.supports_network(),
+        );
+        self.prepare_execution_context_from_workspace(
+            run_id,
+            ExecutionWorkspaceInput {
+                workspace_id: workspace.id(),
+                workspace_root: &workspace_root,
+                parent_repo,
+                artifact_root,
+                request,
+                compiled_policy,
+                env_policy: EnvPolicy::workspace_default(),
+                denied_roots: Vec::new(),
+            },
+        )
+    }
+
+    pub(super) fn prepare_child_execution_context(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+        parent: &ExecutionContext,
+        request: ExecutionContextRequest,
+    ) -> Result<PreparedExecutionContext, RunExecutionError> {
+        reject_unsupported_scope(request.workspace_mode)?;
+        let workspace = self.session_workspace(session_id)?;
+        if workspace.id() != &parent.workspace_id
+            || workspace.root_realpath() != &parent.workspace_root
+        {
+            return Err(context_inheritance_unsupported(
+                format!("{:?}", request.workspace_mode),
+                "the parent execution context no longer matches the session workspace",
+            ));
+        }
+        let parent_repo = workspace
+            .git_repo_root()
+            .unwrap_or_else(|| workspace.root_realpath());
+        let compiled_policy =
+            compile_child_execution_policy(parent, request.workspace_mode, parent_repo)?;
+
+        self.prepare_execution_context_from_workspace(
+            run_id,
+            ExecutionWorkspaceInput {
+                workspace_id: &parent.workspace_id,
+                workspace_root: &parent.workspace_root,
+                parent_repo,
+                artifact_root: parent.artifact_root.clone(),
+                request,
+                compiled_policy,
+                env_policy: parent.env_policy.clone(),
+                denied_roots: parent.sandbox_profile.denied_roots.clone(),
+            },
+        )
+    }
+
+    fn session_workspace(
+        &self,
+        session_id: &crate::SessionId,
+    ) -> Result<WorkspaceProjection, RunExecutionError> {
+        let store = self.store.lock().expect("app store should not be poisoned");
+        let session = store
+            .session(session_id)?
+            .ok_or_else(|| RunExecutionError::SessionNotFound(session_id.as_str().to_string()))?;
+        store.workspace(&session.workspace_id)?.ok_or_else(|| {
+            RunExecutionError::SessionWorkspaceNotFound(session.workspace_id.as_str().to_string())
+        })
+    }
+
+    fn prepare_execution_context_from_workspace(
+        &self,
+        run_id: &RunId,
+        input: ExecutionWorkspaceInput<'_>,
+    ) -> Result<PreparedExecutionContext, RunExecutionError> {
+        let ExecutionWorkspaceInput {
+            workspace_id,
+            workspace_root,
+            parent_repo,
+            artifact_root,
+            request,
+            compiled_policy,
+            env_policy,
+            denied_roots,
+        } = input;
         let dispatch = self
             .runtime
             .allocate_execution_workspace(
@@ -81,26 +169,21 @@ where
             )
             .map_err(map_agent_runtime_error)?;
         let effective_cwd = workspace_path(&dispatch.effective_cwd)?;
-        let artifact_root = prepare_artifact_root(self.runtime.artifact_root())?;
         let workspace_scope = workspace_scope(
             request.workspace_mode,
-            &workspace_root,
+            workspace_root,
             parent_repo,
             &effective_cwd,
             dispatch.worktree_info.as_ref(),
         )?;
-        let compiled_policy = compile_execution_policy(
-            request.workspace_mode,
-            runtime_profile.policy_mode,
-            self.runtime.supports_network(),
-        );
         let sandbox_profile = sandbox_profile(
-            &workspace_root,
+            workspace_root,
             &effective_cwd,
             &artifact_root,
             parent_repo,
             &compiled_policy.permission_policy,
             compiled_policy.process_exec,
+            denied_roots,
         );
         let conflict_summary = dispatch
             .conflict_warning
@@ -109,15 +192,15 @@ where
 
         Ok(PreparedExecutionContext {
             execution_context: ExecutionContext {
-                workspace_id: workspace.id().clone(),
-                workspace_root,
+                workspace_id: workspace_id.clone(),
+                workspace_root: workspace_root.clone(),
                 effective_cwd,
                 artifact_root,
                 workspace_scope,
                 sandbox_profile,
                 permission_policy: compiled_policy.permission_policy,
                 network_policy: compiled_policy.network_policy,
-                env_policy: EnvPolicy::workspace_default(),
+                env_policy,
             },
             workspace_info: dispatch.worktree_info,
             claimed_files: dispatch.claimed_files,
@@ -250,6 +333,7 @@ fn sandbox_profile(
     repo_root: &WorkspacePath,
     permission_policy: &PermissionPolicy,
     process_exec: ProcessExecPolicy,
+    denied_roots: Vec<WorkspacePath>,
 ) -> SandboxProfile {
     let mut read_roots = vec![workspace_root.clone()];
     push_unique(&mut read_roots, effective_cwd);
@@ -270,9 +354,127 @@ fn sandbox_profile(
     SandboxProfile {
         read_roots,
         write_roots,
-        denied_roots: Vec::new(),
+        denied_roots,
         process_exec,
     }
+}
+
+fn compile_child_execution_policy(
+    parent: &ExecutionContext,
+    workspace_mode: WorkspaceMode,
+    repo_root: &WorkspacePath,
+) -> Result<CompiledExecutionPolicy, RunExecutionError> {
+    if !path_allowed(&parent.sandbox_profile.read_roots, &parent.workspace_root) {
+        return Err(context_inheritance_unsupported(
+            format!("{workspace_mode:?}"),
+            "the parent context does not grant read access to its workspace root",
+        ));
+    }
+
+    let permission_policy = match workspace_mode {
+        WorkspaceMode::Readonly => PermissionPolicy::ReadOnly,
+        WorkspaceMode::WorkspaceWrite => {
+            require_parent_write(parent, workspace_mode, &parent.workspace_root)?;
+            child_workspace_write_permission(parent.permission_policy)
+        }
+        WorkspaceMode::WorktreeWrite => {
+            require_parent_write(parent, workspace_mode, &parent.effective_cwd)?;
+            child_workspace_write_permission(parent.permission_policy)
+        }
+        WorkspaceMode::RepoWriteWithApproval => {
+            require_parent_write(parent, workspace_mode, repo_root)?;
+            PermissionPolicy::RepoWriteWithApproval
+        }
+        WorkspaceMode::RemoteWorker | WorkspaceMode::Containerized | WorkspaceMode::Ephemeral => {
+            return Err(context_inheritance_unsupported(
+                format!("{workspace_mode:?}"),
+                "the requested child workspace scope is not implemented",
+            ));
+        }
+    };
+
+    Ok(CompiledExecutionPolicy {
+        permission_policy,
+        process_exec: parent.sandbox_profile.process_exec.clone(),
+        network_policy: parent.network_policy.clone(),
+    })
+}
+
+fn child_workspace_write_permission(parent: PermissionPolicy) -> PermissionPolicy {
+    match parent {
+        PermissionPolicy::WorkspaceWriteWithApproval | PermissionPolicy::RepoWriteWithApproval => {
+            PermissionPolicy::WorkspaceWriteWithApproval
+        }
+        PermissionPolicy::WorkspaceWrite | PermissionPolicy::Unrestricted => {
+            PermissionPolicy::WorkspaceWrite
+        }
+        PermissionPolicy::ReadOnly => PermissionPolicy::ReadOnly,
+    }
+}
+
+fn require_parent_write(
+    parent: &ExecutionContext,
+    workspace_mode: WorkspaceMode,
+    path: &WorkspacePath,
+) -> Result<(), RunExecutionError> {
+    if matches!(parent.permission_policy, PermissionPolicy::ReadOnly)
+        || !path_allowed(&parent.sandbox_profile.write_roots, path)
+    {
+        return Err(context_inheritance_unsupported(
+            format!("{workspace_mode:?}"),
+            "the requested child scope would widen the parent filesystem authority",
+        ));
+    }
+    Ok(())
+}
+
+fn path_allowed(roots: &[WorkspacePath], path: &WorkspacePath) -> bool {
+    roots
+        .iter()
+        .any(|root| path.as_path().starts_with(root.as_path()))
+}
+
+pub(super) fn workspace_mode_for_fork(
+    parent: &ExecutionContext,
+) -> Result<WorkspaceMode, RunExecutionError> {
+    match parent.workspace_scope {
+        WorkspaceScope::Readonly { .. } => Ok(WorkspaceMode::Readonly),
+        WorkspaceScope::Worktree { .. } => Ok(WorkspaceMode::WorktreeWrite),
+        WorkspaceScope::Local { .. }
+            if matches!(
+                parent.permission_policy,
+                PermissionPolicy::RepoWriteWithApproval
+            ) =>
+        {
+            Ok(WorkspaceMode::RepoWriteWithApproval)
+        }
+        WorkspaceScope::Local { .. } => Ok(WorkspaceMode::WorkspaceWrite),
+        WorkspaceScope::Remote { .. } => Err(context_inheritance_unsupported(
+            "remote",
+            "the parent workspace scope cannot be forked by the native harness",
+        )),
+        WorkspaceScope::Container { .. } => Err(context_inheritance_unsupported(
+            "container",
+            "the parent workspace scope cannot be forked by the native harness",
+        )),
+        WorkspaceScope::Ephemeral { .. } => Err(context_inheritance_unsupported(
+            "ephemeral",
+            "the parent workspace scope cannot be forked by the native harness",
+        )),
+    }
+}
+
+fn context_inheritance_unsupported(
+    requested: impl Into<String>,
+    reason: impl Into<String>,
+) -> RunExecutionError {
+    RunExecutionError::WorkspaceCapabilityUnsupported(WorkspaceCapabilityUnsupported {
+        variant: None,
+        vendor: None,
+        capability: "contextInheritance".to_string(),
+        requested: requested.into(),
+        reason: reason.into(),
+    })
 }
 
 fn push_unique(paths: &mut Vec<WorkspacePath>, path: &WorkspacePath) {

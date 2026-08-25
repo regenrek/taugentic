@@ -17,7 +17,6 @@ export interface StartRecipeRunInput {
   modelId?: AgentRuntimeModelId | null;
   objective: string;
   recipeId: string;
-  sandboxProfile?: string | null;
 }
 
 export interface RecipePickerViewProps {
@@ -78,7 +77,6 @@ export function RecipePickerPanel({
   const [modelId, setModelId] = useState("");
   const [objective, setObjective] = useState("");
   const [query, setQuery] = useState("");
-  const [sandboxProfile, setSandboxProfile] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState<CapsuleRecipe | null>(null);
 
   const visibleRecipes = useMemo(() => {
@@ -100,7 +98,6 @@ export function RecipePickerPanel({
     setCommandError(null);
     setModelId("");
     setObjective("");
-    setSandboxProfile("");
     setSelectedRecipe(recipe);
   }
 
@@ -142,7 +139,6 @@ export function RecipePickerPanel({
         modelId: optionalText(modelId) as AgentRuntimeModelId | null,
         objective: trimmedObjective,
         recipeId: selectedRecipe.id,
-        sandboxProfile: optionalText(sandboxProfile),
       });
       setObjective("");
       setSelectedRecipe(null);
@@ -236,24 +232,14 @@ export function RecipePickerPanel({
             placeholder="objective..."
             value={objective}
           />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Input
-              aria-label="Override model"
-              className="h-7 border-[var(--border)] bg-[var(--bg)] px-2 font-[var(--font-mono)] text-[12px]"
-              disabled={isSubmitting}
-              onChange={(event) => setModelId(event.currentTarget.value)}
-              placeholder="model override"
-              value={modelId}
-            />
-            <Input
-              aria-label="Override sandbox"
-              className="h-7 border-[var(--border)] bg-[var(--bg)] px-2 font-[var(--font-mono)] text-[12px]"
-              disabled={isSubmitting}
-              onChange={(event) => setSandboxProfile(event.currentTarget.value)}
-              placeholder="sandbox override"
-              value={sandboxProfile}
-            />
-          </div>
+          <Input
+            aria-label="Override model"
+            className="h-7 border-[var(--border)] bg-[var(--bg)] px-2 font-[var(--font-mono)] text-[12px]"
+            disabled={isSubmitting}
+            onChange={(event) => setModelId(event.currentTarget.value)}
+            placeholder="model override"
+            value={modelId}
+          />
           {commandError !== null ? (
             <div className="font-[var(--font-mono)] text-[11px] text-[var(--status-failed)]">
               error: {commandError}

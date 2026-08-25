@@ -1,7 +1,10 @@
+use ta_protocol::wire::WorkspaceCapabilityUnsupported;
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum AcpClientError {
+    #[error("{0}")]
+    WorkspaceCapabilityUnsupported(WorkspaceCapabilityUnsupported),
     #[error("invalid config: {0}")]
     InvalidConfig(String),
     #[error("process failed: {0}")]

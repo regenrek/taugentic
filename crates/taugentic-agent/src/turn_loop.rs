@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
+use ta_policy::{Operation, PolicyDecision, evaluate_execution_context};
 use ta_protocol::wire::{
-    AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome, StreamEmission,
+    AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome, ExecutionContext,
+    StreamEmission,
 };
 use ta_provider_llm::client::{
     LlmClient, LlmStream, StopReason, StreamEvent, StreamMessage, StreamRequest, StreamTool,
@@ -114,7 +115,7 @@ struct ToolResultMessage {
 
 struct ToolExecutionContext {
     registry: BTreeMap<String, Arc<dyn crate::tools::Tool>>,
-    workdir: PathBuf,
+    execution_context: Arc<ExecutionContext>,
     cancellation: CancellationToken,
     session: Session,
     sink: Arc<dyn ExecutionSink>,
@@ -456,7 +457,7 @@ impl TurnLoop {
                 .map_err(|error| ExecutionError::ProcessFailed(error.to_string()))?;
             let ctx = ToolExecutionContext {
                 registry: self.registry.clone_tools(),
-                workdir: self.request.effective_cwd().to_path_buf(),
+                execution_context: self.request.execution_context.clone(),
                 cancellation: self.cancellation.clone(),
                 session: self.session.clone(),
                 sink: self.sink.clone(),
@@ -495,7 +496,7 @@ impl TurnLoop {
     ) -> Result<ToolResultMessage, ExecutionError> {
         let ctx = ToolExecutionContext {
             registry: self.registry.clone_tools(),
-            workdir: self.request.effective_cwd().to_path_buf(),
+            execution_context: self.request.execution_context.clone(),
             cancellation: self.cancellation.clone(),
             session: self.session.clone(),
             sink: self.sink.clone(),
@@ -608,57 +609,67 @@ async fn execute_tool_call(
         .ok_or_else(|| ExecutionError::ToolFailed(format!("unknown tool {}", call.name)))?;
     let descriptor = tool.descriptor();
     if let Some(scope) = descriptor.approval_scope {
-        let approval = ApprovalDescriptor::new(
-            call.id.clone(),
-            call.name.clone(),
-            format!("tool {} requires approval", call.name),
-        );
-        let id = ctx.approval_bridge.request(scope, &approval)?;
-        let outcome = match ctx.approval_bridge.wait(id).await {
-            Ok(outcome) => outcome,
-            Err(ExecutionError::Cancelled(detail)) => {
-                push_tool_terminal(
-                    &ctx.sink,
-                    &ctx.turn_id,
-                    &call.id,
-                    AgentToolCallOutcome::Cancelled,
-                )?;
-                ctx.session.reject_pending_approvals("turn_interrupted")?;
-                return Err(ExecutionError::Cancelled(detail));
+        let operation = Operation::new(scope, format!("tool {}", call.name));
+        match evaluate_execution_context(&ctx.execution_context, &operation) {
+            PolicyDecision::Allow => {}
+            PolicyDecision::Deny { reason } => {
+                return Ok(tool_result(
+                    call.id,
+                    call.name,
+                    0,
+                    Err(ExecutionError::PolicyDenied { scope, reason }),
+                ));
             }
-            Err(error) => return Err(error),
-        };
-        match outcome {
-            ApprovalOutcome::Allow => {}
-            ApprovalOutcome::Deny => {
-                ctx.sink
-                    .push_activity(&format!("tool {} denied by approval", call.name))?;
-                push_tool_terminal(
-                    &ctx.sink,
-                    &ctx.turn_id,
-                    &call.id,
-                    AgentToolCallOutcome::Cancelled,
-                )?;
-                return Err(ExecutionError::Cancelled(format!(
-                    "approval denied for tool {}",
-                    call.name
-                )));
-            }
-            ApprovalOutcome::TurnInterrupted => {
-                push_tool_terminal(
-                    &ctx.sink,
-                    &ctx.turn_id,
-                    &call.id,
-                    AgentToolCallOutcome::Cancelled,
-                )?;
-                ctx.session.reject_pending_approvals("turn_interrupted")?;
-                return Err(ExecutionError::Cancelled("turn_interrupted".to_string()));
+            PolicyDecision::RequireApproval { reason } => {
+                let approval = ApprovalDescriptor::new(call.id.clone(), call.name.clone(), reason);
+                let id = ctx.approval_bridge.request(scope, &approval)?;
+                let outcome = match ctx.approval_bridge.wait(id).await {
+                    Ok(outcome) => outcome,
+                    Err(ExecutionError::Cancelled(detail)) => {
+                        push_tool_terminal(
+                            &ctx.sink,
+                            &ctx.turn_id,
+                            &call.id,
+                            AgentToolCallOutcome::Cancelled,
+                        )?;
+                        ctx.session.reject_pending_approvals("turn_interrupted")?;
+                        return Err(ExecutionError::Cancelled(detail));
+                    }
+                    Err(error) => return Err(error),
+                };
+                match outcome {
+                    ApprovalOutcome::Allow => {}
+                    ApprovalOutcome::Deny => {
+                        ctx.sink
+                            .push_activity(&format!("tool {} denied by approval", call.name))?;
+                        push_tool_terminal(
+                            &ctx.sink,
+                            &ctx.turn_id,
+                            &call.id,
+                            AgentToolCallOutcome::Cancelled,
+                        )?;
+                        return Err(ExecutionError::Cancelled(format!(
+                            "approval denied for tool {}",
+                            call.name
+                        )));
+                    }
+                    ApprovalOutcome::TurnInterrupted => {
+                        push_tool_terminal(
+                            &ctx.sink,
+                            &ctx.turn_id,
+                            &call.id,
+                            AgentToolCallOutcome::Cancelled,
+                        )?;
+                        ctx.session.reject_pending_approvals("turn_interrupted")?;
+                        return Err(ExecutionError::Cancelled("turn_interrupted".to_string()));
+                    }
+                }
             }
         }
     }
 
     let tool_ctx = ToolContext {
-        workdir: ctx.workdir.clone(),
+        execution_context: ctx.execution_context.clone(),
         cancellation_token: ctx.cancellation.clone(),
         timeout: DEFAULT_TOOL_TIMEOUT,
         parent_turn_id: Some(ctx.turn_id.clone()),

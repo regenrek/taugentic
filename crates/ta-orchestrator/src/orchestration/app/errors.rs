@@ -153,6 +153,15 @@ pub(super) fn map_run_execution_error(error: RunExecutionError) -> AppServiceErr
                 reason: format!("execution scope {requested} is not implemented"),
             }
         }
+        RunExecutionError::WorkspaceCapabilityUnsupported(detail) => {
+            AppServiceError::WorkspaceCapabilityUnsupported {
+                variant: detail.variant,
+                vendor: detail.vendor,
+                capability: detail.capability,
+                requested: detail.requested,
+                reason: detail.reason,
+            }
+        }
         RunExecutionError::ExecutionContextPathInvalid(detail) => {
             AppServiceError::AgentRuntime(AgentRuntimeServiceError::ProviderExecutionFailed(detail))
         }

@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use ta_policy::{Operation, PolicyDecision, PolicyEngine};
 use ta_store::EventRecord;
 use taugentic_agent::{
     AgentExecutionHarness, ExecutionError, ExecutionHandle, ExecutionRequest, ExecutionSink,
@@ -166,25 +165,6 @@ impl RunExecutionRuntime {
             workspace_runs: WorkspaceRunRegistry::new(),
             budget_policy: Arc::new(Mutex::new(ta_policy::BudgetPolicy::default())),
         }
-    }
-
-    pub(crate) fn evaluate_operation(
-        &self,
-        operation: &Operation,
-    ) -> Result<PolicyDecision, AgentRuntimeServiceError> {
-        Ok(
-            PolicyEngine::from_runtime_policy_mode(self.policy.policy_mode()?)
-                .evaluate(operation, self.capabilities.supports_network),
-        )
-    }
-
-    pub(crate) fn evaluate_operation_for_policy_mode(
-        &self,
-        operation: &Operation,
-        policy_mode: ta_protocol::wire::RuntimePolicyMode,
-    ) -> PolicyDecision {
-        PolicyEngine::from_runtime_policy_mode(policy_mode)
-            .evaluate(operation, self.capabilities.supports_network)
     }
 
     pub(crate) fn selected_runtime_profile(

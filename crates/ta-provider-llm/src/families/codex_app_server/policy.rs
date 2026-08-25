@@ -29,6 +29,12 @@ impl CodexTurnPolicy {
     pub(super) fn from_execution_context(
         context: &ExecutionContext,
     ) -> Result<Self, CodexLlmClientError> {
+        if let Some(variant) = context.workspace_scope.unsupported_dispatch_variant() {
+            return Err(unsupported("execution scope", variant));
+        }
+        if !context.sandbox_profile.denied_roots.is_empty() {
+            return Err(unsupported("filesystem deny roots", "nested deny roots"));
+        }
         match &context.sandbox_profile.process_exec {
             ProcessExecPolicy::AllowAll => {}
             ProcessExecPolicy::Denied => {
@@ -47,6 +53,19 @@ impl CodexTurnPolicy {
                 return Err(unsupported("network", "destination allowlist"));
             }
         };
+        if !network_access
+            && matches!(
+                context.permission_policy,
+                PermissionPolicy::WorkspaceWriteWithApproval
+                    | PermissionPolicy::RepoWriteWithApproval
+                    | PermissionPolicy::Unrestricted
+            )
+        {
+            return Err(unsupported(
+                "network",
+                "none with approval escalation or unrestricted filesystem access",
+            ));
+        }
         let approval_policy = match context.permission_policy {
             PermissionPolicy::WorkspaceWriteWithApproval
             | PermissionPolicy::RepoWriteWithApproval => "on-request",
@@ -55,10 +74,12 @@ impl CodexTurnPolicy {
             | PermissionPolicy::Unrestricted => "never",
         };
         let sandbox_policy = match context.permission_policy {
-            PermissionPolicy::ReadOnly => CodexSandboxPolicy::ReadOnly { network_access },
-            PermissionPolicy::WorkspaceWrite
+            PermissionPolicy::ReadOnly
             | PermissionPolicy::WorkspaceWriteWithApproval
-            | PermissionPolicy::RepoWriteWithApproval => CodexSandboxPolicy::WorkspaceWrite {
+            | PermissionPolicy::RepoWriteWithApproval => {
+                CodexSandboxPolicy::ReadOnly { network_access }
+            }
+            PermissionPolicy::WorkspaceWrite => CodexSandboxPolicy::WorkspaceWrite {
                 writable_roots: context
                     .sandbox_profile
                     .write_roots
@@ -69,15 +90,7 @@ impl CodexTurnPolicy {
                 exclude_slash_tmp: true,
                 exclude_tmpdir_env_var: true,
             },
-            PermissionPolicy::Unrestricted if network_access => {
-                CodexSandboxPolicy::DangerFullAccess
-            }
-            PermissionPolicy::Unrestricted => {
-                return Err(unsupported(
-                    "network",
-                    "none with unrestricted filesystem access",
-                ));
-            }
+            PermissionPolicy::Unrestricted => CodexSandboxPolicy::DangerFullAccess,
         };
 
         Ok(Self {
@@ -101,12 +114,12 @@ mod tests {
     #[test]
     fn workspace_write_policy_maps_without_widening_network() {
         let mut context = test_context();
-        context.permission_policy = PermissionPolicy::WorkspaceWriteWithApproval;
+        context.permission_policy = PermissionPolicy::WorkspaceWrite;
         context.network_policy = NetworkPolicy::None;
 
         let policy = CodexTurnPolicy::from_execution_context(&context).expect("policy");
 
-        assert_eq!(policy.approval_policy, "on-request");
+        assert_eq!(policy.approval_policy, "never");
         assert!(matches!(
             policy.sandbox_policy,
             CodexSandboxPolicy::WorkspaceWrite {
@@ -114,6 +127,26 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn approval_policy_starts_read_only_and_fails_when_network_cannot_stay_closed() {
+        let mut context = test_context();
+        context.permission_policy = PermissionPolicy::WorkspaceWriteWithApproval;
+
+        let policy = CodexTurnPolicy::from_execution_context(&context).expect("policy");
+        assert_eq!(policy.approval_policy, "on-request");
+        assert!(matches!(
+            policy.sandbox_policy,
+            CodexSandboxPolicy::ReadOnly {
+                network_access: true
+            }
+        ));
+
+        context.network_policy = NetworkPolicy::None;
+        let error = CodexTurnPolicy::from_execution_context(&context)
+            .expect_err("approval escalation cannot preserve closed network");
+        assert!(matches!(error, CodexLlmClientError::InvalidConfig(_)));
     }
 
     #[test]

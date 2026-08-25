@@ -17,8 +17,6 @@ pub struct CapsuleRecipe {
     pub prompt_template: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub default_sandbox_profile: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS, Error)]
@@ -38,8 +36,6 @@ pub enum RecipeValidationError {
     EmptyTemplate,
     #[error("default model is empty")]
     EmptyDefaultModel,
-    #[error("default sandbox profile is empty")]
-    EmptyDefaultSandboxProfile,
     #[error("recipe id contains invalid characters: {value}")]
     InvalidIdCharacters { value: String },
 }
@@ -88,13 +84,6 @@ impl CapsuleRecipe {
             .is_some_and(|value| value.trim().is_empty())
         {
             return Err(RecipeValidationError::EmptyDefaultModel);
-        }
-        if self
-            .default_sandbox_profile
-            .as_deref()
-            .is_some_and(|value| value.trim().is_empty())
-        {
-            return Err(RecipeValidationError::EmptyDefaultSandboxProfile);
         }
         Ok(())
     }

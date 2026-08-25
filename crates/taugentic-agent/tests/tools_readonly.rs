@@ -7,7 +7,6 @@ use taugentic_agent::tools::{
     ListDirectoryTool, ReadFileTool, Registry, SearchTool, Tool, ToolContext,
 };
 use tempfile::tempdir;
-use tokio_util::sync::CancellationToken;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -103,12 +102,7 @@ fn registry_iteration_order_is_deterministic() {
 }
 
 fn context(path: &std::path::Path) -> ToolContext {
-    ToolContext {
-        workdir: path.to_path_buf(),
-        cancellation_token: CancellationToken::new(),
-        timeout: Duration::from_secs(5),
-        parent_turn_id: None,
-    }
+    tool_support::context(path, Duration::from_secs(5))
 }
 
 fn required_str<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, Box<dyn Error>> {
@@ -116,3 +110,4 @@ fn required_str<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, 
         .as_str()
         .ok_or_else(|| format!("missing string field {key}").into())
 }
+mod tool_support;

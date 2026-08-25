@@ -5,7 +5,6 @@ use std::time::Duration;
 use serde_json::json;
 use taugentic_agent::tools::{ApplyPatchTool, Tool, ToolContext};
 use tempfile::tempdir;
-use tokio_util::sync::CancellationToken;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -52,10 +51,6 @@ async fn apply_patch_adds_updates_and_deletes_files() -> TestResult {
 }
 
 fn context(path: &std::path::Path) -> ToolContext {
-    ToolContext {
-        workdir: path.to_path_buf(),
-        cancellation_token: CancellationToken::new(),
-        timeout: Duration::from_secs(5),
-        parent_turn_id: None,
-    }
+    tool_support::context(path, Duration::from_secs(5))
 }
+mod tool_support;

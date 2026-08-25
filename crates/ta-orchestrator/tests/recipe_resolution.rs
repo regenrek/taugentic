@@ -13,7 +13,6 @@ fn request(
         objective: objective.to_string(),
         output_contract,
         model_id: None,
-        sandbox_profile: None,
         recipe_id: recipe_id.map(str::to_string),
     }
 }
@@ -62,13 +61,6 @@ fn delegate_with_known_recipe_uses_default_model_when_omitted() {
         resolved.model_id,
         Some(model_id("claude-4.6-sonnet-medium-thinking"))
     );
-}
-
-#[test]
-fn delegate_with_known_recipe_uses_default_sandbox_when_omitted() {
-    let resolved = resolve(request("Review focused files", Some("review-agent"), None));
-
-    assert_eq!(resolved.sandbox_profile.as_deref(), Some("balanced"));
 }
 
 #[test]
@@ -140,7 +132,6 @@ fn delegate_without_recipe_id_proceeds_unchanged() {
         Some(OutputContractKind::Custom),
     );
     request.model_id = Some(model_id("caller-model"));
-    request.sandbox_profile = Some("strict".to_string());
 
     let resolved = resolve(request);
 
@@ -150,7 +141,6 @@ fn delegate_without_recipe_id_proceeds_unchanged() {
             objective: "Use explicit caller fields".to_string(),
             output_contract: Some(OutputContractKind::Custom),
             model_id: Some(model_id("caller-model")),
-            sandbox_profile: Some("strict".to_string()),
             recipe_id: None,
         }
     );

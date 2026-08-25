@@ -7,7 +7,6 @@ use serde_json::json;
 use taugentic_agent::ExecutionError;
 use taugentic_agent::tools::{ShellTool, Tool, ToolContext};
 use tempfile::tempdir;
-use tokio_util::sync::CancellationToken;
 
 type TestResult = Result<(), Box<dyn Error + Send + Sync>>;
 
@@ -103,10 +102,6 @@ async fn shell_sandbox_denies_home_ssh_read_helper() -> TestResult {
 }
 
 fn context(path: &Path) -> ToolContext {
-    ToolContext {
-        workdir: path.to_path_buf(),
-        cancellation_token: CancellationToken::new(),
-        timeout: Duration::from_secs(30),
-        parent_turn_id: None,
-    }
+    tool_support::context(path, Duration::from_secs(30))
 }
+mod tool_support;

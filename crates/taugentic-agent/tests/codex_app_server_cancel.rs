@@ -25,7 +25,11 @@ fn sandbox_safe_temp_dir_cleans_up_under_tmp() {
 #[cfg(unix)]
 fn codex_app_server_cancel_interrupts_active_turn() {
     let marker_dir = support::sandbox_safe_temp_dir("codex-app-server-cancel-marker");
-    let marker = marker_dir.path().join("marker");
+    let marker = marker_dir
+        .path()
+        .canonicalize()
+        .expect("canonical marker directory")
+        .join("marker");
     let binary_dir = mock_codex_binary(&format!(
         r#"#!/usr/bin/env python3
 import json, select, sys, time
@@ -58,6 +62,7 @@ for line in sys.stdin:
     ));
     let mut request = support::request();
     support::configure_codex_app_server_request(&mut request);
+    support::set_request_artifact_root(&mut request, marker_dir.path());
     let sink = support::TestSink::new();
     let handle = dispatch_with_client(
         request,

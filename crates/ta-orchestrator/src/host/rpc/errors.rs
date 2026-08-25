@@ -38,26 +38,7 @@ pub(super) fn map_app_service_error(
             capability,
             requested,
             reason,
-        } => {
-            let message = format!("workspace capability unsupported: {reason}");
-            let mut data = serde_json::json!({
-                "code": "WorkspaceCapabilityUnsupported",
-                "capability": capability,
-                "requested": requested,
-                "reason": reason,
-            });
-            if let Some(variant) = variant
-                && let Some(object) = data.as_object_mut()
-            {
-                object.insert("variant".to_string(), serde_json::Value::String(variant));
-            }
-            if let Some(vendor) = vendor
-                && let Some(object) = data.as_object_mut()
-            {
-                object.insert("vendor".to_string(), serde_json::Value::String(vendor));
-            }
-            invalid_params(message).with_data(data)
-        }
+        } => workspace_capability_error(variant, vendor, capability, requested, reason),
         crate::orchestration::AppServiceError::EmptySessionOwnerClientName => {
             invalid_params(error.to_string())
         }
@@ -149,6 +130,15 @@ pub(super) fn map_app_service_error(
             | crate::orchestration::AgentRuntimeServiceError::InvalidAgentRuntimeConfig(_) => {
                 invalid_params(error.to_string())
             }
+            crate::orchestration::AgentRuntimeServiceError::WorkspaceCapabilityUnsupported(
+                detail,
+            ) => workspace_capability_error(
+                detail.variant,
+                detail.vendor,
+                detail.capability,
+                detail.requested,
+                detail.reason,
+            ),
             crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(_) => {
                 internal_error(error.to_string())
             }
@@ -163,6 +153,33 @@ pub(super) fn map_app_service_error(
     }
 }
 
+fn workspace_capability_error(
+    variant: Option<String>,
+    vendor: Option<String>,
+    capability: String,
+    requested: String,
+    reason: String,
+) -> crate::JsonRpcErrorObject {
+    let message = format!("workspace capability unsupported: {reason}");
+    let mut data = serde_json::json!({
+        "code": "WorkspaceCapabilityUnsupported",
+        "capability": capability,
+        "requested": requested,
+        "reason": reason,
+    });
+    if let Some(variant) = variant
+        && let Some(object) = data.as_object_mut()
+    {
+        object.insert("variant".to_string(), serde_json::Value::String(variant));
+    }
+    if let Some(vendor) = vendor
+        && let Some(object) = data.as_object_mut()
+    {
+        object.insert("vendor".to_string(), serde_json::Value::String(vendor));
+    }
+    invalid_params(message).with_data(data)
+}
+
 fn workspace_error(message: String, code: &'static str) -> crate::JsonRpcErrorObject {
     invalid_params(message).with_data(serde_json::json!({ "code": code }))
 }
@@ -174,7 +191,7 @@ pub(super) fn invalid_public_approval_state() -> crate::JsonRpcErrorObject {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ta_protocol::wire::ValidationError;
+    use ta_protocol::wire::{ValidationError, WorkspaceCapabilityUnsupported};
 
     #[test]
     fn output_contract_violation_preserves_structured_validation_error() {
@@ -192,6 +209,33 @@ mod tests {
                 "value": {
                     "value": 1.5
                 }
+            }))
+        );
+    }
+
+    #[test]
+    fn runtime_capability_error_preserves_structured_rpc_data() {
+        let error = map_app_service_error(crate::orchestration::AppServiceError::AgentRuntime(
+            crate::orchestration::AgentRuntimeServiceError::WorkspaceCapabilityUnsupported(
+                WorkspaceCapabilityUnsupported {
+                    variant: None,
+                    vendor: Some("cursor".to_string()),
+                    capability: "network".to_string(),
+                    requested: "none".to_string(),
+                    reason: "provider cannot separate model and tool network".to_string(),
+                },
+            ),
+        ));
+
+        assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+        assert_eq!(
+            error.data,
+            Some(serde_json::json!({
+                "code": "WorkspaceCapabilityUnsupported",
+                "vendor": "cursor",
+                "capability": "network",
+                "requested": "none",
+                "reason": "provider cannot separate model and tool network",
             }))
         );
     }

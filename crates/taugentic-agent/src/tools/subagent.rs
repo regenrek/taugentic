@@ -49,7 +49,6 @@ impl Tool for SubagentTool {
                     "enum": ["debug", "patch", "review", "test", "plan", "custom"]
                 },
                 "modelId": { "type": "string" },
-                "sandboxProfile": { "type": "string" },
                 "recipeId": { "type": "string" },
                 "workspaceScope": {
                     "type": "string",
@@ -97,7 +96,6 @@ impl Tool for SubagentTool {
                 input.objective,
                 input.output_contract,
                 input.model_id,
-                input.sandbox_profile,
                 input.recipe_id,
             )?
             .with_workspace_scope(input.workspace_scope)

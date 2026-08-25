@@ -7,6 +7,7 @@ pub mod approval;
 pub mod artifacts;
 pub mod execution_strategy;
 pub mod mcp;
+mod native_execution;
 pub mod patch;
 pub mod queues;
 pub mod session;

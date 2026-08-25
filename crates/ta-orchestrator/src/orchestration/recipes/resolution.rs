@@ -7,7 +7,6 @@ pub struct DelegateRecipeResolutionRequest {
     pub objective: String,
     pub output_contract: Option<OutputContractKind>,
     pub model_id: Option<AgentRuntimeModelId>,
-    pub sandbox_profile: Option<String>,
     pub recipe_id: Option<String>,
 }
 
@@ -16,7 +15,6 @@ pub struct ResolvedDelegateRecipeRequest {
     pub objective: String,
     pub output_contract: Option<OutputContractKind>,
     pub model_id: Option<AgentRuntimeModelId>,
-    pub sandbox_profile: Option<String>,
     pub recipe_id: Option<String>,
 }
 
@@ -29,7 +27,6 @@ pub fn resolve_delegate_recipe(
             objective: request.objective,
             output_contract: request.output_contract,
             model_id: request.model_id,
-            sandbox_profile: request.sandbox_profile,
             recipe_id: None,
         });
     };
@@ -59,9 +56,6 @@ pub fn resolve_delegate_recipe(
                 .as_deref()
                 .map(model_id_from_valid_recipe)
         }),
-        sandbox_profile: request
-            .sandbox_profile
-            .or_else(|| recipe.default_sandbox_profile.clone()),
         recipe_id: Some(recipe_id),
     })
 }

@@ -16,7 +16,7 @@ async fn approval_bridge_turn_interrupt_rejects_pending() {
         false,
     );
     let sink = TestSink::new();
-    let request = request();
+    let request = request_requiring_approval();
     let cancellation = CancellationToken::new();
     let context = LoopApprovalContext::new(request, sink.clone(), cancellation);
     let session = context.session.clone();

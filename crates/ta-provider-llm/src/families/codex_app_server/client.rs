@@ -208,11 +208,8 @@ impl CodexAppServerClient {
         validate_auth_profile(input.auth_profile_id.as_deref())?;
         let binary = resolve_codex_binary(&self.cli.binary)?;
         let turn_policy = CodexTurnPolicy::from_execution_context(&input.execution_context)?;
-        let sandbox_profile = build_codex_perimeter_profile_for_context(
-            input.execution_context.effective_cwd.as_path(),
-            &binary,
-            &input.execution_context.env_policy,
-        )?;
+        let sandbox_profile =
+            build_codex_perimeter_profile_for_context(&input.execution_context, &binary)?;
         let request = SpawnRequest::new(binary.clone().into_os_string())
             .args(["app-server", "--listen", "stdio://"])
             .cwd(

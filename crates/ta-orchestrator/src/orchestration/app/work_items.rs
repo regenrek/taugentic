@@ -98,7 +98,6 @@ where
                     .get("implementer")
                     .or_else(|| workflow.runtime_profiles.values().next())
                     .map(|profile| profile.model.clone()),
-                sandbox_profile: None,
             },
         )?;
         let updated = {

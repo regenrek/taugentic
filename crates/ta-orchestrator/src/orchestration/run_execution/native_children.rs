@@ -1,4 +1,4 @@
-use ta_policy::Operation;
+use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::{ApprovalScope, RunHarnessKind, RunSource, RunStatus};
 use ta_store::{CommitRunTransition, PersistenceStore, RunProjection};
 use taugentic_agent::{AgentExecutionHarness, NativeChildRunRequest, NativeChildRunResult};
@@ -22,7 +22,6 @@ where
                 objective: request.objective,
                 output_contract: request.output_contract,
                 model_id: request.model_id,
-                sandbox_profile: request.sandbox_profile,
                 recipe_id: request.recipe_id,
             },
         )
@@ -85,27 +84,27 @@ where
                 .finish_scheduled_run(&session_id, &child_run_id, RunStatus::Failed);
             error
         };
-        let operation = Operation::new(ApprovalScope::ProcessExec, "execute native child run");
-        let decision = self
-            .runtime
-            .evaluate_operation_for_policy_mode(&operation, runtime_profile.policy_mode);
         let prepared_context = self
-            .prepare_execution_context(
+            .prepare_child_execution_context(
                 &session_id,
                 &child_run_id,
-                &runtime_profile,
+                &parent.execution_context,
                 ExecutionContextRequest {
                     workspace_mode: request.workspace_scope,
                     cleanup_policy: request.cleanup_policy,
                     planned_write_files: request.planned_write_files.clone(),
                 },
             )
-            .map_err(&fail_scheduled_run)?;
+            .map_err(fail_scheduled_run)?;
+        let decision = evaluate_execution_context(
+            &prepared_context.execution_context,
+            &Operation::new(ApprovalScope::ProcessExec, "execute native child run"),
+        );
         let execution_harness = self
             .runtime
             .execution_harness_for_runtime_profile(&runtime_profile)
             .map_err(map_agent_runtime_error)
-            .map_err(&fail_scheduled_run)?;
+            .map_err(fail_scheduled_run)?;
         if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
             return Err(fail_scheduled_run(RunExecutionError::RunNotNativeHarness(
                 parent.id.as_str().to_string(),
@@ -146,7 +145,6 @@ where
                     parent_turn_id: request.parent_turn_id,
                     output_contract: resolved_request.output_contract,
                     model_id: resolved_request.model_id.clone(),
-                    sandbox_profile: resolved_request.sandbox_profile.clone(),
                     recipe_id: resolved_request.recipe_id.clone(),
                     workspace_scope: request.workspace_scope,
                     cleanup_policy: request.cleanup_policy,
@@ -220,7 +218,7 @@ mod tests {
     use taugentic_agent::ExecutionSink;
 
     #[test]
-    fn start_native_child_run_records_parent_lineage_and_inherits_profile() {
+    fn native_child_inherits_frozen_parent_context_after_profile_change() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Native parent");
@@ -228,6 +226,21 @@ mod tests {
         let parent = execution
             .seed_running_run_for_tests(session.id.clone(), "Parent native run".to_string())
             .expect("parent should seed");
+        let stored_parent = execution
+            .store
+            .lock()
+            .expect("store should not poison")
+            .run(&parent.run.id)
+            .expect("parent lookup should work")
+            .expect("parent run should persist");
+        app.patch_agent_runtime_profile(&crate::DaemonAgentRuntimePatchProfileParams {
+            runtime_profile_id: parent.run.runtime_profile_id.clone(),
+            patch: crate::RuntimeProfilePatch {
+                policy_mode: Some(crate::RuntimePolicyMode::Allow),
+                ..Default::default()
+            },
+        })
+        .expect("runtime profile patch should succeed");
         let parent_turn_id =
             ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id");
 
@@ -238,7 +251,6 @@ mod tests {
                     parent.run.id.clone(),
                     parent_turn_id.clone(),
                     "Review the focused files",
-                    None,
                     None,
                     None,
                     None,
@@ -261,13 +273,36 @@ mod tests {
         );
         assert_eq!(stored_child.objective, "Review the focused files");
         assert_eq!(
+            stored_child.execution_context.workspace_id,
+            stored_parent.execution_context.workspace_id
+        );
+        assert_eq!(
+            stored_child.execution_context.workspace_root,
+            stored_parent.execution_context.workspace_root
+        );
+        assert_eq!(
+            stored_child.execution_context.permission_policy,
+            stored_parent.execution_context.permission_policy
+        );
+        assert_eq!(
+            stored_child.execution_context.network_policy,
+            stored_parent.execution_context.network_policy
+        );
+        assert_eq!(
+            stored_child.execution_context.env_policy,
+            stored_parent.execution_context.env_policy
+        );
+        assert_eq!(
+            stored_child.execution_context.sandbox_profile.process_exec,
+            stored_parent.execution_context.sandbox_profile.process_exec
+        );
+        assert_eq!(
             stored_child.source,
             RunSource::NativeSubagent {
                 parent_run_id: parent.run.id,
                 parent_turn_id,
                 output_contract: None,
                 model_id: None,
-                sandbox_profile: None,
                 recipe_id: None,
                 workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
                 cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
@@ -277,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn queued_native_child_promotion_preserves_stored_runtime_policy() {
+    fn queued_native_child_promotion_uses_stored_context_after_profile_change() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Native parent");
@@ -295,14 +330,20 @@ mod tests {
                     None,
                     None,
                     None,
-                    None,
                 )
                 .expect("child request"),
             )
             .expect("native child run should queue");
         assert_eq!(child.status, RunStatus::Queued);
 
-        select_runtime_profile(&app, "runtime-openai-allow");
+        app.patch_agent_runtime_profile(&crate::DaemonAgentRuntimePatchProfileParams {
+            runtime_profile_id: parent.run.runtime_profile_id.clone(),
+            patch: crate::RuntimeProfilePatch {
+                policy_mode: Some(crate::RuntimePolicyMode::Allow),
+                ..Default::default()
+            },
+        })
+        .expect("runtime profile patch should succeed");
         ProviderRunExecutionSink {
             service: execution.clone(),
             session_id: session.id.clone(),
@@ -352,7 +393,6 @@ mod tests {
                     None,
                     None,
                     None,
-                    None,
                 )
                 .expect("child request"),
             )
@@ -384,7 +424,6 @@ mod tests {
                     None,
                     None,
                     None,
-                    None,
                 )
                 .expect("child request"),
             )
@@ -413,7 +452,6 @@ mod tests {
                     parent.run.id.clone(),
                     ta_protocol::wire::AgentStreamTurnId::new("turn-queued").expect("turn id"),
                     "Queued child",
-                    None,
                     None,
                     None,
                     None,
@@ -461,7 +499,6 @@ mod tests {
                             .expect("turn id"),
                             output_contract: None,
                             model_id: None,
-                            sandbox_profile: None,
                             recipe_id: None,
                             workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
@@ -506,7 +543,6 @@ mod tests {
                             .expect("turn id"),
                             output_contract: None,
                             model_id: None,
-                            sandbox_profile: None,
                             recipe_id: None,
                             workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,

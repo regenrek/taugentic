@@ -15,12 +15,6 @@
         "string",
         "null"
       ]
-    },
-    "sandboxProfile": {
-      "type": [
-        "string",
-        "null"
-      ]
     }
   },
   "required": [

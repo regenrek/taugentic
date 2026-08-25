@@ -18,18 +18,16 @@ export interface StartRunVariables {
   modelId?: AgentRuntimeModelId | null;
   objective: string;
   recipeId?: string | null;
-  sandboxProfile?: string | null;
 }
 
 export function useStartRunMutation(sessionId: SessionId) {
   const qc = useQueryClient();
   return useMutation<RunSummary, Error, StartRunVariables>({
-    mutationFn: ({ modelId = null, objective, recipeId = null, sandboxProfile = null }) =>
+    mutationFn: ({ modelId = null, objective, recipeId = null }) =>
       startRun(sessionId, {
         modelId,
         objective,
         recipeId,
-        sandboxProfile,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.sessionRuns(sessionId) });

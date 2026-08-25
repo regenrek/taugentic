@@ -107,7 +107,6 @@ pub struct NativeChildRunRequest {
     pub objective: String,
     pub output_contract: Option<OutputContractKind>,
     pub model_id: Option<AgentRuntimeModelId>,
-    pub sandbox_profile: Option<String>,
     pub recipe_id: Option<String>,
     pub workspace_scope: WorkspaceMode,
     pub cleanup_policy: WorktreeCleanupPolicy,
@@ -121,7 +120,6 @@ impl NativeChildRunRequest {
         objective: impl Into<String>,
         output_contract: Option<OutputContractKind>,
         model_id: Option<AgentRuntimeModelId>,
-        sandbox_profile: Option<String>,
         recipe_id: Option<String>,
     ) -> Result<Self, ExecutionError> {
         let objective = objective.into().trim().to_string();
@@ -136,7 +134,6 @@ impl NativeChildRunRequest {
             objective,
             output_contract,
             model_id,
-            sandbox_profile,
             recipe_id,
             workspace_scope: WorkspaceMode::WorkspaceWrite,
             cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,

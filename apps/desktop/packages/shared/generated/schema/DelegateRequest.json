@@ -71,12 +71,6 @@
         "null"
       ]
     },
-    "sandboxProfile": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "workspaceScope": {
       "$ref": "#/$defs/WorkspaceMode",
       "default": "worktreeWrite"

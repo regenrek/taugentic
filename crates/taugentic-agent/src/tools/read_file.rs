@@ -58,7 +58,7 @@ impl Tool for ReadFileTool {
     async fn run(&self, input: Value, ctx: ToolContext) -> Result<ToolOutput, ExecutionError> {
         let input: ReadFileInput = serde_json::from_value(input)
             .map_err(|error| ExecutionError::InvalidToolInput(error.to_string()))?;
-        let path = resolve_workdir_path(&ctx.workdir, &input.path)?;
+        let path = resolve_workdir_path(ctx.workdir(), &input.path)?;
         let content = fs::read_to_string(&path)
             .map_err(|error| ExecutionError::ToolFailed(error.to_string()))?;
         let limit = input.limit.unwrap_or(DEFAULT_LIMIT);

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,13 +14,15 @@ use ta_exec::{
     ExecEngine, ExecError, LocalExecEngine, ProcessGroupPolicy, SpawnRequest, StdioPolicy,
     terminate_child_tree,
 };
-use ta_protocol::wire::{RuntimeExtensionMcpHttpServer, RuntimeExtensionMcpStdioServer};
+use ta_protocol::wire::{
+    ExecutionContext, RuntimeExtensionMcpHttpServer, RuntimeExtensionMcpStdioServer,
+};
 use tokio::process::Child;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::ExecutionError;
-use crate::mcp::perimeter::build_mcp_perimeter_profile;
+use crate::mcp::perimeter::build_mcp_execution_spec;
 
 const MCP_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 const MCP_INITIALIZE_TIMEOUT: Duration = Duration::from_secs(10);
@@ -48,22 +50,22 @@ struct TaugenticMcpHandler;
 impl ClientHandler for TaugenticMcpHandler {}
 
 impl McpClient {
-    #[tracing::instrument(skip(spec, workdir), fields(server_id = %server_id, command = %spec.command))]
+    #[tracing::instrument(skip(spec, execution_context), fields(server_id = %server_id, command = %spec.command))]
     pub async fn connect_stdio(
         server_id: String,
         spec: &RuntimeExtensionMcpStdioServer,
-        workdir: &Path,
+        execution_context: &ExecutionContext,
     ) -> Result<Self, ExecutionError> {
         let command = PathBuf::from(&spec.command);
-        let sandbox_profile = build_mcp_perimeter_profile(&server_id, workdir, &command)?;
+        let execution_spec = build_mcp_execution_spec(&server_id, execution_context, &command)?;
         let mut request = SpawnRequest::new(command.as_os_str())
             .args(&spec.args)
-            .cwd(workdir)
+            .cwd(execution_spec.cwd)
             .stdin(StdioPolicy::Piped)
             .stdout(StdioPolicy::Piped)
             .stderr(StdioPolicy::Inherit)
             .process_group(mcp_process_group_policy())
-            .sandbox_profile(sandbox_profile);
+            .sandbox_profile(execution_spec.sandbox_profile);
         // MCP spec.env is the user-controlled secret bridge; it intentionally
         // bypasses the profile's base env allowlist.
         for env in &spec.env {

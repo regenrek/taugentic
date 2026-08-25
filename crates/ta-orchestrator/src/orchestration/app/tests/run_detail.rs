@@ -179,7 +179,6 @@ fn native_child_projection(
             parent_turn_id: AgentStreamTurnId::new("turn-run-detail").expect("turn id"),
             output_contract: input.output_contract,
             model_id: None,
-            sandbox_profile: None,
             recipe_id: input.recipe_id,
             workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,

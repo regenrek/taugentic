@@ -1,5 +1,7 @@
 #![cfg(target_os = "macos")]
 
+mod tool_support;
+
 use std::error::Error;
 use std::time::{Duration, Instant};
 
@@ -28,10 +30,5 @@ async fn shell_timeout_kills_command_within_grace() -> TestResult {
 }
 
 fn context(path: &std::path::Path, cancellation_token: CancellationToken) -> ToolContext {
-    ToolContext {
-        workdir: path.to_path_buf(),
-        cancellation_token,
-        timeout: Duration::from_secs(30),
-        parent_turn_id: None,
-    }
+    tool_support::context_with_cancellation(path, Duration::from_secs(30), cancellation_token)
 }

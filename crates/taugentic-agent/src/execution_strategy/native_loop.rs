@@ -25,6 +25,7 @@ pub(crate) async fn dispatch(
     request: ExecutionRequest,
     sink: Arc<dyn ExecutionSink>,
 ) -> Result<Arc<dyn ExecutionHandle>, ExecutionError> {
+    crate::native_execution::validate_native_execution_context(&request.execution_context)?;
     let client = client_for_request(&request)?;
     let cancellation = CancellationToken::new();
     let mut registry = Registry::with_all_builtins();

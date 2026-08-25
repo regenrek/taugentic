@@ -35,7 +35,7 @@ async fn run_shell(command: &str, run_id: &str) -> Vec<(ArtifactKind, String)> {
     let workdir = temp.path().join("work");
     let artifact_root = temp.path().join("artifacts");
     fs::create_dir_all(&workdir).expect("workdir");
-    let mut request = request();
+    let mut request = request_requiring_approval();
     request.run_id = RunId::new(run_id).expect("run id");
     set_request_cwd(&mut request, &workdir);
     set_request_artifact_root(&mut request, &artifact_root);

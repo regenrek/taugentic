@@ -4,22 +4,25 @@ use std::{
 };
 
 use ta_exec::{NetworkPolicy, SandboxProfile};
-use ta_protocol::{provider_id, wire::EnvPolicy};
+use ta_protocol::{
+    provider_id,
+    wire::{EnvPolicy, ExecutionContext},
+};
 
 use super::{CODEX_PROVIDER_ID, CodexLlmClientError};
 
 pub const CODEX_CACHE_DIR_NAME: &str = ".codex";
 
 pub fn build_codex_perimeter_profile_for_context(
-    workspace_cwd: &Path,
+    execution_context: &ExecutionContext,
     command: &Path,
-    env_policy: &EnvPolicy,
 ) -> Result<SandboxProfile, CodexLlmClientError> {
     validate_codex_provider_id(CODEX_PROVIDER_ID)?;
+    let workspace_cwd = execution_context.effective_cwd.as_path();
     require_absolute_path("workspace cwd", workspace_cwd)?;
     require_absolute_path("Codex app-server command", command)?;
 
-    let workspace_root = workspace_cwd.canonicalize().map_err(|error| {
+    workspace_cwd.canonicalize().map_err(|error| {
         CodexLlmClientError::InvalidConfig(format!(
             "Codex perimeter sandbox workspace cwd must exist: {}: {error}",
             workspace_cwd.display()
@@ -31,17 +34,22 @@ pub fn build_codex_perimeter_profile_for_context(
     let temp_dir = std::env::temp_dir();
     require_absolute_path("temp dir", &temp_dir)?;
 
-    // Codex may open network from its own child runtime; Linux Landlock rejects
-    // this profile until the network allowlist slice lands, so spawn fails closed.
+    // The app-server needs provider-control network access. CodexTurnPolicy
+    // separately maps the frozen tool-network policy into each turn.
     let mut profile = SandboxProfile::new()
         .network(NetworkPolicy::Open)
         .child_inherits_tty(false)
-        .read_path(&workspace_root)
-        .write_path(&workspace_root)
         .read_path(&codex_cache)
         .write_path(&codex_cache)
         .read_path(&temp_dir)
         .write_path(temp_dir);
+
+    for root in &execution_context.sandbox_profile.read_roots {
+        profile = profile.read_path(root.as_path());
+    }
+    for root in &execution_context.sandbox_profile.write_roots {
+        profile = profile.write_path(root.as_path());
+    }
 
     for path in system_read_paths() {
         profile = profile.read_path(path);
@@ -49,9 +57,12 @@ pub fn build_codex_perimeter_profile_for_context(
     for path in command_read_paths(command, &home)? {
         profile = profile.read_path(path);
     }
-    for name in env_allowlist(env_policy)? {
-        profile = profile.env(name);
-    }
+    profile = match &execution_context.env_policy {
+        EnvPolicy::Allowlist { vars } => {
+            vars.iter().fold(profile, |profile, name| profile.env(name))
+        }
+        EnvPolicy::All => profile.inherit_all_env(),
+    };
 
     Ok(profile)
 }
@@ -254,31 +265,36 @@ fn validate_codex_provider_id(provider_id: &str) -> Result<(), CodexLlmClientErr
     })
 }
 
-fn env_allowlist(env_policy: &EnvPolicy) -> Result<&[String], CodexLlmClientError> {
-    let EnvPolicy::Allowlist { vars } = env_policy else {
-        return Err(CodexLlmClientError::InvalidConfig(
-            "Codex perimeter requires an explicit environment allowlist".to_string(),
-        ));
-    };
-    for required in ["PATH", "HOME", "TMPDIR"] {
-        if !vars.iter().any(|name| name == required) {
-            return Err(CodexLlmClientError::InvalidConfig(format!(
-                "Codex perimeter environment allowlist is missing {required}"
-            )));
-        }
-    }
-    Ok(vars)
-}
-
 #[cfg(test)]
 fn build_codex_perimeter_profile(
     workspace_cwd: &Path,
     command: &Path,
 ) -> Result<SandboxProfile, CodexLlmClientError> {
+    use ta_protocol::wire::{
+        NetworkPolicy as ContextNetworkPolicy, PermissionPolicy, ProcessExecPolicy,
+        SandboxProfile as ContextSandboxProfile, WorkspaceId, WorkspacePath, WorkspaceScope,
+    };
+    let root = WorkspacePath::canonicalize_existing(workspace_cwd).map_err(|error| {
+        CodexLlmClientError::InvalidConfig(format!("invalid test workspace: {error}"))
+    })?;
     build_codex_perimeter_profile_for_context(
-        workspace_cwd,
+        &ExecutionContext {
+            workspace_id: WorkspaceId::new("workspace-codex-perimeter").expect("workspace id"),
+            workspace_root: root.clone(),
+            effective_cwd: root.clone(),
+            artifact_root: root.clone(),
+            workspace_scope: WorkspaceScope::Local { root: root.clone() },
+            sandbox_profile: ContextSandboxProfile {
+                read_roots: vec![root.clone()],
+                write_roots: vec![root],
+                denied_roots: Vec::new(),
+                process_exec: ProcessExecPolicy::AllowAll,
+            },
+            permission_policy: PermissionPolicy::WorkspaceWrite,
+            network_policy: ContextNetworkPolicy::Open,
+            env_policy: EnvPolicy::workspace_default(),
+        },
         command,
-        &EnvPolicy::workspace_default(),
     )
 }
 

@@ -187,7 +187,6 @@ mod tests {
                             .expect("turn id"),
                             output_contract: None,
                             model_id: None,
-                            sandbox_profile: None,
                             recipe_id: None,
                             workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
                             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,

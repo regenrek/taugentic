@@ -17,7 +17,7 @@ async fn artifact_patch_emission_persists_apply_patch_diff() {
     let artifact_root = temp.path().join("artifacts");
     let artifact_root_for_assert = artifact_root.clone();
     fs::create_dir_all(&workdir).expect("workdir");
-    let mut request = request();
+    let mut request = request_requiring_approval();
     request.run_id = RunId::new("run-artifact-patch").expect("run id");
     set_request_cwd(&mut request, &workdir);
     set_request_artifact_root(&mut request, &artifact_root);

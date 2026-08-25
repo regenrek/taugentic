@@ -62,7 +62,6 @@ print(json.dumps({"jsonrpc":"2.0","id":3,"result":{"stopReason":"end_turn"}}), f
             mcp_servers: Vec::new(),
             session_mode_id: None,
             session_model_id: None,
-            mode_mapping: Default::default(),
             cancel_grace: DEFAULT_CANCEL_GRACE,
         },
     )
@@ -164,7 +163,6 @@ print(json.dumps({"jsonrpc":"2.0","id":4,"result":{"stopReason":"end_turn"}}), f
             mcp_servers: Vec::new(),
             session_mode_id: None,
             session_model_id: Some("test-model".to_string()),
-            mode_mapping: Default::default(),
             cancel_grace: DEFAULT_CANCEL_GRACE,
         },
     )
@@ -189,7 +187,12 @@ fn test_perimeter_profile(
     command: &std::path::Path,
 ) -> ta_exec::SandboxProfile {
     let provider = AcpProviderSpec::from_builtin(AcpLaunchKind::Cursor);
-    build_perimeter_profile(&provider, work_dir, command).expect("test ACP perimeter profile")
+    build_perimeter_profile(
+        &provider,
+        &support::test_execution_context(work_dir),
+        command,
+    )
+    .expect("test ACP perimeter profile")
 }
 
 fn unique_dir(name: &str) -> std::path::PathBuf {

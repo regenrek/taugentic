@@ -64,7 +64,7 @@ describe("RecipePickerView", () => {
     rendered.unmount();
   });
 
-  it("starts the selected recipe with objective and override fields", async () => {
+  it("starts the selected recipe with objective and model override", async () => {
     const onStartRecipeRun = vi.fn(async () => {});
     const rendered = await renderRecipePicker({
       onStartRecipeRun,
@@ -77,7 +77,6 @@ describe("RecipePickerView", () => {
     });
     await fillInput(document, "Recipe objective", "  Find login bug  ");
     await fillInput(document, "Override model", "  gpt-5.5-high  ");
-    await fillInput(document, "Override sandbox", "  read-only  ");
     await currentAct(async () => {
       buttonByName(document, "start recipe").click();
     });
@@ -86,7 +85,6 @@ describe("RecipePickerView", () => {
       modelId: "gpt-5.5-high",
       objective: "Find login bug",
       recipeId: "debug-agent",
-      sandboxProfile: "read-only",
     });
     rendered.unmount();
   });
@@ -230,7 +228,6 @@ function makeRecipe(
   return {
     contract,
     defaultModel: null,
-    defaultSandboxProfile: null,
     description,
     id,
     name,

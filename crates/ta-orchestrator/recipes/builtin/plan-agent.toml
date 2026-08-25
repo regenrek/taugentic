@@ -3,7 +3,6 @@ name = "Plan Agent"
 description = "Produces an ordered implementation plan and returns PlanResult with steps, estimates, dependencies, and risks."
 contract = "plan"
 defaultModel = "claude-4.6-sonnet-medium-thinking"
-defaultSandboxProfile = "balanced"
 
 promptTemplate = """
 You are a focused planning agent. Break the requested work into ordered, verifiable steps and emit a structured CapsuleResult.

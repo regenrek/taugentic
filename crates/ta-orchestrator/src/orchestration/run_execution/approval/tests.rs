@@ -142,7 +142,6 @@ fn list_approvals_expires_stale_waiting_request() {
                     source: RunSource::User {
                         output_contract: None,
                         model_id: None,
-                        sandbox_profile: None,
                         recipe_id: None,
                     },
                     execution_context: ta_store::default_test_execution_context(),

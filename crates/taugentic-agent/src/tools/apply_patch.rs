@@ -65,7 +65,7 @@ impl Tool for ApplyPatchTool {
     #[tracing::instrument(
         name = "tool.apply_patch.run",
         skip_all,
-        fields(tool = "apply_patch", workdir = %ctx.workdir.display())
+        fields(tool = "apply_patch", workdir = %ctx.workdir().display())
     )]
     async fn run(&self, input: Value, ctx: ToolContext) -> Result<ToolOutput, ExecutionError> {
         if ctx.cancellation_token.is_cancelled() {
@@ -78,7 +78,7 @@ impl Tool for ApplyPatchTool {
             .map_err(|error| ExecutionError::InvalidToolInput(error.to_string()))?;
         let patch = parse_patch(&input.input)
             .map_err(|error| ExecutionError::InvalidToolInput(error.to_string()))?;
-        ensure_patch_contained(&patch.operations, &ctx.workdir)
+        ensure_patch_contained(&patch.operations, ctx.workdir())
             .map_err(|error| ExecutionError::ToolFailed(error.to_string()))?;
 
         if ctx.cancellation_token.is_cancelled() {
@@ -87,9 +87,9 @@ impl Tool for ApplyPatchTool {
             ));
         }
 
-        let applied = apply_patch(&patch, &ctx.workdir)
+        let applied = apply_patch(&patch, ctx.workdir())
             .map_err(|error| ExecutionError::ToolFailed(error.to_string()))?;
-        crate::patch::writer::validate_changes(&applied, &ctx.workdir)
+        crate::patch::writer::validate_changes(&applied, ctx.workdir())
             .map_err(|error| ExecutionError::ToolFailed(error.to_string()))?;
 
         if ctx.cancellation_token.is_cancelled() {
@@ -98,7 +98,7 @@ impl Tool for ApplyPatchTool {
             ));
         }
 
-        let report = write_applied_patch(&applied, &ctx.workdir)
+        let report = write_applied_patch(&applied, ctx.workdir())
             .map_err(|error| ExecutionError::ToolFailed(error.to_string()))?;
         let result = ApplyPatchResult {
             files_added: applied

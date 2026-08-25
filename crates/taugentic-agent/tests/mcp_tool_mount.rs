@@ -30,7 +30,10 @@ async fn mcp_mount_registers_remote_tools() {
 
     let tool = registry.get("some_tool").expect("tool");
     let output = tool
-        .run(json!({"value": 1}), ToolContext::new("."))
+        .run(
+            json!({"value": 1}),
+            ToolContext::new(request.execution_context.clone()),
+        )
         .await
         .expect("tool output");
 
@@ -73,7 +76,7 @@ async fn mcp_tool_call_timeout_disconnects_unresponsive_server() {
         .expect("mount");
 
     let tool = registry.get("slow_tool").expect("tool");
-    let mut ctx = ToolContext::new(".");
+    let mut ctx = ToolContext::new(request.execution_context.clone());
     ctx.timeout = Duration::from_millis(100);
     let error = tool
         .run(json!({"value": 1}), ctx)

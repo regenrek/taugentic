@@ -54,7 +54,6 @@ fn start_run_command_serializes_with_camel_case_fields() {
         objective: "Ship protocol cleanup".to_string(),
         recipe_id: None,
         model_id: None,
-        sandbox_profile: None,
     };
 
     let json = serde_json::to_value(&command).expect("command should serialize");
@@ -74,7 +73,6 @@ fn run_source_native_subagent_roundtrips_through_json() {
         parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("parent turn id"),
         output_contract: None,
         model_id: None,
-        sandbox_profile: None,
         recipe_id: None,
         workspace_scope: WorkspaceMode::WorktreeWrite,
         cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,
@@ -191,7 +189,6 @@ fn resume_run_contract_roundtrips_with_server_event_sequence_only() {
                 parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                 output_contract: None,
                 model_id: None,
-                sandbox_profile: None,
                 recipe_id: None,
                 workspace_scope: WorkspaceMode::WorktreeWrite,
                 cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,

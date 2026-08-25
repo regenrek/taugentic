@@ -109,7 +109,6 @@ fn child_run_projection(
             parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
             output_contract: Some(OutputContractKind::Patch),
             model_id: None,
-            sandbox_profile: None,
             recipe_id: Some("patch-agent".to_string()),
             workspace_scope: Default::default(),
             cleanup_policy: Default::default(),

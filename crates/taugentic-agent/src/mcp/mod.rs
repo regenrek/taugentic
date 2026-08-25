@@ -32,14 +32,11 @@ impl McpToolRegistry {
                 ))
             })? {
                 RuntimeExtensionMcpServer::Stdio(spec) => {
-                    McpClient::connect_stdio(
-                        server_id.clone(),
-                        spec,
-                        request.execution_context.effective_cwd.as_path(),
-                    )
-                    .await?
+                    McpClient::connect_stdio(server_id.clone(), spec, &request.execution_context)
+                        .await?
                 }
                 RuntimeExtensionMcpServer::Http(spec) => {
+                    crate::native_execution::validate_http_mcp_policy(&request.execution_context)?;
                     McpClient::connect_http(server_id.clone(), spec).await?
                 }
             };

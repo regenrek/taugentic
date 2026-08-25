@@ -5,22 +5,22 @@ use std::time::{Duration, Instant};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use ta_exec::{
-    ExecEngine, ExecError, LocalExecEngine, NetworkPolicy, SandboxProfile, SpawnRequest,
-};
-use ta_protocol::wire::ApprovalScope;
+use ta_exec::{ExecEngine, ExecError, LocalExecEngine, SpawnRequest};
+use ta_protocol::wire::{ApprovalScope, ExecutionContext};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Child;
 use tokio::sync::Mutex;
 
 use crate::ExecutionError;
+use crate::native_execution::{
+    NativeExecutionRequirements, capability_unsupported, compile_native_execution_spec,
+};
 use crate::tools::{Tool, ToolContext, ToolDescriptor, ToolOutput};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 const CANCEL_GRACE_PERIOD: Duration = Duration::from_secs(2);
 const MAX_OUTPUT_LINES: usize = 2_000;
 const MAX_OUTPUT_BYTES: usize = 30 * 1024;
-const DEFAULT_SANDBOX_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "LANG"];
 
 #[derive(Default)]
 pub struct ShellTool;
@@ -86,7 +86,7 @@ impl Tool for ShellTool {
     #[tracing::instrument(
         name = "tool.shell.run",
         skip_all,
-        fields(tool = "shell", workdir = %ctx.workdir.display())
+        fields(tool = "shell", workdir = %ctx.workdir().display())
     )]
     async fn run(&self, input: Value, ctx: ToolContext) -> Result<ToolOutput, ExecutionError> {
         let input: ShellInput = serde_json::from_value(input)
@@ -107,9 +107,9 @@ impl Tool for ShellTool {
                     ctx.timeout
                 }
             });
-        let cwd = resolve_cwd(&ctx.workdir, input.cwd.as_deref())?;
+        let cwd = resolve_cwd(ctx.workdir(), input.cwd.as_deref())?;
         let started = Instant::now();
-        let mut child = spawn_shell(&input.command, &cwd)?;
+        let mut child = spawn_shell(&input.command, &cwd, &ctx.execution_context)?;
         let stdout = child
             .stdout
             .take()
@@ -178,22 +178,18 @@ fn resolve_cwd(workdir: &Path, cwd: Option<&Path>) -> Result<PathBuf, ExecutionE
     Ok(requested)
 }
 
-fn spawn_shell(command: &str, cwd: &Path) -> Result<Child, ExecutionError> {
-    let request =
-        SpawnRequest::shell(command, cwd).sandbox_profile(native_shell_sandbox_profile(cwd));
+fn spawn_shell(
+    command: &str,
+    cwd: &Path,
+    execution_context: &ExecutionContext,
+) -> Result<Child, ExecutionError> {
+    let spec = compile_native_execution_spec(
+        execution_context,
+        NativeExecutionRequirements::for_cwd(cwd),
+    )?;
+    let request = SpawnRequest::shell(command, &spec.cwd).sandbox_profile(spec.sandbox_profile);
 
     LocalExecEngine.spawn(request).map_err(map_exec_error)
-}
-
-fn native_shell_sandbox_profile(cwd: &Path) -> SandboxProfile {
-    DEFAULT_SANDBOX_ENV_ALLOWLIST.iter().fold(
-        SandboxProfile::new()
-            .read_path(cwd)
-            .write_path(cwd)
-            .network(NetworkPolicy::Off)
-            .child_inherits_tty(false),
-        |profile, name| profile.env(*name),
-    )
 }
 
 fn map_exec_error(error: ExecError) -> ExecutionError {
@@ -202,6 +198,9 @@ fn map_exec_error(error: ExecError) -> ExecutionError {
             ExecutionError::Unsupported(format!(
                 "shell sandbox backend is unsupported (kind: {kind}): {reason}"
             ))
+        }
+        ExecError::Sandbox(ta_exec::SandboxError::InvalidProfile(reason)) => {
+            capability_unsupported(None, "sandbox", "native shell execution", &reason)
         }
         other => ExecutionError::ToolFailed(other.to_string()),
     }
@@ -318,21 +317,6 @@ fn line_cut_position(bytes: &[u8], remaining_lines: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn native_shell_sandbox_profile_is_fail_closed_by_default() {
-        let cwd = Path::new("/repo");
-        let profile = native_shell_sandbox_profile(cwd);
-
-        assert_eq!(profile.network_policy(), &NetworkPolicy::Off);
-        assert!(profile.reads_path(cwd));
-        assert!(profile.writes_path(cwd));
-        assert!(profile.allows_env("PATH"));
-        assert!(profile.allows_env("HOME"));
-        assert!(profile.allows_env("LANG"));
-        assert!(!profile.allows_env("OPENAI_API_KEY"));
-        assert!(!profile.child_inherits_tty_enabled());
-    }
 
     #[test]
     fn sandbox_unsupported_maps_to_clear_tool_error() {

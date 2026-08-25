@@ -1,5 +1,7 @@
 #![cfg(target_os = "macos")]
 
+mod support;
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -23,7 +25,8 @@ fn unique_dir(prefix: &str) -> PathBuf {
 
 fn test_perimeter_profile(work_dir: &Path, command: &Path) -> ta_exec::SandboxProfile {
     let provider = AcpProviderSpec::from_builtin(AcpLaunchKind::Cursor);
-    build_perimeter_profile(&provider, work_dir, command).expect("test ACP perimeter profile")
+    build_perimeter_profile(&provider, &support::execution_context(work_dir), command)
+        .expect("test ACP perimeter profile")
 }
 
 #[cfg(target_os = "macos")]

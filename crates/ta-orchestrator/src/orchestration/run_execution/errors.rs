@@ -1,4 +1,4 @@
-use ta_protocol::wire::{OutputContractKind, ValidationError};
+use ta_protocol::wire::{OutputContractKind, ValidationError, WorkspaceCapabilityUnsupported};
 use ta_store::StoreError;
 use thiserror::Error;
 
@@ -41,6 +41,8 @@ pub enum RunExecutionError {
     WorkspaceTrustRequired(String),
     #[error("workspace execution scope is not supported: {0}")]
     WorkspaceScopeUnsupported(String),
+    #[error("{0}")]
+    WorkspaceCapabilityUnsupported(WorkspaceCapabilityUnsupported),
     #[error("execution context path is invalid: {0}")]
     ExecutionContextPathInvalid(String),
     #[error("unknown recipe id: {0}")]
@@ -66,5 +68,10 @@ pub enum RunExecutionError {
 }
 
 pub(super) fn map_agent_runtime_error(error: crate::AgentRuntimeServiceError) -> RunExecutionError {
-    RunExecutionError::ProviderExecutionFailed(error.to_string())
+    match error {
+        crate::AgentRuntimeServiceError::WorkspaceCapabilityUnsupported(detail) => {
+            RunExecutionError::WorkspaceCapabilityUnsupported(detail)
+        }
+        error => RunExecutionError::ProviderExecutionFailed(error.to_string()),
+    }
 }

@@ -54,9 +54,9 @@ impl Tool for ListDirectoryTool {
     async fn run(&self, input: Value, ctx: ToolContext) -> Result<ToolOutput, ExecutionError> {
         let input: ListDirectoryInput = serde_json::from_value(input)
             .map_err(|error| ExecutionError::InvalidToolInput(error.to_string()))?;
-        let root = resolve_workdir_path(&ctx.workdir, &input.path)?;
+        let root = resolve_workdir_path(ctx.workdir(), &input.path)?;
         let mut entries = Vec::new();
-        collect_entries(&root, &ctx.workdir, input.recursive, &mut entries)?;
+        collect_entries(&root, ctx.workdir(), input.recursive, &mut entries)?;
         entries.sort_by(|left, right| left["path"].as_str().cmp(&right["path"].as_str()));
         Ok(ToolOutput {
             content: json!({ "path": input.path, "recursive": input.recursive, "entries": entries }),

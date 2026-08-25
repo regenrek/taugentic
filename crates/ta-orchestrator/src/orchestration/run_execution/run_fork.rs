@@ -1,4 +1,4 @@
-use ta_policy::Operation;
+use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::{
     ApprovalScope, ForkRunRequest, ForkRunResult, RunHarnessKind, RunSource, RunStatus,
 };
@@ -114,28 +114,34 @@ where
                 .finish_scheduled_run(&session_id, &fork_run_id, RunStatus::Failed);
             error
         };
+        let workspace_mode =
+            workspace_mode_for_fork(&parent.execution_context).map_err(fail_scheduled_run)?;
         let prepared_context = self
-            .prepare_execution_context(
+            .prepare_child_execution_context(
                 &session_id,
                 &fork_run_id,
-                &runtime_profile,
-                ExecutionContextRequest::workspace_write(),
+                &parent.execution_context,
+                ExecutionContextRequest {
+                    workspace_mode,
+                    cleanup_policy: ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess,
+                    planned_write_files: Vec::new(),
+                },
             )
-            .map_err(&fail_scheduled_run)?;
+            .map_err(fail_scheduled_run)?;
         let execution_harness = self
             .runtime
             .execution_harness_for_runtime_profile(&runtime_profile)
             .map_err(map_agent_runtime_error)
-            .map_err(&fail_scheduled_run)?;
+            .map_err(fail_scheduled_run)?;
         if !matches!(execution_harness, AgentExecutionHarness::NativeLoop) {
             return Err(fail_scheduled_run(RunExecutionError::RunNotNativeHarness(
                 parent.id.as_str().to_string(),
             )));
         }
-        let operation = Operation::new(ApprovalScope::ProcessExec, "execute forked native run");
-        let decision = self
-            .runtime
-            .evaluate_operation_for_policy_mode(&operation, runtime_profile.policy_mode);
+        let decision = evaluate_execution_context(
+            &prepared_context.execution_context,
+            &Operation::new(ApprovalScope::ProcessExec, "execute forked native run"),
+        );
 
         let (mut run, events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");

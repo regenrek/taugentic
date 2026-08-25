@@ -41,7 +41,7 @@ use taugentic_agent::AgentExecutionHarness;
 
 pub use errors::RunExecutionError;
 use errors::map_agent_runtime_error;
-use execution_context::ExecutionContextRequest;
+use execution_context::{ExecutionContextRequest, workspace_mode_for_fork};
 use provider_sink::ProviderRunExecutionSink;
 
 use crate::{ArtifactSummary, RecipeRegistry, RunExecutionRuntime, RunSummary};

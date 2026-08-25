@@ -244,7 +244,6 @@ mod tests {
                     parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                     output_contract: None,
                     model_id: None,
-                    sandbox_profile: None,
                     recipe_id: None,
                     workspace_scope: Default::default(),
                     cleanup_policy: Default::default(),

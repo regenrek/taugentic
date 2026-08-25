@@ -1,11 +1,12 @@
 use std::sync::{Arc, Mutex};
 
+#[cfg(test)]
+use ta_protocol::wire::RuntimePolicyMode;
 use ta_protocol::wire::{
     AgentRuntimeSnapshot, AuthProfileLoginResult, DaemonAgentRuntimeAuthLoginParams,
     DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
     DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    GetAgentRuntimeQuery, RuntimeExtensionState, RuntimePolicyMode, RuntimeProfileId,
-    RuntimeProfileSummary,
+    GetAgentRuntimeQuery, RuntimeExtensionState, RuntimeProfileId, RuntimeProfileSummary,
 };
 use thiserror::Error;
 
@@ -29,14 +30,6 @@ impl AgentRuntimeRuntime {
                 inner: Arc::new(Mutex::new(default_agent_runtime_state(runtime_profiles))),
             },
         }
-    }
-
-    pub(crate) fn policy_mode(&self) -> Result<RuntimePolicyMode, AgentRuntimeServiceError> {
-        self.state
-            .lock()
-            .expect("runtime state should not be poisoned")
-            .selected_profile()
-            .map(|profile| profile.policy_mode)
     }
 
     pub(crate) fn selected_profile(
@@ -114,6 +107,8 @@ pub enum AgentRuntimeServiceError {
     RuntimeExtensionNotFound(String),
     #[error("{0}")]
     InvalidAgentRuntimeConfig(String),
+    #[error("{0}")]
+    WorkspaceCapabilityUnsupported(ta_protocol::wire::WorkspaceCapabilityUnsupported),
     #[error("{0}")]
     ProviderExecutionFailed(String),
 }
@@ -279,7 +274,10 @@ mod tests {
 
         assert_eq!(selected_profile.policy_mode, RuntimePolicyMode::Allow);
         assert_eq!(
-            runtime.policy_mode().expect("runtime policy should exist"),
+            runtime
+                .selected_profile()
+                .expect("runtime profile should exist")
+                .policy_mode,
             RuntimePolicyMode::Allow
         );
     }

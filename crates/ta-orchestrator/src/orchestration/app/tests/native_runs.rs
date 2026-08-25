@@ -36,7 +36,6 @@ fn list_native_runs_filters_children_and_paginates() {
                 parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                 output_contract: None,
                 model_id: None,
-                sandbox_profile: None,
                 recipe_id: None,
                 workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
                 cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,

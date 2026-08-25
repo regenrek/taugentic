@@ -494,6 +494,7 @@ pub fn set_request_cwd(request: &mut ExecutionRequest, cwd: &Path) {
 }
 
 pub fn set_request_artifact_root(request: &mut ExecutionRequest, artifact_root: &Path) {
+    std::fs::create_dir_all(artifact_root).expect("test artifact root should be created");
     let artifact_root = workspace_path(artifact_root);
     let context = Arc::make_mut(&mut request.execution_context);
     context.artifact_root = artifact_root.clone();
@@ -502,7 +503,7 @@ pub fn set_request_artifact_root(request: &mut ExecutionRequest, artifact_root: 
     }
 }
 
-fn test_execution_context(cwd: &Path) -> ExecutionContext {
+pub fn test_execution_context(cwd: &Path) -> ExecutionContext {
     let root = workspace_path(cwd);
     ExecutionContext {
         workspace_id: WorkspaceId::new("workspace-test").expect("workspace id"),
@@ -523,9 +524,16 @@ fn test_execution_context(cwd: &Path) -> ExecutionContext {
     }
 }
 
+pub fn request_requiring_approval() -> ExecutionRequest {
+    let mut request = request();
+    let mut execution_context = (*request.execution_context).clone();
+    execution_context.permission_policy = PermissionPolicy::WorkspaceWriteWithApproval;
+    request.execution_context = Arc::new(execution_context);
+    request
+}
+
 fn workspace_path(path: &Path) -> WorkspacePath {
-    WorkspacePath::from_canonical_wire_value(path.to_string_lossy().into_owned())
-        .expect("test path must be absolute and canonical")
+    WorkspacePath::canonicalize_existing(path).expect("test path must exist and canonicalize")
 }
 
 pub fn sandbox_safe_temp_dir(prefix: &str) -> tempfile::TempDir {

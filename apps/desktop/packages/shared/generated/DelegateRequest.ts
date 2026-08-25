@@ -4,4 +4,4 @@ import type { OutputContractKind } from "./OutputContractKind.js";
 import type { WorkspaceMode } from "./WorkspaceMode.js";
 import type { WorktreeCleanupPolicy } from "./WorktreeCleanupPolicy.js";
 
-export type DelegateRequest = { objective: string, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, sandboxProfile?: string | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, };
+export type DelegateRequest = { objective: string, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, };

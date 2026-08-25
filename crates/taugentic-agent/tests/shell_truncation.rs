@@ -1,12 +1,13 @@
 #![cfg(target_os = "macos")]
 
+mod tool_support;
+
 use std::error::Error;
 use std::time::Duration;
 
 use serde_json::json;
 use taugentic_agent::tools::{ShellTool, Tool, ToolContext};
 use tempfile::tempdir;
-use tokio_util::sync::CancellationToken;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -54,10 +55,5 @@ async fn shell_truncates_stdout_at_byte_limit() -> TestResult {
 }
 
 fn context(path: &std::path::Path) -> ToolContext {
-    ToolContext {
-        workdir: path.to_path_buf(),
-        cancellation_token: CancellationToken::new(),
-        timeout: Duration::from_secs(30),
-        parent_turn_id: None,
-    }
+    tool_support::context(path, Duration::from_secs(30))
 }

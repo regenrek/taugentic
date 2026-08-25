@@ -50,7 +50,6 @@ fn all_builtin_recipes_complete_with_valid_capsule_results_and_promote_receipts(
             case.id,
             Some(case.contract),
             Some(DEFAULT_RECIPE_MODEL),
-            Some(DEFAULT_RECIPE_SANDBOX),
         );
         mark_child_running_for_capsule_completion(&execution, &session.id, &child.run_id);
 
@@ -182,7 +181,7 @@ fn recipe_delegate_unknown_recipe_returns_typed_error_before_child_start() {
 }
 
 #[test]
-fn recipe_delegate_applies_default_model_sandbox_and_allows_model_override() {
+fn recipe_delegate_applies_default_model_and_allows_model_override() {
     let (_app, execution, session, parent) = native_parent("Default recipe model");
     let default_child = delegate_recipe(
         &execution,
@@ -199,7 +198,6 @@ fn recipe_delegate_applies_default_model_sandbox_and_allows_model_override() {
         "debug-agent",
         Some(OutputContractKind::Debug),
         Some(DEFAULT_RECIPE_MODEL),
-        Some(DEFAULT_RECIPE_SANDBOX),
     );
 
     let (_app, execution, session, parent) = native_parent("Override recipe model");
@@ -218,7 +216,6 @@ fn recipe_delegate_applies_default_model_sandbox_and_allows_model_override() {
         "debug-agent",
         Some(OutputContractKind::Debug),
         Some("override"),
-        Some(DEFAULT_RECIPE_SANDBOX),
     );
 }
 
@@ -241,7 +238,6 @@ fn recipe_delegate_lineage_events_carry_recipe_id() {
         "debug-agent",
         Some(OutputContractKind::Debug),
         Some(DEFAULT_RECIPE_MODEL),
-        Some(DEFAULT_RECIPE_SANDBOX),
     );
     assert_run_event(
         &execution,
@@ -266,7 +262,6 @@ fn delegate_without_recipe_id_preserves_legacy_flow() {
                 "Legacy child objective",
                 None,
                 Some(model_id("legacy-model")),
-                Some("strict".to_string()),
                 None,
             )
             .expect("legacy child request"),
@@ -275,12 +270,7 @@ fn delegate_without_recipe_id_preserves_legacy_flow() {
     let stored_child = run(&execution, &child.run_id);
 
     assert_eq!(stored_child.objective, "Legacy child objective");
-    assert_legacy_source(
-        &stored_child,
-        &parent.id,
-        Some("legacy-model"),
-        Some("strict"),
-    );
+    assert_legacy_source(&stored_child, &parent.id, Some("legacy-model"));
     mark_child_running_for_capsule_completion(&execution, &session.id, &child.run_id);
 
     let completed = execution
@@ -488,7 +478,6 @@ fn worktree_parallel_delegation_records_conflicts_receipts_and_cleanup() {
 }
 
 const DEFAULT_RECIPE_MODEL: &str = "claude-4.6-sonnet-medium-thinking";
-const DEFAULT_RECIPE_SANDBOX: &str = "balanced";
 
 fn native_parent(
     title: &str,
@@ -525,7 +514,6 @@ fn delegate_recipe(
             format!("Execute {recipe_id} recipe objective"),
             output_contract,
             model_id,
-            None,
             Some(recipe_id.to_string()),
         )
         .expect("recipe child request"),
@@ -549,7 +537,6 @@ fn start_worktree_child(
                 turn_id(turn_id_value),
                 objective,
                 Some(OutputContractKind::Patch),
-                None,
                 None,
                 None,
             )
@@ -737,13 +724,11 @@ fn assert_native_subagent_source(
     expected_recipe_id: &str,
     expected_contract: Option<OutputContractKind>,
     expected_model_id: Option<&str>,
-    expected_sandbox: Option<&str>,
 ) {
     let RunSource::NativeSubagent {
         parent_run_id,
         output_contract,
         model_id,
-        sandbox_profile,
         recipe_id,
         ..
     } = &run.source
@@ -754,7 +739,6 @@ fn assert_native_subagent_source(
     assert_eq!(parent_run_id, expected_parent_run_id);
     assert_eq!(*output_contract, expected_contract);
     assert_eq!(model_id.as_ref().map(|id| id.as_str()), expected_model_id);
-    assert_eq!(sandbox_profile.as_deref(), expected_sandbox);
     assert_eq!(recipe_id.as_deref(), Some(expected_recipe_id));
 }
 
@@ -762,13 +746,11 @@ fn assert_legacy_source(
     run: &ta_store::RunProjection,
     expected_parent_run_id: &RunId,
     expected_model_id: Option<&str>,
-    expected_sandbox: Option<&str>,
 ) {
     let RunSource::NativeSubagent {
         parent_run_id,
         output_contract,
         model_id,
-        sandbox_profile,
         recipe_id,
         ..
     } = &run.source
@@ -779,7 +761,6 @@ fn assert_legacy_source(
     assert_eq!(parent_run_id, expected_parent_run_id);
     assert_eq!(*output_contract, None);
     assert_eq!(model_id.as_ref().map(|id| id.as_str()), expected_model_id);
-    assert_eq!(sandbox_profile.as_deref(), expected_sandbox);
     assert_eq!(recipe_id, &None);
 }
 

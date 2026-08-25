@@ -208,7 +208,6 @@ fn start_child(
         format!("Execute {recipe_id} smoke step"),
         None,
         None,
-        None,
         Some(recipe_id.to_string()),
     )
     .expect("child request")

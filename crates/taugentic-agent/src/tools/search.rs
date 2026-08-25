@@ -74,7 +74,7 @@ impl Tool for SearchTool {
         let input: SearchInput = serde_json::from_value(input)
             .map_err(|error| ExecutionError::InvalidToolInput(error.to_string()))?;
         let limit = input.limit.unwrap_or(DEFAULT_RESULT_LIMIT);
-        let root = resolve_workdir_path(&ctx.workdir, &input.path)?;
+        let root = resolve_workdir_path(ctx.workdir(), &input.path)?;
         match input.mode {
             SearchMode::Content => search_content(&input.query, &root, &ctx, limit).await,
             SearchMode::FileName => search_filename(&input.query, &root, &ctx, limit),
@@ -124,7 +124,7 @@ async fn search_content(
             Err(error) => {
                 return Err(ExecutionError::ToolFailed(format!(
                     "{}: {error}",
-                    relative_display(path, &ctx.workdir)
+                    relative_display(path, ctx.workdir())
                 )));
             }
         };
@@ -136,7 +136,7 @@ async fn search_content(
             results.push(json!({
                 "line": format!(
                     "{}:{}:{}:{}",
-                    relative_display(path, &ctx.workdir),
+                    relative_display(path, ctx.workdir()),
                     line_index + 1,
                     column + 1,
                     line
@@ -175,7 +175,7 @@ fn search_filename(
         };
         if name.to_lowercase().contains(&needle) {
             results.push(json!({
-                "path": relative_display(path, &ctx.workdir),
+                "path": relative_display(path, ctx.workdir()),
                 "type": if path.is_dir() { "directory" } else { "file" }
             }));
         }

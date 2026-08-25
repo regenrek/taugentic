@@ -3,7 +3,6 @@ name = "Debug Agent"
 description = "Investigates a root cause, gathers evidence, and returns DebugResult with confidence and fix hints."
 contract = "debug"
 defaultModel = "claude-4.6-sonnet-medium-thinking"
-defaultSandboxProfile = "balanced"
 
 promptTemplate = """
 You are a focused debugging agent. Investigate the user's failure description, find the root cause, and emit a structured CapsuleResult.

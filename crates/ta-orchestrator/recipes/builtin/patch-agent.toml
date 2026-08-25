@@ -3,7 +3,6 @@ name = "Patch Agent"
 description = "Applies concrete production-grade changes and returns PatchResult with touched files and verification status."
 contract = "patch"
 defaultModel = "claude-4.6-sonnet-medium-thinking"
-defaultSandboxProfile = "balanced"
 
 promptTemplate = """
 You are a focused patching agent. Implement the requested change with the smallest production-grade diff and emit a structured CapsuleResult.
