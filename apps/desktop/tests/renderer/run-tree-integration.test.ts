@@ -13,6 +13,7 @@ import type {
 } from "../../packages/shared/src/contracts.js";
 import { NATIVE_RUN_LIST_MAX_LIMIT } from "../../packages/shared/src/contracts.js";
 import { queryKeys } from "../../packages/renderer/src/lib/queries/keys.js";
+import { makeExecutionContext } from "./support/run-fixtures.js";
 import { createTestQueryClient, withQueryClient } from "./support/with-query-client.js";
 
 const SESSION_ID = "session-run-tree" satisfies SessionId;
@@ -296,6 +297,7 @@ function makeDetail(run: RunListEntry, payload: string): RunDetail {
 
   return {
     contractViolation: null,
+    executionContext: makeExecutionContext(),
     outputContract: run.outputContract ?? null,
     parentRunId: run.parentRunId ?? null,
     quarantineReceipt: null,

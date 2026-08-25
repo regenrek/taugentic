@@ -10,6 +10,7 @@ import type {
 } from "../../packages/shared/src/contracts.js";
 import { RunDetailPanelView } from "../../packages/renderer/src/features/run-tree/index.js";
 import type { RunConflictWarningItem } from "../../packages/renderer/src/lib/queries/session-queries.js";
+import { makeExecutionContext } from "./support/run-fixtures.js";
 
 type CreateElementFn = (
   component: unknown,
@@ -73,6 +74,7 @@ function makePatchResult(): CapsuleResult {
 function makeDetail(overrides: Partial<RunDetail> = {}): RunDetail {
   return {
     contractViolation: null,
+    executionContext: makeExecutionContext(),
     outputContract: "patch",
     parentRunId: null,
     quarantineReceipt: null,
