@@ -19,4 +19,4 @@ pre-push:
     desktop-test:
       run: "pnpm --dir apps/desktop test"
     nextest:
-      run: "cargo nextest run --workspace"
+      run: "cargo nextest run --workspace --no-fail-fast"
