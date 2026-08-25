@@ -6,7 +6,6 @@ use ta_protocol::wire::{
 use thiserror::Error;
 
 pub const CODEX_PROVIDER_ID: &str = "codex";
-pub const CODEX_DEFAULT_MODEL_ID: &str = "gpt-5.4";
 pub const CODEX_CHATGPT_AUTH_PROFILE_ID: &str = "auth-codex-chatgpt";
 pub const CODEX_API_KEY_AUTH_PROFILE_ID: &str = "auth-codex-api-key";
 pub const OPENAI_API_KEY_ENV_VAR: &str = "OPENAI_API_KEY";
@@ -26,7 +25,7 @@ pub struct CodexProviderSnapshot {
     pub auth_profiles: Vec<AuthProfileState>,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum CodexLlmClientError {
     #[error("codex auth profile does not exist: {0}")]
     UnknownAuthProfile(String),

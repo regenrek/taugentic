@@ -13,7 +13,7 @@ use taugentic_agent::{
 use super::active_execution::ActiveExecution;
 use super::active_execution::{ActiveExecutionOwner, AttachHandleDisposition};
 use crate::host::event_hub::RuntimeEventPublisher;
-use crate::orchestration::agent_runtime::{StrategyRegistry, normalize_for_snapshot};
+use crate::orchestration::agent_runtime::{StrategyRegistry, validate_runtime_profile};
 use crate::orchestration::prompts::subagent_delegation_guidelines;
 use crate::workspace::{
     ClaimHandle, ClaimKind, ClaimRegistry, CleanupPolicy, WorktreeHandle, WorktreeManager,
@@ -191,7 +191,7 @@ impl RunExecutionRuntime {
         &self,
     ) -> Result<ta_protocol::wire::RuntimeProfileSummary, AgentRuntimeServiceError> {
         let profile = self.policy.selected_profile()?;
-        normalize_for_snapshot(&profile, &self.strategy_registry)
+        validate_runtime_profile(&profile, &self.strategy_registry)
     }
 
     pub(crate) fn runtime_profile(
@@ -206,7 +206,7 @@ impl RunExecutionRuntime {
                     runtime_profile_id.as_str().to_string(),
                 )
             })?;
-        normalize_for_snapshot(&profile, &self.strategy_registry)
+        validate_runtime_profile(&profile, &self.strategy_registry)
     }
 
     pub(crate) fn execution_harness_for_runtime_profile(
@@ -232,7 +232,7 @@ impl RunExecutionRuntime {
             model_id,
             subagent_recipes,
         } = start;
-        let runtime_profile = normalize_for_snapshot(runtime_profile, &self.strategy_registry)?;
+        let runtime_profile = validate_runtime_profile(runtime_profile, &self.strategy_registry)?;
         let execution_harness = self
             .strategy_registry
             .execution_harness_for_runtime_profile(&runtime_profile)?;

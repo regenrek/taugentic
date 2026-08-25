@@ -79,11 +79,7 @@ fn run_codex_app_server(
 ) -> Result<(), ExecutionError> {
     let mut session = client
         .start_session(CodexAppServerInput {
-            cwd: request
-                .execution_context
-                .effective_cwd
-                .as_path()
-                .to_path_buf(),
+            execution_context: request.execution_context.clone(),
             model: request
                 .model_id
                 .as_ref()
@@ -115,11 +111,6 @@ fn push_event(event: CodexAppServerEvent, sink: &dyn ExecutionSink) -> Result<()
             turn_id,
             item_id,
             delta,
-        }
-        | CodexAppServerEvent::AgentMessage {
-            turn_id,
-            item_id,
-            text: delta,
         } => sink.push_stream(StreamEmission {
             turn_id: Some(turn_id_from_string(turn_id)?),
             item_id: Some(item_id_from_string(item_id)?),

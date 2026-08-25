@@ -55,9 +55,11 @@ for line in sys.stdin:
     if method == "initialize":
         print(json.dumps({"jsonrpc":"2.0","id":msg["id"],"result":{"protocolVersion":"1","capabilities":{}}}), flush=True)
     elif method == "thread/start":
-        assert "approvalPolicy" not in msg["params"], "approvalPolicy must stay delegated to Codex config"
+        assert "approvalPolicy" not in msg["params"], "turn policy must be sent on turn/start"
         print(json.dumps({"jsonrpc":"2.0","id":msg["id"],"result":{"thread":{"id":"thread-1"}}}), flush=True)
     elif method == "turn/start":
+        assert msg["params"]["approvalPolicy"] == "never"
+        assert msg["params"]["sandboxPolicy"] == {"type":"dangerFullAccess"}
         print(json.dumps({"jsonrpc":"2.0","id":msg["id"],"result":{"turn":{"id":"turn-1"}}}), flush=True)
         print(json.dumps({"jsonrpc":"2.0","method":"item/agentMessage/delta","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","delta":"hello"}}), flush=True)
         print(json.dumps({"jsonrpc":"2.0","method":"turn/completed","params":{"threadId":"thread-1","turn":{"id":"turn-1","status":"completed"}}}), flush=True)

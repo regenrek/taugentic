@@ -6,9 +6,7 @@ use ta_protocol::wire::{
     RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
 };
 
-use crate::families::codex_app_server::{
-    CODEX_CHATGPT_AUTH_PROFILE_ID, CODEX_DEFAULT_MODEL_ID, CODEX_PROVIDER_ID,
-};
+use crate::families::codex_app_server::{CODEX_CHATGPT_AUTH_PROFILE_ID, CODEX_PROVIDER_ID};
 use crate::families::{
     anthropic::{
         ANTHROPIC_API_KEY_AUTH_PROFILE_ID, ANTHROPIC_DEFAULT_MODEL_ID, ANTHROPIC_PROVIDER_ID,
@@ -19,11 +17,9 @@ use crate::families::{
     },
 };
 
-const CODEX_MODEL_CATALOG_JSON: &str = include_str!("catalog/codex.json");
 const OPENAI_MODEL_CATALOG_JSON: &str = include_str!("catalog/openai.json");
 const ANTHROPIC_MODEL_CATALOG_JSON: &str = include_str!("catalog/anthropic.json");
 
-static CODEX_MODEL_CATALOG: OnceLock<Vec<CatalogModel>> = OnceLock::new();
 static OPENAI_MODEL_CATALOG: OnceLock<Vec<OpenAiCatalogModel>> = OnceLock::new();
 static ANTHROPIC_MODEL_CATALOG: OnceLock<Vec<CatalogModel>> = OnceLock::new();
 
@@ -47,19 +43,6 @@ pub struct OpenAiCatalogModel {
     pub id: String,
     pub display_name: String,
     pub wire_api: OpenAiWireApi,
-}
-
-pub fn codex_models() -> Vec<AgentRuntimeModelRef> {
-    codex_model_catalog()
-        .iter()
-        .map(|model| AgentRuntimeModelRef {
-            id: codex_model_id(&model.id),
-            display_name: model.display_name.clone(),
-            context_limit: None,
-            input_token_cost_micros: None,
-            output_token_cost_micros: None,
-        })
-        .collect()
 }
 
 pub fn openai_models() -> Vec<AgentRuntimeModelRef> {
@@ -100,13 +83,12 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
     let provider_id = AgentRuntimeStrategyId::new(CODEX_PROVIDER_ID).expect("provider id");
     let auth_profile_id =
         AuthProfileId::new(CODEX_CHATGPT_AUTH_PROFILE_ID).expect("auth profile id");
-    let default_model_id = pinned_codex_model_id(CODEX_DEFAULT_MODEL_ID);
     vec![
         RuntimeProfileSummary {
             id: RuntimeProfileId::new("runtime-codex-safe").expect("runtime profile id"),
             display_name: "Codex Safe".to_string(),
             provider_id: provider_id.clone(),
-            model_id: Some(default_model_id.clone()),
+            model_id: None,
             auth_profile_id: Some(auth_profile_id.clone()),
             policy_mode: RuntimePolicyMode::RequireApproval,
         },
@@ -114,7 +96,7 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
             id: RuntimeProfileId::new("runtime-codex-allow").expect("runtime profile id"),
             display_name: "Codex Allow".to_string(),
             provider_id: provider_id.clone(),
-            model_id: Some(default_model_id.clone()),
+            model_id: None,
             auth_profile_id: Some(auth_profile_id.clone()),
             policy_mode: RuntimePolicyMode::Allow,
         },
@@ -122,7 +104,7 @@ pub fn codex_default_runtime_profiles() -> Vec<RuntimeProfileSummary> {
             id: RuntimeProfileId::new("runtime-codex-deny").expect("runtime profile id"),
             display_name: "Codex Deny".to_string(),
             provider_id,
-            model_id: Some(default_model_id),
+            model_id: None,
             auth_profile_id: Some(auth_profile_id),
             policy_mode: RuntimePolicyMode::Deny,
         },
@@ -210,27 +192,8 @@ fn default_runtime_profiles_with_id_prefix(
     .collect()
 }
 
-fn pinned_codex_model_id(model_id: &str) -> AgentRuntimeModelId {
-    codex_model_catalog()
-        .iter()
-        .find(|candidate| candidate.id == model_id)
-        .map(|candidate| codex_model_id(&candidate.id))
-        .expect("default runtime profile must pin an existing Codex model catalog entry")
-}
-
-fn codex_model_id(value: &str) -> AgentRuntimeModelId {
-    model_id(value)
-}
-
 fn model_id(value: &str) -> AgentRuntimeModelId {
     AgentRuntimeModelId::new(value).expect("model id")
-}
-
-fn codex_model_catalog() -> &'static [CatalogModel] {
-    CODEX_MODEL_CATALOG.get_or_init(|| {
-        serde_json::from_str(CODEX_MODEL_CATALOG_JSON)
-            .expect("embedded Codex model catalog JSON must stay valid")
-    })
 }
 
 fn openai_model_catalog() -> &'static [OpenAiCatalogModel] {
@@ -252,39 +215,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn embedded_codex_catalog_json_parses_into_models() {
-        assert!(
-            !codex_model_catalog().is_empty(),
-            "embedded Codex model catalog must not be empty"
-        );
-    }
-
-    #[test]
     fn embedded_openai_and_anthropic_catalog_json_parse_into_models() {
         assert!(!openai_model_catalog().is_empty());
         assert!(!anthropic_model_catalog().is_empty());
     }
 
     #[test]
-    fn codex_default_runtime_profiles_pin_existing_catalog_models() {
-        let catalog_model_ids = codex_model_catalog()
-            .iter()
-            .map(|model| model.id.as_str())
-            .collect::<Vec<_>>();
-
-        for profile in codex_default_runtime_profiles() {
-            let model_id = profile
-                .model_id
-                .expect("Codex default runtime profiles must pin a model id");
-            assert!(
-                catalog_model_ids
-                    .iter()
-                    .any(|candidate| *candidate == model_id.as_str()),
-                "default runtime profile {} pins unknown model {}",
-                profile.id.as_str(),
-                model_id.as_str(),
-            );
-        }
+    fn codex_default_runtime_profiles_delegate_the_default_model_to_codex() {
+        assert!(
+            codex_default_runtime_profiles()
+                .iter()
+                .all(|profile| profile.model_id.is_none())
+        );
     }
 
     #[test]

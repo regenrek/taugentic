@@ -5,6 +5,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::time::Duration;
 
 use ta_provider_llm::families::codex_app_server::CodexAppServerClient;
+use taugentic_agent::ExecutionError;
 use taugentic_agent::execution_strategy::codex_app_server::dispatch_with_client;
 
 #[test]
@@ -52,6 +53,59 @@ for line in sys.stdin:
     assert!(process_exists(&pid));
     drop(handle);
     wait_for(|| !process_exists(&pid));
+}
+
+#[test]
+#[cfg(unix)]
+fn idle_codex_turn_fails_and_terminates_instead_of_running_forever() {
+    let pid_dir = support::sandbox_safe_temp_dir("codex-app-server-idle-pid");
+    let pid_file = pid_dir.path().join("pid");
+    let binary_dir = mock_codex_binary(&format!(
+        r#"#!/usr/bin/env python3
+import json, os, sys, time
+open({pid_file:?}, "w").write(str(os.getpid()))
+for line in sys.stdin:
+    msg = json.loads(line)
+    method = msg.get("method")
+    if method == "initialized":
+        continue
+    if method == "initialize":
+        print(json.dumps({{"id": msg["id"], "result": {{}}}}), flush=True)
+    elif method == "thread/start":
+        print(json.dumps({{"id": msg["id"], "result": {{"thread": {{"id": "thread-1"}}}}}}), flush=True)
+    elif method == "turn/start":
+        print(json.dumps({{"id": msg["id"], "result": {{"turn": {{"id": "turn-1"}}}}}}), flush=True)
+        while True:
+            time.sleep(1)
+"#,
+        pid_file = pid_file.display().to_string()
+    ));
+    let mut request = support::request();
+    support::configure_codex_app_server_request(&mut request);
+    let sink = support::TestSink::new();
+    let handle = dispatch_with_client(
+        request,
+        sink.clone(),
+        CodexAppServerClient::with_binary_and_turn_idle_timeout(
+            binary_dir.path().join("codex"),
+            Duration::from_millis(100),
+        ),
+    )
+    .expect("handle");
+
+    wait_for(|| {
+        sink.failed
+            .lock()
+            .expect("failed")
+            .iter()
+            .any(|error| matches!(error, ExecutionError::ProcessTimeout { .. }))
+    });
+    let pid = fs::read_to_string(&pid_file)
+        .expect("pid")
+        .trim()
+        .to_string();
+    wait_for(|| !process_exists(&pid));
+    drop(handle);
 }
 
 fn process_exists(pid: &str) -> bool {

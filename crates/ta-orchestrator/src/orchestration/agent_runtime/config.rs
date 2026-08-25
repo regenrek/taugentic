@@ -22,7 +22,7 @@ pub(crate) fn apply_runtime_profile_patch(
             )
         })?;
 
-    let mut updated = normalize_for_snapshot(&profiles[index], registry)?;
+    let mut updated = profiles[index].clone();
     if let Some(display_name) = patch.display_name.as_deref() {
         let trimmed = display_name.trim();
         if trimmed.is_empty() {
@@ -45,34 +45,36 @@ pub(crate) fn apply_runtime_profile_patch(
         updated.policy_mode = policy_mode;
     }
 
-    validate_explicit_patch(&updated, patch, registry)?;
-    updated = normalize_for_snapshot(&updated, registry)?;
+    validate_runtime_profile(&updated, registry)?;
     profiles[index] = updated.clone();
     Ok(updated)
 }
 
-pub(crate) fn normalize_for_snapshot(
+pub(crate) fn validate_runtime_profile(
     profile: &RuntimeProfileSummary,
     registry: &StrategyRegistry,
 ) -> Result<RuntimeProfileSummary, AgentRuntimeServiceError> {
     validate_provider_exists(registry, &profile.provider_id)?;
-
-    let mut normalized = profile.clone();
-    if let Some(model_id) = normalized.model_id.as_ref()
-        && !registry.has_model(&normalized.provider_id, model_id)
+    if let Some(model_id) = profile.model_id.as_ref()
+        && !registry.has_model(&profile.provider_id, model_id)
     {
-        normalized.model_id = None;
+        return Err(AgentRuntimeServiceError::UnknownModel {
+            provider_id: profile.provider_id.as_str().to_string(),
+            model_id: model_id.as_str().to_string(),
+        });
     }
-    if let Some(auth_profile_id) = normalized.auth_profile_id.as_ref() {
+    if let Some(auth_profile_id) = profile.auth_profile_id.as_ref() {
         let auth_profile_matches_provider = registry
             .auth_profile_ref(auth_profile_id)
-            .is_some_and(|auth_profile| auth_profile.provider_id == normalized.provider_id);
+            .is_some_and(|auth_profile| auth_profile.provider_id == profile.provider_id);
         if !auth_profile_matches_provider {
-            normalized.auth_profile_id = None;
+            return Err(AgentRuntimeServiceError::UnknownAuthProfile {
+                provider_id: profile.provider_id.as_str().to_string(),
+                auth_profile_id: auth_profile_id.as_str().to_string(),
+            });
         }
     }
-
-    Ok(normalized)
+    Ok(profile.clone())
 }
 
 fn apply_model_patch(model_patch: &RuntimeProfileModelIdPatch) -> Option<AgentRuntimeModelId> {
@@ -87,37 +89,6 @@ fn apply_auth_patch(auth_patch: &RuntimeProfileAuthProfilePatch) -> Option<AuthP
         RuntimeProfileAuthProfilePatch::Set { value } => Some(value.clone()),
         RuntimeProfileAuthProfilePatch::Clear => None,
     }
-}
-
-fn validate_explicit_patch(
-    profile: &RuntimeProfileSummary,
-    patch: &RuntimeProfilePatch,
-    registry: &StrategyRegistry,
-) -> Result<(), AgentRuntimeServiceError> {
-    validate_provider_exists(registry, &profile.provider_id)?;
-
-    if let Some(RuntimeProfileModelIdPatch::Set { value }) = patch.model_id.as_ref()
-        && !registry.has_model(&profile.provider_id, value)
-    {
-        return Err(AgentRuntimeServiceError::UnknownModel {
-            provider_id: profile.provider_id.as_str().to_string(),
-            model_id: value.as_str().to_string(),
-        });
-    }
-
-    if let Some(RuntimeProfileAuthProfilePatch::Set { value }) = patch.auth_profile.as_ref() {
-        let auth_profile_matches_provider = registry
-            .auth_profile_ref(value)
-            .is_some_and(|auth_profile| auth_profile.provider_id == profile.provider_id);
-        if !auth_profile_matches_provider {
-            return Err(AgentRuntimeServiceError::UnknownAuthProfile {
-                provider_id: profile.provider_id.as_str().to_string(),
-                auth_profile_id: value.as_str().to_string(),
-            });
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_provider_exists(
@@ -212,52 +183,6 @@ mod tests {
             }),
             ..Default::default()
         }
-    }
-
-    #[test]
-    fn normalize_for_snapshot_clears_stale_model_and_auth_refs() {
-        let registry = registry();
-        let profile = runtime_profile(
-            "runtime-a",
-            strategy_id("provider-a"),
-            Some("stale-model"),
-            Some("stale-auth"),
-            RuntimePolicyMode::Allow,
-        );
-
-        let normalized = normalize_for_snapshot(&profile, &registry).expect("normalize");
-
-        assert_eq!(normalized.model_id, None);
-        assert_eq!(normalized.auth_profile_id, None);
-        assert_eq!(normalized.policy_mode, RuntimePolicyMode::Allow);
-    }
-
-    #[test]
-    fn implicit_patch_normalizes_stale_model_without_rejecting_policy_change() {
-        let registry = registry();
-        let mut profiles = vec![runtime_profile(
-            "runtime-a",
-            strategy_id("provider-a"),
-            Some("stale-model"),
-            Some("auth-a"),
-            RuntimePolicyMode::Allow,
-        )];
-
-        let updated = apply_runtime_profile_patch(
-            &mut profiles,
-            &registry,
-            &RuntimeProfileId::new("runtime-a").expect("runtime profile id"),
-            &RuntimeProfilePatch {
-                policy_mode: Some(RuntimePolicyMode::RequireApproval),
-                ..Default::default()
-            },
-        )
-        .expect("implicit patch should normalize stale stored state");
-
-        assert_eq!(updated.model_id, None);
-        assert_eq!(updated.auth_profile_id, Some(auth_profile_id("auth-a")));
-        assert_eq!(updated.policy_mode, RuntimePolicyMode::RequireApproval);
-        assert_eq!(profiles[0], updated);
     }
 
     #[test]

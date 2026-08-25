@@ -39,6 +39,7 @@ for line in sys.stdin:
         emit({"method":"item/reasoning/textDelta","params":{"threadId":thread,"turnId":turn,"itemId":"reason-1","delta":"thinking","contentIndex":0}})
         emit({"method":"thread/tokenUsage/updated","params":{"threadId":thread,"turnId":turn,"tokenUsage":{"total":{"totalTokens":42,"inputTokens":10,"cachedInputTokens":0,"outputTokens":32,"reasoningOutputTokens":4},"last":{"totalTokens":42,"inputTokens":10,"cachedInputTokens":0,"outputTokens":32,"reasoningOutputTokens":4},"modelContextWindow":128000}}})
         emit({"method":"item/autoApprovalReview/started","params":{"threadId":thread,"turnId":turn,"reviewId":"review-1","targetItemId":"cmd-1","review":{"status":"inProgress","userAuthorization":None},"action":{"type":"command","command":"echo hi","cwd":"/tmp"}}})
+        emit({"method":"item/agentMessage/delta","params":{"threadId":thread,"turnId":turn,"itemId":"msg-1","delta":"done"}})
         emit({"method":"item/completed","params":{"threadId":thread,"turnId":turn,"item":{"type":"agentMessage","id":"msg-1","text":"done"}}})
         emit({"method":"turn/completed","params":{"threadId":thread,"turn":{"id":turn,"items":[],"status":"completed","error":None,"startedAt":None,"completedAt":None,"durationMs":None}}})
 "#,
@@ -79,9 +80,18 @@ for line in sys.stdin:
     assert!(frames.contains(&AgentStreamFrame::ToolCallCompleted {
         outcome: AgentToolCallOutcome::Failed
     }));
-    assert!(frames.contains(&AgentStreamFrame::AssistantMessageDelta {
-        delta: "done".to_string()
-    }));
+    assert_eq!(
+        frames
+            .iter()
+            .filter(|frame| {
+                **frame
+                    == AgentStreamFrame::AssistantMessageDelta {
+                        delta: "done".to_string(),
+                    }
+            })
+            .count(),
+        1
+    );
     assert!(frames.contains(&AgentStreamFrame::AssistantTurnCompleted));
     assert!(frames.contains(&AgentStreamFrame::TokenUsageUpdated {
         total_tokens: Some(42),

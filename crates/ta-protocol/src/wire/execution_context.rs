@@ -4,7 +4,17 @@ use ts_rs::TS;
 
 use crate::wire::{WorkspaceId, WorkspacePath};
 
-const WORKSPACE_DEFAULT_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "USER", "LANG", "TZ"];
+const WORKSPACE_DEFAULT_ENV_ALLOWLIST: &[&str] = &[
+    "PATH",
+    "HOME",
+    "USER",
+    "LANG",
+    "TZ",
+    "TMPDIR",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "NIX_SSL_CERT_FILE",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]

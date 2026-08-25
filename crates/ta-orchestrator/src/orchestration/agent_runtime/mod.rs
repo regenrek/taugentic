@@ -7,7 +7,7 @@ mod service;
 mod snapshot;
 mod strategy_registry;
 
-pub(crate) use config::normalize_for_snapshot;
+pub(crate) use config::validate_runtime_profile;
 pub(crate) use profiles::built_in_runtime_profiles;
 pub(crate) use providers::built_in_agent_runtime_strategies;
 pub(crate) use service::*;

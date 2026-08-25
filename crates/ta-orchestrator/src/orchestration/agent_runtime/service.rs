@@ -12,7 +12,7 @@ use thiserror::Error;
 use crate::orchestration::agent_runtime::{
     StrategyRegistry,
     auth_profiles::{login_auth_profile, logout_auth_profile},
-    config::{apply_runtime_profile_patch, normalize_for_snapshot},
+    config::{apply_runtime_profile_patch, validate_runtime_profile},
     extensions::{built_in_extensions, set_extension_enabled},
     snapshot::build_snapshot,
 };
@@ -207,7 +207,7 @@ impl AgentRuntimeService {
         snapshot_state.runtime_profiles = state
             .runtime_profiles
             .iter()
-            .map(|profile| normalize_for_snapshot(profile, &self.registry))
+            .map(|profile| validate_runtime_profile(profile, &self.registry))
             .collect::<Result<Vec<_>, _>>()?;
         build_snapshot(&snapshot_state, runtime.providers, runtime.auth_profiles)
     }

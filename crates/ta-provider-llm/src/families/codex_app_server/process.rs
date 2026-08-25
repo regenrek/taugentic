@@ -1,4 +1,4 @@
-use std::{env, ffi::OsString, sync::mpsc, thread};
+use std::{env, ffi::OsString, sync::mpsc, thread, time::Duration};
 
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -8,15 +8,46 @@ use tokio::runtime::{Handle, Runtime};
 use super::framing::parse_jsonl_frame;
 use super::{CODEX_API_KEY_AUTH_PROFILE_ID, CodexLlmClientError, OPENAI_API_KEY_ENV_VAR};
 
+#[cfg(target_os = "macos")]
+const MACOS_CA_BUNDLE: &str = "/private/etc/ssl/cert.pem";
+#[cfg(target_os = "macos")]
+const SSL_CERT_FILE_ENV: &str = "SSL_CERT_FILE";
+
 pub(crate) fn app_server_env(
     auth_profile_id: Option<&str>,
 ) -> Result<Vec<(&'static str, OsString)>, CodexLlmClientError> {
-    match auth_profile_id {
-        Some(CODEX_API_KEY_AUTH_PROFILE_ID) => Ok(vec![(
+    let mut environment = Vec::new();
+    #[cfg(target_os = "macos")]
+    {
+        let ca_bundle = std::path::Path::new(MACOS_CA_BUNDLE);
+        if !ca_bundle.is_file() {
+            return Err(CodexLlmClientError::InvalidConfig(format!(
+                "Codex app-server requires the macOS CA bundle at {MACOS_CA_BUNDLE}"
+            )));
+        }
+        environment.push((SSL_CERT_FILE_ENV, ca_bundle.as_os_str().to_os_string()));
+    }
+    if auth_profile_id == Some(CODEX_API_KEY_AUTH_PROFILE_ID) {
+        environment.push((
             OPENAI_API_KEY_ENV_VAR,
             env::var_os(OPENAI_API_KEY_ENV_VAR).ok_or(CodexLlmClientError::MissingApiKeyEnv)?,
-        )]),
-        _ => Ok(Vec::new()),
+        ));
+    }
+    Ok(environment)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn app_server_uses_explicit_macos_ca_bundle() {
+        let environment = app_server_env(None).expect("app-server environment");
+
+        assert!(environment.iter().any(|(name, value)| {
+            *name == SSL_CERT_FILE_ENV && value == std::ffi::OsStr::new(MACOS_CA_BUNDLE)
+        }));
     }
 }
 
@@ -65,18 +96,13 @@ pub(crate) fn terminate_app_server(
         CodexLlmClientError::CommandFailed(format!("failed to poll codex app-server: {error}"))
     })? {
         Some(_) => Ok(()),
-        None => {
-            child.start_kill().map_err(|error| {
+        None => runtime
+            .block_on(ta_exec::terminate_child_tree(child, Duration::from_secs(2)))
+            .map(|_| ())
+            .map_err(|error| {
                 CodexLlmClientError::CommandFailed(format!(
-                    "failed to kill codex app-server: {error}"
+                    "failed to terminate codex app-server process tree: {error}"
                 ))
-            })?;
-            runtime.block_on(child.wait()).map_err(|error| {
-                CodexLlmClientError::CommandFailed(format!(
-                    "failed to wait for codex app-server exit: {error}"
-                ))
-            })?;
-            Ok(())
-        }
+            }),
     }
 }

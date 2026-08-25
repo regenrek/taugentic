@@ -193,10 +193,15 @@ fn openai_health_copy_treats_subscription_oauth_as_runnable() {
     );
 
     assert_eq!(
-        observed.health.status,
+        observed.provider.health.status,
         AgentRuntimeStrategyHealthStatus::Ready
     );
-    let message = observed.health.message.as_deref().expect("health message");
+    let message = observed
+        .provider
+        .health
+        .message
+        .as_deref()
+        .expect("health message");
     assert!(message.contains("ChatGPT subscription credentials are configured"));
     assert!(!message.contains("modeled in the auth surface"));
 }

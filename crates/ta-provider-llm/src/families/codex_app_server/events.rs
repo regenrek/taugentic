@@ -19,11 +19,6 @@ pub enum CodexAppServerEvent {
         item_id: String,
         delta: String,
     },
-    AgentMessage {
-        turn_id: String,
-        item_id: String,
-        text: String,
-    },
     ToolCallStarted {
         turn_id: String,
         item_id: String,
@@ -201,15 +196,10 @@ fn item_completed_event(
     let item = params.get("item").cloned().unwrap_or(Value::Null);
     let turn_id = required_string(params, "turnId")?;
     match item.get("type").and_then(Value::as_str) {
-        Some("agentMessage") => Ok(Some(CodexAppServerEvent::AgentMessage {
-            turn_id,
-            item_id: required_string(&item, "id")?,
-            text: item
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-        })),
+        // Agent message text is streamed canonically through
+        // item/agentMessage/delta. The completed item contains the full text
+        // again and must not be projected as another delta.
+        Some("agentMessage") => Ok(None),
         Some("commandExecution" | "fileChange" | "mcpToolCall" | "dynamicToolCall") => {
             Ok(Some(CodexAppServerEvent::ToolCallCompleted {
                 turn_id,

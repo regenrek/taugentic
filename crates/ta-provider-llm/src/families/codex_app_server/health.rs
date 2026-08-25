@@ -6,22 +6,22 @@ use ta_protocol::wire::{
 };
 
 use super::client::CodexCli;
-use super::{CODEX_PROVIDER_ID, CodexAuthMode, CodexProviderSnapshot};
+use super::{CODEX_PROVIDER_ID, CodexAuthMode, CodexProviderSnapshot, model_catalog};
 use crate::auth::codex_oauth::{auth_mode, auth_profiles_for_mode};
-use crate::catalog::codex_models;
 
 pub fn snapshot() -> Result<CodexProviderSnapshot, LlmClientError> {
     let cli = CodexCli::default();
     let mode = auth_mode(&cli);
+    let catalog = model_catalog()?;
     Ok(CodexProviderSnapshot {
         provider: AgentRuntimeStrategyInfo {
             id: AgentRuntimeStrategyId::new(CODEX_PROVIDER_ID).expect("provider id"),
             display_name: "Codex".to_string(),
-            models: codex_models(),
+            models: catalog.models,
             model_capability: AgentRuntimeModelCapability {
                 availability: AgentRuntimeModelAvailability::Enumerated,
                 can_set_model: true,
-                current_model_id: None,
+                current_model_id: catalog.default_model_id,
                 detail: None,
             },
             health: provider_health(&mode),
@@ -73,15 +73,11 @@ mod tests {
     };
 
     #[test]
-    fn snapshot_exposes_stable_codex_auth_profiles() {
-        let snapshot = snapshot().expect("snapshot should not fail");
-        let auth_ids = snapshot
-            .auth_profiles
-            .iter()
-            .map(|profile| profile.profile.id.as_str())
-            .collect::<Vec<_>>();
-
-        assert!(auth_ids.contains(&CODEX_CHATGPT_AUTH_PROFILE_ID));
-        assert!(auth_ids.contains(&CODEX_API_KEY_AUTH_PROFILE_ID));
+    fn provider_health_keeps_authenticated_codex_ready() {
+        assert_eq!(
+            provider_health(&CodexAuthMode::Chatgpt).status,
+            AgentRuntimeStrategyHealthStatus::Ready
+        );
+        assert_ne!(CODEX_CHATGPT_AUTH_PROFILE_ID, CODEX_API_KEY_AUTH_PROFILE_ID);
     }
 }

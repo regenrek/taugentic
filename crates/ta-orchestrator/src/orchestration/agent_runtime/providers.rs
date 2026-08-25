@@ -31,7 +31,7 @@ fn codex_app_server_strategy() -> RegisteredStrategy {
         strategy_descriptor(
             provider_id.clone(),
             "Codex",
-            ta_provider_llm::catalog::codex_models(),
+            Vec::new(),
             vec![
                 auth_profile(CODEX_CHATGPT_AUTH_PROFILE_ID, &provider_id, "Codex ChatGPT"),
                 auth_profile(CODEX_API_KEY_AUTH_PROFILE_ID, &provider_id, "Codex API Key"),

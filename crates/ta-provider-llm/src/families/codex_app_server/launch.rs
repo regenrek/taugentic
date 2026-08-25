@@ -4,15 +4,16 @@ use std::{
 };
 
 use ta_exec::{NetworkPolicy, SandboxProfile};
-use ta_protocol::provider_id;
+use ta_protocol::{provider_id, wire::EnvPolicy};
 
 use super::{CODEX_PROVIDER_ID, CodexLlmClientError};
 
 pub const CODEX_CACHE_DIR_NAME: &str = ".codex";
 
-pub fn build_codex_perimeter_profile(
+pub fn build_codex_perimeter_profile_for_context(
     workspace_cwd: &Path,
     command: &Path,
+    env_policy: &EnvPolicy,
 ) -> Result<SandboxProfile, CodexLlmClientError> {
     validate_codex_provider_id(CODEX_PROVIDER_ID)?;
     require_absolute_path("workspace cwd", workspace_cwd)?;
@@ -48,7 +49,7 @@ pub fn build_codex_perimeter_profile(
     for path in command_read_paths(command, &home)? {
         profile = profile.read_path(path);
     }
-    for name in perimeter_env_allowlist() {
+    for name in env_allowlist(env_policy)? {
         profile = profile.env(name);
     }
 
@@ -78,7 +79,7 @@ fn home_dir() -> Result<PathBuf, CodexLlmClientError> {
 }
 
 fn system_read_paths() -> Vec<PathBuf> {
-    [
+    let mut paths = vec![
         "/bin",
         "/sbin",
         "/usr",
@@ -87,10 +88,10 @@ fn system_read_paths() -> Vec<PathBuf> {
         "/private/var/db",
         "/opt/homebrew",
         "/usr/local",
-    ]
-    .into_iter()
-    .map(PathBuf::from)
-    .collect()
+    ];
+    #[cfg(target_os = "macos")]
+    paths.push("/private/etc/ssl");
+    paths.into_iter().map(PathBuf::from).collect()
 }
 
 fn command_read_paths(command: &Path, home: &Path) -> Result<Vec<PathBuf>, CodexLlmClientError> {
@@ -253,8 +254,32 @@ fn validate_codex_provider_id(provider_id: &str) -> Result<(), CodexLlmClientErr
     })
 }
 
-fn perimeter_env_allowlist() -> [&'static str; 4] {
-    ["PATH", "HOME", "LANG", "TMPDIR"]
+fn env_allowlist(env_policy: &EnvPolicy) -> Result<&[String], CodexLlmClientError> {
+    let EnvPolicy::Allowlist { vars } = env_policy else {
+        return Err(CodexLlmClientError::InvalidConfig(
+            "Codex perimeter requires an explicit environment allowlist".to_string(),
+        ));
+    };
+    for required in ["PATH", "HOME", "TMPDIR"] {
+        if !vars.iter().any(|name| name == required) {
+            return Err(CodexLlmClientError::InvalidConfig(format!(
+                "Codex perimeter environment allowlist is missing {required}"
+            )));
+        }
+    }
+    Ok(vars)
+}
+
+#[cfg(test)]
+fn build_codex_perimeter_profile(
+    workspace_cwd: &Path,
+    command: &Path,
+) -> Result<SandboxProfile, CodexLlmClientError> {
+    build_codex_perimeter_profile_for_context(
+        workspace_cwd,
+        command,
+        &EnvPolicy::workspace_default(),
+    )
 }
 
 #[cfg(test)]
@@ -503,14 +528,15 @@ mod tests {
     }
 
     #[test]
-    fn codex_perimeter_env_allowlist_is_base_only() {
+    fn codex_perimeter_env_allowlist_comes_from_execution_context() {
         let profile = build_codex_perimeter_profile(
             &std::env::temp_dir(),
             Path::new("/opt/homebrew/bin/codex"),
         )
         .expect("codex perimeter profile");
 
-        assert_eq!(profile.env_allowlist(), ["PATH", "HOME", "LANG", "TMPDIR"]);
+        assert!(profile.allows_env("NIX_SSL_CERT_FILE"));
+        assert!(profile.allows_env("SSL_CERT_FILE"));
         assert!(!profile.allows_env("OPENAI_API_KEY"));
         assert!(!profile.allows_env("ANTHROPIC_API_KEY"));
         assert!(!profile.allows_env("LC_ALL"));

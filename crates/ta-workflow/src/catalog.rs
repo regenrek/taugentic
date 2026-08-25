@@ -14,7 +14,7 @@ impl RuntimeModelCatalog {
         };
         catalog.add(
             ta_provider_llm::families::codex_app_server::CODEX_PROVIDER_ID,
-            ta_provider_llm::catalog::codex_models(),
+            Vec::new(),
         );
         catalog.add(
             ta_provider_llm::families::openai::OPENAI_PROVIDER_ID,
@@ -45,6 +45,12 @@ impl RuntimeModelCatalog {
         provider: &AgentRuntimeStrategyId,
         model: &AgentRuntimeModelId,
     ) -> bool {
+        if provider.as_str() == ta_provider_llm::families::codex_app_server::CODEX_PROVIDER_ID {
+            // Codex owns a user- and release-specific live catalog. Workflow
+            // parsing validates the typed id; runtime selection validates live
+            // availability.
+            return true;
+        }
         self.models_by_provider
             .get(provider.as_str())
             .is_some_and(|models| models.contains(model.as_str()))

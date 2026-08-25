@@ -169,16 +169,7 @@ impl StrategyRegistry {
 
         for strategy in &self.strategies {
             let observed = observe_strategy(strategy);
-            providers.push(AgentRuntimeStrategyInfo {
-                id: strategy.descriptor.id.clone(),
-                display_name: strategy.descriptor.display_name.clone(),
-                models: strategy.descriptor.models.clone(),
-                model_capability: enumerated_model_capability(
-                    None,
-                    strategy.descriptor.models.is_empty(),
-                ),
-                health: observed.health,
-            });
+            providers.push(observed.provider);
             auth_profiles.extend(observed.auth_profiles);
         }
 
@@ -201,13 +192,20 @@ impl StrategyRegistry {
         provider_id: &AgentRuntimeStrategyId,
         model_id: &AgentRuntimeModelId,
     ) -> bool {
-        self.by_id.get(provider_id).is_some_and(|strategy| {
-            strategy
-                .descriptor
-                .models
-                .iter()
-                .any(|model| model.id == *model_id)
-        })
+        self.by_id
+            .get(provider_id)
+            .is_some_and(|strategy| match &strategy.kind {
+                StrategyKind::CodexAppServer => {
+                    ta_provider_llm::families::codex_app_server::model_catalog().is_ok_and(
+                        |catalog| catalog.models.iter().any(|model| model.id == *model_id),
+                    )
+                }
+                _ => strategy
+                    .descriptor
+                    .models
+                    .iter()
+                    .any(|model| model.id == *model_id),
+            })
     }
 
     pub(crate) fn auth_profile_ref(
@@ -325,7 +323,7 @@ impl StrategyRegistry {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct StrategyObservedState {
-    health: AgentRuntimeStrategyHealth,
+    provider: AgentRuntimeStrategyInfo,
     auth_profiles: Vec<AuthProfileState>,
 }
 
@@ -374,7 +372,7 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
         StrategyKind::CodexAppServer => {
             match ta_provider_llm::families::codex_app_server::snapshot() {
                 Ok(snapshot) => StrategyObservedState {
-                    health: snapshot.provider.health,
+                    provider: snapshot.provider,
                     auth_profiles: snapshot.auth_profiles,
                 },
                 Err(error) => unavailable_with_profiles(strategy, error.to_string()),
@@ -390,8 +388,9 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
             provider.binary_name(),
             provider.env_override_var(),
         ) {
-            Ok(path) => StrategyObservedState {
-                health: AgentRuntimeStrategyHealth {
+            Ok(path) => observed_with_health(
+                strategy,
+                AgentRuntimeStrategyHealth {
                     status: AgentRuntimeStrategyHealthStatus::Ready,
                     message: Some(format!(
                         "{} ACP adapter binary resolved at {}; authentication is delegated to the vendor CLI and session model availability is validated on run",
@@ -399,8 +398,8 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
                         path.display()
                     )),
                 },
-                auth_profiles: Vec::new(),
-            },
+                Vec::new(),
+            ),
             Err(error) => unavailable_with_profiles(strategy, error.to_string()),
         },
     }
@@ -431,8 +430,9 @@ fn openai_observed_state_for_snapshot(
 ) -> StrategyObservedState {
     let ready = snapshot.api_key_configured || snapshot.chatgpt_configured;
     let api_key_env_var = ta_provider_llm::families::openai::OPENAI_API_KEY_ENV_VAR;
-    StrategyObservedState {
-        health: AgentRuntimeStrategyHealth {
+    observed_with_health(
+        strategy,
+        AgentRuntimeStrategyHealth {
             status: if ready {
                 AgentRuntimeStrategyHealthStatus::Ready
             } else {
@@ -453,14 +453,15 @@ fn openai_observed_state_for_snapshot(
                 )
             }),
         },
-        auth_profiles: snapshot.auth_profiles,
-    }
+        snapshot.auth_profiles,
+    )
 }
 
 fn env_observed_state(strategy: &RegisteredStrategy, env_var: &str) -> StrategyObservedState {
     let connected = env::var(env_var).is_ok_and(|value| !value.trim().is_empty());
-    StrategyObservedState {
-        health: AgentRuntimeStrategyHealth {
+    observed_with_health(
+        strategy,
+        AgentRuntimeStrategyHealth {
             status: if connected {
                 AgentRuntimeStrategyHealthStatus::Ready
             } else {
@@ -478,7 +479,7 @@ fn env_observed_state(strategy: &RegisteredStrategy, env_var: &str) -> StrategyO
                 )
             }),
         },
-        auth_profiles: strategy
+        strategy
             .descriptor
             .auth_profiles
             .iter()
@@ -504,16 +505,17 @@ fn env_observed_state(strategy: &RegisteredStrategy, env_var: &str) -> StrategyO
                 }],
             })
             .collect(),
-    }
+    )
 }
 
 fn ready_with_profiles(strategy: &RegisteredStrategy) -> StrategyObservedState {
-    StrategyObservedState {
-        health: AgentRuntimeStrategyHealth {
+    observed_with_health(
+        strategy,
+        AgentRuntimeStrategyHealth {
             status: AgentRuntimeStrategyHealthStatus::Ready,
             message: None,
         },
-        auth_profiles: strategy
+        strategy
             .descriptor
             .auth_profiles
             .iter()
@@ -535,19 +537,20 @@ fn ready_with_profiles(strategy: &RegisteredStrategy) -> StrategyObservedState {
                 }],
             })
             .collect(),
-    }
+    )
 }
 
 fn unavailable_with_profiles(
     strategy: &RegisteredStrategy,
     message: String,
 ) -> StrategyObservedState {
-    StrategyObservedState {
-        health: AgentRuntimeStrategyHealth {
+    observed_with_health(
+        strategy,
+        AgentRuntimeStrategyHealth {
             status: AgentRuntimeStrategyHealthStatus::Unavailable,
             message: Some(message.clone()),
         },
-        auth_profiles: strategy
+        strategy
             .descriptor
             .auth_profiles
             .iter()
@@ -565,6 +568,26 @@ fn unavailable_with_profiles(
                 methods: Vec::new(),
             })
             .collect(),
+    )
+}
+
+fn observed_with_health(
+    strategy: &RegisteredStrategy,
+    health: AgentRuntimeStrategyHealth,
+    auth_profiles: Vec<AuthProfileState>,
+) -> StrategyObservedState {
+    StrategyObservedState {
+        provider: AgentRuntimeStrategyInfo {
+            id: strategy.descriptor.id.clone(),
+            display_name: strategy.descriptor.display_name.clone(),
+            models: strategy.descriptor.models.clone(),
+            model_capability: enumerated_model_capability(
+                None,
+                strategy.descriptor.models.is_empty(),
+            ),
+            health,
+        },
+        auth_profiles,
     }
 }
 
