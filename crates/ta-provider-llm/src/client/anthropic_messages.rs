@@ -4,10 +4,10 @@ use tokio_util::sync::CancellationToken;
 
 use super::{
     EventParser, HttpLlmStream, LlmClient, LlmStream, StopReason, StreamEvent, StreamMessage,
-    StreamRequest, StreamRole, StreamTool, model_or_default, require_stream_response, send_request,
+    StreamRequest, StreamRole, StreamTool, require_stream_response, send_request,
 };
 use crate::error::LlmClientError;
-use crate::families::anthropic::{ANTHROPIC_API_KEY_ENV_VAR, ANTHROPIC_DEFAULT_MODEL_ID};
+use crate::families::anthropic::ANTHROPIC_API_KEY_ENV_VAR;
 use crate::formats::anthropic::{self, AnthropicStreamEvent};
 use crate::http::shared_client;
 use tracing::instrument;
@@ -53,12 +53,6 @@ impl AnthropicMessagesClient {
         let api_key = std::env::var(ANTHROPIC_API_KEY_ENV_VAR).map_err(|_| {
             LlmClientError::CredentialsMissing(format!("{ANTHROPIC_API_KEY_ENV_VAR} is not set"))
         })?;
-        let model = model.into();
-        let model = if model.trim().is_empty() {
-            ANTHROPIC_DEFAULT_MODEL_ID.to_string()
-        } else {
-            model
-        };
         Self::new(ANTHROPIC_MESSAGES_BASE_URL, api_key, model)
     }
 
@@ -108,7 +102,7 @@ impl LlmClient for AnthropicMessagesClient {
     }
 }
 
-fn messages_body(request: &StreamRequest, default_model: &str) -> serde_json::Value {
+fn messages_body(request: &StreamRequest, model: &str) -> serde_json::Value {
     let system = request
         .messages
         .iter()
@@ -117,7 +111,7 @@ fn messages_body(request: &StreamRequest, default_model: &str) -> serde_json::Va
         .collect::<Vec<_>>()
         .join("\n\n");
     let mut body = json!({
-        "model": model_or_default(request, default_model),
+        "model": model,
         "max_tokens": 4096,
         "messages": request.messages.iter().filter(|message| !matches!(message.role, StreamRole::System)).map(message_body).collect::<Vec<_>>(),
         "stream": true,

@@ -28,13 +28,13 @@ function makeSnapshot(): AgentRuntimeSnapshot {
         id: "codex",
         displayName: "Codex",
         models: [
-          { id: "gpt-5.4", displayName: "GPT-5.4" },
+          { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
           { id: "gpt-5.3-codex", displayName: "GPT-5.3 Codex" },
         ],
         modelCapability: {
           availability: "enumerated",
           canSetModel: true,
-          currentModelId: "gpt-5.4",
+          currentModelId: "gpt-5.6-sol",
         },
         health: { status: "ready", message: null },
       },

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::env;
 
+use ta_model_catalog::{ModelCatalog, ModelCatalogStore};
 use ta_protocol::wire::{
     AgentRuntimeModelAvailability, AgentRuntimeModelCapability, AgentRuntimeModelId,
     AgentRuntimeModelRef, AgentRuntimeStrategyHealth, AgentRuntimeStrategyHealthStatus,
@@ -22,6 +23,7 @@ pub(crate) struct StrategyRegistry {
     auth_profile_strategy_ids: BTreeMap<AuthProfileId, AgentRuntimeStrategyId>,
     auth_profile_refs: BTreeMap<AuthProfileId, AuthProfileRef>,
     runtime_profiles: Vec<RuntimeProfileSummary>,
+    catalog: ModelCatalogStore,
 }
 
 #[derive(Clone)]
@@ -34,7 +36,6 @@ pub(crate) struct RegisteredStrategy {
 pub(crate) struct StrategyDescriptor {
     pub id: AgentRuntimeStrategyId,
     pub display_name: String,
-    pub models: Vec<AgentRuntimeModelRef>,
     pub auth_profiles: Vec<AuthProfileRef>,
     pub default_runtime_profiles: Vec<RuntimeProfileSummary>,
 }
@@ -88,6 +89,8 @@ impl StrategyRegistry {
     pub(crate) fn from_registered(
         strategies: Vec<RegisteredStrategy>,
     ) -> Result<Self, AgentRuntimeServiceError> {
+        let catalog =
+            ModelCatalogStore::embedded().map_err(|error| invalid_config(error.to_string()))?;
         let mut registered = Vec::new();
         let mut by_id = BTreeMap::new();
         let mut auth_profile_strategy_ids = BTreeMap::new();
@@ -98,12 +101,6 @@ impl StrategyRegistry {
         for strategy in strategies {
             let descriptor = &strategy.descriptor;
             let strategy_id = descriptor.id.clone();
-            let known_model_ids = descriptor
-                .models
-                .iter()
-                .map(|model| model.id.clone())
-                .collect::<Vec<_>>();
-
             if by_id
                 .insert(strategy_id.clone(), strategy.clone())
                 .is_some()
@@ -136,7 +133,7 @@ impl StrategyRegistry {
             }
 
             for profile in &descriptor.default_runtime_profiles {
-                validate_profile_descriptor(profile, descriptor, &known_model_ids)?;
+                validate_profile_descriptor(profile, descriptor)?;
                 if runtime_profile_ids
                     .insert(profile.id.clone(), strategy_id.clone())
                     .is_some()
@@ -158,17 +155,19 @@ impl StrategyRegistry {
             auth_profile_strategy_ids,
             auth_profile_refs,
             runtime_profiles,
+            catalog,
         })
     }
 
     pub(crate) fn runtime_snapshot(
         &self,
     ) -> Result<StrategyRuntimeSnapshot, AgentRuntimeServiceError> {
+        let catalog = self.catalog.snapshot();
         let mut providers = Vec::with_capacity(self.strategies.len());
         let mut auth_profiles = Vec::new();
 
         for strategy in &self.strategies {
-            let observed = observe_strategy(strategy);
+            let observed = observe_strategy(strategy, &catalog);
             providers.push(observed.provider);
             auth_profiles.extend(observed.auth_profiles);
         }
@@ -200,11 +199,10 @@ impl StrategyRegistry {
                         |catalog| catalog.models.iter().any(|model| model.id == *model_id),
                     )
                 }
-                _ => strategy
-                    .descriptor
-                    .models
-                    .iter()
-                    .any(|model| model.id == *model_id),
+                _ => self
+                    .catalog
+                    .snapshot()
+                    .contains_model(provider_id, model_id),
             })
     }
 
@@ -213,6 +211,50 @@ impl StrategyRegistry {
         auth_profile_id: &AuthProfileId,
     ) -> Option<&AuthProfileRef> {
         self.auth_profile_refs.get(auth_profile_id)
+    }
+
+    pub(crate) fn resolve_model(
+        &self,
+        provider_id: &AgentRuntimeStrategyId,
+        requested: Option<&AgentRuntimeModelId>,
+    ) -> Result<Option<AgentRuntimeModelId>, AgentRuntimeServiceError> {
+        let strategy = self.by_id.get(provider_id).ok_or_else(|| {
+            invalid_config(format!("unknown runtime provider {}", provider_id.as_str()))
+        })?;
+        if matches!(
+            strategy.kind,
+            StrategyKind::CodexAppServer | StrategyKind::AcpChildProcess { .. }
+        ) {
+            return Ok(requested.cloned());
+        }
+        if let Some(model_id) = requested {
+            if self.has_model(provider_id, model_id) {
+                return Ok(Some(model_id.clone()));
+            }
+            return Err(AgentRuntimeServiceError::UnknownModel {
+                provider_id: provider_id.as_str().to_string(),
+                model_id: model_id.as_str().to_string(),
+            });
+        }
+        self.catalog
+            .snapshot()
+            .default_model(provider_id.as_str())
+            .map(Some)
+            .ok_or_else(|| {
+                invalid_config(format!(
+                    "runtime provider {} has no catalog default",
+                    provider_id.as_str()
+                ))
+            })
+    }
+
+    pub(crate) fn replace_catalog(
+        &self,
+        catalog: ModelCatalog,
+    ) -> Result<(), AgentRuntimeServiceError> {
+        self.catalog
+            .replace(catalog)
+            .map_err(|error| invalid_config(error.to_string()))
     }
 
     pub(crate) fn execution_harness_for_runtime_profile(
@@ -330,25 +372,12 @@ struct StrategyObservedState {
 fn validate_profile_descriptor(
     profile: &RuntimeProfileSummary,
     descriptor: &StrategyDescriptor,
-    known_model_ids: &[AgentRuntimeModelId],
 ) -> Result<(), AgentRuntimeServiceError> {
     if profile.provider_id != descriptor.id {
         return Err(invalid_config(format!(
             "runtime profile {} is owned by provider {} but was registered by {}",
             profile.id.as_str(),
             profile.provider_id.as_str(),
-            descriptor.id.as_str(),
-        )));
-    }
-    if let Some(model_id) = profile.model_id.as_ref()
-        && !known_model_ids
-            .iter()
-            .any(|known_model_id| known_model_id == model_id)
-    {
-        return Err(invalid_config(format!(
-            "runtime profile {} references unknown model {} for provider {}",
-            profile.id.as_str(),
-            model_id.as_str(),
             descriptor.id.as_str(),
         )));
     }
@@ -367,7 +396,10 @@ fn validate_profile_descriptor(
     Ok(())
 }
 
-fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
+fn observe_strategy(
+    strategy: &RegisteredStrategy,
+    catalog: &ModelCatalog,
+) -> StrategyObservedState {
     match &strategy.kind {
         StrategyKind::CodexAppServer => {
             match ta_provider_llm::families::codex_app_server::snapshot() {
@@ -378,12 +410,12 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
                 Err(error) => unavailable_with_profiles(strategy, error.to_string()),
             }
         }
-        StrategyKind::OpenAiNative => openai_observed_state(strategy),
+        StrategyKind::OpenAiNative => openai_observed_state(strategy, catalog),
         StrategyKind::AnthropicApiKey { env_var }
         | StrategyKind::OpenAiCompatible {
             env_var: Some(env_var),
-        } => env_observed_state(strategy, env_var),
-        StrategyKind::OpenAiCompatible { env_var: None } => ready_with_profiles(strategy),
+        } => env_observed_state(strategy, env_var, catalog),
+        StrategyKind::OpenAiCompatible { env_var: None } => ready_with_profiles(strategy, catalog),
         StrategyKind::AcpChildProcess { provider } => match ta_provider_acp::search_path::resolve(
             provider.binary_name(),
             provider.env_override_var(),
@@ -398,6 +430,7 @@ fn observe_strategy(strategy: &RegisteredStrategy) -> StrategyObservedState {
                         path.display()
                     )),
                 },
+                Vec::new(),
                 Vec::new(),
             ),
             Err(error) => unavailable_with_profiles(strategy, error.to_string()),
@@ -419,14 +452,18 @@ impl StrategyKind {
     }
 }
 
-fn openai_observed_state(strategy: &RegisteredStrategy) -> StrategyObservedState {
+fn openai_observed_state(
+    strategy: &RegisteredStrategy,
+    catalog: &ModelCatalog,
+) -> StrategyObservedState {
     let snapshot = ta_provider_llm::auth::openai::snapshot();
-    openai_observed_state_for_snapshot(strategy, snapshot)
+    openai_observed_state_for_snapshot(strategy, snapshot, catalog)
 }
 
 fn openai_observed_state_for_snapshot(
     strategy: &RegisteredStrategy,
     snapshot: ta_provider_llm::auth::openai::OpenAiAuthSnapshot,
+    catalog: &ModelCatalog,
 ) -> StrategyObservedState {
     let ready = snapshot.api_key_configured || snapshot.chatgpt_configured;
     let api_key_env_var = ta_provider_llm::families::openai::OPENAI_API_KEY_ENV_VAR;
@@ -454,10 +491,15 @@ fn openai_observed_state_for_snapshot(
             }),
         },
         snapshot.auth_profiles,
+        catalog.models(strategy.descriptor.id.as_str()),
     )
 }
 
-fn env_observed_state(strategy: &RegisteredStrategy, env_var: &str) -> StrategyObservedState {
+fn env_observed_state(
+    strategy: &RegisteredStrategy,
+    env_var: &str,
+    catalog: &ModelCatalog,
+) -> StrategyObservedState {
     let connected = env::var(env_var).is_ok_and(|value| !value.trim().is_empty());
     observed_with_health(
         strategy,
@@ -505,10 +547,14 @@ fn env_observed_state(strategy: &RegisteredStrategy, env_var: &str) -> StrategyO
                 }],
             })
             .collect(),
+        catalog.models(strategy.descriptor.id.as_str()),
     )
 }
 
-fn ready_with_profiles(strategy: &RegisteredStrategy) -> StrategyObservedState {
+fn ready_with_profiles(
+    strategy: &RegisteredStrategy,
+    catalog: &ModelCatalog,
+) -> StrategyObservedState {
     observed_with_health(
         strategy,
         AgentRuntimeStrategyHealth {
@@ -537,6 +583,7 @@ fn ready_with_profiles(strategy: &RegisteredStrategy) -> StrategyObservedState {
                 }],
             })
             .collect(),
+        catalog.models(strategy.descriptor.id.as_str()),
     )
 }
 
@@ -568,6 +615,7 @@ fn unavailable_with_profiles(
                 methods: Vec::new(),
             })
             .collect(),
+        Vec::new(),
     )
 }
 
@@ -575,16 +623,14 @@ fn observed_with_health(
     strategy: &RegisteredStrategy,
     health: AgentRuntimeStrategyHealth,
     auth_profiles: Vec<AuthProfileState>,
+    models: Vec<AgentRuntimeModelRef>,
 ) -> StrategyObservedState {
     StrategyObservedState {
         provider: AgentRuntimeStrategyInfo {
             id: strategy.descriptor.id.clone(),
             display_name: strategy.descriptor.display_name.clone(),
-            models: strategy.descriptor.models.clone(),
-            model_capability: enumerated_model_capability(
-                None,
-                strategy.descriptor.models.is_empty(),
-            ),
+            models: models.clone(),
+            model_capability: enumerated_model_capability(None, models.is_empty()),
             health,
         },
         auth_profiles,
@@ -691,14 +737,12 @@ fn execution_error_from_llm_client(error: LlmClientError) -> ExecutionError {
 pub(crate) fn strategy_descriptor(
     id: AgentRuntimeStrategyId,
     display_name: impl Into<String>,
-    models: Vec<AgentRuntimeModelRef>,
     auth_profiles: Vec<AuthProfileRef>,
     default_runtime_profiles: Vec<RuntimeProfileSummary>,
 ) -> StrategyDescriptor {
     StrategyDescriptor {
         id,
         display_name: display_name.into(),
-        models,
         auth_profiles,
         default_runtime_profiles,
     }

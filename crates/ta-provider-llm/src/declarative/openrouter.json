@@ -12,25 +12,5 @@
   "auth": {
     "kind": "bearer_env",
     "env": "OPENROUTER_API_KEY"
-  },
-  "default_model": "anthropic/claude-sonnet-4.5",
-  "fast_model": "google/gemini-2.5-flash",
-  "models": [
-    {
-      "id": "anthropic/claude-sonnet-4.5",
-      "display_name": "Claude Sonnet 4.5"
-    },
-    {
-      "id": "google/gemini-2.5-pro",
-      "display_name": "Gemini 2.5 Pro"
-    },
-    {
-      "id": "google/gemini-2.5-flash",
-      "display_name": "Gemini 2.5 Flash"
-    },
-    {
-      "id": "x-ai/grok-code-fast-1",
-      "display_name": "Grok Code Fast 1"
-    }
-  ]
+  }
 }

@@ -182,7 +182,7 @@ policy:
 runtime_profiles:
   implementer:
     provider: codex
-    model: gpt-5.4
+    model: gpt-5.6-sol
 outputs:
   required: [tests, patch_or_blocker]
 budgets:

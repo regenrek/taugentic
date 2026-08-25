@@ -60,6 +60,8 @@ mobile clients around it. On desktop, **local** runtime is the default;
 - `xtask`: protocol export, protocol checks, and daemon smoke entrypoint
 - `ta-protocol`: canonical transport-neutral contract crate independent from
   `ta-orchestrator`
+- `ta-model-catalog`: canonical native-harness model metadata, validation, and
+  default-selection owner
 - `ta-host-platform`: host OS metadata, distro or version probes, and platform
   capability SSOT
 - `ta-policy`: allow, deny, require-approval decisions over the canonical
@@ -111,6 +113,8 @@ Foundation gate rules:
 - Use `docs/architecture/runtime-ownership.md` when deciding who owns a piece
   of state or behavior, including the renderer split between Query, XState, and
   bootstrap ownership.
+- Use `docs/architecture/model-catalog.md` when changing model discovery,
+  metadata, validation, defaults, or harness-specific model boundaries.
 - Use `docs/architecture/desktop-boundaries.md` for `main`, `preload`,
   `renderer`, and `shared` package rules.
 - Use `docs/decisions/README.md` for the current daemon-first decision index

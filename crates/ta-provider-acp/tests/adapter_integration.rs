@@ -268,7 +268,7 @@ async fn session_model_is_not_set_when_already_current() {
     let trace_file = dir.join("frames.ndjson");
     let stub = write_stub(&dir, "stub-acp", current_model_stub_script());
     let mut config = config(&dir, stub, vec![trace_env(&trace_file)]);
-    config.session_model_id = Some("gpt-5.4".to_string());
+    config.session_model_id = Some("gpt-5.6-sol".to_string());
 
     let mut client = spawn_client(config);
     let capabilities = client.initialize().await.expect("initialize");
@@ -300,7 +300,7 @@ async fn session_model_set_uses_advertised_model() {
     let trace_file = dir.join("frames.ndjson");
     let stub = write_stub(&dir, "stub-acp", model_stub_script());
     let mut config = config(&dir, stub, vec![trace_env(&trace_file)]);
-    config.session_model_id = Some("gpt-5.4".to_string());
+    config.session_model_id = Some("gpt-5.6-sol".to_string());
 
     let mut client = spawn_client(config);
     let capabilities = client.initialize().await.expect("initialize");
@@ -324,7 +324,7 @@ async fn session_model_set_uses_advertised_model() {
     let _ = fs::remove_dir_all(&dir);
 
     assert_eq!(methods, ["initialize", "session/new", "session/set_model"]);
-    assert_eq!(model_id, Some("gpt-5.4"));
+    assert_eq!(model_id, Some("gpt-5.6-sol"));
 }
 
 #[tokio::test]
@@ -361,7 +361,7 @@ async fn session_model_method_not_found_is_soft_unsupported() {
     let trace_file = dir.join("frames.ndjson");
     let stub = write_stub(&dir, "stub-acp", unsupported_model_stub_script());
     let mut config = config(&dir, stub, vec![trace_env(&trace_file)]);
-    config.session_model_id = Some("gpt-5.4".to_string());
+    config.session_model_id = Some("gpt-5.6-sol".to_string());
 
     let mut client = spawn_client(config);
     let capabilities = client.initialize().await.expect("initialize");
@@ -390,7 +390,7 @@ async fn session_model_set_error_is_invalid_config_and_stops_before_prompt() {
     let trace_file = dir.join("frames.ndjson");
     let stub = write_stub(&dir, "stub-acp", rejected_model_stub_script());
     let mut config = config(&dir, stub, vec![trace_env(&trace_file)]);
-    config.session_model_id = Some("gpt-5.4".to_string());
+    config.session_model_id = Some("gpt-5.6-sol".to_string());
 
     let mut client = spawn_client(config);
     let capabilities = client.initialize().await.expect("initialize");
@@ -651,7 +651,7 @@ while IFS= read -r line; do
       printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentCapabilities":{}}}'
       ;;
     *'"id":2'*)
-      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.4","name":"GPT-5.4"}]}}}'
+      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.6-sol","name":"GPT-5.6 Sol"}]}}}'
       ;;
     *'"method":"session/set_model"'*)
       printf '%s\n' '{"jsonrpc":"2.0","id":3,"result":null}'
@@ -671,7 +671,7 @@ while IFS= read -r line; do
       printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentCapabilities":{}}}'
       ;;
     *'"id":2'*)
-      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-5.4","availableModels":[{"modelId":"gpt-5.4","name":"GPT-5.4"}]}}}'
+      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-5.6-sol","availableModels":[{"modelId":"gpt-5.6-sol","name":"GPT-5.6 Sol"}]}}}'
       ;;
     *'"id":3'*)
       printf '%s\n' '{"jsonrpc":"2.0","id":3,"result":{"stopReason":"end_turn"}}'
@@ -694,7 +694,7 @@ while IFS= read -r line; do
       printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentCapabilities":{}}}'
       ;;
     *'"id":2'*)
-      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.4","name":"GPT-5.4"}]}}}'
+      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.6-sol","name":"GPT-5.6 Sol"}]}}}'
       ;;
     *'"method":"session/set_model"'*)
       printf '%s\n' '{"jsonrpc":"2.0","id":3,"error":{"code":-32601,"message":"method not found"}}'
@@ -714,7 +714,7 @@ while IFS= read -r line; do
       printf '%s\n' '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentCapabilities":{}}}'
       ;;
     *'"id":2'*)
-      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.4","name":"GPT-5.4"}]}}}'
+      printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1","models":{"currentModelId":"gpt-4.1","availableModels":[{"modelId":"gpt-4.1","name":"GPT-4.1"},{"modelId":"gpt-5.6-sol","name":"GPT-5.6 Sol"}]}}}'
       ;;
     *'"method":"session/set_model"'*)
       printf '%s\n' '{"jsonrpc":"2.0","id":3,"error":{"code":-32000,"message":"model rejected"}}'

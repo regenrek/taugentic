@@ -2708,6 +2708,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ta-model-catalog"
+version = "0.0.1"
+dependencies = [
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "ta-protocol",
+ "thiserror",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "ta-observability"
 version = "0.0.1"
 dependencies = [
@@ -2733,6 +2746,7 @@ dependencies = [
  "ta-daemon-client",
  "ta-host-platform",
  "ta-jsonrpc",
+ "ta-model-catalog",
  "ta-observability",
  "ta-policy",
  "ta-protocol",
@@ -2874,7 +2888,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "ta-protocol",
- "ta-provider-llm",
  "tempfile",
  "thiserror",
 ]

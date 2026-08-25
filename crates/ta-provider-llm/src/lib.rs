@@ -1,5 +1,4 @@
 pub mod auth;
-pub mod catalog;
 pub mod client;
 pub mod declarative;
 pub mod error;

@@ -1,4 +1,3 @@
-mod catalog;
 mod manager;
 mod validation;
 mod yaml_keys;

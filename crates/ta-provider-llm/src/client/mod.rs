@@ -191,14 +191,6 @@ pub(crate) fn map_failure(code: Option<&str>, message: String) -> LlmClientError
     }
 }
 
-pub(crate) fn model_or_default(request: &StreamRequest, default_model: &str) -> String {
-    if request.model.trim().is_empty() {
-        default_model.to_string()
-    } else {
-        request.model.clone()
-    }
-}
-
 pub(crate) type EventParser = fn(&str) -> Result<Vec<StreamEvent>, LlmClientError>;
 
 pub(crate) struct HttpLlmStream {
@@ -385,13 +377,12 @@ pub(crate) async fn require_stream_response(
 }
 
 pub(crate) fn map_provider_events(events: Vec<ProviderStreamEvent>) -> Vec<StreamEvent> {
-    map_provider_events_with_metadata(events, "unknown", "")
+    map_provider_events_with_metadata(events, "unknown")
 }
 
 pub(crate) fn map_provider_events_with_metadata(
     events: Vec<ProviderStreamEvent>,
     provider: &str,
-    fallback_model: &str,
 ) -> Vec<StreamEvent> {
     events
         .into_iter()
@@ -420,7 +411,7 @@ pub(crate) fn map_provider_events_with_metadata(
                 model: usage
                     .model
                     .filter(|model| !model.trim().is_empty())
-                    .unwrap_or_else(|| fallback_model.to_string()),
+                    .unwrap_or_default(),
                 provider: provider.to_string(),
             }),
             ProviderStreamEvent::TurnCompleted => StreamEvent::TurnCompleted {

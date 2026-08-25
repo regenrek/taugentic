@@ -108,6 +108,12 @@ thin adapter over the Rust control plane:
 - ACP runtime profile normalization and provider registration wiring
 - compatibility and capability negotiation for connected clients
 
+`ta-model-catalog` is the single domain owner for native-harness model metadata,
+validation, and default selection. The daemon owns its refresh lifecycle and
+projects the active snapshot to clients. Codex app-server and ACP sessions own
+their protocol-discovered model availability. Provider adapters and clients do
+not keep parallel static catalogs.
+
 The runtime is the product core. Desktop, mobile, CLI, and future menu-bar
 surfaces are thin clients over the same daemon-owned state and execution model.
 

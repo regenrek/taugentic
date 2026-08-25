@@ -16,9 +16,14 @@ pub struct AgentRuntimeModelRef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_limit: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub input_token_cost_micros: Option<u64>,
+    pub input_cost_per_million_micros: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output_token_cost_micros: Option<u64>,
+    pub output_cost_per_million_micros: Option<u64>,
+    pub reasoning: bool,
+    pub tool_call: bool,
+    pub structured_output: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub input_modalities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

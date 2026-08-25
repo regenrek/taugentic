@@ -1,6 +1,6 @@
 use ta_protocol::wire::{
-    AgentRuntimeModelId, AgentRuntimeModelRef, AgentRuntimeStrategyId, AuthProfileId,
-    AuthProfileRef, RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
+    AgentRuntimeStrategyId, AuthProfileId, AuthProfileRef, RuntimePolicyMode, RuntimeProfileId,
+    RuntimeProfileSummary,
 };
 use ta_provider_acp::descriptor::{AcpProviderRegistry, AcpProviderSpec};
 
@@ -31,12 +31,11 @@ fn codex_app_server_strategy() -> RegisteredStrategy {
         strategy_descriptor(
             provider_id.clone(),
             "Codex",
-            Vec::new(),
             vec![
                 auth_profile(CODEX_CHATGPT_AUTH_PROFILE_ID, &provider_id, "Codex ChatGPT"),
                 auth_profile(CODEX_API_KEY_AUTH_PROFILE_ID, &provider_id, "Codex API Key"),
             ],
-            ta_provider_llm::catalog::codex_default_runtime_profiles(),
+            default_runtime_profiles(&provider_id, None, "runtime-codex", "Codex"),
         ),
         StrategyKind::CodexAppServer,
     )
@@ -50,9 +49,8 @@ fn openai_strategy() -> RegisteredStrategy {
         strategy_descriptor(
             provider_id.clone(),
             "OpenAI",
-            ta_provider_llm::catalog::openai_models(),
             ta_provider_llm::auth::openai::auth_profile_refs(),
-            ta_provider_llm::catalog::openai_default_runtime_profiles(),
+            openai_runtime_profiles(&provider_id),
         ),
         StrategyKind::OpenAiNative,
     )
@@ -68,13 +66,17 @@ fn anthropic_strategy() -> RegisteredStrategy {
         strategy_descriptor(
             provider_id.clone(),
             "Anthropic",
-            ta_provider_llm::catalog::anthropic_models(),
             vec![auth_profile(
                 ANTHROPIC_API_KEY_AUTH_PROFILE_ID,
                 &provider_id,
                 "Anthropic API Key",
             )],
-            ta_provider_llm::catalog::anthropic_default_runtime_profiles(),
+            default_runtime_profiles(
+                &provider_id,
+                Some(ANTHROPIC_API_KEY_AUTH_PROFILE_ID),
+                "runtime-anthropic",
+                "Anthropic",
+            ),
         ),
         StrategyKind::AnthropicApiKey {
             env_var: ANTHROPIC_API_KEY_ENV_VAR,
@@ -91,22 +93,17 @@ fn declarative_strategies() -> Vec<RegisteredStrategy> {
             let descriptor = strategy_descriptor(
                 provider_id.clone(),
                 spec.display_name.as_ref(),
-                spec.models
-                    .iter()
-                    .map(|model| AgentRuntimeModelRef {
-                        id: model_id(model.id.as_ref()),
-                        display_name: model.display_name.to_string(),
-                        context_limit: model.context_limit,
-                        input_token_cost_micros: model.input_token_cost_micros,
-                        output_token_cost_micros: model.output_token_cost_micros,
-                    })
-                    .collect(),
                 vec![AuthProfileRef {
                     id: auth_profile_id.clone(),
                     provider_id: provider_id.clone(),
                     display_name: format!("{} API Key", spec.display_name.as_ref()),
                 }],
-                declarative_runtime_profiles(spec, provider_id, auth_profile_id),
+                default_runtime_profiles(
+                    &provider_id,
+                    Some(auth_profile_id.as_str()),
+                    &format!("runtime-{}", spec.id.as_ref()),
+                    spec.display_name.as_ref(),
+                ),
             );
             let env_var = ta_provider_llm::declarative::auth_env_var(spec);
             registered_strategy(descriptor, StrategyKind::OpenAiCompatible { env_var })
@@ -119,7 +116,6 @@ fn acp_strategy(provider: AcpProviderSpec) -> RegisteredStrategy {
     let descriptor = strategy_descriptor(
         provider_id.clone(),
         provider.display_name(),
-        Vec::new(),
         Vec::new(),
         acp_profiles(&provider)
             .into_iter()
@@ -156,48 +152,51 @@ fn acp_profiles(provider: &AcpProviderSpec) -> [(String, String, RuntimePolicyMo
     ]
 }
 
-fn declarative_runtime_profiles(
-    spec: &ta_provider_llm::declarative::DeclarativeProviderSpec,
-    provider_id: AgentRuntimeStrategyId,
-    auth_profile_id: AuthProfileId,
+fn openai_runtime_profiles(provider_id: &AgentRuntimeStrategyId) -> Vec<RuntimeProfileSummary> {
+    use ta_provider_llm::families::openai::{
+        OPENAI_API_KEY_AUTH_PROFILE_ID, OPENAI_CHATGPT_AUTH_PROFILE_ID,
+    };
+    let mut profiles = default_runtime_profiles(
+        provider_id,
+        Some(OPENAI_API_KEY_AUTH_PROFILE_ID),
+        "runtime-openai",
+        "OpenAI",
+    );
+    profiles.extend(default_runtime_profiles(
+        provider_id,
+        Some(OPENAI_CHATGPT_AUTH_PROFILE_ID),
+        "runtime-openai-chatgpt",
+        "OpenAI ChatGPT",
+    ));
+    profiles
+}
+
+fn default_runtime_profiles(
+    provider_id: &AgentRuntimeStrategyId,
+    auth_profile_id_value: Option<&str>,
+    id_prefix: &str,
+    display_prefix: &str,
 ) -> Vec<RuntimeProfileSummary> {
-    let safe_model = model_id(spec.default_model.as_ref());
-    let fast_model = spec
-        .fast_model
-        .as_ref()
-        .map(|model| model_id(model.as_ref()))
-        .unwrap_or_else(|| safe_model.clone());
+    let auth_profile_id = auth_profile_id_value.map(auth_profile_id);
     [
-        (
-            "safe",
-            "Safe",
-            RuntimePolicyMode::RequireApproval,
-            safe_model.clone(),
-        ),
-        ("allow", "Allow", RuntimePolicyMode::Allow, fast_model),
-        ("deny", "Deny", RuntimePolicyMode::Deny, safe_model),
+        ("safe", "Safe", RuntimePolicyMode::RequireApproval),
+        ("allow", "Allow", RuntimePolicyMode::Allow),
+        ("deny", "Deny", RuntimePolicyMode::Deny),
     ]
     .into_iter()
-    .map(
-        |(suffix, label, policy_mode, model_id)| RuntimeProfileSummary {
-            id: RuntimeProfileId::new(format!("runtime-{}-{suffix}", spec.id.as_ref()))
-                .expect("runtime profile id"),
-            display_name: format!("{} {label}", spec.display_name.as_ref()),
-            provider_id: provider_id.clone(),
-            model_id: Some(model_id),
-            auth_profile_id: Some(auth_profile_id.clone()),
-            policy_mode,
-        },
-    )
+    .map(|(suffix, label, policy_mode)| RuntimeProfileSummary {
+        id: RuntimeProfileId::new(format!("{id_prefix}-{suffix}")).expect("runtime profile id"),
+        display_name: format!("{display_prefix} {label}"),
+        provider_id: provider_id.clone(),
+        model_id: None,
+        auth_profile_id: auth_profile_id.clone(),
+        policy_mode,
+    })
     .collect()
 }
 
 fn strategy_id(value: &str) -> AgentRuntimeStrategyId {
     AgentRuntimeStrategyId::new(value).expect("provider id")
-}
-
-fn model_id(value: &str) -> AgentRuntimeModelId {
-    AgentRuntimeModelId::new(value).expect("model id")
 }
 
 fn auth_profile_id(value: &str) -> AuthProfileId {

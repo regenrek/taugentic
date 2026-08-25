@@ -12,19 +12,5 @@
   "auth": {
     "kind": "bearer_env",
     "env": "DEEPSEEK_API_KEY"
-  },
-  "default_model": "deepseek-chat",
-  "fast_model": "deepseek-chat",
-  "models": [
-    {
-      "id": "deepseek-chat",
-      "display_name": "DeepSeek Chat",
-      "context_limit": 128000
-    },
-    {
-      "id": "deepseek-reasoner",
-      "display_name": "DeepSeek Reasoner",
-      "context_limit": 128000
-    }
-  ]
+  }
 }

@@ -19,7 +19,7 @@ async fn live_smoke_openai_responses() {
     if !live_smoke_enabled() || std::env::var("OPENAI_API_KEY").is_err() {
         return;
     }
-    run_native_tool_smoke("runtime-openai-safe", "gpt-5.4").await;
+    run_native_tool_smoke("runtime-openai-safe", "gpt-5.6-sol").await;
 }
 
 #[tokio::test]
@@ -56,7 +56,7 @@ async fn live_smoke_codex_acp() {
     request.execution_harness = taugentic_agent::AgentExecutionHarness::Acp {
         provider: AcpProviderSpec::from_builtin(AcpLaunchKind::Codex),
     };
-    request.model_id = Some(model_id("gpt-5.4"));
+    request.model_id = Some(model_id("gpt-5.6-sol"));
     request.objective = "Reply with exactly: live smoke ok".to_string();
     let sink = support::TestSink::new();
     let _handle = run(request, sink.clone())
@@ -78,7 +78,7 @@ async fn live_smoke_codex_app_server() {
     request.provider_id = provider_id("codex");
     request.execution_harness = taugentic_agent::AgentExecutionHarness::CodexAppServer;
     request.auth_profile_id = None;
-    request.model_id = Some(model_id("gpt-5.4"));
+    request.model_id = Some(model_id("gpt-5.6-sol"));
     request.objective = "Reply with exactly: live smoke ok".to_string();
     let sink = support::TestSink::new();
     let _handle = run(request, sink.clone())

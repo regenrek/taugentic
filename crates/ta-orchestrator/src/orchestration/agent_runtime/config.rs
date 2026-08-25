@@ -111,16 +111,14 @@ mod tests {
     use super::*;
     use crate::orchestration::agent_runtime::strategy_registry::strategy_descriptor;
     use ta_protocol::wire::{
-        AgentRuntimeModelRef, AgentRuntimeStrategyId, AuthProfileRef, RuntimePolicyMode,
-        RuntimeProfileId,
+        AgentRuntimeStrategyId, AuthProfileRef, RuntimePolicyMode, RuntimeProfileId,
     };
 
     fn registry() -> StrategyRegistry {
-        let provider_id = strategy_id("provider-a");
+        let provider_id = strategy_id("openai");
         StrategyRegistry::new(vec![strategy_descriptor(
             provider_id.clone(),
-            "Provider A",
-            vec![model_ref("model-a"), model_ref("model-b")],
+            "OpenAI",
             vec![AuthProfileRef {
                 id: auth_profile_id("auth-a"),
                 provider_id: provider_id.clone(),
@@ -129,7 +127,7 @@ mod tests {
             vec![runtime_profile(
                 "runtime-a",
                 provider_id,
-                Some("model-a"),
+                Some("gpt-5.6-sol"),
                 Some("auth-a"),
                 RuntimePolicyMode::Allow,
             )],
@@ -166,16 +164,6 @@ mod tests {
         AuthProfileId::new(value).expect("auth profile id")
     }
 
-    fn model_ref(id: &str) -> AgentRuntimeModelRef {
-        AgentRuntimeModelRef {
-            id: model_id_value(id),
-            display_name: id.to_string(),
-            context_limit: None,
-            input_token_cost_micros: None,
-            output_token_cost_micros: None,
-        }
-    }
-
     fn patch_model(value: &str) -> RuntimeProfilePatch {
         RuntimeProfilePatch {
             model_id: Some(RuntimeProfileModelIdPatch::Set {
@@ -198,15 +186,15 @@ mod tests {
             ),
             (
                 "valid explicit model",
-                patch_model("model-b"),
-                Some(model_id_value("model-b")),
+                patch_model("gpt-5.6-terra"),
+                Some(model_id_value("gpt-5.6-terra")),
                 false,
             ),
         ] {
             let mut profiles = vec![runtime_profile(
                 "runtime-a",
-                strategy_id("provider-a"),
-                Some("model-a"),
+                strategy_id("openai"),
+                Some("gpt-5.6-sol"),
                 Some("auth-a"),
                 RuntimePolicyMode::Allow,
             )];
@@ -224,7 +212,7 @@ mod tests {
                         Err(AgentRuntimeServiceError::UnknownModel {
                             provider_id,
                             model_id
-                        }) if provider_id == "provider-a" && model_id == "missing-model"
+                        }) if provider_id == "openai" && model_id == "missing-model"
                     ),
                     "{case} should reject with UnknownModel",
                 );
@@ -241,8 +229,8 @@ mod tests {
         let runtime_profile_id = RuntimeProfileId::new("runtime-a").expect("runtime profile id");
         let mut profiles = vec![runtime_profile(
             "runtime-a",
-            strategy_id("provider-a"),
-            Some("model-a"),
+            strategy_id("openai"),
+            Some("gpt-5.6-sol"),
             Some("auth-a"),
             RuntimePolicyMode::Allow,
         )];
@@ -264,7 +252,7 @@ mod tests {
             AgentRuntimeServiceError::UnknownAuthProfile {
                 provider_id,
                 auth_profile_id
-            } if provider_id == "provider-a" && auth_profile_id == "missing-auth"
+            } if provider_id == "openai" && auth_profile_id == "missing-auth"
         ));
 
         let updated = apply_runtime_profile_patch(

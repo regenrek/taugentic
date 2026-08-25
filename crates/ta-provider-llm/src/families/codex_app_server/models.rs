@@ -88,12 +88,12 @@ fn fetch_model_catalog_on_control_thread() -> Result<CodexModelCatalog, CodexLlm
                     model.id.as_str()
                 )));
             }
-            if value.get("isDefault").and_then(Value::as_bool) == Some(true) {
-                if default_model_id.replace(model.id.clone()).is_some() {
-                    return Err(CodexLlmClientError::Protocol(
-                        "model/list returned more than one default model".to_string(),
-                    ));
-                }
+            if value.get("isDefault").and_then(Value::as_bool) == Some(true)
+                && default_model_id.replace(model.id.clone()).is_some()
+            {
+                return Err(CodexLlmClientError::Protocol(
+                    "model/list returned more than one default model".to_string(),
+                ));
             }
             models.push(model);
         }
@@ -129,8 +129,12 @@ fn parse_model(value: &Value) -> Result<AgentRuntimeModelRef, CodexLlmClientErro
         })?,
         display_name: display_name.to_string(),
         context_limit: None,
-        input_token_cost_micros: None,
-        output_token_cost_micros: None,
+        input_cost_per_million_micros: None,
+        output_cost_per_million_micros: None,
+        reasoning: true,
+        tool_call: true,
+        structured_output: false,
+        input_modalities: Vec::new(),
     })
 }
 

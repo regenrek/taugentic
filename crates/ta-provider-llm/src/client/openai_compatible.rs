@@ -6,8 +6,8 @@ use tokio_util::sync::CancellationToken;
 
 use super::{
     EventParser, HttpLlmStream, LlmClient, LlmStream, StreamEvent, StreamMessage, StreamRequest,
-    StreamRole, StreamTool, map_provider_error, map_provider_events, model_or_default,
-    require_stream_response, send_request,
+    StreamRole, StreamTool, map_provider_error, map_provider_events, require_stream_response,
+    send_request,
 };
 use crate::error::LlmClientError;
 use crate::families::openai_compatible::AuthSource;
@@ -113,9 +113,9 @@ impl LlmClient for OpenAiCompatibleClient {
     }
 }
 
-fn chat_body(request: &StreamRequest, default_model: &str) -> serde_json::Value {
+fn chat_body(request: &StreamRequest, model: &str) -> serde_json::Value {
     let mut body = json!({
-        "model": model_or_default(request, default_model),
+        "model": model,
         "messages": request.messages.iter().map(chat_message).collect::<Vec<_>>(),
         "stream": true,
     });

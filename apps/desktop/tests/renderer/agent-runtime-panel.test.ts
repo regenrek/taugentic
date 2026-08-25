@@ -101,7 +101,7 @@ function makeSnapshot(): AgentRuntimeSnapshot {
         id: "runtime-codex-safe",
         displayName: "Codex Safe",
         providerId: "codex",
-        modelId: "gpt-5.4",
+        modelId: "gpt-5.6-sol",
         authProfileId: "auth-codex-chatgpt",
         policyMode: "allow",
       },
@@ -190,7 +190,7 @@ describe("AgentRuntimePanelView", () => {
             modelCapability: {
               availability: "currentOnly",
               canSetModel: false,
-              currentModelId: "gpt-5.4",
+              currentModelId: "gpt-5.6-sol",
             },
             health: {
               status: "ready",
@@ -221,7 +221,7 @@ describe("AgentRuntimePanelView", () => {
             id: "runtime-openai-chatgpt",
             displayName: "OpenAI ChatGPT",
             providerId: "openai",
-            modelId: "gpt-5.4",
+            modelId: "gpt-5.6-sol",
             authProfileId: "auth-openai-chatgpt",
             policyMode: "allow",
           },

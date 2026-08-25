@@ -639,11 +639,15 @@ mod tests {
                     id: AgentRuntimeStrategyId::new("codex").expect("provider id"),
                     display_name: "Codex".to_string(),
                     models: vec![AgentRuntimeModelRef {
-                        id: AgentRuntimeModelId::new("gpt-5.4").expect("model id"),
-                        display_name: "GPT-5.4".to_string(),
+                        id: AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id"),
+                        display_name: "GPT-5.6 Sol".to_string(),
                         context_limit: None,
-                        input_token_cost_micros: None,
-                        output_token_cost_micros: None,
+                        input_cost_per_million_micros: None,
+                        output_cost_per_million_micros: None,
+                        reasoning: true,
+                        tool_call: true,
+                        structured_output: false,
+                        input_modalities: Vec::new(),
                     }],
                     model_capability: ta_protocol::wire::AgentRuntimeModelCapability {
                         availability: ta_protocol::wire::AgentRuntimeModelAvailability::Enumerated,
@@ -680,7 +684,7 @@ mod tests {
                     id: RuntimeProfileId::new("runtime-codex-safe").expect("runtime profile id"),
                     display_name: "Codex Safe".to_string(),
                     provider_id: AgentRuntimeStrategyId::new("codex").expect("provider id"),
-                    model_id: Some(AgentRuntimeModelId::new("gpt-5.4").expect("model id")),
+                    model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
                     auth_profile_id: Some(
                         AuthProfileId::new("auth-codex-chatgpt").expect("auth profile id"),
                     ),

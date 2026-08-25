@@ -5,7 +5,6 @@ use ta_protocol::wire::{
     WorkflowValidationError, WorkflowValidationReport,
 };
 
-use crate::catalog::RuntimeModelCatalog;
 use crate::yaml_keys::duplicate_key_errors;
 
 pub fn load_workflow_file(path: &Path) -> WorkflowValidationReport {
@@ -16,7 +15,7 @@ pub fn load_workflow_file(path: &Path) -> WorkflowValidationReport {
 }
 
 pub fn validate_workflow_yaml(contents: &str) -> WorkflowValidationReport {
-    validate_with_catalog(contents, &RuntimeModelCatalog::built_in())
+    validate(contents)
 }
 
 pub(crate) fn parse_valid_workflow(
@@ -29,10 +28,7 @@ pub(crate) fn parse_valid_workflow(
     serde_yaml::from_str(contents).map_err(|error| invalid("$", error.to_string()))
 }
 
-fn validate_with_catalog(
-    contents: &str,
-    catalog: &RuntimeModelCatalog,
-) -> WorkflowValidationReport {
+fn validate(contents: &str) -> WorkflowValidationReport {
     let mut errors = duplicate_key_errors(contents);
     let workflow = match serde_yaml::from_str::<WorkflowDefinition>(contents) {
         Ok(workflow) => workflow,
@@ -45,15 +41,11 @@ fn validate_with_catalog(
         }
     };
 
-    validate_workflow(&workflow, catalog, &mut errors);
+    validate_workflow(&workflow, &mut errors);
     report(errors)
 }
 
-fn validate_workflow(
-    workflow: &WorkflowDefinition,
-    catalog: &RuntimeModelCatalog,
-    errors: &mut Vec<WorkflowValidationError>,
-) {
+fn validate_workflow(workflow: &WorkflowDefinition, errors: &mut Vec<WorkflowValidationError>) {
     if workflow.kind != WORKFLOW_KIND_V1 {
         push(errors, "$.kind", format!("kind must be {WORKFLOW_KIND_V1}"));
     }
@@ -124,29 +116,10 @@ fn validate_workflow(
             "at least one runtime profile is required for background sources",
         );
     }
-    for (capsule_kind, profile) in &workflow.runtime_profiles {
+    for capsule_kind in workflow.runtime_profiles.keys() {
         let profile_path = format!("$.runtime_profiles.{capsule_kind}");
         if capsule_kind.trim().is_empty() {
             push(errors, &profile_path, "capsule kind must not be empty");
-        }
-        if !catalog.contains_provider(&profile.provider) {
-            push(
-                errors,
-                format!("{profile_path}.provider"),
-                format!("unknown runtime provider {}", profile.provider.as_str()),
-            );
-            continue;
-        }
-        if !catalog.contains_model(&profile.provider, &profile.model) {
-            push(
-                errors,
-                format!("{profile_path}.model"),
-                format!(
-                    "model {} is not registered for provider {}",
-                    profile.model.as_str(),
-                    profile.provider.as_str()
-                ),
-            );
         }
     }
     if workflow.outputs.required.is_empty() {
@@ -272,10 +245,10 @@ policy:
 runtime_profiles:
   scout:
     provider: codex
-    model: gpt-5.4
+    model: gpt-5.6-sol
   implementer:
     provider: openai
-    model: gpt-5.4
+    model: gpt-5.6-sol
 outputs:
   required:
     - evidence
@@ -377,21 +350,6 @@ budgets:
                 .errors
                 .iter()
                 .any(|error| error.message.contains("duplicate key"))
-        );
-    }
-
-    #[test]
-    fn rejects_unknown_provider_model_combinations() {
-        let yaml = GOLDEN.replace("model: gpt-5.4", "model: definitely-missing");
-
-        let report = validate_workflow_yaml(&yaml);
-
-        assert!(!report.valid);
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|error| error.path.ends_with(".model"))
         );
     }
 }

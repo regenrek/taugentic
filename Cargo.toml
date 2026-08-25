@@ -12,6 +12,7 @@ members = [
   "crates/ta-provider-acp",
   "crates/ta-provider-llm",
   "crates/ta-linux-sandbox",
+  "crates/ta-model-catalog",
   "crates/ta-windows-sandbox",
   "crates/ta-sandbox",
   "crates/ta-protocol",

@@ -20,18 +20,10 @@ fn profile_id(value: &str) -> RuntimeProfileId {
 
 fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
     let provider_id = strategy_id(provider);
-    let model_id = model_id("model-a");
     let auth_id = auth_profile_id(&format!("auth-{provider}"));
     strategy_descriptor(
         provider_id.clone(),
         "Fake",
-        vec![AgentRuntimeModelRef {
-            id: model_id.clone(),
-            display_name: "Model A".to_string(),
-            context_limit: None,
-            input_token_cost_micros: None,
-            output_token_cost_micros: None,
-        }],
         vec![AuthProfileRef {
             id: auth_id.clone(),
             provider_id: provider_id.clone(),
@@ -41,7 +33,7 @@ fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
             id: profile_id(runtime_profile),
             display_name: "Runtime A".to_string(),
             provider_id,
-            model_id: Some(model_id),
+            model_id: None,
             auth_profile_id: Some(auth_id),
             policy_mode: RuntimePolicyMode::Allow,
         }],
@@ -110,7 +102,7 @@ fn resolves_runtime_profiles_and_auth_refs() {
         StrategyRegistry::new(vec![fake_strategy("first", "runtime-a")]).expect("registry");
 
     assert!(registry.contains_provider(&strategy_id("first")));
-    assert!(registry.has_model(&strategy_id("first"), &model_id("model-a")));
+    assert!(!registry.has_model(&strategy_id("first"), &model_id("model-a")));
     assert!(
         registry
             .auth_profile_ref(&auth_profile_id("auth-first"))
@@ -203,6 +195,7 @@ fn openai_health_copy_treats_subscription_oauth_as_runnable() {
         fake_strategy("openai-native", "runtime-openai-native"),
         StrategyKind::OpenAiNative,
     );
+    let catalog = ModelCatalog::embedded().expect("catalog");
     let observed = openai_observed_state_for_snapshot(
         &strategy,
         ta_provider_llm::auth::openai::OpenAiAuthSnapshot {
@@ -210,6 +203,7 @@ fn openai_health_copy_treats_subscription_oauth_as_runnable() {
             chatgpt_configured: true,
             auth_profiles: Vec::new(),
         },
+        &catalog,
     );
 
     assert_eq!(
@@ -256,7 +250,6 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
         strategy_descriptor(
             provider_id.clone(),
             provider.display_name(),
-            Vec::new(),
             Vec::new(),
             vec![RuntimeProfileSummary {
                 id: profile_id("runtime-test-acp-safe"),

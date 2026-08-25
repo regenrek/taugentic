@@ -43,6 +43,9 @@ set quiet
 @security-check:
   @node ./scripts/security-check.mjs
 
+@sync-model-catalog:
+  @node ./scripts/sync-model-catalog.mjs
+
 @release-check:
   @cargo build -p ta-cli -p ta-orchestrator
   @cargo test -p ta-cli --lib

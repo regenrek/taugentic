@@ -12,29 +12,5 @@
   "auth": {
     "kind": "bearer_env",
     "env": "GROQ_API_KEY"
-  },
-  "default_model": "openai/gpt-oss-120b",
-  "fast_model": "llama-3.1-8b-instant",
-  "models": [
-    {
-      "id": "openai/gpt-oss-120b",
-      "display_name": "GPT OSS 120B",
-      "context_limit": 131072
-    },
-    {
-      "id": "openai/gpt-oss-20b",
-      "display_name": "GPT OSS 20B",
-      "context_limit": 131072
-    },
-    {
-      "id": "llama-3.1-8b-instant",
-      "display_name": "Llama 3.1 8B Instant",
-      "context_limit": 131072
-    },
-    {
-      "id": "llama-3.3-70b-versatile",
-      "display_name": "Llama 3.3 70B Versatile",
-      "context_limit": 131072
-    }
-  ]
+  }
 }

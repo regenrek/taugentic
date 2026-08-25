@@ -218,6 +218,10 @@ impl RunExecutionRuntime {
             .execution_harness_for_runtime_profile(&runtime_profile)?;
         let system_prompt =
             system_prompt_for_execution_request(&execution_harness, subagent_recipes.len());
+        let requested_model = model_id.or(runtime_profile.model_id.as_ref());
+        let resolved_model = self
+            .strategy_registry
+            .resolve_model(&runtime_profile.provider_id, requested_model)?;
 
         Ok(ExecutionRequest {
             session_id: session_id.clone(),
@@ -227,9 +231,7 @@ impl RunExecutionRuntime {
             execution_harness,
             system_prompt,
             objective: objective.to_string(),
-            model_id: model_id
-                .cloned()
-                .or_else(|| runtime_profile.model_id.clone()),
+            model_id: resolved_model,
             auth_profile_id: runtime_profile.auth_profile_id.clone(),
             resume_provider_session_id: None,
             runtime_extensions: self.policy.runtime_extensions(),

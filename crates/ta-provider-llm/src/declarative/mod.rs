@@ -20,9 +20,6 @@ pub struct DeclarativeProviderSpec {
     pub base_url: Arc<str>,
     pub completions_prefix: Arc<str>,
     pub auth: AuthSource,
-    pub default_model: Arc<str>,
-    pub fast_model: Option<Arc<str>>,
-    pub models: Vec<DeclarativeModelSpec>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -31,15 +28,6 @@ pub enum DeclarativeProviderFamily {
     OpenAiCompatible,
     #[serde(rename = "openrouter")]
     OpenRouter,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DeclarativeModelSpec {
-    pub id: Arc<str>,
-    pub display_name: Arc<str>,
-    pub context_limit: Option<u64>,
-    pub input_token_cost_micros: Option<u64>,
-    pub output_token_cost_micros: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,23 +46,6 @@ struct RawDeclarativeProviderSpec {
     #[serde(default)]
     completions_prefix: String,
     auth: RawAuthSource,
-    default_model: String,
-    fast_model: Option<String>,
-    models: Vec<RawDeclarativeModelSpec>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawDeclarativeModelSpec {
-    id: String,
-    #[serde(default)]
-    display_name: Option<String>,
-    #[serde(default)]
-    context_limit: Option<u64>,
-    #[serde(default)]
-    input_token_cost_micros: Option<u64>,
-    #[serde(default)]
-    output_token_cost_micros: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,24 +108,6 @@ impl RawDeclarativeProviderSpec {
         validate_required("id", &self.id)?;
         validate_required("display_name", &self.display_name)?;
         validate_required("base_url", &self.base_url)?;
-        validate_required("default_model", &self.default_model)?;
-        if self.models.is_empty() {
-            return Err(LlmClientError::InvalidConfig(format!(
-                "declarative provider {} must define at least one model",
-                self.id
-            )));
-        }
-        if !self
-            .models
-            .iter()
-            .any(|model| model.id == self.default_model)
-        {
-            return Err(LlmClientError::InvalidConfig(format!(
-                "declarative provider {} defaultModel {} is not in models",
-                self.id, self.default_model
-            )));
-        }
-
         Ok(DeclarativeProviderSpec {
             id: Arc::from(self.id),
             family: self.family,
@@ -165,19 +118,6 @@ impl RawDeclarativeProviderSpec {
             base_url: Arc::from(self.base_url),
             completions_prefix: Arc::from(self.completions_prefix),
             auth: self.auth.into_auth_source()?,
-            default_model: Arc::from(self.default_model),
-            fast_model: self.fast_model.map(Arc::from),
-            models: self
-                .models
-                .into_iter()
-                .map(|model| DeclarativeModelSpec {
-                    display_name: Arc::from(model.display_name.unwrap_or_else(|| model.id.clone())),
-                    id: Arc::from(model.id),
-                    context_limit: model.context_limit,
-                    input_token_cost_micros: model.input_token_cost_micros,
-                    output_token_cost_micros: model.output_token_cost_micros,
-                })
-                .collect(),
         })
     }
 }
@@ -250,41 +190,5 @@ mod tests {
     #[test]
     fn declarative_loader_sanity() {
         loaded_specs_keep_provider_ids();
-    }
-
-    #[test]
-    fn specs_preserve_declarative_model_metadata() {
-        let spec = specs()
-            .iter()
-            .find(|spec| spec.id.as_ref() == "groq")
-            .expect("groq spec");
-        let model = spec
-            .models
-            .iter()
-            .find(|model| model.id.as_ref() == "openai/gpt-oss-120b")
-            .expect("groq model");
-
-        assert_eq!(model.context_limit, Some(131072));
-    }
-
-    #[test]
-    fn rejects_default_model_outside_catalog() {
-        let error = parse_spec(
-            r#"{
-              "id": "bad",
-              "family": "openai_compatible",
-              "display_name": "Bad",
-              "description": "Bad provider",
-              "doc_url": null,
-              "setup_steps": [],
-              "base_url": "https://example.test/v1",
-              "auth": {"kind": "bearer_env", "env": "BAD_API_KEY"},
-              "default_model": "missing",
-              "models": [{"id": "present", "display_name": "Present"}]
-            }"#,
-        )
-        .expect_err("invalid default model must fail");
-
-        assert!(matches!(error, LlmClientError::InvalidConfig(_)));
     }
 }

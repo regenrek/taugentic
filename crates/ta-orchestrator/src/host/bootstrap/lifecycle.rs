@@ -3,6 +3,7 @@ use ta_observability::{ObservabilityHandle, ObservabilityInitError, init};
 use ta_work_source::HostSecretsGitHubCredentialProvider;
 use thiserror::Error;
 use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
+use tokio::time::{Duration, Instant, interval_at};
 use tokio_util::sync::CancellationToken;
 
 use crate::host::{
@@ -67,6 +68,10 @@ async fn run_async() -> Result<(), DaemonError> {
         "daemon boot complete"
     );
     let poller_cancellation = CancellationToken::new();
+    let model_catalog_refresh = spawn_model_catalog_refresh(
+        state.runtime.agent_runtime_strategy_registry(),
+        poller_cancellation.clone(),
+    );
     let github_credentials = Arc::new(HostSecretsGitHubCredentialProvider::from_default_store()?);
     let poller = state
         .app
@@ -74,8 +79,51 @@ async fn run_async() -> Result<(), DaemonError> {
     let serve_result = serve(state).await;
     poller_cancellation.cancel();
     let _ = poller.await;
+    let _ = model_catalog_refresh.await;
     serve_result?;
     Ok(())
+}
+
+fn spawn_model_catalog_refresh(
+    registry: crate::StrategyRegistry,
+    cancellation: CancellationToken,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        const REFRESH_INTERVAL: Duration = Duration::from_secs(4 * 60 * 60);
+        let source = match ta_model_catalog::ModelsDevCatalogSource::new() {
+            Ok(source) => source,
+            Err(error) => {
+                tracing::error!(error = %error, "model catalog client initialization failed");
+                return;
+            }
+        };
+        refresh_model_catalog(&registry, &source).await;
+        let mut interval = interval_at(Instant::now() + REFRESH_INTERVAL, REFRESH_INTERVAL);
+        loop {
+            tokio::select! {
+                _ = cancellation.cancelled() => return,
+                _ = interval.tick() => refresh_model_catalog(&registry, &source).await,
+            }
+        }
+    })
+}
+
+async fn refresh_model_catalog(
+    registry: &crate::StrategyRegistry,
+    source: &ta_model_catalog::ModelsDevCatalogSource,
+) {
+    match source.fetch().await {
+        Ok(catalog) => {
+            let generated_at = catalog.generated_at.clone();
+            let provider_count = catalog.providers.len();
+            if let Err(error) = registry.replace_catalog(catalog) {
+                tracing::error!(error = %error, "model catalog validation failed");
+                return;
+            }
+            tracing::info!(%generated_at, provider_count, "model catalog refreshed");
+        }
+        Err(error) => tracing::warn!(error = %error, "model catalog refresh failed"),
+    }
 }
 
 fn daemon_runtime() -> Result<Runtime, DaemonError> {

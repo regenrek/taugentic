@@ -665,7 +665,7 @@ fn runtime_profile_patch_roundtrips_set_and_clear_ops() {
             AgentRuntimeStrategyId::new("provider-codex").expect("provider id should be valid"),
         ),
         model_id: Some(RuntimeProfileModelIdPatch::Set {
-            value: AgentRuntimeModelId::new("gpt-5.4").expect("model id should be valid"),
+            value: AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id should be valid"),
         }),
         auth_profile: Some(RuntimeProfileAuthProfilePatch::Clear),
         policy_mode: Some(RuntimePolicyMode::RequireApproval),
@@ -682,7 +682,7 @@ fn runtime_profile_patch_roundtrips_set_and_clear_ops() {
             "providerId": "provider-codex",
             "modelId": {
                 "kind": "set",
-                "value": "gpt-5.4"
+                "value": "gpt-5.6-sol"
             },
             "authProfile": {
                 "kind": "clear"

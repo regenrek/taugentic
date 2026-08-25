@@ -31378,7 +31378,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "id": {
       "type": "string"
     },
-    "inputTokenCostMicros": {
+    "inputCostPerMillionMicros": {
       "format": "uint64",
       "minimum": 0,
       "type": [
@@ -31386,18 +31386,36 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "null"
       ]
     },
-    "outputTokenCostMicros": {
+    "inputModalities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "outputCostPerMillionMicros": {
       "format": "uint64",
       "minimum": 0,
       "type": [
         "integer",
         "null"
       ]
+    },
+    "reasoning": {
+      "type": "boolean"
+    },
+    "structuredOutput": {
+      "type": "boolean"
+    },
+    "toolCall": {
+      "type": "boolean"
     }
   },
   "required": [
     "id",
-    "displayName"
+    "displayName",
+    "reasoning",
+    "toolCall",
+    "structuredOutput"
   ],
   "title": "AgentRuntimeModelRef",
   "type": "object"
@@ -31498,7 +31516,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
-        "inputTokenCostMicros": {
+        "inputCostPerMillionMicros": {
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -31506,18 +31524,36 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "null"
           ]
         },
-        "outputTokenCostMicros": {
+        "inputModalities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "outputCostPerMillionMicros": {
           "format": "uint64",
           "minimum": 0,
           "type": [
             "integer",
             "null"
           ]
+        },
+        "reasoning": {
+          "type": "boolean"
+        },
+        "structuredOutput": {
+          "type": "boolean"
+        },
+        "toolCall": {
+          "type": "boolean"
         }
       },
       "required": [
         "id",
-        "displayName"
+        "displayName",
+        "reasoning",
+        "toolCall",
+        "structuredOutput"
       ],
       "type": "object"
     },
@@ -32799,7 +32835,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
-        "inputTokenCostMicros": {
+        "inputCostPerMillionMicros": {
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -32807,18 +32843,36 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "null"
           ]
         },
-        "outputTokenCostMicros": {
+        "inputModalities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "outputCostPerMillionMicros": {
           "format": "uint64",
           "minimum": 0,
           "type": [
             "integer",
             "null"
           ]
+        },
+        "reasoning": {
+          "type": "boolean"
+        },
+        "structuredOutput": {
+          "type": "boolean"
+        },
+        "toolCall": {
+          "type": "boolean"
         }
       },
       "required": [
         "id",
-        "displayName"
+        "displayName",
+        "reasoning",
+        "toolCall",
+        "structuredOutput"
       ],
       "type": "object"
     },

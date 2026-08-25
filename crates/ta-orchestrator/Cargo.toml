@@ -19,6 +19,7 @@ serde.workspace = true
 serde_json.workspace = true
 ta-host-platform = { path = "../ta-host-platform" }
 ta-jsonrpc = { path = "../ta-jsonrpc" }
+ta-model-catalog = { path = "../ta-model-catalog" }
 ta-observability = { path = "../ta-observability" }
 ta-policy = { path = "../ta-policy" }
 ta-provider-acp = { path = "../ta-provider-acp" }

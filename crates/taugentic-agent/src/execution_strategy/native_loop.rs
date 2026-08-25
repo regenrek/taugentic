@@ -188,7 +188,12 @@ fn client_for_request(request: &ExecutionRequest) -> Result<Arc<dyn LlmClient>, 
         .model_id
         .as_ref()
         .map(|model| model.as_str().to_string())
-        .unwrap_or_default();
+        .ok_or_else(|| {
+            ExecutionError::InvalidConfig(format!(
+                "native runtime provider {} has no resolved model",
+                request.provider_id.as_str()
+            ))
+        })?;
     let provider_id = request.provider_id.as_str();
     if provider_id == ANTHROPIC_PROVIDER_ID {
         return Ok(Arc::new(AnthropicMessagesClient::from_env(model)?));
@@ -200,11 +205,6 @@ fn client_for_request(request: &ExecutionRequest) -> Result<Arc<dyn LlmClient>, 
         )?));
     }
     if let Some(spec) = declarative_spec_for_provider(provider_id) {
-        let model = if model.trim().is_empty() {
-            spec.default_model.as_ref().to_string()
-        } else {
-            model
-        };
         return Ok(Arc::new(OpenAiCompatibleClient::new(
             spec.base_url.as_ref(),
             spec.auth.clone(),

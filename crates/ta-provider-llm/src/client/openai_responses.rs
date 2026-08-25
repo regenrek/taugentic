@@ -6,12 +6,12 @@ use tokio_util::sync::CancellationToken;
 use super::{
     EventParser, HttpLlmStream, LlmClient, LlmStream, StreamEvent, StreamMessage, StreamRequest,
     StreamRole, StreamTool, map_provider_error, map_provider_events_with_metadata,
-    model_or_default, require_stream_response, send_request,
+    require_stream_response, send_request,
 };
 use crate::auth::openai::OpenAiAuthRoute;
 use crate::auth::openai::{self, OpenAiAuth};
 use crate::error::LlmClientError;
-use crate::families::openai::{OPENAI_API_KEY_ENV_VAR, OPENAI_DEFAULT_MODEL_ID};
+use crate::families::openai::OPENAI_API_KEY_ENV_VAR;
 use crate::formats::openai_responses;
 use crate::http::shared_client;
 use tracing::instrument;
@@ -198,12 +198,12 @@ impl LlmClient for OpenAiResponsesClient {
 
 fn responses_body(
     request: &StreamRequest,
-    default_model: &str,
+    model: &str,
     chatgpt_backend: bool,
     session_id: &str,
 ) -> serde_json::Value {
     let mut body = json!({
-        "model": model_or_default(request, default_model),
+        "model": model,
         "input": request
             .messages
             .iter()
@@ -277,7 +277,7 @@ fn response_tool(tool: &StreamTool) -> serde_json::Value {
 
 fn parse_event(data: &str) -> Result<Vec<StreamEvent>, LlmClientError> {
     openai_responses::stream_events(data)
-        .map(|events| map_provider_events_with_metadata(events, "openai", OPENAI_DEFAULT_MODEL_ID))
+        .map(|events| map_provider_events_with_metadata(events, "openai"))
         .map_err(map_provider_error)
 }
 
@@ -296,10 +296,11 @@ fn trim_base_url(base_url: String) -> String {
 
 fn normalized_model(model: String) -> Result<String, LlmClientError> {
     if model.trim().is_empty() {
-        Ok(OPENAI_DEFAULT_MODEL_ID.to_string())
-    } else {
-        Ok(model)
+        return Err(LlmClientError::InvalidConfig(
+            "OpenAI Responses model is empty".to_string(),
+        ));
     }
+    Ok(model)
 }
 
 #[cfg(test)]

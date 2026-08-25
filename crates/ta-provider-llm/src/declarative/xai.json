@@ -12,25 +12,5 @@
   "auth": {
     "kind": "bearer_env",
     "env": "XAI_API_KEY"
-  },
-  "default_model": "grok-4",
-  "fast_model": "grok-3-mini",
-  "models": [
-    {
-      "id": "grok-4",
-      "display_name": "Grok 4"
-    },
-    {
-      "id": "grok-3",
-      "display_name": "Grok 3"
-    },
-    {
-      "id": "grok-3-mini",
-      "display_name": "Grok 3 Mini"
-    },
-    {
-      "id": "grok-code-fast-1",
-      "display_name": "Grok Code Fast 1"
-    }
-  ]
+  }
 }
