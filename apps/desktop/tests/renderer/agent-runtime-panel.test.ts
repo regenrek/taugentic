@@ -33,6 +33,9 @@ function makeSnapshot(): AgentRuntimeSnapshot {
           {
             id: "deepseek-chat",
             displayName: "DeepSeek Chat",
+            reasoning: false,
+            toolCall: true,
+            structuredOutput: true,
           },
         ],
         modelCapability: {
@@ -52,6 +55,9 @@ function makeSnapshot(): AgentRuntimeSnapshot {
           {
             id: "gpt-5.3-codex",
             displayName: "GPT-5.3 Codex",
+            reasoning: true,
+            toolCall: true,
+            structuredOutput: true,
           },
         ],
         modelCapability: {
@@ -333,6 +339,9 @@ describe("AgentRuntimePanelView", () => {
               {
                 id: "zai/glm-5.1",
                 displayName: "Z.AI/GLM-5.1",
+                reasoning: true,
+                toolCall: true,
+                structuredOutput: true,
               },
             ],
             modelCapability: {

@@ -28,8 +28,20 @@ function makeSnapshot(): AgentRuntimeSnapshot {
         id: "codex",
         displayName: "Codex",
         models: [
-          { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
-          { id: "gpt-5.3-codex", displayName: "GPT-5.3 Codex" },
+          {
+            id: "gpt-5.6-sol",
+            displayName: "GPT-5.6 Sol",
+            reasoning: true,
+            toolCall: true,
+            structuredOutput: true,
+          },
+          {
+            id: "gpt-5.3-codex",
+            displayName: "GPT-5.3 Codex",
+            reasoning: true,
+            toolCall: true,
+            structuredOutput: true,
+          },
         ],
         modelCapability: {
           availability: "enumerated",
@@ -41,7 +53,15 @@ function makeSnapshot(): AgentRuntimeSnapshot {
       {
         id: "anthropic",
         displayName: "Anthropic",
-        models: [{ id: "claude-sonnet-4-5", displayName: "Claude Sonnet 4.5" }],
+        models: [
+          {
+            id: "claude-sonnet-4-5",
+            displayName: "Claude Sonnet 4.5",
+            reasoning: true,
+            toolCall: true,
+            structuredOutput: true,
+          },
+        ],
         modelCapability: {
           availability: "enumerated",
           canSetModel: true,
