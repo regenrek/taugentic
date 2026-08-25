@@ -5,8 +5,7 @@ use ta_protocol::wire::{WorkflowDefinition, WorkflowSourceKind};
 use ta_store::PersistenceStore;
 use ta_work_source::{
     FetchOutcome, GitHubCredentialProvider, GitHubIssueProvider, GitHubProviderConfig,
-    GitHubTokenMigration, SourceCursor, WorkItemKey, WorkSource, WorkSourceError,
-    WorkSourceLabelFilter,
+    SourceCursor, WorkItemKey, WorkSource, WorkSourceError, WorkSourceLabelFilter,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -35,9 +34,6 @@ where
         cancellation: CancellationToken,
         github_credentials: Arc<dyn GitHubCredentialProvider>,
     ) {
-        if let Err(error) = migrate_legacy_github_token(github_credentials.as_ref()) {
-            tracing::warn!(error = %error, "work source GitHub token migration failed");
-        }
         let mut delay = IDLE_WORKFLOW_CHECK_INTERVAL;
         loop {
             if cancellation.is_cancelled() {
@@ -177,28 +173,6 @@ where
         }
         Ok(())
     }
-}
-
-fn migrate_legacy_github_token(
-    github_credentials: &dyn GitHubCredentialProvider,
-) -> Result<(), WorkSourceError> {
-    match github_credentials.migrate_legacy_env_token()? {
-        GitHubTokenMigration::Migrated { env_var } => {
-            tracing::warn!(
-                env_var,
-                secret_key = "work_source.github/github_pat",
-                "migrated legacy GitHub token env var into host secrets; env token reads are deprecated"
-            );
-        }
-        GitHubTokenMigration::AlreadyPresent => {
-            tracing::debug!(
-                secret_key = "work_source.github/github_pat",
-                "work source GitHub token already exists in host secrets"
-            );
-        }
-        GitHubTokenMigration::NoLegacyToken => {}
-    }
-    Ok(())
 }
 
 struct GitHubPollConfig {

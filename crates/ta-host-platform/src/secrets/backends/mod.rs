@@ -1,8 +1,4 @@
-#[cfg(any(
-    test,
-    target_os = "linux",
-    not(any(target_os = "macos", target_os = "linux", target_os = "windows"))
-))]
+#[cfg(test)]
 pub(crate) mod memory;
 
 #[cfg(target_os = "linux")]

@@ -1,13 +1,15 @@
 use std::{
     error::Error,
-    time::{SystemTime, UNIX_EPOCH},
+    sync::{Arc, Mutex},
 };
 
+use ta_host_platform::{HostSecretError, HostSecretKey, HostSecretStore, HostSecretValue};
 use ta_protocol::wire::AuthProfileId;
 
 use super::{
     AccountInfo, CredentialKey, CredentialStore, CredentialStoreError, StoredCredentials,
-    backends::memory::MemoryCredentialStore, default_store,
+    backends::{host::HostCredentialStore, memory::MemoryCredentialStore},
+    default_store,
 };
 use crate::TokenSet;
 
@@ -43,24 +45,42 @@ fn memory_backend_overwrites_credentials() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn default_store_uses_expected_backend() -> Result<(), Box<dyn Error>> {
-    let store = default_store()?;
+    match ta_host_platform::secrets_backend_capability() {
+        ta_host_platform::SecretsBackend::Keychain => {
+            assert_eq!(default_store()?.backend_name(), "macos-keychain");
+        }
+        ta_host_platform::SecretsBackend::SecretService => {
+            assert_eq!(default_store()?.backend_name(), "linux-secret-service");
+        }
+        ta_host_platform::SecretsBackend::CredentialManager => {
+            assert_eq!(
+                default_store()?.backend_name(),
+                "windows-credential-manager"
+            );
+        }
+        ta_host_platform::SecretsBackend::None => {
+            assert!(matches!(
+                default_store(),
+                Err(CredentialStoreError::BackendUnavailable { .. })
+            ));
+        }
+    }
 
-    #[cfg(target_os = "macos")]
-    assert_eq!(store.backend_name(), "macos-keychain");
+    Ok(())
+}
 
-    #[cfg(target_os = "linux")]
-    assert!(
-        matches!(store.backend_name(), "linux-secret-service" | "memory"),
-        "unexpected backend: {}",
-        store.backend_name()
-    );
+#[test]
+fn host_adapter_owns_openai_serialization_and_addressing() -> Result<(), Box<dyn Error>> {
+    let host = Arc::new(TestHostSecretStore::default());
+    let store = HostCredentialStore::new(host.clone());
+    let key = credential_key("openai_chatgpt")?;
+    let credentials = stored_credentials("acct_1", "user@example.com", 1);
 
-    #[cfg(target_os = "windows")]
-    assert_eq!(store.backend_name(), "windows-credential-manager");
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    assert_eq!(store.backend_name(), "memory");
-
+    store.store(&key, &credentials)?;
+    assert_eq!(host.last_key()?.as_deref(), Some("openai_chatgpt"));
+    assert_eq!(store.load(&key)?, Some(credentials));
+    store.delete(&key)?;
+    assert_eq!(store.load(&key)?, None);
     Ok(())
 }
 
@@ -82,66 +102,6 @@ fn stored_credentials_debug_redacts_token_material() {
     assert!(!debug.contains("refresh-token-1"));
     assert!(!debug.contains("id-token-1"));
     assert!(!debug.contains("api-access-token-1"));
-}
-
-#[cfg(target_os = "macos")]
-#[test]
-fn macos_keychain_round_trips_credentials() -> Result<(), Box<dyn Error>> {
-    use super::backends::macos::MacosKeychainStore;
-
-    let service = unique_service_name("macos-keychain")?;
-    let store = MacosKeychainStore::new(service);
-    native_round_trip(&store)
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn linux_secret_service_round_trips_credentials_when_available() -> Result<(), Box<dyn Error>> {
-    use super::backends::linux::LinuxSecretServiceStore;
-
-    let service = unique_service_name("linux-secret-service")?;
-    let store = match LinuxSecretServiceStore::available(service) {
-        Ok(store) => store,
-        Err(error) => {
-            eprintln!("skipping Secret Service credential test: {error}");
-            return Ok(());
-        }
-    };
-    native_round_trip(&store)
-}
-
-#[cfg(target_os = "windows")]
-#[test]
-fn windows_credential_manager_round_trips_credentials() -> Result<(), Box<dyn Error>> {
-    use super::backends::windows::WindowsCredentialManagerStore;
-
-    let service = unique_service_name("windows-credential-manager")?;
-    let store = WindowsCredentialManagerStore::new(service);
-    native_round_trip(&store)
-}
-
-fn native_round_trip(store: &dyn CredentialStore) -> Result<(), Box<dyn Error>> {
-    let key = credential_key("openai_chatgpt_native_test")?;
-    let credentials = stored_credentials("acct_native", "native@example.com", 9);
-
-    if let Err(error) = store.delete(&key) {
-        eprintln!(
-            "skipping {} credential test during cleanup: {error}",
-            store.backend_name()
-        );
-        return Ok(());
-    }
-    if let Err(error) = store.store(&key, &credentials) {
-        eprintln!(
-            "skipping {} credential test during store: {error}",
-            store.backend_name()
-        );
-        return Ok(());
-    }
-    assert_eq!(store.load(&key)?, Some(credentials));
-    store.delete(&key)?;
-    assert_eq!(store.load(&key)?, None);
-    Ok(())
 }
 
 fn credential_key(value: &str) -> Result<CredentialKey, Box<dyn Error>> {
@@ -170,7 +130,61 @@ fn stored_credentials(account_id: &str, email: &str, suffix: u64) -> StoredCrede
     }
 }
 
-fn unique_service_name(label: &str) -> Result<String, Box<dyn Error>> {
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-    Ok(format!("taugentic.openai.oauth.test.{label}.{timestamp}"))
+#[derive(Default)]
+struct TestHostSecretStore {
+    entry: Mutex<Option<(HostSecretKey, HostSecretValue)>>,
+}
+
+impl TestHostSecretStore {
+    fn last_key(&self) -> Result<Option<String>, HostSecretError> {
+        self.entry
+            .lock()
+            .map_err(|_| host_lock_error())
+            .map(|entry| entry.as_ref().map(|(key, _)| key.as_str().to_string()))
+    }
+}
+
+impl HostSecretStore for TestHostSecretStore {
+    fn store_secret(
+        &self,
+        key: &HostSecretKey,
+        value: &HostSecretValue,
+    ) -> Result<(), HostSecretError> {
+        *self.entry.lock().map_err(|_| host_lock_error())? = Some((key.clone(), value.clone()));
+        Ok(())
+    }
+
+    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
+        self.entry
+            .lock()
+            .map_err(|_| host_lock_error())
+            .map(|entry| {
+                entry
+                    .as_ref()
+                    .filter(|(stored_key, _)| stored_key == key)
+                    .map(|(_, value)| value.clone())
+            })
+    }
+
+    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
+        let mut entry = self.entry.lock().map_err(|_| host_lock_error())?;
+        if entry
+            .as_ref()
+            .is_some_and(|(stored_key, _)| stored_key == key)
+        {
+            *entry = None;
+        }
+        Ok(())
+    }
+
+    fn backend_name(&self) -> &'static str {
+        "test-host-secret-store"
+    }
+}
+
+fn host_lock_error() -> HostSecretError {
+    HostSecretError::IoError {
+        operation: "test-host-secret-lock",
+        reason: "lock poisoned".to_string(),
+    }
 }

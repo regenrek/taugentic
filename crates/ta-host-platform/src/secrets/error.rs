@@ -1,12 +1,10 @@
 use std::{error::Error, fmt};
 
-use super::HostSecretKey;
-
 #[derive(Clone, PartialEq, Eq)]
 pub enum HostSecretError {
-    EmptySecret {
-        key: HostSecretKey,
-    },
+    InvalidServiceName,
+    EmptyKey,
+    EmptySecret,
     BackendUnavailable {
         backend: &'static str,
         reason: String,
@@ -60,10 +58,9 @@ impl HostSecretError {
 impl fmt::Debug for HostSecretError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptySecret { key } => formatter
-                .debug_struct("EmptySecret")
-                .field("key", key)
-                .finish(),
+            Self::InvalidServiceName => formatter.write_str("InvalidServiceName"),
+            Self::EmptyKey => formatter.write_str("EmptyKey"),
+            Self::EmptySecret => formatter.write_str("EmptySecret"),
             Self::BackendUnavailable { backend, .. } => formatter
                 .debug_struct("BackendUnavailable")
                 .field("backend", backend)
@@ -92,12 +89,9 @@ impl fmt::Debug for HostSecretError {
 impl fmt::Display for HostSecretError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EmptySecret { key } => write!(
-                formatter,
-                "host secret is empty: {}/{}",
-                key.namespace(),
-                key.name()
-            ),
+            Self::InvalidServiceName => formatter.write_str("host secret service name is empty"),
+            Self::EmptyKey => formatter.write_str("host secret key is empty"),
+            Self::EmptySecret => formatter.write_str("host secret is empty"),
             Self::BackendUnavailable { backend, .. } => {
                 write!(formatter, "host secret backend unavailable: {backend}")
             }

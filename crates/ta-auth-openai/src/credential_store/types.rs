@@ -16,10 +16,6 @@ impl CredentialKey {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
-
-    pub(crate) fn account_name(&self, service: &str) -> String {
-        format!("{service}/{}", self.as_str())
-    }
 }
 
 impl fmt::Debug for CredentialKey {

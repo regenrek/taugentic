@@ -10,7 +10,7 @@ pub(crate) struct MemoryHostSecretStore {
 impl HostSecretStore for MemoryHostSecretStore {
     fn store_secret(
         &self,
-        key: HostSecretKey,
+        key: &HostSecretKey,
         value: &HostSecretValue,
     ) -> Result<(), HostSecretError> {
         self.secrets
@@ -21,21 +21,21 @@ impl HostSecretStore for MemoryHostSecretStore {
                     "memory host secret store lock poisoned",
                 )
             })?
-            .insert(key, value.clone());
+            .insert(key.clone(), value.clone());
         Ok(())
     }
 
-    fn load_secret(&self, key: HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
+    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
         let secrets = self.secrets.lock().map_err(|_| {
             HostSecretError::backend_unavailable(
                 self.backend_name(),
                 "memory host secret store lock poisoned",
             )
         })?;
-        Ok(secrets.get(&key).cloned())
+        Ok(secrets.get(key).cloned())
     }
 
-    fn delete_secret(&self, key: HostSecretKey) -> Result<(), HostSecretError> {
+    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
         self.secrets
             .lock()
             .map_err(|_| {
@@ -44,7 +44,7 @@ impl HostSecretStore for MemoryHostSecretStore {
                     "memory host secret store lock poisoned",
                 )
             })?
-            .remove(&key);
+            .remove(key);
         Ok(())
     }
 

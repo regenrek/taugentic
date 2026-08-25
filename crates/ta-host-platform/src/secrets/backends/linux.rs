@@ -25,7 +25,7 @@ impl LinuxSecretServiceStore {
 impl HostSecretStore for LinuxSecretServiceStore {
     fn store_secret(
         &self,
-        key: HostSecretKey,
+        key: &HostSecretKey,
         value: &HostSecretValue,
     ) -> Result<(), HostSecretError> {
         let account = key.account_name(&self.service);
@@ -43,7 +43,7 @@ impl HostSecretStore for LinuxSecretServiceStore {
         })
     }
 
-    fn load_secret(&self, key: HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
+    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
         let account = key.account_name(&self.service);
         let service = self.service.clone();
         let payload = with_collection(move |collection| {
@@ -63,7 +63,7 @@ impl HostSecretStore for LinuxSecretServiceStore {
         }
     }
 
-    fn delete_secret(&self, key: HostSecretKey) -> Result<(), HostSecretError> {
+    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
         let account = key.account_name(&self.service);
         let service = self.service.clone();
         with_collection(move |collection| {

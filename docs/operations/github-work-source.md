@@ -22,7 +22,8 @@ background orchestrator idle; no workflow loaded
 
 ## Provide The PAT
 
-GitHub PAT storage is owned by `crates/ta-host-platform` host secrets and consumed by `crates/ta-work-source`.
+`crates/ta-work-source` owns the GitHub PAT identifier. `crates/ta-host-platform`
+owns the OS credential-store operations.
 
 Canonical key:
 
@@ -34,28 +35,12 @@ account: taugentic.host.secrets/work_source.github/github_pat
 Backend selection:
 
 - macOS: Keychain.
-- Linux: Secret Service when available; otherwise non-durable in-memory fallback.
+- Linux: Secret Service. Daemon startup fails if Secret Service is unavailable.
 - Windows: Credential Manager.
 
-The migration path from legacy token env vars is one-shot:
-
-```sh
-GH_TOKEN=github_pat_or_fine_grained_token just daemon
-```
-
-or:
-
-```sh
-GITHUB_TOKEN=github_pat_or_fine_grained_token just daemon
-```
-
-On startup, the daemon migrates the first non-empty legacy env token into host secrets if the host-secret key is empty, then logs:
-
-```text
-migrated legacy GitHub token env var into host secrets; env token reads are deprecated
-```
-
-After that first successful startup, remove `GH_TOKEN` / `GITHUB_TOKEN` from the daemon environment.
+The daemon does not read `GH_TOKEN` or `GITHUB_TOKEN`. Provision the canonical
+entry through the OS credential store before you start GitHub polling. The
+current desktop does not have a GitHub PAT management control.
 
 ## Required PAT Scopes
 
@@ -115,7 +100,7 @@ just ta daemon logs --tail 300
 Common messages:
 
 - `work source poller disabled`: `TAUGENTIC_WORK_SOURCE_GITHUB_REPO` is unset or empty.
-- `work source GitHub token migration failed`: host secrets backend rejected the legacy env token or was unavailable.
+- `host secret backend unavailable`: start the required OS credential service.
 - `work source poller rate limited`: wait for the logged retry delay.
 - `work source poll failed`: inspect the redacted error, repository name, and PAT scope.
 

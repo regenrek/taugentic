@@ -35,13 +35,15 @@ If browser launch fails, the UI shows a manual URL. Copy it into a browser on th
 
 ## Credential Storage
 
-OpenAI OAuth storage is owned by `crates/ta-auth-openai/src/credential_store/`. Backend selection comes from `crates/ta-host-platform` via `secrets_backend_capability()`.
+`crates/ta-auth-openai/src/credential_store/` owns the OpenAI credential key,
+schema, and JSON serialization. `crates/ta-host-platform` owns backend selection,
+OS account addressing, and credential-store operations.
 
 | OS | Backend | Service / account |
 | --- | --- | --- |
-| macOS | Keychain | `taugentic.openai.oauth/openai_chatgpt` |
-| Linux | Secret Service when available; otherwise non-durable in-memory fallback | `taugentic.openai.oauth/openai_chatgpt` |
-| Windows | Credential Manager | `taugentic.openai.oauth/openai_chatgpt` |
+| macOS | Keychain | `taugentic.openai.oauth/auth-openai-chatgpt` |
+| Linux | Secret Service | `taugentic.openai.oauth/auth-openai-chatgpt` |
+| Windows | Credential Manager | `taugentic.openai.oauth/auth-openai-chatgpt` |
 
 Taugentic does not read or write Codex credential paths.
 
@@ -95,4 +97,6 @@ Credential backend unavailable:
 RUST_LOG=info,ta_host_platform=debug,ta_auth_openai=debug just daemon
 ```
 
-On Linux, Secret Service must be reachable for durable credentials. If unavailable, the daemon logs that it is using non-durable in-memory credentials; sign-in will not persist across daemon restarts.
+On Linux, Secret Service must be reachable. If it is unavailable, daemon startup
+returns a credential-backend error. Taugentic does not use an in-memory
+credential fallback.

@@ -22,7 +22,7 @@ impl MacosKeychainStore {
 impl HostSecretStore for MacosKeychainStore {
     fn store_secret(
         &self,
-        key: HostSecretKey,
+        key: &HostSecretKey,
         value: &HostSecretValue,
     ) -> Result<(), HostSecretError> {
         let account = key.account_name(&self.service);
@@ -30,7 +30,7 @@ impl HostSecretStore for MacosKeychainStore {
             .map_err(|error| HostSecretError::encrypt_failed(BACKEND_NAME, error))
     }
 
-    fn load_secret(&self, key: HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
+    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
         let account = key.account_name(&self.service);
         match get_generic_password(&self.service, &account) {
             Ok(payload) => String::from_utf8(payload)
@@ -42,7 +42,7 @@ impl HostSecretStore for MacosKeychainStore {
         }
     }
 
-    fn delete_secret(&self, key: HostSecretKey) -> Result<(), HostSecretError> {
+    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
         let account = key.account_name(&self.service);
         match delete_generic_password(&self.service, &account) {
             Ok(()) => Ok(()),

@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use reqwest::{StatusCode, header};
 use serde::Deserialize;
-use ta_host_platform::{HostSecretKey, HostSecretStore, HostSecretValue};
+use ta_host_platform::{HostSecretKey, HostSecretStore};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
@@ -18,7 +18,8 @@ const GITHUB_ACCEPT: &str = "application/vnd.github+json";
 const DEFAULT_PAGE_SIZE: u8 = 100;
 const DEFAULT_MAX_PAGES: u8 = 10;
 const SECONDARY_RATE_LIMIT_BACKOFF_SECS: u64 = 60;
-const LEGACY_GITHUB_TOKEN_ENVS: [&str; 2] = ["GH_TOKEN", "GITHUB_TOKEN"];
+const GITHUB_SECRET_SERVICE_NAME: &str = "taugentic.host.secrets";
+const GITHUB_PAT_SECRET_KEY: &str = "work_source.github/github_pat";
 
 #[derive(Clone)]
 pub struct GitHubToken(String);
@@ -40,32 +41,23 @@ pub struct GitHubIssueProvider {
 
 pub trait GitHubCredentialProvider: Send + Sync {
     fn token(&self) -> Result<GitHubToken, WorkSourceError>;
-
-    fn migrate_legacy_env_token(&self) -> Result<GitHubTokenMigration, WorkSourceError> {
-        Ok(GitHubTokenMigration::NoLegacyToken)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GitHubTokenMigration {
-    AlreadyPresent,
-    Migrated { env_var: &'static str },
-    NoLegacyToken,
 }
 
 pub struct HostSecretsGitHubCredentialProvider {
     store: Arc<dyn HostSecretStore>,
+    key: HostSecretKey,
 }
 
 impl HostSecretsGitHubCredentialProvider {
-    pub fn new(store: Arc<dyn HostSecretStore>) -> Self {
-        Self { store }
+    pub fn new(store: Arc<dyn HostSecretStore>) -> Result<Self, WorkSourceError> {
+        let key = HostSecretKey::new(GITHUB_PAT_SECRET_KEY).map_err(map_host_secret_error)?;
+        Ok(Self { store, key })
     }
 
     pub fn from_default_store() -> Result<Self, WorkSourceError> {
-        ta_host_platform::default_host_secret_store()
-            .map(Self::new)
-            .map_err(map_host_secret_error)
+        let store = ta_host_platform::default_host_secret_store(GITHUB_SECRET_SERVICE_NAME)
+            .map_err(map_host_secret_error)?;
+        Self::new(store)
     }
 }
 
@@ -107,42 +99,12 @@ impl fmt::Debug for GitHubToken {
 impl GitHubCredentialProvider for HostSecretsGitHubCredentialProvider {
     fn token(&self) -> Result<GitHubToken, WorkSourceError> {
         self.store
-            .load_secret(HostSecretKey::WORK_SOURCE_GITHUB_PAT)
+            .load_secret(&self.key)
             .map_err(map_host_secret_error)?
             .map(|secret| GitHubToken::new(secret.expose_secret().to_string()))
             .transpose()?
             .ok_or(WorkSourceError::CredentialsMissing)
     }
-
-    fn migrate_legacy_env_token(&self) -> Result<GitHubTokenMigration, WorkSourceError> {
-        if self
-            .store
-            .load_secret(HostSecretKey::WORK_SOURCE_GITHUB_PAT)
-            .map_err(map_host_secret_error)?
-            .is_some()
-        {
-            return Ok(GitHubTokenMigration::AlreadyPresent);
-        }
-
-        let Some((env_var, value)) = legacy_env_token() else {
-            return Ok(GitHubTokenMigration::NoLegacyToken);
-        };
-        let secret = HostSecretValue::new(value).map_err(map_host_secret_error)?;
-        self.store
-            .store_secret(HostSecretKey::WORK_SOURCE_GITHUB_PAT, &secret)
-            .map_err(map_host_secret_error)?;
-        Ok(GitHubTokenMigration::Migrated { env_var })
-    }
-}
-
-fn legacy_env_token() -> Option<(&'static str, String)> {
-    LEGACY_GITHUB_TOKEN_ENVS.iter().find_map(|name| {
-        std::env::var(name)
-            .ok()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty())
-            .map(|value| (*name, value))
-    })
 }
 
 impl GitHubProviderConfig {

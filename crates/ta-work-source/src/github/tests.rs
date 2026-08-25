@@ -141,11 +141,9 @@ async fn rate_limit_error_uses_retry_after() -> Result<(), Box<dyn Error>> {
 #[test]
 fn host_secret_provider_loads_github_pat_from_store() -> Result<(), Box<dyn Error>> {
     let store = std::sync::Arc::new(MockHostSecretStore::default());
-    store.store_secret(
-        HostSecretKey::WORK_SOURCE_GITHUB_PAT,
-        &HostSecretValue::new("ghp_ssot")?,
-    )?;
-    let provider = HostSecretsGitHubCredentialProvider::new(store);
+    let key = HostSecretKey::new(GITHUB_PAT_SECRET_KEY)?;
+    store.store_secret(&key, &HostSecretValue::new("ghp_ssot")?)?;
+    let provider = HostSecretsGitHubCredentialProvider::new(store)?;
 
     assert_eq!(provider.token()?.as_str(), "ghp_ssot");
     Ok(())
@@ -154,7 +152,8 @@ fn host_secret_provider_loads_github_pat_from_store() -> Result<(), Box<dyn Erro
 #[test]
 fn host_secret_provider_reports_missing_github_pat() {
     let store = std::sync::Arc::new(MockHostSecretStore::default());
-    let provider = HostSecretsGitHubCredentialProvider::new(store);
+    let provider = HostSecretsGitHubCredentialProvider::new(store)
+        .expect("GitHub credential provider should accept its canonical secret key");
 
     assert!(matches!(
         provider.token(),
@@ -202,24 +201,24 @@ struct MockHostSecretStore {
 impl HostSecretStore for MockHostSecretStore {
     fn store_secret(
         &self,
-        key: HostSecretKey,
+        key: &HostSecretKey,
         value: &HostSecretValue,
     ) -> Result<(), HostSecretError> {
-        assert_eq!(key, HostSecretKey::WORK_SOURCE_GITHUB_PAT);
+        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
         *self.value.lock().map_err(|_| poison_error())? = Some(value.clone());
         Ok(())
     }
 
-    fn load_secret(&self, key: HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
-        assert_eq!(key, HostSecretKey::WORK_SOURCE_GITHUB_PAT);
+    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
+        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
         self.value
             .lock()
             .map_err(|_| poison_error())
             .map(|value| value.clone())
     }
 
-    fn delete_secret(&self, key: HostSecretKey) -> Result<(), HostSecretError> {
-        assert_eq!(key, HostSecretKey::WORK_SOURCE_GITHUB_PAT);
+    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
+        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
         *self.value.lock().map_err(|_| poison_error())? = None;
         Ok(())
     }

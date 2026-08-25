@@ -2612,8 +2612,6 @@ dependencies = [
  "base64",
  "rand",
  "reqwest 0.12.28",
- "secret-service",
- "security-framework",
  "serde",
  "serde_json",
  "sha2",
@@ -2623,7 +2621,6 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
- "windows",
 ]
 
 [[package]]

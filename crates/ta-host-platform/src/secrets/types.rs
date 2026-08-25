@@ -1,36 +1,31 @@
 use std::fmt;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HostSecretKey {
-    namespace: &'static str,
-    name: &'static str,
-}
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct HostSecretKey(String);
 
 impl HostSecretKey {
-    pub const WORK_SOURCE_GITHUB_PAT: Self = Self {
-        namespace: "work_source.github",
-        name: "github_pat",
-    };
-
-    pub const fn namespace(&self) -> &'static str {
-        self.namespace
+    pub fn new(value: impl Into<String>) -> Result<Self, HostSecretError> {
+        let value = value.into();
+        if value.trim().is_empty() {
+            return Err(HostSecretError::EmptyKey);
+        }
+        Ok(Self(value))
     }
 
-    pub const fn name(&self) -> &'static str {
-        self.name
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     pub(crate) fn account_name(&self, service: &str) -> String {
-        format!("{service}/{}/{}", self.namespace, self.name)
+        format!("{service}/{}", self.0)
     }
 }
 
 impl fmt::Debug for HostSecretKey {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
-            .debug_struct("HostSecretKey")
-            .field("namespace", &self.namespace)
-            .field("name", &self.name)
+            .debug_tuple("HostSecretKey")
+            .field(&self.0)
             .finish()
     }
 }
@@ -42,9 +37,7 @@ impl HostSecretValue {
     pub fn new(value: impl Into<String>) -> Result<Self, HostSecretError> {
         let value = value.into();
         if value.trim().is_empty() {
-            return Err(HostSecretError::EmptySecret {
-                key: HostSecretKey::WORK_SOURCE_GITHUB_PAT,
-            });
+            return Err(HostSecretError::EmptySecret);
         }
         Ok(Self(value))
     }
