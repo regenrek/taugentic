@@ -62,7 +62,13 @@ pub struct WorkflowOrchestratorPolicy {
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 #[ts(export_to = "generated/")]
 pub struct WorkflowRetryPolicy {
+    #[serde(with = "u64_string")]
+    #[schemars(schema_with = "u64_string::json_schema")]
+    #[ts(type = "string")]
     pub initial_ms: u64,
+    #[serde(with = "u64_string")]
+    #[schemars(schema_with = "u64_string::json_schema")]
+    #[ts(type = "string")]
     pub max_ms: u64,
 }
 
@@ -155,11 +161,17 @@ pub struct WorkflowBudgets {
 #[ts(export_to = "generated/")]
 pub struct WorkflowBudgetLimits {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub max_tokens: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(schema_with = "optional_f64_json_schema")]
     pub max_cost_usd: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub max_wall_time_ms: Option<u64>,
 }
 
@@ -221,7 +233,7 @@ pub struct WorkflowLoadedStatus {
     pub runtime_profile_count: u32,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub version: u64,
 }
 
@@ -235,7 +247,7 @@ pub enum WorkflowReloadOutcome {
         prev_name: Option<String>,
         #[serde(with = "u64_string")]
         #[schemars(schema_with = "u64_string::json_schema")]
-        #[ts(as = "u64")]
+        #[ts(type = "string")]
         version: u64,
     },
     Failed {

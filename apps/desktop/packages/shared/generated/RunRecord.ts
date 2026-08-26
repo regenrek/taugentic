@@ -9,4 +9,4 @@ import type { RuntimeProfileId } from "./RuntimeProfileId.js";
 import type { SessionId } from "./SessionId.js";
 import type { WorktreeInfo } from "./WorktreeInfo.js";
 
-export type RunRecord = { id: RunId, sessionId: SessionId, parentRunId?: RunId | null, runtimeProfileId: RuntimeProfileId, objective: string, status: RunStatus, harness: RunHarnessKind, source: RunSource, executionContext: ExecutionContext, startedAtMs?: bigint | null, endedAtMs?: bigint | null, lastEventSeq?: bigint | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, };
+export type RunRecord = { id: RunId, sessionId: SessionId, parentRunId?: RunId | null, runtimeProfileId: RuntimeProfileId, objective: string, status: RunStatus, harness: RunHarnessKind, source: RunSource, executionContext: ExecutionContext, startedAtMs?: string | null, endedAtMs?: string | null, lastEventSeq?: string | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, };

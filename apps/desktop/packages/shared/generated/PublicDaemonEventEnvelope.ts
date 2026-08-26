@@ -2,4 +2,4 @@
 import type { PublicDaemonEvent } from "./PublicDaemonEvent.js";
 import type { SessionId } from "./SessionId.js";
 
-export type PublicDaemonEventEnvelope = { daemonInstanceId: string, sessionId: SessionId, sequence: bigint, occurredAtMs: bigint, event: PublicDaemonEvent, };
+export type PublicDaemonEventEnvelope = { daemonInstanceId: string, sessionId: SessionId, sequence: string, occurredAtMs: string, event: PublicDaemonEvent, };

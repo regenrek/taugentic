@@ -8,7 +8,9 @@ pub mod daemon {
 }
 
 pub use crate::daemon_control::{
-    DaemonControlOperationError, daemon_log_path_for_socket_address, resolve_daemon_binary,
+    DaemonControlOperationError, DesktopRuntimeHandle, DesktopRuntimeStartStage,
+    daemon_log_path_for_socket_address, invoke_runtime_control_bootstrap, resolve_daemon_binary,
+    start_desktop_runtime,
 };
 pub use crate::host::config::daemon_log_path_for_current_env;
 pub use crate::orchestration::{

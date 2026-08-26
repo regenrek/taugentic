@@ -6,4 +6,4 @@ import type { AgentToolCallOutcome } from "./AgentToolCallOutcome.js";
 import type { RunId } from "./RunId.js";
 import type { SessionId } from "./SessionId.js";
 
-export type AgentToolCallRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, toolName: string, input: string, output: string, outcome: AgentToolCallOutcome, startedAtMs: bigint, completedAtMs: bigint, };
+export type AgentToolCallRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, toolName: string, input: string, output: string, outcome: AgentToolCallOutcome, startedAtMs: string, completedAtMs: string, };

@@ -2,7 +2,7 @@
 import type { ActivityCursor } from "./ActivityCursor.js";
 import type { DaemonEventKind } from "./DaemonEventKind.js";
 
-export type ActivityPageQuery = { limit: number, 
+export type ActivityPageQuery = { limit: number,
 /**
  * Durable paging cursor for older activity items from `daemon.activity.page`.
  */

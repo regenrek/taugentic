@@ -228,6 +228,26 @@ pub fn connect_socket(address: &SocketAddress) -> Result<SocketConnection, Socke
         })
 }
 
+/// Connect using the Tokio local-socket implementation. The transport owner
+/// chooses the address here so higher layers never need to know Unix paths or
+/// Windows pipe names.
+pub async fn connect_socket_tokio(
+    address: &SocketAddress,
+) -> Result<TokioSocketConnection, SocketIoError> {
+    let name = imp::stream_name(address).map_err(|source| SocketIoError::InvalidAddress {
+        address: address.to_string(),
+        source,
+    })?;
+    ConnectOptions::new()
+        .name(name)
+        .connect_tokio()
+        .await
+        .map_err(|source| SocketIoError::Connect {
+            address: address.to_string(),
+            source,
+        })
+}
+
 fn prepared_listener_name(address: &SocketAddress) -> Result<Name<'static>, SocketIoError> {
     imp::prepare_bind_address(address).map_err(|source| SocketIoError::Bind {
         address: address.to_string(),

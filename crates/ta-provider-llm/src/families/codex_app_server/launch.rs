@@ -9,6 +9,7 @@ use ta_protocol::{
     wire::{EnvPolicy, ExecutionContext},
 };
 
+use super::process::managed_codex_home;
 use super::{CODEX_PROVIDER_ID, CodexLlmClientError};
 
 pub const CODEX_CACHE_DIR_NAME: &str = ".codex";
@@ -16,6 +17,7 @@ pub const CODEX_CACHE_DIR_NAME: &str = ".codex";
 pub fn build_codex_perimeter_profile_for_context(
     execution_context: &ExecutionContext,
     command: &Path,
+    auth_profile_id: &str,
 ) -> Result<SandboxProfile, CodexLlmClientError> {
     validate_codex_provider_id(CODEX_PROVIDER_ID)?;
     let workspace_cwd = execution_context.effective_cwd.as_path();
@@ -29,7 +31,9 @@ pub fn build_codex_perimeter_profile_for_context(
         ))
     })?;
     let home = home_dir()?;
-    let codex_cache = home.join(CODEX_CACHE_DIR_NAME);
+    let profile_id = ta_protocol::wire::AuthProfileId::new(auth_profile_id)
+        .map_err(|error| CodexLlmClientError::InvalidConfig(error.to_string()))?;
+    let codex_cache = managed_codex_home(&profile_id)?;
     validate_codex_cache_symlink_target(&home, &codex_cache)?;
     let temp_dir = std::env::temp_dir();
     require_absolute_path("temp dir", &temp_dir)?;
@@ -178,7 +182,7 @@ fn validate_codex_cache_symlink_target(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(error) => {
             return Err(CodexLlmClientError::InvalidConfig(format!(
-                "Codex perimeter sandbox could not inspect HOME .codex path: {}: {error}",
+                "Codex perimeter sandbox could not inspect the managed Codex profile path: {}: {error}",
                 codex_cache.display()
             )));
         }
@@ -189,7 +193,7 @@ fn validate_codex_cache_symlink_target(
 
     let target = codex_cache.canonicalize().map_err(|error| {
         CodexLlmClientError::InvalidConfig(format!(
-            "Codex perimeter sandbox refuses unresolved HOME .codex symlink: {}: {error}",
+            "Codex perimeter sandbox refuses an unresolved managed Codex profile symlink: {}: {error}",
             codex_cache.display()
         ))
     })?;
@@ -203,7 +207,7 @@ fn validate_codex_cache_symlink_target(
             .any(|codex_root| target.starts_with(codex_root))
     {
         return Err(CodexLlmClientError::InvalidConfig(format!(
-            "Codex perimeter sandbox refuses HOME .codex symlink target under HOME outside allowed Codex roots: cache={}, target={}, allowed={}",
+            "Codex perimeter sandbox refuses a managed Codex profile symlink target under HOME outside allowed Codex roots: profile={}, target={}, allowed={}",
             codex_cache.display(),
             target.display(),
             display_paths(&allowed_roots),
@@ -226,9 +230,16 @@ fn is_disallowed_home_command_path(path: &Path, home: &Path) -> bool {
 }
 
 fn allowed_codex_roots(home: &Path) -> Vec<PathBuf> {
-    let mut roots = vec![home.join(CODEX_CACHE_DIR_NAME)];
+    let mut roots = vec![
+        home.join(CODEX_CACHE_DIR_NAME),
+        home.join(".taugentic").join("codex-profiles"),
+    ];
     if let Ok(canonical_home) = home.canonicalize() {
         push_unique_path(&mut roots, canonical_home.join(CODEX_CACHE_DIR_NAME));
+        push_unique_path(
+            &mut roots,
+            canonical_home.join(".taugentic").join("codex-profiles"),
+        );
     }
     roots
 }
@@ -295,6 +306,7 @@ fn build_codex_perimeter_profile(
             env_policy: EnvPolicy::workspace_default(),
         },
         command,
+        "profile-test",
     )
 }
 
@@ -324,8 +336,11 @@ mod tests {
         assert!(profile.reads_path(Path::new("/usr/bin/env")));
         assert!(profile.reads_path(command));
         assert!(profile.writes_path(&std::env::temp_dir()));
-        if let Some(home) = std::env::var_os("HOME") {
-            let cache = PathBuf::from(home).join(CODEX_CACHE_DIR_NAME);
+        if std::env::var_os("HOME").is_some() {
+            let cache = managed_codex_home(
+                &ta_protocol::wire::AuthProfileId::new("profile-test").expect("auth profile id"),
+            )
+            .expect("managed Codex profile home");
             assert!(profile.reads_path(&cache));
             assert!(profile.writes_path(&cache));
             assert!(!profile.writes_path(&cache.with_file_name(".ssh")));
@@ -462,8 +477,14 @@ mod tests {
                 .expect("create sensitive command parent");
             fs::write(&command_target, "#!/bin/sh\n").expect("write codex target");
 
-            let codex_cache = home.join(CODEX_CACHE_DIR_NAME);
-            unix_fs::symlink(&target, &codex_cache).expect("symlink .codex to sensitive dir");
+            let codex_cache = managed_codex_home(
+                &ta_protocol::wire::AuthProfileId::new("profile-test").expect("auth profile id"),
+            )
+            .expect("managed Codex profile home");
+            fs::create_dir_all(codex_cache.parent().expect("managed profile parent"))
+                .expect("create managed profile parent");
+            unix_fs::symlink(&target, &codex_cache)
+                .expect("symlink managed profile to sensitive dir");
             let command = codex_cache.join("bin").join("codex");
             let error = build_codex_perimeter_profile(&std::env::temp_dir(), &command)
                 .expect_err("sensitive HOME .codex symlink should fail closed");
@@ -471,7 +492,7 @@ mod tests {
             assert!(matches!(
                 error,
                 CodexLlmClientError::InvalidConfig(message)
-                    if message.contains("HOME .codex symlink target under HOME outside allowed Codex roots")
+                    if message.contains("managed Codex profile symlink target under HOME outside allowed Codex roots")
                         && message.contains(sensitive_dir)
             ));
             fs::remove_file(&codex_cache).expect("remove .codex symlink");

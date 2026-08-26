@@ -7,98 +7,14 @@
         "deny"
       ],
       "type": "string"
-    },
-    "RuntimeProfileAuthProfilePatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
-    },
-    "RuntimeProfileModelIdPatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "authProfile": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RuntimeProfileAuthProfilePatch"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "displayName": {
       "type": [
         "string",
         "null"
-      ]
-    },
-    "modelId": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RuntimeProfileModelIdPatch"
-        },
-        {
-          "type": "null"
-        }
       ]
     },
     "policyMode": {
@@ -109,12 +25,6 @@
         {
           "type": "null"
         }
-      ]
-    },
-    "providerId": {
-      "type": [
-        "string",
-        "null"
       ]
     }
   },

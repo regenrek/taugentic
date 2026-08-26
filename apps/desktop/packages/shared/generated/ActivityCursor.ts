@@ -6,4 +6,4 @@
  * This is session-scoped durable paging only. It is not the live resume cursor
  * used by `daemon.subscribe`.
  */
-export type ActivityCursor = { sequence: bigint, };
+export type ActivityCursor = { sequence: string, };

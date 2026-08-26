@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentRuntimeModelId, AgentStreamTurnId, CapsuleResult, ConflictSummary, ContextReceipt,
-    ExecutionContext, OutputContractKind, PublicDaemonEvent, RunId, RuntimeProfileId, SessionId,
-    TokenUsageTotals, ValidationError, WorkspaceMode, WorktreeCleanupPolicy, WorktreeInfo,
-    u64_string,
+    AgentRuntimeModelId, AgentRuntimeSelection, AgentRuntimeStrategyId, AgentStreamTurnId,
+    AuthProfileId, CapsuleResult, ConflictSummary, ContextReceipt, ExecutionContext,
+    OutputContractKind, PublicDaemonEvent, RunId, RuntimeProfileId, SessionId, TokenUsageTotals,
+    ValidationError, WorkspaceMode, WorktreeCleanupPolicy, WorktreeInfo, u64_string,
 };
 
 /// Default page size for native run-list requests.
@@ -19,6 +19,7 @@ pub const NATIVE_RUN_LIST_MAX_LIMIT: u32 = 200;
 #[ts(export_to = "generated/")]
 pub enum RunSource {
     User {
+        route: RunExecutionRoute,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[serde(rename = "outputContract")]
         #[ts(rename = "outputContract")]
@@ -33,6 +34,7 @@ pub enum RunSource {
         recipe_id: Option<String>,
     },
     NativeSubagent {
+        route: RunExecutionRoute,
         #[serde(rename = "parentRunId")]
         #[ts(rename = "parentRunId")]
         parent_run_id: RunId,
@@ -65,6 +67,7 @@ pub enum RunSource {
         planned_write_files: Vec<String>,
     },
     Forked {
+        route: RunExecutionRoute,
         #[serde(rename = "parentRunId")]
         #[ts(rename = "parentRunId")]
         parent_run_id: RunId,
@@ -72,19 +75,32 @@ pub enum RunSource {
         #[serde(with = "u64_string")]
         #[schemars(schema_with = "u64_string::json_schema")]
         #[ts(rename = "parentEventSeq")]
-        #[ts(as = "u64")]
+        #[ts(type = "string")]
         parent_event_seq: u64,
     },
 }
 
-impl Default for RunSource {
-    fn default() -> Self {
-        Self::User {
-            output_contract: None,
-            model_id: None,
-            recipe_id: None,
+impl RunSource {
+    pub fn route(&self) -> &RunExecutionRoute {
+        match self {
+            Self::User { route, .. }
+            | Self::NativeSubagent { route, .. }
+            | Self::Forked { route, .. } => route,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct RunExecutionRoute {
+    pub runtime_profile_id: RuntimeProfileId,
+    pub provider_id: AgentRuntimeStrategyId,
+    pub harness: RunHarnessKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<AgentRuntimeModelId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_profile_id: Option<AuthProfileId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -171,17 +187,17 @@ pub struct RunRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub started_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub ended_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub last_event_seq: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_info: Option<WorktreeInfo>,
@@ -191,9 +207,10 @@ pub struct RunRecord {
     pub conflict_summary: Option<ConflictSummary>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
+#[derive(Default)]
 pub struct RunListFilter {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub harness: Option<Vec<RunHarnessKind>>,
@@ -230,17 +247,17 @@ pub struct RunListEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub started_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub ended_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub last_event_seq: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub objective_preview: Option<String>,
@@ -261,15 +278,24 @@ pub struct ListNativeRunsResult {
     pub next_cursor: Option<String>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
 pub struct StartRunCommand {
     pub objective: String,
+    pub selection: AgentRuntimeSelection,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model_id: Option<AgentRuntimeModelId>,
+}
+
+impl StartRunCommand {
+    pub fn new(objective: impl Into<String>, selection: AgentRuntimeSelection) -> Self {
+        Self {
+            objective: objective.into(),
+            selection,
+            recipe_id: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
@@ -306,7 +332,7 @@ pub struct ResumeRunResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub latest_event_seq: Option<u64>,
 }
 
@@ -318,7 +344,7 @@ pub struct ForkRunRequest {
     pub parent_run_id: RunId,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub parent_event_seq: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub objective: Option<String>,
@@ -344,7 +370,7 @@ pub struct SubscribeRunEventsRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub after_seq: Option<u64>,
 }
 
@@ -358,7 +384,7 @@ pub struct SubscribeRunEventsRequest {
 pub struct RunEventDelta {
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub seq: u64,
     pub event: PublicDaemonEvent,
 }
@@ -399,7 +425,7 @@ pub struct SubscribeRunEventsResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub latest_event_seq: Option<u64>,
 }
 

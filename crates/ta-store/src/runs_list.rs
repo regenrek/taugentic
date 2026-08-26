@@ -240,6 +240,7 @@ mod tests {
             &mut store,
             RunProjection {
                 source: RunSource::NativeSubagent {
+                    route: crate::default_test_run_source().route().clone(),
                     parent_run_id: parent_id.clone(),
                     parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                     output_contract: None,
@@ -359,7 +360,7 @@ mod tests {
             objective: format!("Objective {id}"),
             status,
             harness: RunHarnessKind::Native,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,

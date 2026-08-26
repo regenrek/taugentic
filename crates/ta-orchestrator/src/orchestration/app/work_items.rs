@@ -78,8 +78,7 @@ where
         session_id: &crate::SessionId,
         params: &WorkItemTriggerParams,
     ) -> Result<AppDeferredMutationResult<WorkItemTriggerResult>, AppServiceError> {
-        let workflow = self
-            .workflow
+        self.workflow
             .current()
             .ok_or(AppServiceError::WorkflowNotLoaded)?;
         let item = {
@@ -93,11 +92,7 @@ where
             &StartRunCommand {
                 objective: objective_for_work_item(&item),
                 recipe_id: params.recipe_id.clone(),
-                model_id: workflow
-                    .runtime_profiles
-                    .get("implementer")
-                    .or_else(|| workflow.runtime_profiles.values().next())
-                    .map(|profile| profile.model.clone()),
+                selection: params.selection.clone(),
             },
         )?;
         let updated = {

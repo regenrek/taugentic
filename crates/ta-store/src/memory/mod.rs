@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use ta_protocol::wire::RunHarnessKind;
 use ta_protocol::wire::{
     AgentTurnRow, ApprovalId, ApprovalRequest, ArtifactEvent, ArtifactId, ArtifactSummary,
     ContextReceipt, DaemonEvent, ReceiptId, RunId, RunStatus, SessionId, WorkspaceId,
 };
-#[cfg(test)]
-use ta_protocol::wire::{RunHarnessKind, RunSource};
 use ta_work_source::{SourceCursor, WorkItem, WorkItemKey};
 
 #[cfg(any(test, feature = "test-support"))]
@@ -31,9 +31,11 @@ use crate::{
 };
 
 mod artifacts;
+mod auth_profiles;
 mod checkpoints;
 mod commits;
 mod events;
+mod navigation;
 mod principals;
 mod projections;
 mod receipts;
@@ -53,6 +55,10 @@ pub struct InMemoryStore {
     principals: BTreeMap<String, PrincipalProjection>,
     #[serde(default)]
     workspaces: BTreeMap<WorkspaceId, WorkspaceProjection>,
+    #[serde(default)]
+    navigation_states: BTreeMap<String, crate::NavigationState>,
+    #[serde(default)]
+    auth_profiles: BTreeMap<ta_protocol::wire::AuthProfileId, crate::AuthProfileProjection>,
     sessions: BTreeMap<SessionId, SessionProjection>,
     runs: BTreeMap<RunId, RunProjection>,
     checkpoints: BTreeMap<RunId, BTreeMap<u64, CheckpointRecord>>,
@@ -78,6 +84,8 @@ impl InMemoryStore {
             events: BTreeMap::new(),
             principals: BTreeMap::new(),
             workspaces: BTreeMap::new(),
+            navigation_states: BTreeMap::new(),
+            auth_profiles: BTreeMap::new(),
             sessions: BTreeMap::new(),
             runs: BTreeMap::new(),
             checkpoints: BTreeMap::new(),

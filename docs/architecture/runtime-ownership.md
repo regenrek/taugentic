@@ -43,8 +43,9 @@ to that package.
 - sessions, runs, steps, and conversation branches
 - assistant and tool event normalization
 - approvals and execution policy orchestration
-- provider profiles, authentication state, and extensions
-- harness selection and child-agent execution
+- durable `AuthProfile` metadata and authentication state
+- validation of each command's explicit runtime, auth-profile, and model selection against current durable auth state
+- immutable per-run routes, harness selection, and child-agent execution
 - scheduling, cancellation, replay, and restart recovery
 - daemon configuration and runtime-control state
 - transport sessions, subscriptions, cursors, and backlog policy
@@ -52,12 +53,17 @@ to that package.
 The daemon is the first fix owner when a correct client intent produces wrong
 runtime behavior.
 
+The daemon does not store a current runtime selection. `StartRunCommand` and
+`WorkItemTriggerParams` carry a complete `AgentRuntimeSelection`. The run
+service validates that selection immediately before scheduling and freezes one
+`RunExecutionRoute`. Logout therefore invalidates later commands that name the
+disconnected `AuthProfile`, without a second selected-route state to clear.
+
 ## Domain crates own durable rules
 
 - `ta-store` owns record shapes, repositories, and durable integrity.
 - `ta-policy` evaluates protocol-owned approval scopes.
-- `ta-model-catalog` owns native-harness model metadata, validation, and default
-  selection.
+- `ta-model-catalog` owns native-harness model metadata and validation.
 - `ta-host-platform` owns host facts, OS detection, and capability probes.
 
 The orchestrator composes these crates. It must not copy their rules into host
@@ -66,8 +72,9 @@ or UI code.
 ## Adapters own vendor translation
 
 Provider adapters own vendor protocol details, vendor process startup, and
-translation into protocol-owned runtime events. They do not own runtime profile
-semantics, harness selection, approval policy, or model catalog policy.
+translation into protocol-owned runtime events. An adapter receives an
+`AuthProfileId` for each run and uses that key to access credentials. Adapters
+do not select accounts, runtime profiles, harnesses, or models.
 
 ## Runtime control has one owner
 
@@ -97,3 +104,14 @@ Place a fix at the first owner that produced the wrong value:
 - Fix vendor translation in the matching provider adapter.
 
 Delete competing implementations when you move a rule to its canonical owner.
+# Native desktop runtime control
+
+`ta-orchestrator::daemon_control` is the only runtime-control owner. CLI uses
+the protocol bootstrap command. `ta-desktop-native` uses the same locked Rust
+operation, which returns an opaque private runtime-control handle: attached and
+background starts have no release action; a locally started daemon retains its
+exact identity only inside `daemon_control`. Close invokes the handle under the
+same lock and never exposes identity, mode, or policy to JavaScript. The bridge
+passes the private control status to `ta-daemon-client` and does not derive a
+socket address. Secrets remain exclusively in the client's private, atomic
+store.

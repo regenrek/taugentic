@@ -4,11 +4,16 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use ta_protocol::wire::{TrustState, Workspace, WorkspaceId, WorkspacePath};
+use ta_protocol::wire::{
+    NavigationProject, NavigationSnapshot, ProjectId, TrustState, Workspace, WorkspaceId,
+    WorkspacePath,
+};
 use ta_store::{PersistenceStore, WorkspaceProjection};
 use uuid::Uuid;
 
-use super::{AppService, AppServiceError, OpenWorkspaceRequest};
+use super::{
+    AppService, AppServiceError, OpenWorkspaceRequest, sanitize_session_owner_principal_id,
+};
 
 impl<S> AppService<S>
 where
@@ -82,6 +87,55 @@ where
         Ok(store
             .upsert_workspace(WorkspaceProjection::new(workspace))?
             .into_inner())
+    }
+
+    pub fn open_project(
+        &self,
+        owner_principal_id: &str,
+        path: WorkspacePath,
+        trust_acknowledged: bool,
+    ) -> Result<(ProjectId, NavigationSnapshot), AppServiceError> {
+        let owner_principal_id = sanitize_session_owner_principal_id(owner_principal_id)?;
+        let workspace = self.open_workspace(&OpenWorkspaceRequest {
+            path,
+            trust_acknowledged,
+        })?;
+        let workspace_id = workspace.id.clone();
+
+        let mut store = self.store.lock().expect("app store should not be poisoned");
+        let mut state = store.navigation_state(&owner_principal_id)?;
+        let project_id = state
+            .projects
+            .iter()
+            .filter(|project| project.workspace_ids.contains(&workspace_id))
+            .map(|project| project.id.clone())
+            .min_by(|left, right| left.as_str().cmp(right.as_str()))
+            .unwrap_or_else(|| {
+                let project_id = ProjectId::new(format!("project-{}", Uuid::new_v4().simple()))
+                    .expect("generated project id should be valid");
+                state.projects.push(NavigationProject {
+                    id: project_id.clone(),
+                    space_id: None,
+                    title: workspace.display_name.clone(),
+                    workspace_ids: vec![workspace_id.clone()],
+                });
+                project_id
+            });
+
+        for project in &mut state.projects {
+            if project.id == project_id {
+                if !project.workspace_ids.contains(&workspace_id) {
+                    project.workspace_ids.push(workspace_id.clone());
+                }
+            } else {
+                project.workspace_ids.retain(|id| id != &workspace_id);
+            }
+        }
+        store.save_navigation_state(&owner_principal_id, state)?;
+        drop(store);
+
+        let snapshot = self.navigation_snapshot(&owner_principal_id, None)?;
+        Ok((project_id, snapshot))
     }
 
     pub fn list_workspaces(&self) -> Result<Vec<Workspace>, AppServiceError> {

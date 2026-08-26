@@ -4,23 +4,35 @@
     {
       "properties": {
         "kind": {
-          "const": "set",
+          "const": "project",
           "type": "string"
         },
-        "value": {
+        "projectId": {
           "type": "string"
         }
       },
       "required": [
         "kind",
-        "value"
+        "projectId"
       ],
       "type": "object"
     },
     {
       "properties": {
         "kind": {
-          "const": "clear",
+          "const": "standalone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "temporary",
           "type": "string"
         }
       },
@@ -30,5 +42,5 @@
       "type": "object"
     }
   ],
-  "title": "RuntimeProfileAuthProfilePatch"
+  "title": "ConversationPlacement"
 }

@@ -1,0 +1,28 @@
+[package]
+name = "ta-desktop-native"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+napi.workspace = true
+napi-derive.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ta-daemon-client = { path = "../ta-daemon-client" }
+ta-jsonrpc = { path = "../ta-jsonrpc" }
+ta-orchestrator = { path = "../ta-orchestrator" }
+ta-protocol = { path = "../ta-protocol" }
+
+[build-dependencies]
+napi-build.workspace = true
+
+[dev-dependencies]
+ta-observability = { path = "../ta-observability" }

@@ -402,6 +402,73 @@ fn daemon_session_open_creates_idle_session_summary() {
 }
 
 #[test]
+fn daemon_session_open_creates_project_conversation_in_one_request() {
+    let state = boot(test_config());
+    let principal = state
+        .app
+        .resolve_or_issue_session_principal("test-client", None)
+        .expect("principal should issue");
+    let project_snapshot = state
+        .app
+        .apply_navigation_intent(
+            &principal.principal_id,
+            crate::DaemonNavigationIntent::CreateProject {
+                space_id: None,
+                title: "Desktop".to_string(),
+                workspace_ids: vec![ta_store::default_test_workspace_id()],
+            },
+        )
+        .expect("project should create");
+    let project_id = project_snapshot.projects[0].id.clone();
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some("test-client".to_string()),
+        client_credential: Some(principal.client_credential),
+        principal_id: Some(principal.principal_id.clone()),
+        attached_session_id: None,
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(311),
+            method: METHOD_DAEMON_SESSION_OPEN.to_string(),
+            params: Some(
+                serde_json::to_value(DaemonSessionOpenParams {
+                    title: "Project conversation".to_string(),
+                    workspace: WorkspaceSelector::ByProject {
+                        project_id: project_id.clone(),
+                        workspace_id: ta_store::default_test_workspace_id(),
+                    },
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect("project session should open");
+
+    let opened: DaemonSessionOpenResult =
+        serde_json::from_value(response).expect("response should deserialize");
+    let snapshot = state
+        .app
+        .navigation_snapshot(&principal.principal_id, None)
+        .expect("navigation should load");
+    assert!(snapshot.conversations.iter().any(|conversation| {
+        conversation.session_id == opened.session.id
+            && conversation.placement
+                == (crate::ConversationPlacement::Project {
+                    project_id: project_id.clone(),
+                })
+    }));
+}
+
+#[test]
 fn daemon_session_open_rejects_blank_title() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));

@@ -4,14 +4,14 @@
       "additionalProperties": false,
       "properties": {
         "initial_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         },
         "max_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         }
       },
       "required": [

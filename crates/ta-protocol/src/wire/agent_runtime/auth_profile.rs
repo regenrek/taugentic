@@ -4,6 +4,7 @@ use ts_rs::TS;
 
 use crate::wire::{AgentRuntimeStrategyId, identifier};
 
+identifier!(AuthMethodId, "auth method");
 identifier!(AuthProfileId, "auth profile");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -31,8 +32,13 @@ pub enum AuthProfileLoginMethod {
 #[ts(export_to = "generated/")]
 pub struct AuthProfileRef {
     pub id: AuthProfileId,
+    pub auth_method_id: AuthMethodId,
     pub provider_id: AgentRuntimeStrategyId,
     pub display_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account_hint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_tier: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -45,6 +51,17 @@ pub enum AuthProfileManagementMode {
     Environment,
     None,
     Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AuthMethodRef {
+    pub id: AuthMethodId,
+    pub provider_id: AgentRuntimeStrategyId,
+    pub display_name: String,
+    pub management_mode: AuthProfileManagementMode,
+    pub supports_multiple_profiles: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

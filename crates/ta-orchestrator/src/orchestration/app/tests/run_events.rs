@@ -169,39 +169,64 @@ fn subscribe_run_events_redacts_resolved_approval_for_replay_and_live() {
 }
 
 #[test]
-fn subscribe_run_events_rejects_external_harness() {
+fn replay_run_events_accepts_non_native_harnesses() {
     let service = AppService::bootstrap().expect("app service should boot");
     let session = service
         .open_session(
             TEST_CLIENT_NAME,
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
-                title: "External replay".to_string(),
+                title: "Non-native replay".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
-    seed_run_projection(
-        &service,
-        RunProjection {
-            harness: RunHarnessKind::Acp,
-            ..native_run_projection("run-external", &session.id, RunStatus::Running, 100)
-        },
-    );
+    for (index, (run_id, harness)) in [
+        ("run-codex-replay", RunHarnessKind::CodexAppServer),
+        ("run-acp-replay", RunHarnessKind::Acp),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let sequence = 100 + index as u64;
+        let run_id = RunId::new(run_id).expect("run id");
+        seed_run_projection(
+            &service,
+            RunProjection {
+                id: run_id.clone(),
+                harness,
+                status: RunStatus::Completed,
+                last_event_seq: Some(sequence),
+                ..native_run_projection(
+                    run_id.as_str(),
+                    &session.id,
+                    RunStatus::Completed,
+                    sequence * 10,
+                )
+            },
+        );
+        append_and_publish_run_event(
+            &service,
+            &session.id,
+            &run_id,
+            sequence,
+            "non-native completed",
+        );
 
-    let result = service.replay_run_events(
-        &session.id,
-        &SubscribeRunEventsRequest {
-            session_id: session.id.clone(),
-            run_id: RunId::new("run-external").expect("run id"),
-            after_seq: None,
-        },
-    );
+        let replay = service
+            .replay_run_events(
+                &session.id,
+                &SubscribeRunEventsRequest {
+                    session_id: session.id.clone(),
+                    run_id,
+                    after_seq: None,
+                },
+            )
+            .expect("non-native events should replay through the canonical run stream");
 
-    assert!(matches!(
-        result,
-        Err(AppServiceError::RunNotNativeHarness(run_id)) if run_id == "run-external"
-    ));
+        assert_eq!(replay.events.len(), 1);
+        assert_eq!(replay.events[0].seq, sequence);
+    }
 }
 
 #[test]
@@ -556,39 +581,63 @@ fn subscribe_run_events_emits_lagged_before_overflow_close() {
 }
 
 #[test]
-fn subscribe_run_events_rejects_external_harness_for_live_splice() {
+fn subscribe_run_events_accepts_codex_app_server_harness_for_live_splice() {
     let service = AppService::bootstrap().expect("app service should boot");
     let session = service
         .open_session(
             TEST_CLIENT_NAME,
             TEST_OWNER_PRINCIPAL_ID,
             &OpenSessionRequest {
-                title: "External live splice".to_string(),
+                title: "Codex app server live splice".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
-    seed_run_projection(
+    let selection = crate::orchestration::test_runtime_selection(&service, "runtime-codex-allow");
+    let run = service
+        .seed_running_run_for_tests(&session.id, "Codex live stream", &selection)
+        .expect("Codex app server run should start");
+    assert_eq!(
+        service
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
+            .run(&run.body.id)
+            .expect("run lookup should succeed")
+            .expect("run should exist")
+            .harness,
+        RunHarnessKind::CodexAppServer
+    );
+
+    let subscription = service
+        .subscribe_run_events(
+            &session.id,
+            &SubscribeRunEventsRequest {
+                session_id: session.id.clone(),
+                run_id: run.body.id.clone(),
+                after_seq: None,
+            },
+        )
+        .expect("Codex app server run should subscribe through the canonical run stream");
+    let next_sequence = subscription.latest_event_seq.expect("seed event sequence") + 1;
+    append_and_publish_run_event(
         &service,
-        RunProjection {
-            harness: RunHarnessKind::Acp,
-            ..native_run_projection("run-external-live", &session.id, RunStatus::Running, 100)
-        },
-    );
-
-    let result = service.subscribe_run_events(
         &session.id,
-        &SubscribeRunEventsRequest {
-            session_id: session.id.clone(),
-            run_id: RunId::new("run-external-live").expect("run id"),
-            after_seq: None,
-        },
+        &run.body.id,
+        next_sequence,
+        "codex live event",
     );
 
-    assert!(matches!(
-        result,
-        Err(AppServiceError::RunNotNativeHarness(run_id)) if run_id == "run-external-live"
-    ));
+    assert!(subscription.live);
+    assert_eq!(
+        subscription
+            .receiver
+            .recv_timeout(std::time::Duration::from_millis(200))
+            .expect("Codex live event should arrive")
+            .expect("Codex live event item should be valid")
+            .seq,
+        next_sequence
+    );
 }
 
 #[test]

@@ -5,35 +5,35 @@ import type { RunSummary } from "./RunSummary.js";
 import type { SessionOverviewLaneStatus } from "./SessionOverviewLaneStatus.js";
 import type { SessionSummary } from "./SessionSummary.js";
 
-export type SessionOverview = { session: SessionSummary, 
+export type SessionOverview = { session: SessionSummary,
 /**
  * Most recent run summary for this session, if one exists.
  */
-latestRun?: RunSummary | null, 
+latestRun?: RunSummary | null,
 /**
  * Daemon-owned lane projection for operator-facing session/run state.
  */
-laneStatus: SessionOverviewLaneStatus, 
+laneStatus: SessionOverviewLaneStatus,
 /**
  * True when the session currently owns active or waiting work.
  */
-isActive: boolean, 
+isActive: boolean,
 /**
  * Approval attention state owned by the daemon read model.
  */
-approvalAttention: ApprovalAttentionState, 
+approvalAttention: ApprovalAttentionState,
 /**
  * Count of approvals currently awaiting a decision for this session.
  */
-pendingApprovalCount: number, 
+pendingApprovalCount: number,
 /**
  * Timestamp of the newest daemon-owned activity item for this session.
  */
-lastActivityAtMs?: bigint | null, 
+lastActivityAtMs?: string | null,
 /**
  * Compact daemon-owned preview of the newest activity item for this session.
  */
-lastEventPreview?: string | null, 
+lastEventPreview?: string | null,
 /**
  * Recent public daemon activity for this session, ordered newest first.
  */

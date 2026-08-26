@@ -141,6 +141,7 @@ where
                 status,
                 harness: RunHarnessKind::Native,
                 source: RunSource::NativeSubagent {
+                    route: parent.source.route().clone(),
                     parent_run_id: parent.id.clone(),
                     parent_turn_id: request.parent_turn_id,
                     output_contract: resolved_request.output_contract,
@@ -182,7 +183,7 @@ where
                 &run.id,
                 &run.objective,
                 &runtime_profile,
-                execution_overrides_for_run(&run),
+                run.source.route(),
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
@@ -222,9 +223,13 @@ mod tests {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Native parent");
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent native run".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent native run".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let stored_parent = execution
             .store
@@ -299,6 +304,7 @@ mod tests {
         assert_eq!(
             stored_child.source,
             RunSource::NativeSubagent {
+                route: stored_parent.source.route().clone(),
                 parent_run_id: parent.run.id,
                 parent_turn_id,
                 output_contract: None,
@@ -316,9 +322,13 @@ mod tests {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Native parent");
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent native run".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent native run".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let child = execution
             .start_native_child_run(
@@ -409,9 +419,13 @@ mod tests {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "External parent");
-        select_runtime_profile(&app, "runtime-codex-safe");
+        let selection = validated_runtime_selection(&app, "runtime-codex-safe");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent external run".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent external run".to_string(),
+                selection,
+            )
             .expect("parent should seed");
 
         let error = execution
@@ -440,9 +454,13 @@ mod tests {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Native parent");
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent native run".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent native run".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         attach_noop_handle(&execution, &parent.run.id);
         let queued_child = execution
@@ -492,6 +510,7 @@ mod tests {
                         status: RunStatus::Running,
                         harness: RunHarnessKind::Native,
                         source: RunSource::NativeSubagent {
+                            route: ta_store::default_test_run_source().route().clone(),
                             parent_run_id: parent.run.id.clone(),
                             parent_turn_id: ta_protocol::wire::AgentStreamTurnId::new(
                                 "turn-running",
@@ -536,6 +555,7 @@ mod tests {
                         status: RunStatus::WaitingForApproval,
                         harness: RunHarnessKind::Native,
                         source: RunSource::NativeSubagent {
+                            route: ta_store::default_test_run_source().route().clone(),
                             parent_run_id: parent.run.id.clone(),
                             parent_turn_id: ta_protocol::wire::AgentStreamTurnId::new(
                                 "turn-waiting",

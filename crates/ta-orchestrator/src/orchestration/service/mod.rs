@@ -11,7 +11,10 @@ use ta_store::EventRecord;
 use uuid::Uuid;
 
 pub(crate) use crate::host::event_hub::to_event_cursor;
-use crate::host::event_hub::{RuntimeEventHub, RuntimeEventPublisher, RuntimeEventSubscription};
+use crate::host::event_hub::{
+    NavigationInvalidationSubscription, RuntimeEventHub, RuntimeEventPublisher,
+    RuntimeEventSubscription,
+};
 use crate::orchestration::agent_runtime::{
     StrategyRegistry, built_in_agent_runtime_strategies, built_in_runtime_profiles,
 };
@@ -62,24 +65,6 @@ impl RuntimeService {
         let daemon_instance_id = Uuid::new_v4().to_string();
         let event_publisher =
             RuntimeEventPublisher::new(daemon_instance_id.clone(), event_hub.clone());
-        match tokio::runtime::Handle::try_current() {
-            Ok(runtime) => {
-                if let Err(error) =
-                    ta_provider_llm::auth::openai::initialize_default_subscription_auth(runtime)
-                {
-                    tracing::warn!(
-                        error = %error,
-                        "OpenAI ChatGPT subscription auth did not initialize during daemon bootstrap"
-                    );
-                }
-            }
-            Err(error) => {
-                tracing::warn!(
-                    error = %error,
-                    "OpenAI ChatGPT subscription auth skipped because daemon bootstrap has no Tokio runtime"
-                );
-            }
-        }
         let agent_runtime_strategy_registry =
             StrategyRegistry::from_registered(built_in_agent_runtime_strategies())
                 .expect("provider registry should initialize");
@@ -114,6 +99,23 @@ impl RuntimeService {
     #[cfg_attr(not(test), allow(dead_code))]
     pub fn publish_record(&self, record: &EventRecord) -> DaemonEventEnvelope {
         self.event_hub.publish(&self.daemon_instance_id, record)
+    }
+
+    pub(crate) fn register_navigation_session(&self, session_id: &SessionId, principal_id: &str) {
+        self.event_hub
+            .register_navigation_session(session_id, principal_id);
+    }
+
+    pub(crate) fn publish_navigation_for_principal(&self, principal_id: &str) {
+        self.event_hub
+            .publish_navigation_for_principal(principal_id);
+    }
+
+    pub(crate) fn subscribe_navigation(
+        &self,
+        principal_id: &str,
+    ) -> NavigationInvalidationSubscription {
+        self.event_hub.subscribe_navigation(principal_id)
     }
 
     pub fn subscribe_events(

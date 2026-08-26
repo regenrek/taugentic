@@ -195,6 +195,15 @@ pub enum RunCommands {
     Start {
         #[arg(long, value_name = "SESSION_ID")]
         session: String,
+        /// Runtime profile to validate for this run.
+        #[arg(long = "runtime-profile", value_name = "RUNTIME_PROFILE_ID")]
+        runtime_profile: String,
+        /// Model to dispatch for this run.
+        #[arg(long, value_name = "MODEL_ID")]
+        model: String,
+        /// Connected authentication profile required by the runtime profile.
+        #[arg(long = "auth-profile", value_name = "AUTH_PROFILE_ID")]
+        auth_profile: Option<String>,
         #[arg(value_name = "OBJECTIVE")]
         objective: String,
     },

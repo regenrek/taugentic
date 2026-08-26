@@ -68,3 +68,23 @@ fn open_workspace_rejects_files_before_persistence() {
 
     assert!(matches!(error, AppServiceError::WorkspaceNotADirectory(_)));
 }
+
+#[test]
+fn open_project_creates_one_project_and_reuses_it_on_reopen() {
+    let service = AppService::bootstrap().expect("service should bootstrap");
+    let dir = tempfile::tempdir().expect("tempdir should create");
+    let path = WorkspacePath::canonicalize_existing(dir.path()).expect("workspace path");
+
+    let (project_id, first_snapshot) = service
+        .open_project("project-open-owner", path.clone(), true)
+        .expect("trusted project should open");
+    let (reopened_id, reopened_snapshot) = service
+        .open_project("project-open-owner", path, false)
+        .expect("trusted project should reopen");
+
+    assert_eq!(reopened_id, project_id);
+    assert_eq!(first_snapshot.projects.len(), 1);
+    assert_eq!(reopened_snapshot.projects.len(), 1);
+    assert_eq!(reopened_snapshot.projects[0].id, project_id);
+    assert_eq!(reopened_snapshot.projects[0].workspace_ids.len(), 1);
+}

@@ -4,4 +4,4 @@ import type { RunId } from "./RunId.js";
 import type { RunStatus } from "./RunStatus.js";
 import type { WorktreeInfo } from "./WorktreeInfo.js";
 
-export type RunTimelineRun = { runId: RunId, parentRunId?: RunId | null, depth: number, status: RunStatus, recipeId?: string | null, outputContract?: OutputContractKind | null, startedAtMs?: bigint | null, endedAtMs?: bigint | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, };
+export type RunTimelineRun = { runId: RunId, parentRunId?: RunId | null, depth: number, status: RunStatus, recipeId?: string | null, outputContract?: OutputContractKind | null, startedAtMs?: string | null, endedAtMs?: string | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, };

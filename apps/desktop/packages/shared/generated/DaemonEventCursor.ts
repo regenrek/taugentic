@@ -7,4 +7,4 @@ import type { SessionId } from "./SessionId.js";
  *
  * This cursor is daemon-epoch-aware and scoped to one attached session.
  */
-export type DaemonEventCursor = { daemonInstanceId: string, sessionId: SessionId, sequence: bigint, };
+export type DaemonEventCursor = { daemonInstanceId: string, sessionId: SessionId, sequence: string, };

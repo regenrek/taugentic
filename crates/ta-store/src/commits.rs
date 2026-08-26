@@ -160,7 +160,7 @@ pub struct CheckpointPersistCommitResult {
 #[cfg(test)]
 mod tests {
     use ta_protocol::wire::{
-        PermissionPolicy, RunHarnessKind, RunId, RunSource, RunStatus, RuntimeProfileId, SessionId,
+        PermissionPolicy, RunHarnessKind, RunId, RunStatus, RuntimeProfileId, SessionId,
     };
 
     use super::*;
@@ -175,7 +175,7 @@ mod tests {
             objective: "Keep the resolved context".to_string(),
             status: RunStatus::Running,
             harness: RunHarnessKind::Native,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,

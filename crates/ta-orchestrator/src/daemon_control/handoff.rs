@@ -1,7 +1,7 @@
 use std::{
     ffi::OsString,
     io,
-    process::Command,
+    process::{Child, Command},
     thread,
     time::{Duration, Instant},
 };
@@ -23,7 +23,9 @@ use crate::{
     resolve_daemon_binary, start_runtime_control_transition, stop_background_service,
     write_runtime_control_ownership,
 };
-use ta_jsonrpc::{ClientConfig, JsonRpcClient, JsonRpcClientError, SocketAddress};
+use ta_jsonrpc::{
+    ClientConfig, JsonRpcClient, JsonRpcClientError, PersistentJsonRpcClient, SocketAddress,
+};
 use ta_protocol::local_control::RuntimeControlHandoffCommand;
 use ta_protocol::wire::{
     DaemonClientCapabilities, DaemonControlErrorCode, DaemonControlStatusResult,
@@ -89,6 +91,8 @@ pub enum RuntimeControlHandoffError {
     MissingExpectedTransitionOpId,
     #[error("runtime-control handoff is missing expected ownership identity")]
     MissingExpectedOwnership,
+    #[error("failed to wait for the desktop-owned local daemon")]
+    ChildWait(#[source] io::Error),
 }
 
 pub fn parse_runtime_control_handoff_action<I>(
@@ -207,6 +211,57 @@ where
         spawn_stop_local_runtime_handoff,
         spawn_stop_background_runtime_handoff,
     )
+}
+
+/// Release the exact daemon process created by desktop bootstrap. This is not
+/// a handoff: the desktop still owns the Child, so it can synchronously stop
+/// and reap that one process while the runtime-control lock keeps replacement
+/// ownership from racing the decision.
+pub(super) fn release_desktop_local_runtime_if_matches<F>(
+    expected_daemon_instance_id: &str,
+    child: &mut Child,
+    config: &RuntimeControlHandoffConfig,
+    mut observe_state: F,
+) -> Result<(), RuntimeControlHandoffError>
+where
+    F: FnMut() -> Result<RuntimeControlObservedState, BackgroundServiceControlError>,
+{
+    let _lock = acquire_runtime_control_lock()?;
+    let observed = observe_state()?;
+    let Some(ownership) =
+        desktop_local_stop_ownership(&observed, expected_daemon_instance_id, child.id())
+    else {
+        return Ok(());
+    };
+    let authenticated_config = RuntimeControlHandoffConfig {
+        socket_address: config.socket_address.clone(),
+        launch_config: config
+            .launch_config
+            .with_control_token(Some(ownership.control_token.clone())),
+        expected_transition_op_id: None,
+        expected_daemon_instance_id: Some(ownership.daemon_instance_id.clone()),
+        expected_control_token: Some(ownership.control_token.clone()),
+    };
+    stop_current_daemon_via_control_token(&authenticated_config)?;
+    child
+        .wait()
+        .map_err(RuntimeControlHandoffError::ChildWait)?;
+    clear_expected_runtime_control_ownership(&authenticated_config)?;
+    Ok(())
+}
+
+fn desktop_local_stop_ownership<'a>(
+    observed: &'a RuntimeControlObservedState,
+    expected_daemon_instance_id: &str,
+    child_process_id: u32,
+) -> Option<&'a RuntimeControlOwnershipRecord> {
+    let status = observed.daemon_status.as_ref()?;
+    let ownership = observed.ownership.as_ref()?;
+    (ownership.runtime_mode == DaemonRuntimeMode::Local
+        && status.daemon_instance_id == expected_daemon_instance_id
+        && ownership.daemon_instance_id == expected_daemon_instance_id
+        && ownership.process_id == Some(child_process_id))
+    .then_some(ownership)
 }
 
 fn request_stop_handoff_with<FObserve, FLocal, FBackground>(
@@ -820,26 +875,34 @@ fn stop_current_daemon_via_control_token(
             "stop-current-runtime without control token",
         ));
     };
-    let client = daemon_client(&config.socket_address);
-    client.call::<_, DaemonInitializeResult>(
-        METHOD_DAEMON_INITIALIZE,
-        &DaemonInitializeParams {
-            client_name: HANDOFF_CLIENT_NAME.to_string(),
-            client_credential: None,
-            client_version: env!("CARGO_PKG_VERSION").to_string(),
-            protocol_version: crate::DAEMON_PROTOCOL_VERSION.to_string(),
-            capabilities: DaemonClientCapabilities {
-                notifications: true,
-                event_subscriptions: true,
+    let client = PersistentJsonRpcClient::connect(ClientConfig {
+        service_name: HANDOFF_CLIENT_NAME.to_string(),
+        socket_address: config.socket_address.clone(),
+        io_timeout: HANDOFF_REQUEST_TIMEOUT,
+    })?;
+    let result = (|| {
+        client.call::<_, DaemonInitializeResult>(
+            METHOD_DAEMON_INITIALIZE,
+            &DaemonInitializeParams {
+                client_name: HANDOFF_CLIENT_NAME.to_string(),
+                client_credential: None,
+                client_version: env!("CARGO_PKG_VERSION").to_string(),
+                protocol_version: crate::DAEMON_PROTOCOL_VERSION.to_string(),
+                capabilities: DaemonClientCapabilities {
+                    notifications: true,
+                    event_subscriptions: true,
+                },
             },
-        },
-    )?;
-    client.call::<_, InternalDaemonStopResult>(
-        METHOD_DAEMON_INTERNAL_STOP,
-        &InternalDaemonStopParams {
-            control_token: control_token.as_str().to_string(),
-        },
-    )?;
+        )?;
+        client.call::<_, InternalDaemonStopResult>(
+            METHOD_DAEMON_INTERNAL_STOP,
+            &InternalDaemonStopParams {
+                control_token: control_token.as_str().to_string(),
+            },
+        )
+    })();
+    client.close();
+    result?;
     Ok(())
 }
 
@@ -1188,6 +1251,24 @@ mod tests {
                     .contains(&ta_protocol::wire::DaemonControlAction::Stop)
             );
         });
+    }
+
+    #[test]
+    fn desktop_local_lease_matches_only_the_exact_owned_local_instance() {
+        let local = observed_state(DaemonRuntimeMode::Local);
+        assert!(desktop_local_stop_ownership(&local, "daemon-1", 42).is_some());
+        assert!(desktop_local_stop_ownership(&local, "daemon-1", 43).is_none());
+
+        let mut replaced = local.clone();
+        replaced
+            .daemon_status
+            .as_mut()
+            .expect("status")
+            .daemon_instance_id = "daemon-replaced".to_string();
+        assert!(desktop_local_stop_ownership(&replaced, "daemon-1", 42).is_none());
+
+        let background = observed_state(DaemonRuntimeMode::Background);
+        assert!(desktop_local_stop_ownership(&background, "daemon-1", 42).is_none());
     }
 
     #[test]

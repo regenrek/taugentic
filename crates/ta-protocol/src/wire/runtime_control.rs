@@ -20,6 +20,33 @@ pub enum DaemonActualRuntimeMode {
     Foreign,
 }
 
+/// Redacted connection state for the desktop lifecycle projection.
+///
+/// The desktop receives only whether it may render current snapshots. Daemon
+/// identity, cursors, transport details, and recovery mechanics remain in the
+/// Rust client boundary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum DesktopDaemonLifecycleStatus {
+    Ready,
+    SnapshotRehydrationRequired,
+    Disconnected,
+}
+
+/// Safe desktop-facing lifecycle signal.
+///
+/// `invalidated` tells the presentation cache to refresh daemon snapshots;
+/// it intentionally carries neither event payload nor resume lineage.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct DesktopDaemonLifecycleProjection {
+    pub status: DesktopDaemonLifecycleStatus,
+    pub invalidated: bool,
+    pub foreign_runtime_restricted: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]

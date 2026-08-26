@@ -11,10 +11,6 @@ pub enum ExecutionError {
         "feature requires OpenAI Platform organization: connect a Platform organization to the ChatGPT subscription account"
     )]
     FeatureRequiresPlatformOrg,
-    #[error(
-        "This OpenAI runtime profile uses an OpenAI Platform API key. Select an `OpenAI ChatGPT *` runtime profile to use a ChatGPT subscription, or configure OPENAI_API_KEY."
-    )]
-    SubscriptionAuthIncompatibleWithNativeClient,
     #[error("network error: {0}")]
     Network(String),
     #[error("rate limited: {detail}")]
@@ -63,9 +59,6 @@ impl From<ta_provider_llm::error::LlmClientError> for ExecutionError {
             LlmClientError::Auth(detail) => Self::Auth(detail),
             LlmClientError::CredentialsMissing(detail) => Self::CredentialsMissing(detail),
             LlmClientError::FeatureRequiresPlatformOrg => Self::FeatureRequiresPlatformOrg,
-            LlmClientError::SubscriptionAuthIncompatibleWithNativeClient => {
-                Self::SubscriptionAuthIncompatibleWithNativeClient
-            }
             LlmClientError::Network(detail) => Self::Network(detail),
             LlmClientError::RateLimited {
                 retry_after_ms,

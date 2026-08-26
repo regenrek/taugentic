@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Redacted connection state for the desktop lifecycle projection.\n\nThe desktop receives only whether it may render current snapshots. Daemon\nidentity, cursors, transport details, and recovery mechanics remain in the\nRust client boundary.",
+  "enum": [
+    "ready",
+    "snapshotRehydrationRequired",
+    "disconnected"
+  ],
+  "title": "DesktopDaemonLifecycleStatus",
+  "type": "string"
+}

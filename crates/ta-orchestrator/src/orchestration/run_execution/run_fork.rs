@@ -161,6 +161,7 @@ where
                 status,
                 harness: RunHarnessKind::Native,
                 source: RunSource::Forked {
+                    route: parent.source.route().clone(),
                     parent_run_id: parent.id.clone(),
                     parent_event_seq: request.parent_event_seq,
                 },
@@ -196,7 +197,7 @@ where
                 &run.id,
                 &run.objective,
                 &runtime_profile,
-                ExecutionRequestOverrides::default(),
+                run.source.route(),
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
@@ -303,11 +304,19 @@ mod tests {
     fn fork_run_records_lineage_for_active_native_parent() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Active fork");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
+        let parent_route = stored_run(&execution, &parent.run.id)
+            .source
+            .route()
+            .clone();
         let parent_event_seq = last_event_seq(&execution, &parent.run.id);
 
         let fork = execution
@@ -323,6 +332,7 @@ mod tests {
         assert_eq!(
             fork.run.source,
             RunSource::Forked {
+                route: parent_route,
                 parent_run_id: parent.run.id.clone(),
                 parent_event_seq,
             }
@@ -341,10 +351,14 @@ mod tests {
     fn cancel_parent_does_not_cancel_forked_run() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Forked run parent cancel");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         attach_noop_handle(&execution, &parent.run.id);
         let parent_event_seq = last_event_seq(&execution, &parent.run.id);
@@ -381,10 +395,14 @@ mod tests {
     fn cancel_forked_run_does_not_cancel_parent() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Forked run cancel");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let parent_event_seq = last_event_seq(&execution, &parent.run.id);
         let fork = execution
@@ -413,10 +431,14 @@ mod tests {
     fn cancel_running_forked_run_does_not_cancel_parent() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Running fork cancel");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let parent_event_seq = last_event_seq(&execution, &parent.run.id);
         let fork = execution
@@ -485,10 +507,14 @@ mod tests {
     fn fork_run_allows_completed_and_failed_native_parents() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Terminal fork");
         let completed = execution
-            .seed_running_run_for_tests(session.id.clone(), "Completed parent".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Completed parent".to_string(),
+                selection,
+            )
             .expect("completed parent should seed");
         let completed_event_seq = last_event_seq(&execution, &completed.run.id);
         set_parent_status(
@@ -517,7 +543,7 @@ mod tests {
                         objective: "Failed parent".to_string(),
                         status: RunStatus::Failed,
                         harness: RunHarnessKind::Native,
-                        source: RunSource::default(),
+                        source: ta_store::default_test_run_source(),
                         execution_context: ta_store::default_test_execution_context(),
                         result: None,
                         contract_violation: None,
@@ -560,10 +586,14 @@ mod tests {
     fn fork_run_rejects_invalid_parent_event_seq() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Invalid fork point");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let last_event_seq = last_event_seq(&execution, &parent.run.id);
 
@@ -581,10 +611,14 @@ mod tests {
     fn fork_run_rejects_external_parent_harness() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-codex-safe");
+        let selection = validated_runtime_selection(&app, "runtime-codex-safe");
         let session = open_session(&app, "External fork");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "External parent".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "External parent".to_string(),
+                selection,
+            )
             .expect("parent should seed");
         let parent_event_seq = last_event_seq(&execution, &parent.run.id);
 
@@ -602,10 +636,14 @@ mod tests {
     fn fork_run_rejects_non_run_event_fork_point() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
+        let selection = validated_runtime_selection(&app, "runtime-openai-safe");
         let session = open_session(&app, "Non-run fork point");
         let parent = execution
-            .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+            .seed_running_run_for_tests(
+                session.id.clone(),
+                "Parent objective".to_string(),
+                selection,
+            )
             .expect("parent should seed");
 
         let error = execution

@@ -3,4 +3,4 @@ import type { WorkItemKey } from "./WorkItemKey.js";
 import type { WorkItemStatus } from "./WorkItemStatus.js";
 import type { WorkSource } from "./WorkSource.js";
 
-export type WorkItem = { key: WorkItemKey, source: WorkSource, externalId: string, title: string, body: string, labels: Array<string>, url: string, fetchedAtMs: bigint, status: WorkItemStatus, triggeredRunId?: string | null, };
+export type WorkItem = { key: WorkItemKey, source: WorkSource, externalId: string, title: string, body: string, labels: Array<string>, url: string, fetchedAtMs: number, status: WorkItemStatus, triggeredRunId?: string | null, };

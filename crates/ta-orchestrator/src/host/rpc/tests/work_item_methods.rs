@@ -107,6 +107,7 @@ fn daemon_work_item_trigger_reuses_run_start_path() {
             params: Some(
                 serde_json::to_value(WorkItemTriggerParams {
                     key: item.key.clone(),
+                    selection: explicit_runtime_selection(&state),
                     recipe_id: Some("debug-agent".to_string()),
                 })
                 .expect("params"),
@@ -168,6 +169,7 @@ fn daemon_work_item_trigger_requires_loaded_workflow() {
                 params: Some(
                     serde_json::to_value(WorkItemTriggerParams {
                         key: item.key.clone(),
+                        selection: explicit_runtime_selection(&state),
                         recipe_id: Some("debug-agent".to_string()),
                     })
                     .expect("params"),

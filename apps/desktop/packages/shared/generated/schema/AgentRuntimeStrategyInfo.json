@@ -40,11 +40,15 @@
     "AgentRuntimeModelRef": {
       "properties": {
         "contextLimit": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "displayName": {
@@ -54,11 +58,15 @@
           "type": "string"
         },
         "inputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "inputModalities": {
@@ -68,11 +76,15 @@
           "type": "array"
         },
         "outputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "reasoning": {

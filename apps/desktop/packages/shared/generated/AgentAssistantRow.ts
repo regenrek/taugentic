@@ -4,4 +4,4 @@ import type { AgentStreamTurnId } from "./AgentStreamTurnId.js";
 import type { RunId } from "./RunId.js";
 import type { SessionId } from "./SessionId.js";
 
-export type AgentAssistantRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, startedAtMs: bigint, completedAtMs: bigint, text: string, };
+export type AgentAssistantRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, startedAtMs: string, completedAtMs: string, text: string, };

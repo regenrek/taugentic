@@ -7,7 +7,7 @@ use rusqlite::Connection;
 use ta_protocol::wire::{
     AgentStreamEvent, AgentStreamFrame, AgentToolCallOutcome, ApprovalDecision, ApprovalEvent,
     ApprovalId, ApprovalRequest, ApprovalScope, ArtifactId, ArtifactKind, DaemonEvent,
-    DaemonEventKind, RunHarnessKind, RunId, RunSource, RunStatus, SessionId, SessionStatus,
+    DaemonEventKind, RunHarnessKind, RunId, RunStatus, SessionId, SessionStatus,
 };
 
 use super::*;

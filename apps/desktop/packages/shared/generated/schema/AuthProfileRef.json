@@ -1,11 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "accountHint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authMethodId": {
+      "type": "string"
+    },
     "displayName": {
       "type": "string"
     },
     "id": {
       "type": "string"
+    },
+    "planTier": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "providerId": {
       "type": "string"
@@ -13,6 +28,7 @@
   },
   "required": [
     "id",
+    "authMethodId",
     "providerId",
     "displayName"
   ],

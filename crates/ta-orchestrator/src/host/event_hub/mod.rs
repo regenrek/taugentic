@@ -22,6 +22,18 @@ pub(crate) struct RuntimeEventSubscription {
     pub has_gap: bool,
 }
 
+#[derive(Debug)]
+pub(crate) struct NavigationInvalidationSubscription {
+    pub cleanup: NavigationInvalidationSubscriptionCleanup,
+    pub receiver: mpsc::Receiver<()>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct NavigationInvalidationSubscriptionCleanup {
+    id: u64,
+    inner: Weak<Mutex<RuntimeEventHubState>>,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimeEventSubscriptionCleanup {
     id: u64,
@@ -52,6 +64,8 @@ struct RuntimeEventHubState {
     latest_sequence_by_session: BTreeMap<SessionId, u64>,
     backlogs_by_session: BTreeMap<SessionId, SessionEventBacklog>,
     subscribers: Vec<RuntimeEventSubscriber>,
+    navigation_principals_by_session: BTreeMap<SessionId, String>,
+    navigation_subscribers: Vec<NavigationInvalidationSubscriber>,
 }
 
 #[derive(Debug)]
@@ -61,6 +75,13 @@ struct RuntimeEventSubscriber {
     kinds: Vec<DaemonEventKind>,
     sender: mpsc::SyncSender<DaemonEventEnvelope>,
     overflowed: Arc<AtomicBool>,
+}
+
+#[derive(Debug)]
+struct NavigationInvalidationSubscriber {
+    id: u64,
+    principal_id: String,
+    sender: mpsc::SyncSender<()>,
 }
 
 #[derive(Debug, Default)]
@@ -77,8 +98,64 @@ impl RuntimeEventHub {
                 latest_sequence_by_session: BTreeMap::new(),
                 backlogs_by_session: BTreeMap::new(),
                 subscribers: Vec::new(),
+                navigation_principals_by_session: BTreeMap::new(),
+                navigation_subscribers: Vec::new(),
             })),
         }
+    }
+
+    pub(crate) fn register_navigation_session(&self, session_id: &SessionId, principal_id: &str) {
+        self.inner
+            .lock()
+            .expect("runtime event hub should not be poisoned")
+            .navigation_principals_by_session
+            .insert(session_id.clone(), principal_id.to_string());
+    }
+
+    pub(crate) fn subscribe_navigation(
+        &self,
+        principal_id: &str,
+    ) -> NavigationInvalidationSubscription {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("runtime event hub should not be poisoned");
+        let subscriber_id = inner.next_subscriber_id;
+        inner.next_subscriber_id = inner
+            .next_subscriber_id
+            .checked_add(1)
+            .expect("subscriber id space exhausted");
+        inner
+            .navigation_subscribers
+            .push(NavigationInvalidationSubscriber {
+                id: subscriber_id,
+                principal_id: principal_id.to_string(),
+                sender,
+            });
+        NavigationInvalidationSubscription {
+            cleanup: NavigationInvalidationSubscriptionCleanup {
+                id: subscriber_id,
+                inner: Arc::downgrade(&self.inner),
+            },
+            receiver,
+        }
+    }
+
+    pub(crate) fn publish_navigation_for_principal(&self, principal_id: &str) {
+        let mut inner = self
+            .inner
+            .lock()
+            .expect("runtime event hub should not be poisoned");
+        inner.navigation_subscribers.retain(|subscriber| {
+            if subscriber.principal_id != principal_id {
+                return true;
+            }
+            match subscriber.sender.try_send(()) {
+                Ok(()) | Err(mpsc::TrySendError::Full(())) => true,
+                Err(mpsc::TrySendError::Disconnected(())) => false,
+            }
+        });
     }
 
     #[cfg_attr(not(test), allow(dead_code))]
@@ -136,6 +213,27 @@ impl RuntimeEventHub {
                 }
             }
         });
+        if matches!(
+            record.payload,
+            crate::DaemonEvent::Session(_)
+                | crate::DaemonEvent::Run(_)
+                | crate::DaemonEvent::RunReconciledOnStartup(_)
+                | crate::DaemonEvent::Approval(_)
+        ) && let Some(principal_id) = inner
+            .navigation_principals_by_session
+            .get(&record.session_id)
+            .cloned()
+        {
+            inner.navigation_subscribers.retain(|subscriber| {
+                if subscriber.principal_id != principal_id {
+                    return true;
+                }
+                match subscriber.sender.try_send(()) {
+                    Ok(()) | Err(mpsc::TrySendError::Full(())) => true,
+                    Err(mpsc::TrySendError::Disconnected(())) => false,
+                }
+            });
+        }
         envelope
     }
 
@@ -233,6 +331,19 @@ impl Drop for RuntimeEventSubscriptionCleanup {
             .lock()
             .expect("runtime event hub should not be poisoned")
             .subscribers
+            .retain(|subscriber| subscriber.id != self.id);
+    }
+}
+
+impl Drop for NavigationInvalidationSubscriptionCleanup {
+    fn drop(&mut self) {
+        let Some(inner) = self.inner.upgrade() else {
+            return;
+        };
+        inner
+            .lock()
+            .expect("runtime event hub should not be poisoned")
+            .navigation_subscribers
             .retain(|subscriber| subscriber.id != self.id);
     }
 }

@@ -1,5 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ta_protocol::wire::{ConversationPlacement, ProjectId};
 use ta_store::{CommitSessionOpen, PersistenceStore};
 use uuid::Uuid;
 
@@ -7,7 +8,9 @@ use crate::{ListSessionsQuery, SessionAuthority, SessionSummary};
 
 use super::{
     AppService, AppServiceError, AttachSessionResult, OpenSessionRequest, OpenSessionResult,
-    SessionPrincipalResolution, project_session_summary,
+    SessionPrincipalResolution,
+    navigation::{upsert_conversation, validate_conversation_placement},
+    project_session_summary,
 };
 
 impl<S> AppService<S>
@@ -69,6 +72,36 @@ where
         owner_principal_id: &str,
         request: &OpenSessionRequest,
     ) -> Result<OpenSessionResult, AppServiceError> {
+        self.open_session_with_placement(
+            owner_client_name,
+            owner_principal_id,
+            request,
+            ConversationPlacement::Standalone,
+        )
+    }
+
+    pub fn open_project_session(
+        &self,
+        owner_client_name: &str,
+        owner_principal_id: &str,
+        request: &OpenSessionRequest,
+        project_id: ProjectId,
+    ) -> Result<OpenSessionResult, AppServiceError> {
+        self.open_session_with_placement(
+            owner_client_name,
+            owner_principal_id,
+            request,
+            ConversationPlacement::Project { project_id },
+        )
+    }
+
+    fn open_session_with_placement(
+        &self,
+        owner_client_name: &str,
+        owner_principal_id: &str,
+        request: &OpenSessionRequest,
+        placement: ConversationPlacement,
+    ) -> Result<OpenSessionResult, AppServiceError> {
         let title = request.title.trim();
         if title.is_empty() {
             return Err(AppServiceError::EmptySessionTitle);
@@ -81,7 +114,7 @@ where
             id: crate::SessionId::new(format!("session-{}", Uuid::new_v4().simple()))
                 .expect("generated session id should be valid"),
             owner_client_name,
-            owner_principal_id,
+            owner_principal_id: owner_principal_id.clone(),
             current_session_authority_hash: hash_secret(session_authority.as_str()),
             current_session_authority_generation: 0,
             recovery_session_authority_hash: None,
@@ -98,10 +131,21 @@ where
                 request.workspace_id.as_str().to_string(),
             ));
         }
+        let mut navigation = if matches!(placement, ConversationPlacement::Project { .. }) {
+            let navigation = store.navigation_state(&owner_principal_id)?;
+            validate_conversation_placement(&navigation, &placement, &request.workspace_id)?;
+            Some(navigation)
+        } else {
+            None
+        };
         store.commit_session_open(CommitSessionOpen {
-            session,
+            session: session.clone(),
             occurred_at_ms: current_time_ms(),
         })?;
+        if let Some(mut navigation) = navigation.take() {
+            upsert_conversation(&mut navigation, session.id, placement);
+            store.save_navigation_state(&owner_principal_id, navigation)?;
+        }
         Ok(OpenSessionResult {
             session: summary,
             session_authority,

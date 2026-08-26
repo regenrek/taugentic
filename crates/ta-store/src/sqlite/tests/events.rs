@@ -123,7 +123,7 @@ fn approval_lookup_distinguishes_pending_resolved_and_not_found_after_reopen() {
                     .expect("runtime profile id"),
                 objective: "Lookup approvals".to_string(),
                 status: RunStatus::WaitingForApproval,
-                source: RunSource::default(),
+                source: crate::default_test_run_source(),
                 execution_context: crate::default_test_execution_context(),
                 harness: RunHarnessKind::Unknown,
                 result: None,

@@ -8,8 +8,9 @@ use std::{thread, time::Duration};
 use serde::Serialize;
 
 use crate::{
-    DaemonEventEnvelope, DaemonStatusResult, JsonRpcHandlerFuture, JsonRpcHandlerResult,
-    JsonRpcRequest, JsonRpcServerSession, METHOD_DAEMON_EVENT, METHOD_DAEMON_RUN_EVENT,
+    DaemonEventEnvelope, DaemonNavigationInvalidatedParams, DaemonStatusResult,
+    JsonRpcHandlerFuture, JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession,
+    METHOD_DAEMON_EVENT, METHOD_DAEMON_NAVIGATION_INVALIDATED, METHOD_DAEMON_RUN_EVENT,
     PublicDaemonEventEnvelope, RunEventStreamItem, RunEventStreamPayload, RunId, connect_socket,
     host::bootstrap::BootstrapState, internal_error,
 };
@@ -188,6 +189,45 @@ fn spawn_run_event_forwarder(
     }
 }
 
+fn spawn_navigation_invalidation_forwarder(
+    session: JsonRpcServerSession,
+    subscription: crate::host::event_hub::NavigationInvalidationSubscription,
+) {
+    let connection_id = session.connection_id();
+    let thread_name = format!("daemon-navigation-forwarder-{connection_id}");
+    let spawn_result = thread::Builder::new().name(thread_name).spawn(move || {
+        let crate::host::event_hub::NavigationInvalidationSubscription { cleanup, receiver } =
+            subscription;
+        let _cleanup = cleanup;
+        while receiver.recv().is_ok() {
+            if !session.is_open() {
+                return;
+            }
+            let params = match serde_json::to_value(DaemonNavigationInvalidatedParams {}) {
+                Ok(params) => params,
+                Err(_) => {
+                    session.close();
+                    return;
+                }
+            };
+            if session
+                .send_notification(METHOD_DAEMON_NAVIGATION_INVALIDATED, Some(params))
+                .is_err()
+            {
+                return;
+            }
+        }
+    });
+
+    if let Err(error) = spawn_result {
+        tracing::error!(
+            taugentic.connection_id = connection_id as u64,
+            error = %error,
+            "failed to spawn daemon navigation forwarder thread",
+        );
+    }
+}
+
 fn defer_publish_records(
     session: &JsonRpcServerSession,
     runtime: crate::RuntimeService,
@@ -197,6 +237,16 @@ fn defer_publish_records(
         for record in records {
             runtime.publish_record(&record);
         }
+    }));
+}
+
+fn defer_navigation_invalidation(
+    session: &JsonRpcServerSession,
+    runtime: crate::RuntimeService,
+    principal_id: String,
+) {
+    session.defer_until_response(Box::new(move || {
+        runtime.publish_navigation_for_principal(&principal_id);
     }));
 }
 

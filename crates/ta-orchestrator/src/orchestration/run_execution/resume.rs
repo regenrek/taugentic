@@ -78,9 +78,8 @@ mod tests {
     fn resume_run_returns_live_native_state() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
         let session = open_session(&app, "Resume native run");
-        let run = ensure_running_run(&execution, &session.id, "Resume me");
+        let run = ensure_running_run(&app, &execution, &session.id, "Resume me");
 
         let resumed = execution
             .resume_run(
@@ -102,9 +101,8 @@ mod tests {
     fn resume_run_rejects_terminal_native_run() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
         let session = open_session(&app, "Terminal resume");
-        let run = ensure_running_run(&execution, &session.id, "Finish me");
+        let run = ensure_running_run(&app, &execution, &session.id, "Finish me");
         {
             let mut store = execution
                 .store
@@ -145,9 +143,14 @@ mod tests {
     fn resume_run_rejects_external_harness_run() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-codex-safe");
         let session = open_session(&app, "External resume");
-        let run = ensure_running_run(&execution, &session.id, "External run");
+        let run = ensure_running_run_with_profile(
+            &app,
+            &execution,
+            &session.id,
+            "External run",
+            "runtime-codex-safe",
+        );
 
         let error = execution
             .resume_run(session.id.clone(), ResumeRunRequest { run_id: run.id })
@@ -160,9 +163,8 @@ mod tests {
     fn resume_run_preserves_native_subagent_parent_linkage() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        select_runtime_profile(&app, "runtime-openai-safe");
         let session = open_session(&app, "Child resume");
-        let parent = ensure_running_run(&execution, &session.id, "Parent run");
+        let parent = ensure_running_run(&app, &execution, &session.id, "Parent run");
         let child_run_id = RunId::new("run-child-resume").expect("child run id");
         {
             let mut store = execution
@@ -180,6 +182,7 @@ mod tests {
                         status: RunStatus::Running,
                         harness: RunHarnessKind::Native,
                         source: RunSource::NativeSubagent {
+                            route: ta_store::default_test_run_source().route().clone(),
                             parent_run_id: parent.id.clone(),
                             parent_turn_id: ta_protocol::wire::AgentStreamTurnId::new(
                                 "turn-child-resume",

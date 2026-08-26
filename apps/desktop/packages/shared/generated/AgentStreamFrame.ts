@@ -2,4 +2,4 @@
 import type { AgentToolCallOutcome } from "./AgentToolCallOutcome.js";
 import type { RuntimeLanePendingState } from "./RuntimeLanePendingState.js";
 
-export type AgentStreamFrame = { "kind": "assistantTurnStarted" } | { "kind": "assistantMessageDelta", delta: string, } | { "kind": "assistantTurnCompleted" } | { "kind": "toolCallStarted", toolName: string, input: string, } | { "kind": "toolCallProgressed", delta: string, } | { "kind": "toolCallCompleted", outcome: AgentToolCallOutcome, } | { "kind": "pendingStateChanged", state: RuntimeLanePendingState, } | { "kind": "tokenUsageUpdated", totalTokens: bigint | null, modelContextWindow: bigint | null, };
+export type AgentStreamFrame = { "kind": "assistantTurnStarted" } | { "kind": "assistantMessageDelta", delta: string, } | { "kind": "assistantTurnCompleted" } | { "kind": "toolCallStarted", toolName: string, input: string, } | { "kind": "toolCallProgressed", delta: string, } | { "kind": "toolCallCompleted", outcome: AgentToolCallOutcome, } | { "kind": "pendingStateChanged", state: RuntimeLanePendingState, } | { "kind": "tokenUsageUpdated", totalTokens: string | null, modelContextWindow: string | null, };

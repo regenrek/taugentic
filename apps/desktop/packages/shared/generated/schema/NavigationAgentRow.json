@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "awaitingApproval": {
+      "type": "boolean"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "title",
+    "active",
+    "awaitingApproval"
+  ],
+  "title": "NavigationAgentRow",
+  "type": "object"
+}

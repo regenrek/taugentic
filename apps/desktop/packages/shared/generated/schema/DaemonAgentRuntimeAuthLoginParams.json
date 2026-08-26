@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "authProfileId": {
+    "authMethodId": {
       "type": "string"
     }
   },
   "required": [
-    "authProfileId"
+    "authMethodId"
   ],
   "title": "DaemonAgentRuntimeAuthLoginParams",
   "type": "object"

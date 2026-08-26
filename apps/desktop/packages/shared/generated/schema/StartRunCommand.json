@@ -1,12 +1,31 @@
 {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "modelId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "objective": {
       "type": "string"
     },
@@ -15,10 +34,14 @@
         "string",
         "null"
       ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
   "required": [
-    "objective"
+    "objective",
+    "selection"
   ],
   "title": "StartRunCommand",
   "type": "object"

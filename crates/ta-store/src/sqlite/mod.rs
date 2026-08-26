@@ -34,10 +34,12 @@ use crate::{
 
 mod agent_turns;
 mod artifacts;
+mod auth_profiles;
 mod checkpoints;
 mod commits;
 mod events;
 mod migrations;
+mod navigation;
 mod principals;
 mod receipts;
 mod runs_list;

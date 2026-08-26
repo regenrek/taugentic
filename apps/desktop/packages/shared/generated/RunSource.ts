@@ -2,8 +2,9 @@
 import type { AgentRuntimeModelId } from "./AgentRuntimeModelId.js";
 import type { AgentStreamTurnId } from "./AgentStreamTurnId.js";
 import type { OutputContractKind } from "./OutputContractKind.js";
+import type { RunExecutionRoute } from "./RunExecutionRoute.js";
 import type { RunId } from "./RunId.js";
 import type { WorkspaceMode } from "./WorkspaceMode.js";
 import type { WorktreeCleanupPolicy } from "./WorktreeCleanupPolicy.js";
 
-export type RunSource = { "kind": "user", outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, } | { "kind": "nativeSubagent", parentRunId: RunId, parentTurnId: AgentStreamTurnId, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, } | { "kind": "forked", parentRunId: RunId, parentEventSeq: bigint, };
+export type RunSource = { "kind": "user", route: RunExecutionRoute, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, } | { "kind": "nativeSubagent", route: RunExecutionRoute, parentRunId: RunId, parentTurnId: AgentStreamTurnId, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, } | { "kind": "forked", route: RunExecutionRoute, parentRunId: RunId, parentEventSeq: string, };

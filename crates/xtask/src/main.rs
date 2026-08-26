@@ -27,6 +27,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     match command.as_str() {
         "print-layout" => print_layout(),
+        "print-daemon-binary" => print_daemon_binary()?,
         "export-ts" => export_ts()?,
         "export-schema" => export_schema()?,
         "export-protocol" => export_protocol()?,
@@ -50,9 +51,19 @@ fn print_layout() {
     println!("crates/ta-store");
 }
 
+fn print_daemon_binary() -> Result<(), Box<dyn Error>> {
+    let cargo_target_directory = cargo_metadata_target_directory()?;
+    println!(
+        "{}",
+        cargo_binary_path(&cargo_target_directory, "ta-daemon").display()
+    );
+    Ok(())
+}
+
 fn print_help() {
     println!("xtask commands:");
     println!("  print-layout");
+    println!("  print-daemon-binary");
     println!("  export-ts");
     println!("  export-schema");
     println!("  export-protocol");
@@ -120,8 +131,9 @@ fn smoke_local_daemon() -> Result<(), Box<dyn Error>> {
 
     let socket_name = unique_smoke_socket_name();
     let isolated_home = unique_smoke_home_dir(&socket_name);
-    let daemon_binary = cargo_binary_path("ta-daemon");
-    let cli_binary = cargo_binary_path("ta-cli");
+    let cargo_target_directory = cargo_metadata_target_directory()?;
+    let daemon_binary = cargo_binary_path(&cargo_target_directory, "ta-daemon");
+    let cli_binary = cargo_binary_path(&cargo_target_directory, "ta-cli");
 
     {
         let mut daemon = ManagedDaemon::spawn(&daemon_binary, &socket_name, &isolated_home)?;
@@ -188,19 +200,39 @@ fn temp_export_root() -> PathBuf {
     env::temp_dir().join(format!("taugentic-protocol-export-{}", process::id()))
 }
 
-fn target_dir() -> PathBuf {
-    env::var_os("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| repo_root().join("target"))
+fn cargo_metadata_target_directory() -> Result<PathBuf, Box<dyn Error>> {
+    let output = cargo_command(["metadata", "--no-deps", "--format-version=1"])?.output()?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "cargo metadata failed: {}",
+            format_cli_failure(output.status, &output.stdout, &output.stderr)
+        )
+        .into());
+    }
+
+    cargo_metadata_target_directory_from_output(&output.stdout).map_err(Into::into)
 }
 
-fn cargo_binary_path(binary_name: &str) -> PathBuf {
+fn cargo_metadata_target_directory_from_output(metadata: &[u8]) -> Result<PathBuf, String> {
+    let payload: Value = serde_json::from_slice(metadata)
+        .map_err(|error| format!("cargo metadata returned invalid JSON: {error}"))?;
+    let target_directory = payload
+        .get("target_directory")
+        .and_then(Value::as_str)
+        .filter(|path| !path.trim().is_empty())
+        .ok_or_else(|| "cargo metadata omitted a non-empty target_directory".to_string())?;
+
+    Ok(PathBuf::from(target_directory))
+}
+
+fn cargo_binary_path(cargo_target_directory: &Path, binary_name: &str) -> PathBuf {
     let binary_file_name = if cfg!(windows) {
         format!("{binary_name}.exe")
     } else {
         binary_name.to_string()
     };
-    target_dir().join("debug").join(binary_file_name)
+    cargo_target_directory.join("debug").join(binary_file_name)
 }
 
 fn unique_smoke_socket_name() -> String {
@@ -486,7 +518,30 @@ impl Drop for ManagedDaemon {
 
 #[cfg(test)]
 mod tests {
-    use super::daemon_status_output_is_ready;
+    use std::path::PathBuf;
+
+    use super::{cargo_metadata_target_directory_from_output, daemon_status_output_is_ready};
+
+    #[test]
+    fn parses_target_directory_from_cargo_metadata_output() {
+        let metadata = br#"{"target_directory":"/opt/build/taugentic-target"}"#;
+
+        let target_directory = cargo_metadata_target_directory_from_output(metadata)
+            .expect("metadata target_directory should parse");
+
+        assert_eq!(
+            target_directory,
+            PathBuf::from("/opt/build/taugentic-target")
+        );
+    }
+
+    #[test]
+    fn rejects_cargo_metadata_without_a_non_empty_target_directory() {
+        let error = cargo_metadata_target_directory_from_output(br#"{"target_directory":"  "}"#)
+            .expect_err("missing target_directory must fail without a fallback");
+
+        assert!(error.contains("non-empty target_directory"));
+    }
 
     #[test]
     fn accepts_ready_json_for_requested_socket_name() {

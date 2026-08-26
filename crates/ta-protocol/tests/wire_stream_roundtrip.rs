@@ -2,10 +2,27 @@ use ta_protocol::wire::{
     AgentStreamFrame, AgentStreamItemId, AgentToolCallOutcome, ApprovalActor, ApprovalDecision,
     ApprovalId, ApprovalResolution, ApprovalResolutionReason, ArtifactEvent, ArtifactId,
     ArtifactKind, ArtifactSummary, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope,
-    DaemonEventKind, DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenResult,
+    DaemonEventKind, DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeResult,
+    DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenResult,
     DaemonSubscribeParams, DaemonSubscribeResult, PublicApprovalResolution, RunId,
     RuntimeLanePendingState, SessionAuthority, SessionId, SessionStatus, SessionSummary,
 };
+
+#[test]
+fn navigation_invalidation_stream_items_have_no_detail() {
+    let params: DaemonNavigationInvalidatedParams =
+        serde_json::from_value(serde_json::json!({})).expect("empty invalidation");
+    let result: DaemonNavigationSubscribeResult =
+        serde_json::from_value(serde_json::json!({})).expect("empty subscribe result");
+    assert_eq!(
+        serde_json::to_value(params).expect("serialize invalidation"),
+        serde_json::json!({})
+    );
+    assert_eq!(
+        serde_json::to_value(result).expect("serialize subscribe result"),
+        serde_json::json!({})
+    );
+}
 
 #[test]
 fn pending_state_frame_roundtrips_through_json() {

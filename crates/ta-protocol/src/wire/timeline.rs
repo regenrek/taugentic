@@ -20,7 +20,7 @@ pub struct GetRunTimelineQuery {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub after_seq: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
@@ -37,7 +37,7 @@ pub struct RunTimeline {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub latest_event_seq: Option<u64>,
 }
 
@@ -57,12 +57,12 @@ pub struct RunTimelineRun {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub started_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub ended_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_info: Option<WorktreeInfo>,
@@ -92,11 +92,11 @@ pub enum RunTimelineEventKind {
 pub struct RunTimelineEvent {
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub seq: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub run_id: RunId,
     pub kind: RunTimelineEventKind,
@@ -133,11 +133,11 @@ pub enum RunTimelineEventPayload {
         metric: BudgetMetric,
         #[serde(with = "u64_string")]
         #[schemars(schema_with = "u64_string::json_schema")]
-        #[ts(as = "u64")]
+        #[ts(type = "string")]
         limit: u64,
         #[serde(with = "u64_string")]
         #[schemars(schema_with = "u64_string::json_schema")]
-        #[ts(as = "u64")]
+        #[ts(type = "string")]
         actual: u64,
     },
     TokenUsage {

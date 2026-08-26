@@ -152,7 +152,7 @@ fn persists_runtime_facing_records_through_repository_traits() {
                 .expect("runtime profile id"),
             objective: "Ship persistence boundary".to_string(),
             status: RunStatus::WaitingForApproval,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             harness: RunHarnessKind::Unknown,
             result: None,

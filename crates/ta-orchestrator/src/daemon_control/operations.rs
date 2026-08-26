@@ -3,13 +3,45 @@ use std::{
     fs::{self, OpenOptions},
     io,
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::{Child, Command, Output, Stdio},
 };
 
 use ta_jsonrpc::JsonRpcClientError;
+use ta_protocol::{local_control::RuntimeControlBootstrapCommand, wire::DaemonControlStatusResult};
 use thiserror::Error;
 
 const DAEMON_BINARY_ENV_VAR: &str = "TAUGENTIC_DAEMON_BINARY";
+
+/// The internal operation at which desktop runtime startup stopped. This
+/// classification is Rust-only; the desktop bridge intentionally reduces all
+/// failures to its existing public generic failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DesktopRuntimeStartStage {
+    Configuration,
+    Bootstrap,
+}
+
+/// Typed Rust-only provenance for the desktop start path. It deliberately
+/// retains no underlying error or values, and must not cross the desktop
+/// bridge.
+#[derive(Debug)]
+pub struct DesktopRuntimeStartError {
+    stage: DesktopRuntimeStartStage,
+}
+
+impl DesktopRuntimeStartError {
+    pub fn stage(&self) -> DesktopRuntimeStartStage {
+        self.stage
+    }
+}
+
+impl std::fmt::Display for DesktopRuntimeStartError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("desktop runtime start failed")
+    }
+}
+
+impl std::error::Error for DesktopRuntimeStartError {}
 
 #[derive(Debug, Error)]
 pub enum DaemonControlOperationError {
@@ -21,6 +53,142 @@ pub enum DaemonControlOperationError {
     DaemonBinaryNotFound,
     #[error("daemon log file not found at {path}")]
     DaemonLogMissing { path: PathBuf },
+    #[error("runtime-control bootstrap `{action}` failed: {detail}")]
+    BootstrapFailed { action: String, detail: String },
+    #[error("failed to decode runtime-control bootstrap response: {0}")]
+    BootstrapResponse(#[source] serde_json::Error),
+}
+
+/// Opaque Rust-only ownership of a desktop-started local runtime. Its identity
+/// and Child are intentionally uninspectable outside runtime control;
+/// releasing it is the only supported operation.
+pub struct DesktopRuntimeHandle {
+    local_daemon: Option<super::bootstrap::DesktopLocalDaemon>,
+}
+
+impl DesktopRuntimeHandle {
+    fn from_local_daemon(local_daemon: Option<super::bootstrap::DesktopLocalDaemon>) -> Self {
+        Self { local_daemon }
+    }
+
+    pub fn release(&mut self) -> Result<(), DaemonControlOperationError> {
+        let Some(local_daemon) = self.local_daemon.as_mut() else {
+            return Ok(());
+        };
+        close_desktop_local_runtime_if_owned(local_daemon)?;
+        self.local_daemon = None;
+        Ok(())
+    }
+}
+
+/// Rust-only startup result. The bridge can read the control status and retain
+/// or release the opaque handle, but cannot inspect daemon identity or mode.
+pub struct DesktopRuntimeStart {
+    status: DaemonControlStatusResult,
+    handle: DesktopRuntimeHandle,
+}
+
+impl DesktopRuntimeStart {
+    pub fn control_status(&self) -> &DaemonControlStatusResult {
+        &self.status
+    }
+
+    pub fn into_handle(self) -> DesktopRuntimeHandle {
+        self.handle
+    }
+
+    pub fn release(mut self) -> Result<(), DaemonControlOperationError> {
+        self.handle.release()
+    }
+}
+
+pub fn start_desktop_runtime() -> Result<DesktopRuntimeStart, DesktopRuntimeStartError> {
+    let config =
+        crate::host::config::DaemonConfig::load().map_err(|_| DesktopRuntimeStartError {
+            stage: DesktopRuntimeStartStage::Configuration,
+        })?;
+    let bootstrap = crate::bootstrap_desktop_runtime(&crate::RuntimeControlBootstrapConfig {
+        socket_address: config.socket_address().clone(),
+        launch_config: config.daemon_control_launch_config(),
+        runtime_mode: config.runtime_mode,
+    })
+    .map_err(|_| DesktopRuntimeStartError {
+        stage: DesktopRuntimeStartStage::Bootstrap,
+    })?;
+    Ok(DesktopRuntimeStart {
+        status: bootstrap.status,
+        handle: DesktopRuntimeHandle::from_local_daemon(bootstrap.local_daemon),
+    })
+}
+
+fn close_desktop_local_runtime_if_owned(
+    local_daemon: &mut super::bootstrap::DesktopLocalDaemon,
+) -> Result<(), DaemonControlOperationError> {
+    let config = crate::host::config::DaemonConfig::load().map_err(|error| {
+        DaemonControlOperationError::BootstrapFailed {
+            action: "desktop-close".to_string(),
+            detail: error.to_string(),
+        }
+    })?;
+    let runtime_config = crate::RuntimeControlBootstrapConfig {
+        socket_address: config.socket_address().clone(),
+        launch_config: config.daemon_control_launch_config(),
+        runtime_mode: config.runtime_mode,
+    };
+    super::handoff::release_desktop_local_runtime_if_matches(
+        &local_daemon.daemon_instance_id,
+        &mut local_daemon.child,
+        &super::handoff::RuntimeControlHandoffConfig {
+            socket_address: runtime_config.socket_address.clone(),
+            launch_config: runtime_config.launch_config.clone(),
+            expected_transition_op_id: None,
+            expected_daemon_instance_id: None,
+            expected_control_token: None,
+        },
+        || crate::daemon_control::bootstrap::observe_runtime_control(&runtime_config),
+    )
+    .map_err(|error| DaemonControlOperationError::BootstrapFailed {
+        action: "desktop-close".to_string(),
+        detail: error.to_string(),
+    })
+}
+
+/// Invoke the daemon's protocol-owned runtime-control bootstrap command.
+///
+/// This is the single client-side control invocation for native clients. It
+/// deliberately owns no daemon state machine and does not accept secrets.
+pub fn invoke_runtime_control_bootstrap(
+    action: RuntimeControlBootstrapCommand,
+) -> Result<DaemonControlStatusResult, DaemonControlOperationError> {
+    let daemon_binary = resolve_daemon_binary()?;
+    let output = Command::new(daemon_binary)
+        .arg(RuntimeControlBootstrapCommand::SUBCOMMAND)
+        .arg(action.as_str())
+        .output()?;
+    if !output.status.success() {
+        return Err(DaemonControlOperationError::BootstrapFailed {
+            action: action.as_str().to_string(),
+            detail: command_detail(&output),
+        });
+    }
+    serde_json::from_slice(&output.stdout).map_err(DaemonControlOperationError::BootstrapResponse)
+}
+
+fn command_detail(output: &Output) -> String {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let detail = format!("{} {}", stderr.trim(), stdout.trim())
+        .trim()
+        .to_string();
+    if detail.is_empty() {
+        output
+            .status
+            .code()
+            .map(|code| format!("exit code {code}"))
+            .unwrap_or_else(|| "terminated by signal".to_string())
+    } else {
+        detail
+    }
 }
 
 pub fn resolve_daemon_binary() -> Result<PathBuf, DaemonControlOperationError> {
@@ -112,7 +280,7 @@ fn spawn_daemon_process_with_binary(
 
 #[cfg(test)]
 mod tests {
-    use super::daemon_binary_name;
+    use super::{DesktopRuntimeHandle, daemon_binary_name};
 
     #[test]
     fn uses_platform_appropriate_daemon_binary_name() {
@@ -121,5 +289,14 @@ mod tests {
         } else {
             assert_eq!(daemon_binary_name(), "ta-daemon");
         }
+    }
+
+    #[test]
+    fn opaque_runtime_handle_without_a_local_child_has_no_release_authority() {
+        let mut attached = DesktopRuntimeHandle { local_daemon: None };
+        let mut background = DesktopRuntimeHandle { local_daemon: None };
+
+        attached.release().expect("attached runtime release");
+        background.release().expect("background runtime release");
     }
 }

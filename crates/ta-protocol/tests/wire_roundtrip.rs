@@ -1,28 +1,30 @@
 use ta_protocol::wire::{
-    ActivityCursor, ActivityPageQuery, AgentRuntimeModelId, AgentRuntimeStrategyId,
-    AgentStreamEvent, AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome,
-    ApprovalActor, ApprovalDecision, ApprovalRequest, ApprovalResolution, ApprovalResolutionReason,
-    ApprovalScope, ApprovalSnapshotResult, ApprovalTarget, ArtifactEvent, ArtifactId, ArtifactKind,
-    ArtifactSnapshotResult, ArtifactSummary, CapsuleResult, DaemonEvent, DaemonEventCursor,
-    DaemonEventEnvelope, DaemonEventKind, DaemonRunCompleteWithResultParams,
-    DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
-    DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
+    ActivityCursor, ActivityPageQuery, AgentRuntimeModelId, AgentRuntimeSelection,
+    AgentRuntimeStrategyId, AgentStreamEvent, AgentStreamFrame, AgentStreamItemId,
+    AgentStreamTurnId, AgentToolCallOutcome, ApprovalActor, ApprovalDecision, ApprovalRequest,
+    ApprovalResolution, ApprovalResolutionReason, ApprovalScope, ApprovalSnapshotResult,
+    ApprovalTarget, ArtifactEvent, ArtifactId, ArtifactKind, ArtifactSnapshotResult,
+    ArtifactSummary, CapsuleResult, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope,
+    DaemonEventKind, DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeParams,
+    DaemonNavigationSubscribeResult, DaemonProjectOpenParams, DaemonProjectOpenResult,
+    DaemonRunCompleteWithResultParams, DaemonSessionAttachParams, DaemonSessionAttachResult,
+    DaemonSessionOpenParams, DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
     DaemonWorkspaceGetParams, DaemonWorkspaceGetResult, DaemonWorkspaceListParams,
     DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult, EnvPolicy,
     ExecutionContext, ForkRunRequest, ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery,
     ListApprovalsQuery, ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
-    METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_FORK,
-    METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
+    METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_EVENT,
+    METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
     METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN,
     NetworkPolicy, OutputContractKind, PatchResult, PermissionPolicy, ProcessExecPolicy,
     PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest, ResumeRunResult, ResumeRunState,
     RunEvent, RunEventDelta, RunEventStreamError, RunEventStreamItem, RunEventStreamPayload,
-    RunHarnessKind, RunId, RunListEntry, RunListFilter, RunRecord, RunSource, RunStatus,
-    RuntimeLanePendingState, RuntimePolicyMode, RuntimeProfileAuthProfilePatch, RuntimeProfileId,
-    RuntimeProfileModelIdPatch, RuntimeProfilePatch, SandboxProfile, SessionAuthority, SessionId,
-    SessionStatus, SessionSummary, StartRunCommand, StreamEmission, SubscribeRunEventsRequest,
-    SubscribeRunEventsResult, TrustState, Workspace, WorkspaceId, WorkspaceMode, WorkspacePath,
-    WorkspaceScope, WorkspaceSelector, WorktreeCleanupPolicy,
+    RunExecutionRoute, RunHarnessKind, RunId, RunListEntry, RunListFilter, RunRecord, RunSource,
+    RunStatus, RuntimeLanePendingState, RuntimePolicyMode, RuntimeProfileId, RuntimeProfilePatch,
+    SandboxProfile, SessionAuthority, SessionId, SessionStatus, SessionSummary, StartRunCommand,
+    StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult, TrustState, Workspace,
+    WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceScope, WorkspaceSelector,
+    WorktreeCleanupPolicy,
 };
 
 fn execution_context() -> ExecutionContext {
@@ -48,12 +50,29 @@ fn execution_context() -> ExecutionContext {
     }
 }
 
+fn execution_route() -> RunExecutionRoute {
+    RunExecutionRoute {
+        runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+            .expect("runtime profile id"),
+        provider_id: AgentRuntimeStrategyId::new("openai").expect("provider id"),
+        harness: RunHarnessKind::Native,
+        model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+        auth_profile_id: Some(
+            ta_protocol::wire::AuthProfileId::new("profile-test").expect("auth profile id"),
+        ),
+    }
+}
+
 #[test]
 fn start_run_command_serializes_with_camel_case_fields() {
     let command = StartRunCommand {
         objective: "Ship protocol cleanup".to_string(),
         recipe_id: None,
-        model_id: None,
+        selection: AgentRuntimeSelection {
+            runtime_profile_id: execution_route().runtime_profile_id,
+            auth_profile_id: execution_route().auth_profile_id,
+            model_id: execution_route().model_id,
+        },
     };
 
     let json = serde_json::to_value(&command).expect("command should serialize");
@@ -61,14 +80,42 @@ fn start_run_command_serializes_with_camel_case_fields() {
     assert_eq!(
         json,
         serde_json::json!({
-            "objective": "Ship protocol cleanup"
+            "objective": "Ship protocol cleanup",
+            "selection": {
+                "runtimeProfileId": "runtime-openai-safe",
+                "authProfileId": "profile-test",
+                "modelId": "gpt-5.6-sol"
+            }
         })
+    );
+}
+
+#[test]
+fn navigation_subscription_contract_is_strictly_empty() {
+    assert_eq!(
+        serde_json::to_value(DaemonNavigationSubscribeParams {}).expect("serialize params"),
+        serde_json::json!({})
+    );
+    assert_eq!(
+        serde_json::to_value(DaemonNavigationSubscribeResult {}).expect("serialize result"),
+        serde_json::json!({})
+    );
+    assert_eq!(
+        serde_json::to_value(DaemonNavigationInvalidatedParams {}).expect("serialize notification"),
+        serde_json::json!({})
+    );
+    assert!(
+        serde_json::from_value::<DaemonNavigationSubscribeParams>(
+            serde_json::json!({ "cursor": "forbidden" })
+        )
+        .is_err()
     );
 }
 
 #[test]
 fn run_source_native_subagent_roundtrips_through_json() {
     let source = RunSource::NativeSubagent {
+        route: execution_route(),
         parent_run_id: RunId::new("run-parent").expect("parent run id"),
         parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("parent turn id"),
         output_contract: None,
@@ -87,6 +134,13 @@ fn run_source_native_subagent_roundtrips_through_json() {
         json,
         serde_json::json!({
             "kind": "nativeSubagent",
+            "route": {
+                "runtimeProfileId": "runtime-openai-safe",
+                "providerId": "openai",
+                "harness": "native",
+                "modelId": "gpt-5.6-sol",
+                "authProfileId": "profile-test"
+            },
             "parentRunId": "run-parent",
             "parentTurnId": "turn-parent",
             "workspaceScope": "worktreeWrite",
@@ -150,6 +204,7 @@ fn daemon_run_complete_with_result_params_roundtrip() {
 #[test]
 fn run_source_forked_roundtrips_through_json() {
     let source = RunSource::Forked {
+        route: execution_route(),
         parent_run_id: RunId::new("run-parent").expect("parent run id"),
         parent_event_seq: 42,
     };
@@ -162,6 +217,13 @@ fn run_source_forked_roundtrips_through_json() {
         json,
         serde_json::json!({
             "kind": "forked",
+            "route": {
+                "runtimeProfileId": "runtime-openai-safe",
+                "providerId": "openai",
+                "harness": "native",
+                "modelId": "gpt-5.6-sol",
+                "authProfileId": "profile-test"
+            },
             "parentRunId": "run-parent",
             "parentEventSeq": "42"
         })
@@ -185,6 +247,7 @@ fn resume_run_contract_roundtrips_with_server_event_sequence_only() {
             status: RunStatus::Running,
             harness: RunHarnessKind::Native,
             source: RunSource::NativeSubagent {
+                route: execution_route(),
                 parent_run_id: RunId::new("run-parent").expect("parent run id"),
                 parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                 output_contract: None,
@@ -245,6 +308,7 @@ fn fork_run_contract_roundtrips_with_parent_event_seq() {
             status: RunStatus::Queued,
             harness: RunHarnessKind::Native,
             source: RunSource::Forked {
+                route: execution_route(),
                 parent_run_id,
                 parent_event_seq: 42,
             },
@@ -508,7 +572,7 @@ fn agent_stream_event_roundtrips_through_json() {
                 "runId": "run-1",
                 "turnId": "turn-1",
                 "itemId": "item-1",
-                "fragmentSequence": 3,
+                "fragmentSequence": "3",
                 "frame": {
                     "kind": "toolCallCompleted",
                     "outcome": "completed"
@@ -565,6 +629,31 @@ fn daemon_session_open_params_support_workspace_selector_by_path() {
                 "kind": "byPath",
                 "path": "/tmp/taugentic-workspace",
                 "trustAcknowledged": true
+            }
+        })
+    );
+}
+
+#[test]
+fn daemon_session_open_params_support_project_workspace_selector() {
+    let params = DaemonSessionOpenParams {
+        title: "Project conversation".to_string(),
+        workspace: WorkspaceSelector::ByProject {
+            project_id: ta_protocol::wire::ProjectId::new("project-desktop").expect("project id"),
+            workspace_id: WorkspaceId::new("workspace-test-default").expect("workspace id"),
+        },
+    };
+
+    let json = serde_json::to_value(&params).expect("open params should serialize");
+
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "title": "Project conversation",
+            "workspace": {
+                "kind": "byProject",
+                "projectId": "project-desktop",
+                "workspaceId": "workspace-test-default"
             }
         })
     );
@@ -632,6 +721,41 @@ fn daemon_workspace_rpc_payloads_roundtrip_through_json() {
 }
 
 #[test]
+fn daemon_project_open_payload_roundtrips_with_navigation_snapshot() {
+    assert_eq!(METHOD_DAEMON_PROJECT_OPEN, "daemon.project.open");
+    let workspace = workspace_summary();
+    let params = DaemonProjectOpenParams {
+        path: workspace.root_realpath,
+        trust_acknowledged: true,
+    };
+    let result = DaemonProjectOpenResult {
+        project_id: ta_protocol::wire::ProjectId::new("project-open")
+            .expect("project id should be valid"),
+        snapshot: ta_protocol::wire::NavigationSnapshot {
+            spaces: Vec::new(),
+            projects: Vec::new(),
+            conversations: Vec::new(),
+            agents: Vec::new(),
+        },
+    };
+
+    let params_json = serde_json::to_value(&params).expect("project open params serialize");
+    let result_json = serde_json::to_value(&result).expect("project open result serialize");
+    assert_eq!(params_json["trustAcknowledged"], true);
+    assert_eq!(result_json["projectId"], "project-open");
+    assert_eq!(
+        serde_json::from_value::<DaemonProjectOpenParams>(params_json)
+            .expect("project open params decode"),
+        params
+    );
+    assert_eq!(
+        serde_json::from_value::<DaemonProjectOpenResult>(result_json)
+            .expect("project open result decode"),
+        result
+    );
+}
+
+#[test]
 fn artifact_get_query_serializes_with_camel_case_fields() {
     let query = GetArtifactQuery {
         artifact_id: ta_protocol::wire::ArtifactId::new("artifact-1")
@@ -658,16 +782,9 @@ fn get_agent_runtime_query_serializes_as_empty_object() {
 }
 
 #[test]
-fn runtime_profile_patch_roundtrips_set_and_clear_ops() {
+fn runtime_profile_patch_roundtrips_editable_fields() {
     let patch = RuntimeProfilePatch {
         display_name: Some("Mission Control".to_string()),
-        provider_id: Some(
-            AgentRuntimeStrategyId::new("provider-codex").expect("provider id should be valid"),
-        ),
-        model_id: Some(RuntimeProfileModelIdPatch::Set {
-            value: AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id should be valid"),
-        }),
-        auth_profile: Some(RuntimeProfileAuthProfilePatch::Clear),
         policy_mode: Some(RuntimePolicyMode::RequireApproval),
     };
 
@@ -679,38 +796,10 @@ fn runtime_profile_patch_roundtrips_set_and_clear_ops() {
         json,
         serde_json::json!({
             "displayName": "Mission Control",
-            "providerId": "provider-codex",
-            "modelId": {
-                "kind": "set",
-                "value": "gpt-5.6-sol"
-            },
-            "authProfile": {
-                "kind": "clear"
-            },
             "policyMode": "requireApproval"
         })
     );
     assert_eq!(decoded, patch);
-}
-
-#[test]
-fn agent_runtime_select_profile_params_require_runtime_profile_id() {
-    let params = ta_protocol::wire::DaemonAgentRuntimeSelectProfileParams {
-        runtime_profile_id: ta_protocol::wire::RuntimeProfileId::new("runtime-codex-safe")
-            .expect("runtime profile id"),
-    };
-
-    let json = serde_json::to_value(&params).expect("params should serialize");
-    let decoded: ta_protocol::wire::DaemonAgentRuntimeSelectProfileParams =
-        serde_json::from_value(json.clone()).expect("params should deserialize");
-
-    assert_eq!(
-        json,
-        serde_json::json!({
-            "runtimeProfileId": "runtime-codex-safe"
-        })
-    );
-    assert_eq!(decoded, params);
 }
 
 #[test]

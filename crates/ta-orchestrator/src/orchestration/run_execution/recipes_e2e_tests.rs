@@ -1,6 +1,6 @@
 use super::test_support::{
-    app_and_execution_with_runtime, open_session, select_runtime_profile,
-    set_default_test_workspace_root,
+    app_and_execution_with_runtime, open_session, set_default_test_workspace_root,
+    validated_runtime_selection,
 };
 use super::*;
 use crate::{ListReceiptsRequest, ReceiptState};
@@ -301,9 +301,13 @@ fn worktree_parallel_delegation_records_conflicts_receipts_and_cleanup() {
     let (app, execution) = app_and_execution_with_runtime(runtime);
     set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Parallel worktree delegation");
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let parent = execution
-        .seed_running_run_for_tests(session.id.clone(), "Parent native run".to_string())
+        .seed_running_run_for_tests(
+            session.id.clone(),
+            "Parent native run".to_string(),
+            selection,
+        )
         .expect("parent should seed")
         .run;
     const OVERLAP_FILE: &str = "apps/desktop/package.json";
@@ -490,9 +494,9 @@ fn native_parent(
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
     let session = open_session(&app, title);
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let parent = execution
-        .seed_running_run_for_tests(session.id.clone(), format!("{title} parent"))
+        .seed_running_run_for_tests(session.id.clone(), format!("{title} parent"), selection)
         .expect("parent should seed")
         .run;
     (app, execution, session, parent)

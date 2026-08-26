@@ -155,35 +155,7 @@ pub fn initialize_named_session_with_credential(
     assert_eq!(response.id, request_id);
     let initialized =
         serde_json::from_value(response.result).expect("initialize result should deserialize");
-    select_agent_runtime_profile(stream, RequestId::Integer(9000), "runtime-openai-safe");
     initialized
-}
-
-pub fn select_agent_runtime_profile(
-    stream: &mut SocketConnection,
-    request_id: RequestId,
-    runtime_profile_id: &str,
-) -> AgentRuntimeSnapshot {
-    let codec = JsonLineCodec;
-    write_request(
-        &codec,
-        stream,
-        JsonRpcRequest::new(
-            request_id.clone(),
-            METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
-            Some(
-                serde_json::to_value(DaemonAgentRuntimeSelectProfileParams {
-                    runtime_profile_id: RuntimeProfileId::new(runtime_profile_id)
-                        .expect("runtime profile id"),
-                })
-                .expect("runtime profile select params should serialize"),
-            ),
-        ),
-    );
-    let response = read_response(&codec, stream);
-    assert_eq!(response.id, request_id);
-    serde_json::from_value(response.result)
-        .expect("runtime profile select result should deserialize")
 }
 
 pub fn subscribe_run_events(

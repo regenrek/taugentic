@@ -37,6 +37,26 @@
             "id"
           ],
           "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "byProject",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "workspaceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId",
+            "workspaceId"
+          ],
+          "type": "object"
         }
       ]
     }

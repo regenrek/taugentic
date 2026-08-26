@@ -4,4 +4,4 @@ import type { RunStatus } from "./RunStatus.js";
 import type { RunTimelineEventKind } from "./RunTimelineEventKind.js";
 import type { RunTimelineEventPayload } from "./RunTimelineEventPayload.js";
 
-export type RunTimelineEvent = { seq: bigint, occurredAtMs: bigint, runId: RunId, kind: RunTimelineEventKind, status?: RunStatus | null, label: string, payload: RunTimelineEventPayload, };
+export type RunTimelineEvent = { seq: string, occurredAtMs: string, runId: RunId, kind: RunTimelineEventKind, status?: RunStatus | null, label: string, payload: RunTimelineEventPayload, };

@@ -11,7 +11,7 @@ use taugentic_agent::{ExecutionSink, NativeChildRunRequest};
 
 use super::test_support::{
     app_and_execution_with_runtime, approval_actor, attach_noop_handle, attach_recording_handle,
-    open_session, provider_sink, select_runtime_profile, set_default_test_workspace_root,
+    open_session, provider_sink, set_default_test_workspace_root, validated_runtime_selection,
 };
 use super::*;
 
@@ -24,11 +24,12 @@ fn hierarchical_delegation_smoke_projects_replay_timeline() {
     let (app, execution) = app_and_execution_with_runtime(runtime);
     set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Hierarchical replay smoke");
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let parent = execution
         .seed_running_run_for_tests(
             session.id.clone(),
             "Parent hierarchical orchestrator".to_string(),
+            selection,
         )
         .expect("parent should seed")
         .run;

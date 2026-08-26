@@ -1,10 +1,10 @@
 use ta_auth_openai::{AccountInfo, StoredCredentials};
 use ta_protocol::wire::{
-    AgentRuntimeStrategyId, AuthProfileConnectionState, AuthProfileManagementMode,
+    AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState, AuthProfileManagementMode,
     AuthProfileMethodInfo, AuthProfileRef, AuthProfileState,
 };
 
-use super::{OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID, OpenAiSubscriptionAuth, profile_lock};
+use super::{OpenAiSubscriptionAuth, profile_lock};
 use crate::families::openai::OPENAI_PROVIDER_ID;
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ impl ProfileRuntimeState {
 
 pub(crate) fn current_state(auth: &OpenAiSubscriptionAuth) -> AuthProfileState {
     let runtime = profile_lock(auth);
-    state_from_runtime(&runtime)
+    state_from_runtime(auth, &runtime)
 }
 
 pub(crate) fn record_pending_login(auth: &OpenAiSubscriptionAuth) {
@@ -102,60 +102,90 @@ pub(crate) fn record_refresh_failed(auth: &OpenAiSubscriptionAuth, message: Stri
     state.last_error = Some(message);
 }
 
-fn state_from_runtime(runtime: &ProfileRuntimeState) -> AuthProfileState {
+fn state_from_runtime(
+    auth: &OpenAiSubscriptionAuth,
+    runtime: &ProfileRuntimeState,
+) -> AuthProfileState {
     if runtime.pending_login {
-        return profile_state(AuthProfileConnectionState::PendingLogin, None, false, false);
+        return profile_state(
+            auth,
+            AuthProfileConnectionState::PendingLogin,
+            None,
+            false,
+            false,
+            None,
+        );
     }
     if let Some(reason) = runtime.needs_reauth.as_ref() {
         let can_logout = matches!(runtime.credentials, CredentialRuntimeState::Connected(_));
         return profile_state(
+            auth,
             AuthProfileConnectionState::Error,
             Some(format!(
                 "OpenAI ChatGPT subscription needs re-authentication: {reason}"
             )),
             true,
             can_logout,
+            None,
         );
     }
     match &runtime.credentials {
-        CredentialRuntimeState::Loading => {
-            profile_state(AuthProfileConnectionState::Loading, None, false, false)
-        }
+        CredentialRuntimeState::Loading => profile_state(
+            auth,
+            AuthProfileConnectionState::Loading,
+            None,
+            false,
+            false,
+            None,
+        ),
         CredentialRuntimeState::Connected(account) => profile_state(
+            auth,
             AuthProfileConnectionState::Connected,
             runtime.last_error.clone(),
             false,
             true,
+            Some(account),
         )
         .with_platform_org_linked(account.organization_id.is_some())
         .without_setup_steps(),
         CredentialRuntimeState::LoggedOut => profile_state(
+            auth,
             AuthProfileConnectionState::LoggedOut,
             runtime.last_error.clone(),
             true,
             false,
+            None,
         ),
         CredentialRuntimeState::Unavailable(error) => profile_state(
+            auth,
             AuthProfileConnectionState::Error,
             Some(error.clone()),
             true,
             false,
+            None,
         ),
     }
 }
 
 fn profile_state(
+    auth: &OpenAiSubscriptionAuth,
     connection_state: AuthProfileConnectionState,
     last_error: Option<String>,
     can_login: bool,
     can_logout: bool,
+    account: Option<&AccountInfo>,
 ) -> AuthProfileState {
     AuthProfileState {
         profile: AuthProfileRef {
-            id: ta_protocol::wire::AuthProfileId::new(OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID)
-                .expect("OpenAI ChatGPT auth profile id"),
+            id: ta_protocol::wire::AuthProfileId::new(auth.key().as_str())
+                .expect("credential key is a valid auth profile id"),
+            auth_method_id: AuthMethodId::new("openai-chatgpt").expect("auth method id"),
             provider_id: AgentRuntimeStrategyId::new(OPENAI_PROVIDER_ID).expect("provider id"),
             display_name: "OpenAI ChatGPT Subscription".to_string(),
+            account_hint: account
+                .map(|account| account.email.clone())
+                .filter(|value| !value.is_empty()),
+            plan_tier: account.and_then(|account| account.plan_tier.clone()),
         },
         connection_state,
         last_error,

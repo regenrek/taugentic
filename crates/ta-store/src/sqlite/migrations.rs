@@ -54,6 +54,20 @@ impl SqliteStore {
                     last_used_at TEXT NOT NULL,
                     data_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS navigation_states (
+                    owner_principal_id TEXT PRIMARY KEY REFERENCES principals(id),
+                    data_json TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS auth_profiles (
+                    id TEXT PRIMARY KEY,
+                    auth_method_id TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    sort_order INTEGER NOT NULL,
+                    is_default INTEGER NOT NULL,
+                    data_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_auth_profiles_method_order
+                    ON auth_profiles (provider_id, auth_method_id, sort_order, id);
                 CREATE INDEX IF NOT EXISTS idx_workspaces_root_realpath
                     ON workspaces (root_realpath);
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -203,6 +217,8 @@ impl SqliteStore {
             ("table", "principals"),
             ("table", "sessions"),
             ("table", "workspaces"),
+            ("table", "navigation_states"),
+            ("table", "auth_profiles"),
             ("table", "runs"),
             ("table", "checkpoints"),
             ("table", "artifacts"),
@@ -213,6 +229,7 @@ impl SqliteStore {
             ("index", "idx_agent_turn_rows_session_sequence"),
             ("index", "idx_principals_credential_hash"),
             ("index", "idx_workspaces_root_realpath"),
+            ("index", "idx_auth_profiles_method_order"),
             ("index", "idx_sessions_workspace_id"),
             ("index", "idx_runs_session_id"),
             ("index", "idx_run_projections_session_started_at"),
@@ -243,6 +260,17 @@ impl SqliteStore {
                 "git_repo_root",
                 "created_at",
                 "last_used_at",
+                "data_json",
+            ],
+        )?;
+        self.require_table_columns(
+            "auth_profiles",
+            &[
+                "id",
+                "auth_method_id",
+                "provider_id",
+                "sort_order",
+                "is_default",
                 "data_json",
             ],
         )?;

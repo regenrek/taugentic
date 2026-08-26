@@ -1,6 +1,6 @@
 # Model Catalog Ownership
 
-Taugentic uses one catalog for native-harness model metadata and selection.
+Taugentic uses one catalog for native-harness model metadata and validation.
 `ta-model-catalog` owns that catalog. Provider adapters, workflows, the daemon,
 and clients do not maintain model lists or native model defaults.
 
@@ -20,8 +20,9 @@ catalog state.
 
 ## Harness boundaries
 
-- Native harness providers use `ta-model-catalog` for enumeration, validation,
-  and the metadata-derived default.
+- Native harness providers use `ta-model-catalog` for enumeration and
+  validation. Every `StartRunCommand` carries an explicit model selection as
+  part of its complete `AgentRuntimeSelection`.
 - Codex app-server models come from the authenticated Codex session.
 - ACP models come from the connected ACP session.
 

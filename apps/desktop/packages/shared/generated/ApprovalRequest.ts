@@ -5,4 +5,4 @@ import type { ApprovalScope } from "./ApprovalScope.js";
 import type { ApprovalTarget } from "./ApprovalTarget.js";
 import type { RunId } from "./RunId.js";
 
-export type ApprovalRequest = { id: ApprovalId, runId: RunId, toolCallId?: AgentStreamItemId | null, scope: ApprovalScope, requestedAtMs: bigint, expiresAtMs: bigint, target: ApprovalTarget, reason: string, };
+export type ApprovalRequest = { id: ApprovalId, runId: RunId, toolCallId?: AgentStreamItemId | null, scope: ApprovalScope, requestedAtMs: string, expiresAtMs: string, target: ApprovalTarget, reason: string, };

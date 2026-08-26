@@ -208,7 +208,7 @@ fn open_persists_and_reloads_existing_rows() {
                 .expect("runtime profile id"),
             objective: "Persist checkpoint".to_string(),
             status: RunStatus::Running,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             harness: RunHarnessKind::Unknown,
             result: None,

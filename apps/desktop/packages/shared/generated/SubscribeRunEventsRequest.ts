@@ -8,4 +8,4 @@ import type { SessionId } from "./SessionId.js";
  * `daemon.run.replay_events` uses this shape for finite replay batches.
  * `daemon.run.subscribe_events` uses it for replay plus live splice streams.
  */
-export type SubscribeRunEventsRequest = { sessionId: SessionId, runId: RunId, afterSeq?: bigint | null, };
+export type SubscribeRunEventsRequest = { sessionId: SessionId, runId: RunId, afterSeq?: string | null, };

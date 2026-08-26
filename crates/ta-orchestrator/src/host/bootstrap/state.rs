@@ -290,11 +290,36 @@ mod tests {
         ActivityPageQuery, DaemonApprovalDecideParams, DaemonEventKind, LaneCapabilities,
         ListSessionsQuery, OpenSessionRequest, RunStatus, SessionStatus, StartRunCommand,
     };
-    use ta_protocol::wire::ApprovalDecision;
+    use ta_protocol::wire::{
+        AgentRuntimeModelId, AgentRuntimeSelection, ApprovalDecision, AuthProfileId,
+        RuntimeProfileId,
+    };
     use ta_store::{CheckpointRecord, CommitCheckpointPersist, CommitRepository};
 
     const TEST_OWNER_PRINCIPAL_ID: &str = "bootstrap-owner-credential-hash";
     const TEST_CLIENT_NAME: &str = "bootstrap-tests";
+
+    fn explicit_runtime_selection<S>(
+        app: &crate::orchestration::AppService<S>,
+    ) -> AgentRuntimeSelection
+    where
+        S: ta_store::PersistenceStore + Send + 'static,
+    {
+        app.seed_auth_profile_for_tests(ta_store::connected_test_auth_profile(
+            "profile-openai-test",
+            "openai-chatgpt",
+            "openai",
+        ))
+        .expect("test auth profile should persist");
+        AgentRuntimeSelection {
+            runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+                .expect("runtime profile id"),
+            auth_profile_id: Some(
+                AuthProfileId::new("profile-openai-test").expect("auth profile id"),
+            ),
+            model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+        }
+    }
 
     #[test]
     fn boot_uses_runtime_owned_capability_derivation() {
@@ -371,10 +396,10 @@ mod tests {
                 .app
                 .start_run(
                     &session.id,
-                    &StartRunCommand {
-                        objective: "Ship store boundary".to_string(),
-                        ..StartRunCommand::default()
-                    },
+                    &StartRunCommand::new(
+                        "Ship store boundary",
+                        explicit_runtime_selection(&first.app),
+                    ),
                 )
                 .expect("run should start");
             match started.body.status {
@@ -456,7 +481,11 @@ mod tests {
                 .expect("session should persist");
             let started = first
                 .app
-                .seed_running_run_for_tests(&session.id, "Become durable running")
+                .seed_running_run_for_tests(
+                    &session.id,
+                    "Become durable running",
+                    &explicit_runtime_selection(&first.app),
+                )
                 .expect("seeded run should persist");
             let running_run_id = started.body.id.clone();
 
@@ -528,10 +557,10 @@ mod tests {
                 .app
                 .start_run(
                     &session.id,
-                    &StartRunCommand {
-                        objective: "Need approval after restart".to_string(),
-                        ..StartRunCommand::default()
-                    },
+                    &StartRunCommand::new(
+                        "Need approval after restart",
+                        explicit_runtime_selection(&first.app),
+                    ),
                 )
                 .expect("run should start");
 
@@ -590,7 +619,11 @@ mod tests {
                 .expect("session should persist");
             let active = first
                 .app
-                .seed_running_run_for_tests(&session.id, "Occupy active slot")
+                .seed_running_run_for_tests(
+                    &session.id,
+                    "Occupy active slot",
+                    &explicit_runtime_selection(&first.app),
+                )
                 .expect("seeded active run should persist");
             let active_run_id = active.body.id.clone();
             first
@@ -602,10 +635,10 @@ mod tests {
                 .app
                 .start_run(
                     &session.id,
-                    &StartRunCommand {
-                        objective: "Queued behind active".to_string(),
-                        ..StartRunCommand::default()
-                    },
+                    &StartRunCommand::new(
+                        "Queued behind active",
+                        explicit_runtime_selection(&first.app),
+                    ),
                 )
                 .expect("second run should queue");
 
@@ -652,7 +685,11 @@ mod tests {
                 .expect("session should persist");
             let started = first
                 .app
-                .seed_running_run_for_tests(&session.id, "Checkpoint before restart")
+                .seed_running_run_for_tests(
+                    &session.id,
+                    "Checkpoint before restart",
+                    &explicit_runtime_selection(&first.app),
+                )
                 .expect("seeded run should persist");
             let running_run_id = started.body.id.clone();
 

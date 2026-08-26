@@ -19,10 +19,7 @@ fn daemon_approval_decide_requires_matching_attached_session() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
     let approval_id = started
@@ -81,10 +78,7 @@ fn daemon_approval_decide_collapses_missing_and_resolved_public_errors() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
     let approval_id = started
@@ -224,10 +218,7 @@ fn assert_approval_decision_transitions_run_and_clears_pending_approval(
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
     let approval_id = started
@@ -317,10 +308,7 @@ fn daemon_approval_decide_redacts_actor_in_public_activity_page() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
     let approval_id = started

@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeSet,
     error::Error,
     fs,
     path::{Path, PathBuf},
@@ -17,11 +16,7 @@ pub fn check_daemon_foundation(repo_root: &Path) -> Result<(), Box<dyn Error>> {
     )?;
 
     let desktop_src = repo_root.join("apps/desktop/src");
-    collect_disallowed_create_connection_matches(
-        &desktop_src,
-        &[desktop_src.join("runtime/daemon/connection.ts")],
-        &mut violations,
-    )?;
+    collect_disallowed_desktop_transport_matches(&desktop_src, &mut violations)?;
 
     for legacy_path in [
         "apps/desktop/packages/main",
@@ -66,25 +61,25 @@ fn collect_literal_matches(
     Ok(())
 }
 
-fn collect_disallowed_create_connection_matches(
+fn collect_disallowed_desktop_transport_matches(
     root: &Path,
-    allowed_paths: &[PathBuf],
     violations: &mut Vec<String>,
 ) -> Result<(), Box<dyn Error>> {
-    let allowed_paths = allowed_paths.iter().collect::<BTreeSet<_>>();
     for path in source_files(root)? {
         let contents = fs::read_to_string(&path)?;
-        if !contents.contains("createConnection(") {
-            continue;
+        for pattern in [
+            "createConnection(",
+            "Bun.spawn(",
+            "socketPath",
+            "sessionAuthority",
+        ] {
+            if contents.contains(pattern) {
+                violations.push(format!(
+                    "{}: {pattern} (desktop transport belongs only to ta-desktop-native)",
+                    path.display()
+                ));
+            }
         }
-        if allowed_paths.contains(&path) {
-            continue;
-        }
-
-        violations.push(format!(
-            "{}: createConnection( (desktop must open daemon sockets only through runtime/daemon/connection.ts)",
-            path.display()
-        ));
     }
 
     Ok(())
@@ -125,7 +120,7 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    use super::collect_disallowed_create_connection_matches;
+    use super::collect_disallowed_desktop_transport_matches;
 
     fn temp_dir(prefix: &str) -> std::path::PathBuf {
         let nanos = SystemTime::now()
@@ -136,18 +131,15 @@ mod tests {
     }
 
     #[test]
-    fn create_connection_guard_allows_only_canonical_desktop_files() {
+    fn desktop_transport_guard_rejects_every_type_script_socket_path() {
         let dir = temp_dir("create-connection");
         fs::create_dir_all(&dir).expect("temp dir should exist");
-        let allowed = dir.join("daemon-session.ts");
         let forbidden = dir.join("rpc.ts");
-        fs::write(&allowed, "const socket = createConnection(path);\n")
-            .expect("allowed fixture should write");
         fs::write(&forbidden, "const socket = createConnection(path);\n")
             .expect("forbidden fixture should write");
 
         let mut violations = Vec::new();
-        collect_disallowed_create_connection_matches(&dir, &[allowed], &mut violations)
+        collect_disallowed_desktop_transport_matches(&dir, &mut violations)
             .expect("guard should run");
 
         assert_eq!(violations.len(), 1);

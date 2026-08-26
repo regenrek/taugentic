@@ -479,7 +479,7 @@ pub fn configure_codex_app_server_request(request: &mut ExecutionRequest) {
     ));
     request.provider_id = must(ta_protocol::wire::AgentRuntimeStrategyId::new("codex"));
     request.execution_harness = taugentic_agent::AgentExecutionHarness::CodexAppServer;
-    request.auth_profile_id = None;
+    request.auth_profile_id = Some(must(AuthProfileId::new("profile-codex-test")));
     set_request_cwd(request, Path::new("/tmp"));
 }
 

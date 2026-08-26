@@ -67,7 +67,16 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
         "METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE",
         METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE,
     ),
+    (
+        "METHOD_DAEMON_NAVIGATION_SNAPSHOT",
+        METHOD_DAEMON_NAVIGATION_SNAPSHOT,
+    ),
+    (
+        "METHOD_DAEMON_NAVIGATION_INTENT",
+        METHOD_DAEMON_NAVIGATION_INTENT,
+    ),
     ("METHOD_DAEMON_RUN_START", METHOD_DAEMON_RUN_START),
+    ("METHOD_DAEMON_RUN_CANCEL", METHOD_DAEMON_RUN_CANCEL),
     ("METHOD_DAEMON_RUN_RESUME", METHOD_DAEMON_RUN_RESUME),
     ("METHOD_DAEMON_RUN_FORK", METHOD_DAEMON_RUN_FORK),
     (
@@ -93,6 +102,16 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
     ("METHOD_WORKFLOW_RELOAD", METHOD_WORKFLOW_RELOAD),
     ("METHOD_WORKFLOW_VALIDATE", METHOD_WORKFLOW_VALIDATE),
 ];
+
+struct TypeScriptPublicType {
+    name: &'static str,
+    export: fn(&TsConfig) -> Result<(), ProtocolExportError>,
+}
+
+const CANCELLATION_TYPES: &[TypeScriptPublicType] = &[TypeScriptPublicType {
+    name: "DaemonRunCancelParams",
+    export: export_ts::<DaemonRunCancelParams>,
+}];
 
 /// `(export name, value)` — numeric protocol constants shared between
 /// `generated/index.ts` and `generated/index.js`.
@@ -142,6 +161,16 @@ pub fn export_typescript_bindings(shared_package_dir: &Path) -> Result<(), Proto
 
 fn export_ts<T: TS + 'static>(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     T::export_all(cfg)?;
+    Ok(())
+}
+
+fn export_selected_types(
+    types: &[TypeScriptPublicType],
+    cfg: &TsConfig,
+) -> Result<(), ProtocolExportError> {
+    for public_type in types {
+        (public_type.export)(cfg)?;
+    }
     Ok(())
 }
 
@@ -209,6 +238,8 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<Workspace>(cfg)?;
     export_ts::<DaemonWorkspaceOpenParams>(cfg)?;
     export_ts::<DaemonWorkspaceOpenResult>(cfg)?;
+    export_ts::<DaemonProjectOpenParams>(cfg)?;
+    export_ts::<DaemonProjectOpenResult>(cfg)?;
     export_ts::<DaemonWorkspaceListParams>(cfg)?;
     export_ts::<DaemonWorkspaceListResult>(cfg)?;
     export_ts::<DaemonWorkspaceGetParams>(cfg)?;
@@ -226,6 +257,24 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<SessionOverviewResult>(cfg)?;
     export_ts::<SessionOverviewLaneStatus>(cfg)?;
     export_ts::<ApprovalAttentionState>(cfg)?;
+    export_ts::<SpaceId>(cfg)?;
+    export_ts::<ProjectId>(cfg)?;
+    export_ts::<NavigationSpace>(cfg)?;
+    export_ts::<NavigationProject>(cfg)?;
+    export_ts::<ConversationPlacement>(cfg)?;
+    export_ts::<NavigationConversation>(cfg)?;
+    export_ts::<NavigationAgentRow>(cfg)?;
+    export_ts::<NavigationSnapshot>(cfg)?;
+    export_ts::<DaemonNavigationSnapshotParams>(cfg)?;
+    export_ts::<DaemonNavigationSnapshotResult>(cfg)?;
+    export_ts::<DaemonNavigationIntent>(cfg)?;
+    export_ts::<DaemonNavigationIntentParams>(cfg)?;
+    export_ts::<DaemonNavigationIntentResult>(cfg)?;
+    export_ts::<DaemonNavigationSubscribeParams>(cfg)?;
+    export_ts::<DaemonNavigationSubscribeResult>(cfg)?;
+    export_ts::<DaemonNavigationInvalidatedParams>(cfg)?;
+    export_ts::<DesktopDaemonLifecycleStatus>(cfg)?;
+    export_ts::<DesktopDaemonLifecycleProjection>(cfg)?;
     export_ts::<DaemonActualRuntimeMode>(cfg)?;
     export_ts::<DaemonClientCapabilities>(cfg)?;
     export_ts::<DaemonControlAction>(cfg)?;
@@ -330,6 +379,7 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<SubscribeRunEventsResult>(cfg)?;
     export_ts::<StartRunCommand>(cfg)?;
     export_ts::<DaemonRunCompleteWithResultParams>(cfg)?;
+    export_selected_types(CANCELLATION_TYPES, cfg)?;
     export_ts::<WorkflowDefinition>(cfg)?;
     export_ts::<WorkflowSourceBinding>(cfg)?;
     export_ts::<WorkflowSourceKind>(cfg)?;
@@ -363,6 +413,8 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<AgentRuntimeStrategyHealthStatus>(cfg)?;
     export_ts::<AgentRuntimeStrategyHealth>(cfg)?;
     export_ts::<AgentRuntimeStrategyInfo>(cfg)?;
+    export_ts::<AuthMethodId>(cfg)?;
+    export_ts::<AuthMethodRef>(cfg)?;
     export_ts::<AuthProfileId>(cfg)?;
     export_ts::<AuthProfileConnectionState>(cfg)?;
     export_ts::<AuthProfileLoginMethod>(cfg)?;
@@ -383,15 +435,13 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<RuntimeProfileId>(cfg)?;
     export_ts::<RuntimePolicyMode>(cfg)?;
     export_ts::<RuntimeProfileSummary>(cfg)?;
-    export_ts::<RuntimeProfileModelIdPatch>(cfg)?;
-    export_ts::<RuntimeProfileAuthProfilePatch>(cfg)?;
     export_ts::<RuntimeProfilePatch>(cfg)?;
     export_ts::<AgentRuntimeSelection>(cfg)?;
     export_ts::<AgentRuntimeSnapshot>(cfg)?;
     export_ts::<GetAgentRuntimeQuery>(cfg)?;
-    export_ts::<DaemonAgentRuntimeSelectProfileParams>(cfg)?;
     export_ts::<DaemonAgentRuntimePatchProfileParams>(cfg)?;
     export_ts::<DaemonAgentRuntimeAuthLoginParams>(cfg)?;
+    export_ts::<DaemonAgentRuntimeAuthLoginCompleteParams>(cfg)?;
     export_ts::<DaemonAgentRuntimeAuthLogoutParams>(cfg)?;
     export_ts::<DaemonAgentRuntimeSetExtensionEnabledParams>(cfg)?;
     Ok(())
@@ -507,6 +557,8 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "Workspace",
         "DaemonWorkspaceOpenParams",
         "DaemonWorkspaceOpenResult",
+        "DaemonProjectOpenParams",
+        "DaemonProjectOpenResult",
         "DaemonWorkspaceListParams",
         "DaemonWorkspaceListResult",
         "DaemonWorkspaceGetParams",
@@ -524,6 +576,24 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "SessionOverviewResult",
         "SessionOverviewLaneStatus",
         "ApprovalAttentionState",
+        "SpaceId",
+        "ProjectId",
+        "NavigationSpace",
+        "NavigationProject",
+        "ConversationPlacement",
+        "NavigationConversation",
+        "NavigationAgentRow",
+        "NavigationSnapshot",
+        "DaemonNavigationSnapshotParams",
+        "DaemonNavigationSnapshotResult",
+        "DaemonNavigationIntent",
+        "DaemonNavigationIntentParams",
+        "DaemonNavigationIntentResult",
+        "DaemonNavigationSubscribeParams",
+        "DaemonNavigationSubscribeResult",
+        "DaemonNavigationInvalidatedParams",
+        "DesktopDaemonLifecycleStatus",
+        "DesktopDaemonLifecycleProjection",
         "DaemonInitializeParams",
         "DaemonInitializeResult",
         "DaemonPendingTransitionKind",
@@ -657,6 +727,13 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
     ] {
         lines.push(format!("export type {{ {name} }} from \"./{name}.js\";"));
     }
+
+    for public_type in CANCELLATION_TYPES {
+        lines.push(format!(
+            "export type {{ {} }} from \"./{}.js\";",
+            public_type.name, public_type.name
+        ));
+    }
 }
 
 fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
@@ -687,15 +764,13 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "RuntimeProfileId",
         "RuntimePolicyMode",
         "RuntimeProfileSummary",
-        "RuntimeProfileModelIdPatch",
-        "RuntimeProfileAuthProfilePatch",
         "RuntimeProfilePatch",
         "AgentRuntimeSelection",
         "AgentRuntimeSnapshot",
         "GetAgentRuntimeQuery",
-        "DaemonAgentRuntimeSelectProfileParams",
         "DaemonAgentRuntimePatchProfileParams",
         "DaemonAgentRuntimeAuthLoginParams",
+        "DaemonAgentRuntimeAuthLoginCompleteParams",
         "DaemonAgentRuntimeAuthLogoutParams",
         "DaemonAgentRuntimeSetExtensionEnabledParams",
     ] {
@@ -718,16 +793,16 @@ fn append_agent_runtime_generated_consts(lines: &mut Vec<String>) {
             METHOD_DAEMON_AGENT_RUNTIME_GET,
         ),
         (
-            "METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT",
-            METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
-        ),
-        (
             "METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH",
             METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
         ),
         (
             "METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN",
             METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
+        ),
+        (
+            "METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE",
+            METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE,
         ),
         (
             "METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT",
@@ -776,7 +851,7 @@ fn rewrite_generated_typescript_imports(generated_dir: &Path) -> Result<(), Prot
         let source = fs::read_to_string(&path)?;
         let rewritten = source
             .lines()
-            .map(rewrite_typescript_import_line)
+            .map(|line| rewrite_typescript_import_line(line.trim_end()))
             .collect::<Vec<_>>()
             .join("\n");
 

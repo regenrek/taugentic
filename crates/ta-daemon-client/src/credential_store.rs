@@ -1,6 +1,9 @@
-use std::fs;
-use std::io;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use sha2::{Digest, Sha256};
 use ta_jsonrpc::{ClientConfig, JsonRpcClientError, SocketAddress};
@@ -243,15 +246,47 @@ fn prepare_private_directory(path: &Path) -> Result<(), JsonRpcClientError> {
 }
 
 fn write_private_file(path: &Path, contents: &str) -> Result<(), JsonRpcClientError> {
-    fs::write(path, contents)
-        .map_err(|error| JsonRpcClientError::Write(io_context(error, path)))?;
+    let temporary_path = private_temporary_path(path);
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
-            .map_err(|error| JsonRpcClientError::Write(io_context(error, path)))?;
+        options.mode(0o600);
     }
+    let mut temporary = options
+        .open(&temporary_path)
+        .map_err(|error| JsonRpcClientError::Write(io_context(error, &temporary_path)))?;
+    temporary
+        .write_all(contents.as_bytes())
+        .map_err(|error| JsonRpcClientError::Write(io_context(error, &temporary_path)))?;
+    temporary
+        .sync_all()
+        .map_err(|error| JsonRpcClientError::Write(io_context(error, &temporary_path)))?;
+    drop(temporary);
+    fs::rename(&temporary_path, path)
+        .map_err(|error| JsonRpcClientError::Write(io_context(error, path)))?;
+    sync_parent_directory(path)?;
     Ok(())
+}
+
+fn private_temporary_path(path: &Path) -> PathBuf {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("secret");
+    path.with_file_name(format!(".{file_name}.{}.tmp", std::process::id()))
+}
+
+fn sync_parent_directory(path: &Path) -> Result<(), JsonRpcClientError> {
+    let parent = path.parent().ok_or_else(|| {
+        JsonRpcClientError::Write(io_context(
+            io::Error::other("secret path has no parent directory"),
+            path,
+        ))
+    })?;
+    File::open(parent)
+        .and_then(|directory| directory.sync_all())
+        .map_err(|error| JsonRpcClientError::Write(io_context(error, parent)))
 }
 
 #[cfg(test)]
@@ -383,5 +418,27 @@ mod tests {
                 & 0o777,
             0o600
         );
+    }
+
+    #[test]
+    fn failed_pre_rename_write_preserves_existing_secret() {
+        let config = test_config("daemon-client-atomic-preservation");
+        let path = client_credential_file_path(&config, "cli-client");
+        prepare_private_directory(path.parent().expect("credential dir"))
+            .expect("credential dir should exist");
+        fs::write(&path, "credential-beforecredential-beforecredential-before")
+            .expect("old credential should exist");
+        let temporary_path = private_temporary_path(&path);
+        fs::write(&temporary_path, "block temporary creation").expect("temp blocker should exist");
+
+        let error = write_private_file(&path, "credential-aftercredential-aftercredential-after")
+            .expect_err("temporary collision should fail before rename");
+
+        assert!(matches!(error, JsonRpcClientError::Write(_)));
+        assert_eq!(
+            fs::read_to_string(&path).expect("old credential should remain readable"),
+            "credential-beforecredential-beforecredential-before"
+        );
+        fs::remove_file(temporary_path).expect("temporary blocker should clean up");
     }
 }

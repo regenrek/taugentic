@@ -239,11 +239,6 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
 
     let snapshot: AgentRuntimeSnapshot =
         serde_json::from_value(response).expect("response should deserialize");
-    assert_eq!(
-        snapshot.selection.runtime_profile_id.as_str(),
-        "runtime-codex-safe"
-    );
-    assert_eq!(snapshot.providers.len(), 12);
     for provider_id in [
         "codex",
         "openai",
@@ -266,37 +261,16 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
             "snapshot should contain provider {provider_id}"
         );
     }
-    assert_eq!(snapshot.auth_profiles.len(), 9);
-    assert!(
-        snapshot
-            .auth_profiles
-            .iter()
-            .any(|profile| profile.profile.id.as_str() == "auth-codex-chatgpt")
-    );
-    assert!(
-        snapshot
-            .auth_profiles
-            .iter()
-            .any(|profile| profile.profile.id.as_str() == "auth-codex-api-key")
-    );
-    for auth_profile_id in [
-        "auth-openai-api-key",
-        "auth-openai-chatgpt",
-        "auth-anthropic-api-key",
-        "deepseek-api-key",
-        "groq-api-key",
-        "openrouter-api-key",
-        "xai-api-key",
-    ] {
+    assert!(snapshot.auth_profiles.is_empty());
+    for auth_method_id in ["codex-chatgpt", "openai-chatgpt", "anthropic-api-key"] {
         assert!(
             snapshot
-                .auth_profiles
+                .auth_methods
                 .iter()
-                .any(|profile| profile.profile.id.as_str() == auth_profile_id),
-            "snapshot should contain auth profile {auth_profile_id}"
+                .any(|method| method.id.as_str() == auth_method_id),
+            "snapshot should contain auth method {auth_method_id}"
         );
     }
-    assert_eq!(snapshot.runtime_profiles.len(), 39);
     assert!(
         snapshot
             .runtime_profiles
@@ -305,9 +279,6 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
     );
     for runtime_profile_id in [
         "runtime-openai-safe",
-        "runtime-openai-chatgpt-safe",
-        "runtime-openai-chatgpt-allow",
-        "runtime-openai-chatgpt-deny",
         "runtime-anthropic-safe",
         "runtime-openrouter-safe",
         "runtime-codex-acp-safe",
@@ -354,57 +325,12 @@ fn daemon_agent_runtime_get_is_initialized_but_not_principal_scoped() {
     )
     .expect("daemon.agent.runtime.get should not require principal id");
 
-    let snapshot: AgentRuntimeSnapshot =
+    let _snapshot: AgentRuntimeSnapshot =
         serde_json::from_value(response).expect("response should deserialize");
-    assert_eq!(
-        snapshot.selection.runtime_profile_id.as_str(),
-        "runtime-codex-safe"
-    );
 }
 
 #[test]
-fn daemon_agent_runtime_profile_select_is_init_only_not_session_attached() {
-    let state = boot(test_config());
-    let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
-        initialized: true,
-        client_name: Some(TEST_CLIENT_NAME.to_string()),
-        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
-        attached_session_id: None,
-    }));
-    let session = test_session();
-
-    let response = handle_request(
-        &state,
-        &shutdown_requested,
-        &session,
-        &session_state,
-        JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: crate::RequestId::Integer(16),
-            method: METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT.to_string(),
-            params: Some(
-                serde_json::to_value(DaemonAgentRuntimeSelectProfileParams {
-                    runtime_profile_id: crate::RuntimeProfileId::new("runtime-codex-allow")
-                        .expect("runtime profile id"),
-                })
-                .expect("params"),
-            ),
-        },
-    )
-    .expect("daemon.agent.runtime.profile.select should succeed");
-
-    let snapshot: AgentRuntimeSnapshot =
-        serde_json::from_value(response).expect("response should deserialize");
-    assert_eq!(
-        snapshot.selection.runtime_profile_id.as_str(),
-        "runtime-codex-allow"
-    );
-}
-
-#[test]
-fn daemon_agent_runtime_profile_patch_updates_selected_profile_without_attached_session() {
+fn daemon_agent_runtime_profile_patch_updates_profile_without_attached_session() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
@@ -448,10 +374,6 @@ fn daemon_agent_runtime_profile_patch_updates_selected_profile_without_attached_
         .find(|profile| profile.id.as_str() == "runtime-codex-safe")
         .expect("runtime profile should exist");
 
-    assert_eq!(
-        snapshot.selection.runtime_profile_id.as_str(),
-        "runtime-codex-safe"
-    );
     assert_eq!(
         selected_profile.policy_mode,
         crate::RuntimePolicyMode::Allow
@@ -504,7 +426,7 @@ fn daemon_agent_runtime_extension_set_updates_snapshot_without_attached_session(
 }
 
 #[test]
-fn daemon_agent_runtime_auth_login_unknown_profile_returns_invalid_params() {
+fn daemon_agent_runtime_auth_login_unknown_method_returns_invalid_params() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
@@ -527,17 +449,17 @@ fn daemon_agent_runtime_auth_login_unknown_profile_returns_invalid_params() {
             method: METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN.to_string(),
             params: Some(
                 serde_json::to_value(crate::DaemonAgentRuntimeAuthLoginParams {
-                    auth_profile_id: crate::AuthProfileId::new("auth-missing")
-                        .expect("auth profile id"),
+                    auth_method_id: crate::AuthMethodId::new("auth-method-missing")
+                        .expect("auth method id"),
                 })
                 .expect("params"),
             ),
         },
     )
-    .expect_err("daemon.agent.runtime.auth.login should reject unknown profiles");
+    .expect_err("daemon.agent.runtime.auth.login should reject unknown methods");
 
     assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
-    assert!(error.message.contains("auth profile does not exist"));
+    assert!(error.message.contains("auth method does not exist"));
 }
 
 #[test]

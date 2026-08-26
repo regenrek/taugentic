@@ -10,10 +10,6 @@ pub enum LlmClientError {
         "feature requires OpenAI Platform organization: connect a Platform organization to the ChatGPT subscription account"
     )]
     FeatureRequiresPlatformOrg,
-    #[error(
-        "This OpenAI runtime profile uses an OpenAI Platform API key. Select an `OpenAI ChatGPT *` runtime profile to use a ChatGPT subscription, or configure OPENAI_API_KEY."
-    )]
-    SubscriptionAuthIncompatibleWithNativeClient,
     #[error("network error: {0}")]
     Network(String),
     #[error("rate limited: {detail}")]

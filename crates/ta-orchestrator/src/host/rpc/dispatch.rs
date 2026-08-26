@@ -4,27 +4,30 @@ use std::sync::{
 };
 
 use crate::{
-    DAEMON_PROTOCOL_VERSION, DaemonInitializeResult, DaemonServerCapabilities,
-    DaemonSessionAttachResult, DaemonSessionOpenResult, DaemonSubscribeResult,
-    DaemonWorkspaceGetResult, DaemonWorkspaceListResult, DaemonWorkspaceOpenResult,
-    JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession, METHOD_DAEMON_ACTIVITY_PAGE,
-    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
+    DAEMON_PROTOCOL_VERSION, DaemonInitializeResult, DaemonNavigationIntentResult,
+    DaemonNavigationSnapshotResult, DaemonNavigationSubscribeResult, DaemonProjectOpenResult,
+    DaemonServerCapabilities, DaemonSessionAttachResult, DaemonSessionOpenResult,
+    DaemonSubscribeResult, DaemonWorkspaceGetResult, DaemonWorkspaceListResult,
+    DaemonWorkspaceOpenResult, JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession,
+    METHOD_DAEMON_ACTIVITY_PAGE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT,
-    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET,
-    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_LIST,
-    METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE, METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE,
-    METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_RECIPES_LIST, METHOD_DAEMON_RUN_CANCEL,
-    METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_GET,
-    METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS,
-    METHOD_DAEMON_RUN_RESUME, METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
-    METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
-    METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
-    METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST, METHOD_DAEMON_WORK_ITEM_REFRESH,
-    METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST,
-    METHOD_DAEMON_WORKSPACE_OPEN, METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD,
-    METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest, OpenWorkspaceRequest,
-    RecipeListResponse, WorkspaceSelector,
+    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
+    METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST,
+    METHOD_DAEMON_CONTEXT_RECEIPTS_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE,
+    METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE, METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT,
+    METHOD_DAEMON_NAVIGATION_INTENT, METHOD_DAEMON_NAVIGATION_SNAPSHOT,
+    METHOD_DAEMON_NAVIGATION_SUBSCRIBE, METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RECIPES_LIST,
+    METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_FORK,
+    METHOD_DAEMON_RUN_GET, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_LIST_NATIVE,
+    METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_RESUME, METHOD_DAEMON_RUN_START,
+    METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS, METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH,
+    METHOD_DAEMON_SESSION_GET, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
+    METHOD_DAEMON_SESSION_OVERVIEW, METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST,
+    METHOD_DAEMON_WORK_ITEM_REFRESH, METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_DAEMON_WORKSPACE_GET,
+    METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN, METHOD_WORKFLOW_LOAD,
+    METHOD_WORKFLOW_RELOAD, METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest,
+    OpenWorkspaceRequest, RecipeListResponse, WorkspaceSelector,
     host::{
         bootstrap::BootstrapState,
         control::rpc::handle_control_status_request,
@@ -41,7 +44,8 @@ use super::state::{
     require_principal_id, validate_client_capabilities, validate_client_name,
 };
 use super::{
-    daemon_status_result, json_deferred_mutation_result, json_result, spawn_event_forwarder,
+    daemon_status_result, defer_navigation_invalidation, json_deferred_mutation_result,
+    json_result, spawn_event_forwarder, spawn_navigation_invalidation_forwarder,
     spawn_run_event_forwarder, wake_local_server_accept_loop,
 };
 
@@ -118,12 +122,12 @@ pub(super) async fn handle_request(
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let client_name = require_client_name(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let principal_id = require_principal_id(session_state, METHOD_DAEMON_SESSION_OPEN)?;
-            let workspace_id = match params.workspace {
-                WorkspaceSelector::ById { id } => id,
+            let (workspace_id, project_id) = match params.workspace {
+                WorkspaceSelector::ById { id } => (id, None),
                 WorkspaceSelector::ByPath {
                     path,
                     trust_acknowledged,
-                } => {
+                } => (
                     state
                         .app
                         .open_workspace(&OpenWorkspaceRequest {
@@ -131,20 +135,28 @@ pub(super) async fn handle_request(
                             trust_acknowledged,
                         })
                         .map_err(map_app_service_error)?
-                        .id
-                }
+                        .id,
+                    None,
+                ),
+                WorkspaceSelector::ByProject {
+                    project_id,
+                    workspace_id,
+                } => (workspace_id, Some(project_id)),
             };
-            let opened_session = state
-                .app
-                .open_session(
-                    &client_name,
-                    &principal_id,
-                    &OpenSessionRequest {
-                        title: params.title,
-                        workspace_id,
-                    },
-                )
-                .map_err(map_app_service_error)?;
+            let request = OpenSessionRequest {
+                title: params.title,
+                workspace_id,
+            };
+            let opened_session = if let Some(project_id) = project_id {
+                state
+                    .app
+                    .open_project_session(&client_name, &principal_id, &request, project_id)
+            } else {
+                state
+                    .app
+                    .open_session(&client_name, &principal_id, &request)
+            }
+            .map_err(map_app_service_error)?;
             let latest_cursor = state
                 .app
                 .latest_event_cursor_for_session(&opened_session.session.id)
@@ -153,6 +165,10 @@ pub(super) async fn handle_request(
                 .lock()
                 .expect("daemon rpc session state should not be poisoned")
                 .attached_session_id = Some(opened_session.session.id.clone());
+            state
+                .runtime
+                .register_navigation_session(&opened_session.session.id, &principal_id);
+            defer_navigation_invalidation(session, state.runtime.clone(), principal_id);
             json_result(DaemonSessionOpenResult {
                 session: opened_session.session,
                 latest_cursor,
@@ -182,6 +198,19 @@ pub(super) async fn handle_request(
                 .get_workspace(&params.id)
                 .map_err(map_app_service_error)?;
             json_result(DaemonWorkspaceGetResult { workspace })
+        }
+        DaemonRpcRequest::ProjectOpen(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_PROJECT_OPEN)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_PROJECT_OPEN)?;
+            let (project_id, snapshot) = state
+                .app
+                .open_project(&principal_id, params.path, params.trust_acknowledged)
+                .map_err(map_app_service_error)?;
+            defer_navigation_invalidation(session, state.runtime.clone(), principal_id);
+            json_result(DaemonProjectOpenResult {
+                project_id,
+                snapshot,
+            })
         }
         DaemonRpcRequest::SessionAttach(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_ATTACH)?;
@@ -249,6 +278,42 @@ pub(super) async fn handle_request(
                 .session_overview(&client_name, &principal_id, &params)
                 .map_err(map_app_service_error)?;
             json_result(snapshot)
+        }
+        DaemonRpcRequest::NavigationSnapshot(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_NAVIGATION_SNAPSHOT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_NAVIGATION_SNAPSHOT)?;
+            let snapshot = state
+                .app
+                .navigation_snapshot(&principal_id, params.search.as_deref())
+                .map_err(map_app_service_error)?;
+            json_result(DaemonNavigationSnapshotResult { snapshot })
+        }
+        DaemonRpcRequest::NavigationIntent(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_NAVIGATION_INTENT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_NAVIGATION_INTENT)?;
+            let snapshot = state
+                .app
+                .apply_navigation_intent(&principal_id, params.intent)
+                .map_err(map_app_service_error)?;
+            defer_navigation_invalidation(session, state.runtime.clone(), principal_id);
+            json_result(DaemonNavigationIntentResult { snapshot })
+        }
+        DaemonRpcRequest::NavigationSubscribe(_params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_NAVIGATION_SUBSCRIBE)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_NAVIGATION_SUBSCRIBE)?;
+            state
+                .app
+                .register_navigation_sessions_for_principal(&principal_id)
+                .map_err(map_app_service_error)?;
+            let subscription = state.runtime.subscribe_navigation(&principal_id);
+            let forwarder_session = session.clone();
+            session.defer_until_response(Box::new(move || {
+                spawn_navigation_invalidation_forwarder(forwarder_session, subscription);
+            }));
+            json_result(DaemonNavigationSubscribeResult {})
         }
         DaemonRpcRequest::SessionGet(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_GET)?;
@@ -542,14 +607,6 @@ pub(super) async fn handle_request(
                 .map_err(map_app_service_error)?;
             json_result(snapshot)
         }
-        DaemonRpcRequest::AgentRuntimeProfileSelect(params) => {
-            ensure_initialized(session_state, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT)?;
-            let snapshot = state
-                .app
-                .select_agent_runtime_profile(&params)
-                .map_err(map_app_service_error)?;
-            json_result(snapshot)
-        }
         DaemonRpcRequest::AgentRuntimeProfilePatch(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH)?;
             let snapshot = state
@@ -563,6 +620,18 @@ pub(super) async fn handle_request(
             let result = state
                 .app
                 .login_agent_runtime_auth_profile(&params)
+                .await
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::AgentRuntimeAuthLoginComplete(params) => {
+            ensure_initialized(
+                session_state,
+                METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE,
+            )?;
+            let result = state
+                .app
+                .complete_agent_runtime_auth_profile_login(&params)
                 .await
                 .map_err(map_app_service_error)?;
             json_result(result)

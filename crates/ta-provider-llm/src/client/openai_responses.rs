@@ -324,7 +324,6 @@ mod tests {
     use crate::auth::openai::OpenAiAuth;
     use crate::auth::openai_subscription::OpenAiSubscriptionAuth;
     use crate::client::StopReason;
-    use crate::families::openai::OPENAI_CHATGPT_AUTH_PROFILE_ID;
 
     #[test]
     fn platform_responses_body_keeps_current_message_shape() {
@@ -849,9 +848,7 @@ mod tests {
             originator: None,
             allowed_workspace_id: None,
         };
-        let key = CredentialKey::new(
-            AuthProfileId::new(OPENAI_CHATGPT_AUTH_PROFILE_ID).expect("auth id"),
-        );
+        let key = CredentialKey::new(AuthProfileId::new("profile-test").expect("auth id"));
         let manager = Arc::new(TokenManager::new(
             Arc::clone(&store),
             Arc::clone(&http),

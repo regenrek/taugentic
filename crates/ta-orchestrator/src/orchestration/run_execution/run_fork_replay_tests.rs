@@ -117,10 +117,14 @@ fn set_parent_status(
 fn fork_run_replays_parent_state_through_turn_boundary() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let session = open_session(&app, "Active fork replay");
     let parent = execution
-        .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+        .seed_running_run_for_tests(
+            session.id.clone(),
+            "Parent objective".to_string(),
+            selection,
+        )
         .expect("parent should seed");
     let turn_one = append_parent_events(
         &execution,
@@ -156,10 +160,14 @@ fn fork_run_replays_parent_state_through_turn_boundary() {
 fn fork_run_rejects_mid_turn_tool_boundary() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let session = open_session(&app, "Mid-turn fork replay");
     let parent = execution
-        .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+        .seed_running_run_for_tests(
+            session.id.clone(),
+            "Parent objective".to_string(),
+            selection,
+        )
         .expect("parent should seed");
     let events = append_parent_events(
         &execution,
@@ -208,10 +216,14 @@ fn fork_run_rejects_mid_turn_tool_boundary() {
 fn fork_run_replays_completed_parent_to_last_event() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
-    select_runtime_profile(&app, "runtime-openai-safe");
+    let selection = validated_runtime_selection(&app, "runtime-openai-safe");
     let session = open_session(&app, "Completed fork replay");
     let parent = execution
-        .seed_running_run_for_tests(session.id.clone(), "Parent objective".to_string())
+        .seed_running_run_for_tests(
+            session.id.clone(),
+            "Parent objective".to_string(),
+            selection,
+        )
         .expect("parent should seed");
     append_parent_events(
         &execution,

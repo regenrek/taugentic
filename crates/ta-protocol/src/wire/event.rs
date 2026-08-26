@@ -152,27 +152,27 @@ pub struct TokenUsageRecordedEvent {
     pub capsule_id: Option<RunId>,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub prompt_tokens: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub completion_tokens: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub cached_tokens: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub reasoning_tokens: Option<u64>,
     pub model: String,
     pub provider: String,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub recorded_at_ms: u64,
 }
 
@@ -182,19 +182,19 @@ pub struct TokenUsageRecordedEvent {
 pub struct TokenUsageTotals {
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub prompt_tokens: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub completion_tokens: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub cached_tokens: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub reasoning_tokens: u64,
 }
 
@@ -314,7 +314,7 @@ pub struct DaemonEventCursor {
     pub session_id: SessionId,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub sequence: u64,
 }
 
@@ -326,11 +326,11 @@ pub struct DaemonEventEnvelope {
     pub session_id: SessionId,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub sequence: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub event: DaemonEvent,
 }
@@ -349,11 +349,11 @@ pub struct PublicDaemonEventEnvelope {
     pub session_id: SessionId,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub sequence: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub event: PublicDaemonEvent,
 }

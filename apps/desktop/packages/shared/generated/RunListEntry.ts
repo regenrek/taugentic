@@ -6,4 +6,4 @@ import type { RunId } from "./RunId.js";
 import type { RunStatus } from "./RunStatus.js";
 import type { WorktreeInfo } from "./WorktreeInfo.js";
 
-export type RunListEntry = { id: RunId, parentRunId?: RunId | null, outputContract?: OutputContractKind | null, recipeId?: string | null, harness: RunHarnessKind, status: RunStatus, startedAtMs?: bigint | null, endedAtMs?: bigint | null, lastEventSeq?: bigint | null, objectivePreview?: string | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, };
+export type RunListEntry = { id: RunId, parentRunId?: RunId | null, outputContract?: OutputContractKind | null, recipeId?: string | null, harness: RunHarnessKind, status: RunStatus, startedAtMs?: string | null, endedAtMs?: string | null, lastEventSeq?: string | null, objectivePreview?: string | null, workspaceInfo?: WorktreeInfo | null, claimedFiles?: Array<string>, conflictSummary?: ConflictSummary | null, };

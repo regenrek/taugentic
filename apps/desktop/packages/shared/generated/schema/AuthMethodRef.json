@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "AuthProfileManagementMode": {
+      "enum": [
+        "interactive",
+        "nativeAcpAuth",
+        "terminalCliDelegated",
+        "environment",
+        "none",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "displayName": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "managementMode": {
+      "$ref": "#/$defs/AuthProfileManagementMode"
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "supportsMultipleProfiles": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "providerId",
+    "displayName",
+    "managementMode",
+    "supportsMultipleProfiles"
+  ],
+  "title": "AuthMethodRef",
+  "type": "object"
+}

@@ -18,8 +18,8 @@ pub(crate) use ta_protocol::wire::{
     ConflictSeverity, ConflictWarning, FileClaimConflict, FileClaimKind,
 };
 pub(crate) use ta_store::{
-    ArtifactRecord, CommitRepository, CommitRunTransition, EventRecord, ProjectionRepository,
-    RunProjection, test_support::StoreSeedRepository,
+    ArtifactRecord, AuthProfileRepository, CommitRepository, CommitRunTransition, EventRecord,
+    ProjectionRepository, RunProjection, test_support::StoreSeedRepository,
 };
 
 mod activity_pages;
@@ -63,8 +63,9 @@ pub(crate) fn ensure_running_run(
     session_id: &SessionId,
     objective: &str,
 ) -> AppDeferredMutationResult<RunSummary> {
+    let selection = crate::orchestration::test_runtime_selection(service, "runtime-openai-safe");
     service
-        .seed_running_run_for_tests(session_id, objective)
+        .seed_running_run_for_tests(session_id, objective, &selection)
         .expect("seeded run should start")
 }
 
@@ -90,7 +91,7 @@ pub(crate) fn native_run_projection(
         objective: format!("Objective {run_id}"),
         status,
         harness: RunHarnessKind::Native,
-        source: RunSource::default(),
+        source: ta_store::default_test_run_source(),
         execution_context: ta_store::default_test_execution_context(),
         result: None,
         contract_violation: None,
@@ -192,11 +193,23 @@ pub(crate) fn append_and_publish_run_event(
     service.runtime.publish_record(&record);
 }
 
-pub(crate) fn select_runtime_profile(service: &AppService, runtime_profile_id: &str) {
+pub(crate) fn start_run_command(service: &AppService, objective: &str) -> StartRunCommand {
+    StartRunCommand::new(
+        objective,
+        crate::orchestration::test_runtime_selection(service, "runtime-openai-safe"),
+    )
+}
+
+pub(crate) fn open_test_session(service: &AppService, title: &str) -> SessionSummary {
     service
-        .select_agent_runtime_profile(&crate::DaemonAgentRuntimeSelectProfileParams {
-            runtime_profile_id: crate::RuntimeProfileId::new(runtime_profile_id)
-                .expect("runtime profile id"),
-        })
-        .expect("runtime profile should select");
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: title.to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open")
+        .session
 }

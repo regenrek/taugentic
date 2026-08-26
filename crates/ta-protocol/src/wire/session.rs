@@ -2,7 +2,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::wire::{DaemonEventCursor, SessionAuthority, SessionId, WorkspaceId, WorkspacePath};
+use crate::wire::{
+    DaemonEventCursor, ProjectId, SessionAuthority, SessionId, WorkspaceId, WorkspacePath,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +56,10 @@ pub enum WorkspaceSelector {
     },
     ById {
         id: WorkspaceId,
+    },
+    ByProject {
+        project_id: ProjectId,
+        workspace_id: WorkspaceId,
     },
 }
 

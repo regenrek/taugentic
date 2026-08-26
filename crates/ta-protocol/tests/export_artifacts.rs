@@ -45,6 +45,7 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(index.contains("export type { SessionOverviewResult }"));
     assert!(index.contains("export type { SessionOverview }"));
     assert!(index.contains("export type { StartRunCommand }"));
+    assert!(index.contains("export type { DaemonRunCancelParams }"));
     assert!(index.contains("export type { AgentRuntimeSnapshot }"));
     assert!(index.contains("export type { RuntimeProfilePatch }"));
     assert!(index.contains("export type { AgentRuntimeStrategyInfo }"));
@@ -73,12 +74,19 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(index.contains("METHOD_DAEMON_ARTIFACT_LIST"));
     assert!(index.contains("METHOD_DAEMON_SESSION_OVERVIEW"));
     assert!(index.contains("METHOD_DAEMON_RUN_START"));
+    assert!(index.contains("METHOD_DAEMON_RUN_CANCEL"));
     assert!(index.contains("METHOD_DAEMON_SESSION_OPEN"));
     assert!(index.contains("METHOD_DAEMON_AGENT_RUNTIME_GET"));
     assert!(index.contains("METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH"));
     assert!(index.contains("METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN"));
     assert!(index.contains("export const DEFAULT_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;"));
     assert!(index.contains("export const MAX_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT = 8;"));
+
+    let workspace_selector = fs::read_to_string(export_root.join("generated/WorkspaceSelector.ts"))
+        .expect("workspace selector should exist");
+    assert!(workspace_selector.contains("byProject"));
+    assert!(workspace_selector.contains("projectId: ProjectId"));
+    assert!(workspace_selector.contains("workspaceId: WorkspaceId"));
 
     let runtime = fs::read_to_string(export_root.join("generated/runtime.ts"))
         .expect("generated runtime schema module should exist");
@@ -109,6 +117,7 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(runtime.contains("SessionAuthority"));
     assert!(runtime.contains("DaemonStatusResult"));
     assert!(runtime.contains("SessionOverview"));
+    assert!(runtime.contains("DaemonRunCancelParams"));
     assert!(runtime.contains("\"logPath\""));
     assert!(runtime.contains("AgentRuntimeSnapshot"));
     assert!(runtime.contains("RuntimeProfilePatch"));
@@ -134,12 +143,15 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     let runtime_index = fs::read_to_string(export_root.join("generated/index.js"))
         .expect("generated runtime index should exist");
     assert!(runtime_index.contains("METHOD_DAEMON_AGENT_RUNTIME_GET"));
-    assert!(runtime_index.contains("METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT"));
+    assert!(runtime_index.contains("METHOD_DAEMON_RUN_CANCEL"));
 
     let command_binding = fs::read_to_string(export_root.join("generated/StartRunCommand.ts"))
         .expect("start run binding should exist");
     assert!(command_binding.contains("export type StartRunCommand"));
     assert!(!command_binding.contains("sandboxProfile"));
+    let cancel_binding = fs::read_to_string(export_root.join("generated/DaemonRunCancelParams.ts"))
+        .expect("daemon run cancel binding should exist");
+    assert!(cancel_binding.contains("export type DaemonRunCancelParams"));
     let delegate_binding = fs::read_to_string(export_root.join("generated/DelegateRequest.ts"))
         .expect("delegate request binding should exist");
     assert!(delegate_binding.contains("modelId?: AgentRuntimeModelId | null"));
@@ -149,6 +161,32 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
         fs::read_to_string(export_root.join("generated/AgentRuntimeSnapshot.ts"))
             .expect("agent runtime snapshot binding should exist");
     assert!(agent_runtime_binding.contains("export type AgentRuntimeSnapshot"));
+    let run_event_delta_binding =
+        fs::read_to_string(export_root.join("generated/RunEventDelta.ts"))
+            .expect("run event delta binding should exist");
+    assert!(run_event_delta_binding.contains("seq: string"));
+    for entry in fs::read_dir(export_root.join("generated")).expect("generated dir should exist") {
+        let entry = entry.expect("generated entry should be readable");
+        if entry
+            .path()
+            .extension()
+            .and_then(|extension| extension.to_str())
+            != Some("ts")
+        {
+            continue;
+        }
+        let binding = fs::read_to_string(entry.path()).expect("generated binding should read");
+        assert!(
+            !binding.contains("bigint"),
+            "generated TypeScript must match the serialized JSON representation: {}",
+            entry.path().display()
+        );
+        assert!(
+            binding.lines().all(|line| line == line.trim_end()),
+            "generated TypeScript must not contain trailing whitespace: {}",
+            entry.path().display()
+        );
+    }
     assert!(
         !export_root.join("generated/generated").exists(),
         "typescript export should not create a nested generated directory"
@@ -157,6 +195,10 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     let run_status_schema = fs::read_to_string(export_root.join("generated/schema/RunStatus.json"))
         .expect("run status schema should exist");
     assert!(run_status_schema.contains("\"title\": \"RunStatus\""));
+    let cancel_schema =
+        fs::read_to_string(export_root.join("generated/schema/DaemonRunCancelParams.json"))
+            .expect("daemon run cancel schema should exist");
+    assert!(cancel_schema.contains("\"title\": \"DaemonRunCancelParams\""));
     let capsule_result_schema =
         fs::read_to_string(export_root.join("generated/schema/CapsuleResult.json"))
             .expect("capsule result schema should exist");

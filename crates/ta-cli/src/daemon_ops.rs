@@ -2,7 +2,6 @@ use std::{
     fs::{self},
     io,
     path::{Path, PathBuf},
-    process::Command,
     thread,
     time::{Duration, Instant},
 };
@@ -10,7 +9,7 @@ use std::{
 use serde::Serialize;
 use ta_daemon_client::DaemonClient;
 use ta_jsonrpc::{JsonRpcClientError, SocketAddress};
-use ta_orchestrator::{daemon_log_path_for_current_env, resolve_daemon_binary};
+use ta_orchestrator::{daemon_log_path_for_current_env, invoke_runtime_control_bootstrap};
 use ta_protocol::local_control::RuntimeControlBootstrapCommand;
 use ta_protocol::wire::{
     DaemonActualRuntimeMode, DaemonControlStatusResult, DaemonStatusResult, DaemonStopResult,
@@ -18,8 +17,6 @@ use ta_protocol::wire::{
 
 use crate::error::CliError;
 use crate::output::DaemonStatusPoll;
-
-const CONTROL_BOOTSTRAP_SUBCOMMAND: &str = RuntimeControlBootstrapCommand::SUBCOMMAND;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -317,22 +314,7 @@ fn daemon_log_path(daemon_client: &DaemonClient) -> Result<PathBuf, CliError> {
 fn run_bootstrap_subcommand(
     action: RuntimeControlBootstrapCommand,
 ) -> Result<DaemonControlStatusResult, CliError> {
-    let daemon_binary = resolve_daemon_binary().map_err(map_daemon_binary_error)?;
-    let output = Command::new(daemon_binary)
-        .arg(CONTROL_BOOTSTRAP_SUBCOMMAND)
-        .arg(action.as_str())
-        .output()
-        .map_err(CliError::Io)?;
-
-    if !output.status.success() {
-        return Err(CliError::ControlProtocol(format!(
-            "bootstrap subcommand `{}` failed: {}",
-            action.as_str(),
-            command_detail(&output)
-        )));
-    }
-
-    serde_json::from_slice(&output.stdout).map_err(CliError::DeserializeControlRequest)
+    invoke_runtime_control_bootstrap(action).map_err(map_daemon_binary_error)
 }
 
 fn read_daemon_log_tail(log_path: &Path, tail: usize) -> Result<DaemonLogsResult, CliError> {
@@ -447,22 +429,11 @@ fn map_daemon_binary_error(error: ta_orchestrator::DaemonControlOperationError) 
         ta_orchestrator::DaemonControlOperationError::DaemonLogMissing { path } => {
             CliError::DaemonLogMissing { path }
         }
-    }
-}
-
-fn command_detail(output: &std::process::Output) -> String {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let detail = format!("{} {}", stderr.trim(), stdout.trim())
-        .trim()
-        .to_string();
-    if detail.is_empty() {
-        output
-            .status
-            .code()
-            .map(|code| format!("exit code {code}"))
-            .unwrap_or_else(|| "terminated by signal".to_string())
-    } else {
-        detail
+        ta_orchestrator::DaemonControlOperationError::BootstrapFailed { action, detail } => {
+            CliError::ControlProtocol(format!("bootstrap subcommand `{action}` failed: {detail}"))
+        }
+        ta_orchestrator::DaemonControlOperationError::BootstrapResponse(source) => {
+            CliError::DeserializeControlRequest(source)
+        }
     }
 }

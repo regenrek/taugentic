@@ -1,4 +1,6 @@
-use ta_protocol::wire::{ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId, WorkspaceId};
+use ta_protocol::wire::{
+    ApprovalId, ApprovalRequest, ArtifactId, AuthProfileId, RunId, SessionId, WorkspaceId,
+};
 
 use crate::{
     ArtifactPublishCommitResult, ArtifactRecord, CheckpointPersistCommitResult, CheckpointRecord,
@@ -11,6 +13,19 @@ use crate::{
     WorkItemRepository, WorkspaceProjection, projections::PrincipalProjection,
     receipts::ReceiptRepository,
 };
+
+pub trait AuthProfileRepository {
+    fn auth_profile(
+        &self,
+        auth_profile_id: &AuthProfileId,
+    ) -> Result<Option<crate::AuthProfileProjection>, StoreError>;
+    fn auth_profiles(&self) -> Result<Vec<crate::AuthProfileProjection>, StoreError>;
+    fn save_auth_profile(
+        &mut self,
+        profile: crate::AuthProfileProjection,
+    ) -> Result<(), StoreError>;
+    fn remove_auth_profile(&mut self, auth_profile_id: &AuthProfileId) -> Result<bool, StoreError>;
+}
 
 pub trait EventLogRepository {
     fn events(&self) -> Result<Vec<EventRecord>, StoreError>;
@@ -71,6 +86,25 @@ pub trait WorkspaceRepository {
     ) -> Result<Option<WorkspaceProjection>, StoreError>;
 
     fn workspaces(&self) -> Result<Vec<WorkspaceProjection>, StoreError>;
+}
+
+/// Navigation metadata has one durable store owner. Session/run/approval and
+/// workspace data is intentionally not duplicated here.
+pub trait NavigationRepository {
+    fn navigation_state(
+        &self,
+        owner_principal_id: &str,
+    ) -> Result<crate::NavigationState, StoreError>;
+    fn save_navigation_state(
+        &mut self,
+        owner_principal_id: &str,
+        state: crate::NavigationState,
+    ) -> Result<(), StoreError>;
+    fn delete_temporary_session(
+        &mut self,
+        owner_principal_id: &str,
+        session_id: &SessionId,
+    ) -> Result<bool, StoreError>;
 }
 
 pub trait PrincipalRepository {
@@ -156,10 +190,12 @@ pub trait PersistenceStore:
     + ProjectionRepository
     + PrincipalRepository
     + WorkspaceRepository
+    + NavigationRepository
     + SessionAuthorityRepository
     + CommitRepository
     + CheckpointRepository
     + ArtifactRepository
+    + AuthProfileRepository
     + ReceiptRepository
     + WorkItemRepository
 {
@@ -170,10 +206,12 @@ impl<T> PersistenceStore for T where
         + ProjectionRepository
         + PrincipalRepository
         + WorkspaceRepository
+        + NavigationRepository
         + SessionAuthorityRepository
         + CommitRepository
         + CheckpointRepository
         + ArtifactRepository
+        + AuthProfileRepository
         + ReceiptRepository
         + WorkItemRepository
 {

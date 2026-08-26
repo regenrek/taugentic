@@ -7,4 +7,4 @@ import type { RunEventDelta } from "./RunEventDelta.js";
  * The event list is a finite historical batch. No live stream is opened by this
  * result; live splice uses `RunEventDelta` as its stream item.
  */
-export type SubscribeRunEventsResult = { events: Array<RunEventDelta>, latestEventSeq?: bigint | null, };
+export type SubscribeRunEventsResult = { events: Array<RunEventDelta>, latestEventSeq?: string | null, };

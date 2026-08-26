@@ -2,6 +2,7 @@ use std::{
     ffi::OsString,
     fs, io,
     path::Path,
+    process::Child,
     thread,
     time::{Duration, Instant},
 };
@@ -25,6 +26,20 @@ use ta_protocol::wire::{
     METHOD_DAEMON_STATUS,
 };
 use thiserror::Error;
+
+/// Private bootstrap result. Local identity is converted into an opaque
+/// runtime-control handle before it reaches the desktop bridge.
+pub(crate) struct DesktopRuntimeBootstrap {
+    pub status: DaemonControlStatusResult,
+    pub(crate) local_daemon: Option<DesktopLocalDaemon>,
+}
+
+/// The one process lease created by desktop bootstrap. It stays entirely in
+/// Rust so a desktop close can prove it is acting on the exact child it owns.
+pub(crate) struct DesktopLocalDaemon {
+    pub(crate) daemon_instance_id: String,
+    pub(crate) child: Child,
+}
 
 pub const CONTROL_BOOTSTRAP_SUBCOMMAND: &str = RuntimeControlBootstrapCommand::SUBCOMMAND;
 const BOOTSTRAP_CLIENT_NAME: &str = "ta-daemon-bootstrap";
@@ -184,12 +199,56 @@ fn bootstrap_start_runtime(
     }
 
     match config.runtime_mode {
-        DaemonRuntimeMode::Local => bootstrap_local_runtime(config)?,
+        DaemonRuntimeMode::Local => {
+            let _child = bootstrap_local_runtime(config)?;
+        }
         DaemonRuntimeMode::Background => bootstrap_background_runtime(config)?,
     }
 
     let status = wait_for_ready_status(&client, config.runtime_mode)?;
     build_control_status(config, Some(status))
+}
+
+/// Start the daemon for one desktop lifecycle and atomically classify the
+/// outcome while holding the runtime-control lock. The lease never leaves the
+/// Rust desktop boundary; it exists solely to guard a later local stop.
+pub(crate) fn bootstrap_desktop_runtime(
+    config: &RuntimeControlBootstrapConfig,
+) -> Result<DesktopRuntimeBootstrap, RuntimeControlBootstrapError> {
+    let _lock = acquire_runtime_control_lock()?;
+    let client = daemon_client(config);
+
+    match client.call::<_, DaemonStatusResult>(METHOD_DAEMON_STATUS, &DaemonStatusParams {}) {
+        Ok(status) => {
+            return Ok(DesktopRuntimeBootstrap {
+                status: build_control_status(config, Some(status))?,
+                local_daemon: None,
+            });
+        }
+        Err(error) if is_daemon_unavailable(&error) => {}
+        Err(error) => return Err(error.into()),
+    }
+
+    if config.runtime_mode == DaemonRuntimeMode::Local {
+        recover_stale_owned_local_runtime(config)?;
+        let child = bootstrap_local_runtime(config)?;
+        let status = wait_for_ready_status(&client, DaemonRuntimeMode::Local)?;
+        let daemon_instance_id = status.daemon_instance_id.clone();
+        return Ok(DesktopRuntimeBootstrap {
+            status: build_control_status(config, Some(status))?,
+            local_daemon: Some(DesktopLocalDaemon {
+                daemon_instance_id,
+                child,
+            }),
+        });
+    }
+
+    bootstrap_background_runtime(config)?;
+    let status = wait_for_ready_status(&client, DaemonRuntimeMode::Background)?;
+    Ok(DesktopRuntimeBootstrap {
+        status: build_control_status(config, Some(status))?,
+        local_daemon: None,
+    })
 }
 
 fn snapshot_runtime_control(
@@ -267,7 +326,7 @@ fn bootstrap_stop_runtime(
 
 fn bootstrap_local_runtime(
     config: &RuntimeControlBootstrapConfig,
-) -> Result<(), RuntimeControlBootstrapError> {
+) -> Result<Child, RuntimeControlBootstrapError> {
     let control_token = mint_control_token();
     let launch_config = config
         .launch_config
@@ -282,7 +341,7 @@ fn bootstrap_local_runtime(
         control_token,
         process_id: Some(child.id()),
     })?;
-    Ok(())
+    Ok(child)
 }
 
 fn bootstrap_background_runtime(
@@ -436,7 +495,7 @@ fn observed_runtime_control_state_with(
     })
 }
 
-fn observe_runtime_control(
+pub(crate) fn observe_runtime_control(
     config: &RuntimeControlBootstrapConfig,
 ) -> Result<RuntimeControlObservedState, BackgroundServiceControlError> {
     let client = daemon_client(config);
@@ -487,24 +546,42 @@ fn wait_for_ready_status(
 ) -> Result<DaemonStatusResult, RuntimeControlBootstrapError> {
     let deadline = Instant::now() + BOOTSTRAP_READY_TIMEOUT;
     loop {
-        match current_status(client) {
-            Ok(status) if status.ready && status.runtime_mode == expected_mode => {
-                return Ok(status);
-            }
-            Ok(_) if Instant::now() < deadline => thread::sleep(BOOTSTRAP_POLL_INTERVAL),
-            Ok(_) => {
-                return Err(RuntimeControlBootstrapError::StartupTimeout {
-                    mode: expected_mode,
-                    socket: client.config().socket_address.to_string(),
-                });
-            }
-            Err(RuntimeControlBootstrapError::Rpc(error))
-                if is_daemon_unavailable(&error) && Instant::now() < deadline =>
-            {
-                thread::sleep(BOOTSTRAP_POLL_INTERVAL);
-            }
-            Err(error) => return Err(error),
+        match classify_ready_status_attempt(
+            current_status(client),
+            expected_mode,
+            Instant::now() < deadline,
+            &client.config().socket_address.to_string(),
+        )? {
+            Some(status) => return Ok(status),
+            None => thread::sleep(BOOTSTRAP_POLL_INTERVAL),
         }
+    }
+}
+
+fn classify_ready_status_attempt(
+    attempt: Result<DaemonStatusResult, RuntimeControlBootstrapError>,
+    expected_mode: DaemonRuntimeMode,
+    before_deadline: bool,
+    socket: &str,
+) -> Result<Option<DaemonStatusResult>, RuntimeControlBootstrapError> {
+    match attempt {
+        Ok(status) if status.ready && status.runtime_mode == expected_mode => Ok(Some(status)),
+        Ok(_) if before_deadline => Ok(None),
+        Ok(_) => Err(RuntimeControlBootstrapError::StartupTimeout {
+            mode: expected_mode,
+            socket: socket.to_string(),
+        }),
+        Err(RuntimeControlBootstrapError::Rpc(error)) if is_daemon_unavailable(&error) => {
+            if before_deadline {
+                Ok(None)
+            } else {
+                Err(RuntimeControlBootstrapError::StartupTimeout {
+                    mode: expected_mode,
+                    socket: socket.to_string(),
+                })
+            }
+        }
+        Err(error) => Err(error),
     }
 }
 
@@ -536,6 +613,27 @@ mod tests {
             self.disable_calls.set(self.disable_calls.get() + 1);
             Ok(())
         }
+    }
+
+    #[test]
+    fn unavailable_socket_at_readiness_deadline_is_startup_timeout() {
+        let error = classify_ready_status_attempt(
+            Err(RuntimeControlBootstrapError::Rpc(
+                JsonRpcClientError::ConnectionClosed,
+            )),
+            DaemonRuntimeMode::Local,
+            false,
+            "test-control-endpoint",
+        )
+        .expect_err("unavailable socket at the deadline should be a startup timeout");
+
+        assert!(matches!(
+            error,
+            RuntimeControlBootstrapError::StartupTimeout {
+                mode: DaemonRuntimeMode::Local,
+                socket,
+            } if socket == "test-control-endpoint"
+        ));
     }
 
     #[test]

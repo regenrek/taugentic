@@ -1,5 +1,5 @@
 use super::*;
-use ta_protocol::wire::RuntimePolicyMode;
+use ta_protocol::wire::{AuthProfileManagementMode, RuntimePolicyMode};
 use ta_provider_acp::descriptor::{AcpLaunchKind, AcpProviderDescriptor};
 
 fn strategy_id(value: &str) -> AgentRuntimeStrategyId {
@@ -10,8 +10,8 @@ fn model_id(value: &str) -> AgentRuntimeModelId {
     AgentRuntimeModelId::new(value).expect("model id")
 }
 
-fn auth_profile_id(value: &str) -> AuthProfileId {
-    AuthProfileId::new(value).expect("auth profile id")
+fn auth_method_id(value: &str) -> AuthMethodId {
+    AuthMethodId::new(value).expect("auth method id")
 }
 
 fn profile_id(value: &str) -> RuntimeProfileId {
@@ -20,21 +20,22 @@ fn profile_id(value: &str) -> RuntimeProfileId {
 
 fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
     let provider_id = strategy_id(provider);
-    let auth_id = auth_profile_id(&format!("auth-{provider}"));
+    let auth_method_id = auth_method_id(&format!("auth-{provider}"));
     strategy_descriptor(
         provider_id.clone(),
         "Fake",
-        vec![AuthProfileRef {
-            id: auth_id.clone(),
+        vec![AuthMethodRef {
+            id: auth_method_id.clone(),
             provider_id: provider_id.clone(),
             display_name: "Auth A".to_string(),
+            management_mode: AuthProfileManagementMode::Interactive,
+            supports_multiple_profiles: true,
         }],
         vec![RuntimeProfileSummary {
             id: profile_id(runtime_profile),
             display_name: "Runtime A".to_string(),
             provider_id,
-            model_id: None,
-            auth_profile_id: Some(auth_id),
+            auth_method_id: Some(auth_method_id),
             policy_mode: RuntimePolicyMode::Allow,
         }],
     )
@@ -65,8 +66,7 @@ fn fake_runtime_profile(provider: &str, runtime_profile: &str) -> RuntimeProfile
         id: profile_id(runtime_profile),
         display_name: "Runtime A".to_string(),
         provider_id: strategy_id(provider),
-        model_id: Some(model_id("model-a")),
-        auth_profile_id: Some(auth_profile_id(&format!("auth-{provider}"))),
+        auth_method_id: Some(auth_method_id(&format!("auth-{provider}"))),
         policy_mode: RuntimePolicyMode::Allow,
     }
 }
@@ -83,21 +83,21 @@ fn rejects_duplicate_runtime_profile_ids_across_strategies() {
 }
 
 #[test]
-fn validates_auth_profile_owner() {
+fn validates_auth_method_owner() {
     let mut strategy = fake_strategy("first", "runtime-a");
-    strategy.auth_profiles[0].provider_id = strategy_id("other");
+    strategy.auth_methods[0].provider_id = strategy_id("other");
 
     let error = StrategyRegistry::new(vec![strategy]).expect_err("owner mismatch should fail");
 
     assert!(
         error
             .to_string()
-            .contains("auth profile auth-first is owned")
+            .contains("auth method auth-first is owned")
     );
 }
 
 #[test]
-fn resolves_runtime_profiles_and_auth_refs() {
+fn resolves_runtime_profiles_and_auth_methods() {
     let registry =
         StrategyRegistry::new(vec![fake_strategy("first", "runtime-a")]).expect("registry");
 
@@ -105,7 +105,7 @@ fn resolves_runtime_profiles_and_auth_refs() {
     assert!(!registry.has_model(&strategy_id("first"), &model_id("model-a")));
     assert!(
         registry
-            .auth_profile_ref(&auth_profile_id("auth-first"))
+            .auth_method_ref(&auth_method_id("auth-first"))
             .is_some()
     );
     assert_eq!(registry.default_runtime_profiles().len(), 1);
@@ -190,37 +190,6 @@ fn derives_execution_harness_from_registered_strategy_kind() {
 }
 
 #[test]
-fn openai_health_copy_treats_subscription_oauth_as_runnable() {
-    let strategy = registered_strategy(
-        fake_strategy("openai-native", "runtime-openai-native"),
-        StrategyKind::OpenAiNative,
-    );
-    let catalog = ModelCatalog::embedded().expect("catalog");
-    let observed = openai_observed_state_for_snapshot(
-        &strategy,
-        ta_provider_llm::auth::openai::OpenAiAuthSnapshot {
-            api_key_configured: false,
-            chatgpt_configured: true,
-            auth_profiles: Vec::new(),
-        },
-        &catalog,
-    );
-
-    assert_eq!(
-        observed.provider.health.status,
-        AgentRuntimeStrategyHealthStatus::Ready
-    );
-    let message = observed
-        .provider
-        .health
-        .message
-        .as_deref()
-        .expect("health message");
-    assert!(message.contains("ChatGPT subscription credentials are configured"));
-    assert!(!message.contains("modeled in the auth surface"));
-}
-
-#[test]
 fn rejects_runtime_profile_with_unknown_harness_provider() {
     let registry =
         StrategyRegistry::new(vec![fake_strategy("known", "runtime-known")]).expect("registry");
@@ -255,8 +224,7 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
                 id: profile_id("runtime-test-acp-safe"),
                 display_name: "Test ACP Safe".to_string(),
                 provider_id,
-                model_id: None,
-                auth_profile_id: None,
+                auth_method_id: None,
                 policy_mode: RuntimePolicyMode::RequireApproval,
             }],
         ),
@@ -266,13 +234,7 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
 
     let snapshot = registry.runtime_snapshot().expect("snapshot");
 
-    assert!(snapshot.auth_profiles.is_empty());
+    assert!(snapshot.auth_methods.is_empty());
     assert!(snapshot.providers[0].models.is_empty());
-    let message = snapshot.providers[0]
-        .health
-        .message
-        .as_deref()
-        .expect("health message");
-    assert!(message.contains("authentication is delegated to the vendor CLI"));
-    assert!(message.contains("session model availability is validated on run"));
+    assert_eq!(snapshot.providers[0].id.as_str(), "test-acp");
 }

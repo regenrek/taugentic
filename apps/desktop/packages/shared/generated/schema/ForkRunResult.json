@@ -225,6 +225,37 @@
         }
       ]
     },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
     "RunHarnessKind": {
       "enum": [
         "unknown",
@@ -370,10 +401,14 @@
                 "string",
                 "null"
               ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "route"
           ],
           "type": "object"
         },
@@ -421,6 +456,9 @@
                 "null"
               ]
             },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
             "workspaceScope": {
               "$ref": "#/$defs/WorkspaceMode",
               "default": "worktreeWrite"
@@ -428,6 +466,7 @@
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentTurnId"
           ],
@@ -446,10 +485,14 @@
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],

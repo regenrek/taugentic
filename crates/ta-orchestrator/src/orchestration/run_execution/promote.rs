@@ -26,6 +26,7 @@ where
         &self,
         session_id: crate::SessionId,
         objective: String,
+        validated_selection: crate::orchestration::ValidatedRunSelection,
     ) -> Result<RunMutationResult, RunExecutionError> {
         let run_id = RunId::new(format!("run-{}", uuid::Uuid::new_v4().simple()))
             .expect("generated run id should be valid");
@@ -41,10 +42,9 @@ where
             matches!(disposition, crate::RunScheduleDisposition::StartNow),
             "seeded running run requires an empty scheduler slot"
         );
-        let runtime_profile = self
-            .runtime
-            .selected_runtime_profile()
-            .map_err(map_agent_runtime_error)?;
+        let runtime_profile = validated_selection.runtime_profile();
+        let route = validated_selection.route();
+        let harness = validated_selection.execution_harness();
         let prepared_context = self.prepare_execution_context(
             &session_id,
             &run_id,
@@ -61,8 +61,13 @@ where
                     runtime_profile_id: runtime_profile.id.clone(),
                     objective,
                     status: RunStatus::Running,
-                    harness: RunHarnessKind::Native,
-                    source: RunSource::default(),
+                    harness: run_harness_kind(&harness),
+                    source: RunSource::User {
+                        route: route.clone(),
+                        output_contract: None,
+                        model_id: route.model_id.clone(),
+                        recipe_id: None,
+                    },
                     execution_context: prepared_context.execution_context,
                     result: None,
                     contract_violation: None,
@@ -217,7 +222,7 @@ where
                 &run.id,
                 &run.objective,
                 &runtime_profile,
-                execution_overrides_for_run(&run),
+                run.source.route(),
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result

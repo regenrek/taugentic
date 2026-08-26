@@ -1,5 +1,5 @@
 use ta_daemon_client::DaemonClient;
-use ta_protocol::wire::{WorkspacePath, WorkspaceSelector};
+use ta_protocol::wire::{DaemonSessionOpenParams, WorkspacePath, WorkspaceSelector};
 
 use crate::{
     args::{GlobalArgs, SessionCommands},
@@ -27,13 +27,13 @@ pub fn run(
             let mut client =
                 daemon_client.connect_persistent("ta-cli", env!("CARGO_PKG_VERSION"))?;
             let session = client
-                .open_session(
-                    &title,
-                    WorkspaceSelector::ByPath {
+                .open_session(DaemonSessionOpenParams {
+                    title,
+                    workspace: WorkspaceSelector::ByPath {
                         path: workspace_path,
                         trust_acknowledged,
                     },
-                )?
+                })?
                 .session;
             Ok(Some(CommandOutput::SessionOpen(session)))
         }

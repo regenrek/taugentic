@@ -5,18 +5,27 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child as TokioChild, ChildStdout};
 use tokio::runtime::{Handle, Runtime};
 
+use super::CodexLlmClientError;
 use super::framing::parse_jsonl_frame;
-use super::{CODEX_API_KEY_AUTH_PROFILE_ID, CodexLlmClientError, OPENAI_API_KEY_ENV_VAR};
 
 #[cfg(target_os = "macos")]
 const MACOS_CA_BUNDLE: &str = "/private/etc/ssl/cert.pem";
 #[cfg(target_os = "macos")]
 const SSL_CERT_FILE_ENV: &str = "SSL_CERT_FILE";
+const CODEX_HOME_ENV: &str = "CODEX_HOME";
 
 pub(crate) fn app_server_env(
-    auth_profile_id: Option<&str>,
+    auth_profile_id: &str,
 ) -> Result<Vec<(&'static str, OsString)>, CodexLlmClientError> {
-    let mut environment = Vec::new();
+    let profile_id = ta_protocol::wire::AuthProfileId::new(auth_profile_id)
+        .map_err(|error| CodexLlmClientError::InvalidConfig(error.to_string()))?;
+    let managed_home = managed_codex_home(&profile_id)?;
+    std::fs::create_dir_all(&managed_home).map_err(|error| {
+        CodexLlmClientError::InvalidConfig(format!(
+            "failed to prepare managed Codex profile home: {error}"
+        ))
+    })?;
+    let mut environment = vec![(CODEX_HOME_ENV, managed_home.into_os_string())];
     #[cfg(target_os = "macos")]
     {
         let ca_bundle = std::path::Path::new(MACOS_CA_BUNDLE);
@@ -27,13 +36,21 @@ pub(crate) fn app_server_env(
         }
         environment.push((SSL_CERT_FILE_ENV, ca_bundle.as_os_str().to_os_string()));
     }
-    if auth_profile_id == Some(CODEX_API_KEY_AUTH_PROFILE_ID) {
-        environment.push((
-            OPENAI_API_KEY_ENV_VAR,
-            env::var_os(OPENAI_API_KEY_ENV_VAR).ok_or(CodexLlmClientError::MissingApiKeyEnv)?,
-        ));
-    }
     Ok(environment)
+}
+
+pub(crate) fn managed_codex_home(
+    auth_profile_id: &ta_protocol::wire::AuthProfileId,
+) -> Result<std::path::PathBuf, CodexLlmClientError> {
+    let home = env::var_os("HOME").ok_or_else(|| {
+        CodexLlmClientError::InvalidConfig(
+            "managed Codex profile storage requires a user home".to_string(),
+        )
+    })?;
+    Ok(std::path::PathBuf::from(home)
+        .join(".taugentic")
+        .join("codex-profiles")
+        .join(auth_profile_id.as_str()))
 }
 
 #[cfg(test)]
@@ -43,7 +60,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn app_server_uses_explicit_macos_ca_bundle() {
-        let environment = app_server_env(None).expect("app-server environment");
+        let environment = app_server_env("profile-test").expect("app-server environment");
 
         assert!(environment.iter().any(|(name, value)| {
             *name == SSL_CERT_FILE_ENV && value == std::ffi::OsStr::new(MACOS_CA_BUNDLE)

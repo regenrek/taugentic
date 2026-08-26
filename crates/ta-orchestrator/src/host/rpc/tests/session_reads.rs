@@ -36,13 +36,7 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
         .expect("other session should open");
     let started = state
         .app
-        .start_run(
-            &opened.id,
-            &StartRunCommand {
-                objective: "needs approval".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&opened.id, &start_run_command(&state, "needs approval"))
         .expect("run should start");
     assert_eq!(started.body.status, RunStatus::WaitingForApproval);
 
@@ -117,21 +111,12 @@ fn daemon_run_list_filters_by_session() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Build daemon app server".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Build daemon app server"),
         )
         .expect("run should start");
     state
         .app
-        .start_run(
-            &other.id,
-            &StartRunCommand {
-                objective: "Ignore me".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&other.id, &start_run_command(&state, "Ignore me"))
         .expect("run should start");
 
     let response = handle_request(
@@ -181,10 +166,7 @@ fn daemon_approval_list_filters_by_session() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Build daemon app server".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Build daemon app server"),
         )
         .expect("run should start");
 
@@ -242,10 +224,7 @@ fn daemon_run_get_returns_none_outside_selected_session() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Build daemon app server".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Build daemon app server"),
         )
         .expect("run should start");
 
@@ -325,10 +304,7 @@ fn daemon_session_get_returns_optional_summary() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Build daemon app server".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&state, "Build daemon app server"),
         )
         .expect("run should start");
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {

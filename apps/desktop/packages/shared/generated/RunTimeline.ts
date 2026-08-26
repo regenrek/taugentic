@@ -4,4 +4,4 @@ import type { RunTimelineEvent } from "./RunTimelineEvent.js";
 import type { RunTimelineRun } from "./RunTimelineRun.js";
 import type { SessionId } from "./SessionId.js";
 
-export type RunTimeline = { sessionId: SessionId, rootRunId: RunId, runs: Array<RunTimelineRun>, events: Array<RunTimelineEvent>, latestEventSeq?: bigint | null, };
+export type RunTimeline = { sessionId: SessionId, rootRunId: RunId, runs: Array<RunTimelineRun>, events: Array<RunTimelineEvent>, latestEventSeq?: string | null, };

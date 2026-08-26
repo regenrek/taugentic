@@ -218,7 +218,7 @@ where
 mod tests {
     use super::*;
     use crate::orchestration::run_execution::test_support::*;
-    use crate::{DaemonApprovalDecideParams, ListApprovalsQuery, StartRunCommand};
+    use crate::{DaemonApprovalDecideParams, ListApprovalsQuery};
     use ta_protocol::wire::{
         AgentStreamItemId, ApprovalDecision, ApprovalEvent, ApprovalId, ApprovalRequest,
         ApprovalScope, DaemonEvent, RunStatus,
@@ -242,10 +242,7 @@ mod tests {
         let started = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship app server hard cut".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship app server hard cut", "runtime-openai-safe"),
             )
             .expect("run should start");
         let approval_id = started
@@ -290,7 +287,7 @@ mod tests {
             )
             .expect("session should open");
 
-        let started = ensure_running_run(&execution, &session.id, "Ship app server hard cut");
+        let started = ensure_running_run(&app, &execution, &session.id, "Ship app server hard cut");
         let running_run_id = started.id.clone();
 
         assert!(
@@ -328,19 +325,13 @@ mod tests {
         let first = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship active queue owner".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship active queue owner", "runtime-openai-safe"),
             )
             .expect("first run should start");
         let second = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship promoted queue item".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship promoted queue item", "runtime-openai-safe"),
             )
             .expect("second run should queue");
 
@@ -387,7 +378,8 @@ mod tests {
                 },
             )
             .expect("session should open");
-        let running = ensure_running_run(&execution, &session.id, "Ship approval cancel bridge");
+        let running =
+            ensure_running_run(&app, &execution, &session.id, "Ship approval cancel bridge");
         attach_noop_handle(&execution, &running.id);
         let tool_call_id = AgentStreamItemId::new("tool-call-cancel").expect("tool call id");
         let requested_at_ms = current_time_ms();

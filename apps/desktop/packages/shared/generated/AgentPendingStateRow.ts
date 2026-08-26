@@ -5,4 +5,4 @@ import type { RunId } from "./RunId.js";
 import type { RuntimeLanePendingState } from "./RuntimeLanePendingState.js";
 import type { SessionId } from "./SessionId.js";
 
-export type AgentPendingStateRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, occurredAtMs: bigint, state: RuntimeLanePendingState, };
+export type AgentPendingStateRow = { cursor: ActivityCursor, sessionId: SessionId, runId: RunId, turnId?: AgentStreamTurnId | null, occurredAtMs: string, state: RuntimeLanePendingState, };

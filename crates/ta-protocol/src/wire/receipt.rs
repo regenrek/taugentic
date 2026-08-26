@@ -24,17 +24,17 @@ pub struct ContextReceipt {
     pub summary: Option<String>,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(type = "bigint")]
+    #[ts(type = "string")]
     pub created_at_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub promoted_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub quarantined_at_ms: Option<u64>,
 }
 
@@ -79,7 +79,7 @@ pub struct ReceiptProvenance {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub event_seq: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stream_cursor: Option<String>,

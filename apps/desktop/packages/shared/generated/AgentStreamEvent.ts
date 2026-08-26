@@ -4,4 +4,4 @@ import type { AgentStreamItemId } from "./AgentStreamItemId.js";
 import type { AgentStreamTurnId } from "./AgentStreamTurnId.js";
 import type { RunId } from "./RunId.js";
 
-export type AgentStreamEvent = { runId: RunId, turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, fragmentSequence?: bigint | null, frame: AgentStreamFrame, };
+export type AgentStreamEvent = { runId: RunId, turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, fragmentSequence?: string | null, frame: AgentStreamFrame, };

@@ -18,12 +18,21 @@ importers:
       '@gpuix/react':
         specifier: 0.4.0
         version: 0.4.0(react@19.2.4)
+      '@tanstack/react-query':
+        specifier: 5.66.8
+        version: 5.66.8(react@19.2.4)
+      '@taugentic/desktop-daemon-native':
+        specifier: workspace:*
+        version: link:packages/daemon-native
       '@taugentic/desktop-protocol':
         specifier: workspace:*
         version: link:packages/shared
       react:
         specifier: 19.2.4
         version: 19.2.4
+      xstate:
+        specifier: 5.20.2
+        version: 5.20.2
     devDependencies:
       '@types/bun':
         specifier: 1.3.14
@@ -37,6 +46,8 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  packages/daemon-native: {}
 
   packages/shared:
     devDependencies:
@@ -86,6 +97,14 @@ packages:
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
+  '@tanstack/query-core@5.66.4':
+    resolution: {integrity: sha512-skM/gzNX4shPkqmdTCSoHtJAPMTtmIJNS0hE+xwTTUVYwezArCT34NMermABmBVUg5Ls5aiUXEDXfqwR1oVkcA==}
+
+  '@tanstack/react-query@5.66.8':
+    resolution: {integrity: sha512-LqYHYArmM7ycyT1I/Txc/n6KzI8S/hBFw2SQ9Uj1GpbZ89AvZLEvetquiQEHkZ5rFEm+iVNpZ6zYjTiPmJ9N5Q==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@types/bun@1.3.14':
     resolution: {integrity: sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw==}
 
@@ -125,6 +144,9 @@ packages:
 
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
+  xstate@5.20.2:
+    resolution: {integrity: sha512-GZmLmc+WPKfFRxuTDAxCg0cUhS/ZnWaRD86DO8MKizeK4a050jd5k7UNnIQ2jJDWRig2/r0tmVXeezUNIhoz5Q==}
 
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
@@ -166,6 +188,13 @@ snapshots:
       react-reconciler: 0.31.0(react@19.2.4)
       zod: 4.4.3
 
+  '@tanstack/query-core@5.66.4': {}
+
+  '@tanstack/react-query@5.66.8(react@19.2.4)':
+    dependencies:
+      '@tanstack/query-core': 5.66.4
+      react: 19.2.4
+
   '@types/bun@1.3.14':
     dependencies:
       bun-types: 1.3.14
@@ -198,5 +227,7 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@7.16.0: {}
+
+  xstate@5.20.2: {}
 
   zod@4.4.3: {}

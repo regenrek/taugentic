@@ -6,11 +6,11 @@ import type { DaemonPendingTransitionView } from "./DaemonPendingTransitionView.
 import type { DaemonRuntimeMode } from "./DaemonRuntimeMode.js";
 import type { DaemonTransitionStatus } from "./DaemonTransitionStatus.js";
 
-export type DaemonControlStatusResult = { backgroundOptIn: boolean, desiredMode: DaemonRuntimeMode, actualMode: DaemonActualRuntimeMode, transitionStatus: DaemonTransitionStatus, reconcileRequired: boolean, allowedActions: Array<DaemonControlAction>, errorCode?: DaemonControlErrorCode | null, message: string, pendingTransition?: DaemonPendingTransitionView | null, socketPath: string, 
+export type DaemonControlStatusResult = { backgroundOptIn: boolean, desiredMode: DaemonRuntimeMode, actualMode: DaemonActualRuntimeMode, transitionStatus: DaemonTransitionStatus, reconcileRequired: boolean, allowedActions: Array<DaemonControlAction>, errorCode?: DaemonControlErrorCode | null, message: string, pendingTransition?: DaemonPendingTransitionView | null, socketPath: string,
 /**
  * Canonical daemon log path for this host/runtime configuration.
  */
-logPath: string, 
+logPath: string,
 /**
  * Running daemon version observed via daemon status.
  * `None` means the daemon version is currently not observable, so UIs should omit it.

@@ -2,4 +2,4 @@
 import type { RunId } from "./RunId.js";
 import type { SessionId } from "./SessionId.js";
 
-export type GetRunTimelineQuery = { sessionId: SessionId, rootRunId: RunId, afterSeq?: bigint | null, limit?: number | null, };
+export type GetRunTimelineQuery = { sessionId: SessionId, rootRunId: RunId, afterSeq?: string | null, limit?: number | null, };

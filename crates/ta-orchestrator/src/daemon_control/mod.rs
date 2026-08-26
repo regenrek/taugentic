@@ -11,6 +11,7 @@ pub use background::{
     BackgroundServiceState, disable_background_service, enable_background_service,
     read_background_service_state, stop_background_service,
 };
+pub(crate) use bootstrap::bootstrap_desktop_runtime;
 pub use bootstrap::{
     RuntimeControlBootstrapConfig, RuntimeControlBootstrapError,
     parse_runtime_control_bootstrap_action, run_runtime_control_bootstrap_action,
@@ -26,7 +27,9 @@ pub use handoff::{
     request_reconcile_handoff, request_stop_handoff, run_runtime_control_handoff_action,
 };
 pub use operations::{
-    DaemonControlOperationError, is_daemon_unavailable, resolve_daemon_binary, spawn_daemon_process,
+    DaemonControlOperationError, DesktopRuntimeHandle, DesktopRuntimeStartStage,
+    invoke_runtime_control_bootstrap, is_daemon_unavailable, resolve_daemon_binary,
+    spawn_daemon_process, start_desktop_runtime,
 };
 pub use paths::{
     DAEMON_CONTROL_TOKEN_ENV_VAR, DAEMON_RUNTIME_MODE_ENV_VAR, daemon_log_path_for_socket_address,

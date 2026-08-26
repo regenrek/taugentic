@@ -1,9 +1,61 @@
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
+    AuthMethodId, AuthProfileId, AuthProfileState, ConversationPlacement, NavigationProject,
+    NavigationSpace,
+};
+use ta_protocol::wire::{
     CapsuleResult, ConflictSummary, ExecutionContext, RunHarnessKind, RunId, RunSource, RunStatus,
     RuntimeProfileId, SessionId, SessionStatus, TrustState, ValidationError, Workspace,
     WorkspaceId, WorkspacePath, WorktreeInfo,
 };
+
+/// Non-secret daemon-owned account metadata. Credential bytes stay in the host
+/// credential backend under `profile.profile.id`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AuthProfileProjection {
+    pub profile: AuthProfileState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_account_id: Option<String>,
+    pub order: u32,
+    pub is_default: bool,
+}
+
+impl AuthProfileProjection {
+    pub fn id(&self) -> &AuthProfileId {
+        &self.profile.profile.id
+    }
+
+    pub fn auth_method_id(&self) -> &AuthMethodId {
+        &self.profile.profile.auth_method_id
+    }
+}
+
+/// Persisted navigation metadata for one session. Public conversation rows add
+/// their title and status only when the daemon joins this metadata with the
+/// canonical session projection.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavigationConversationMetadata {
+    pub session_id: SessionId,
+    pub placement: ConversationPlacement,
+    pub archived: bool,
+    pub pinned: bool,
+}
+
+/// Persisted navigation metadata only. It deliberately does not copy session,
+/// run, approval, agent, or workspace projections; those remain canonical in
+/// their existing repositories and are joined by the application read model.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NavigationState {
+    #[serde(default)]
+    pub spaces: Vec<NavigationSpace>,
+    #[serde(default)]
+    pub projects: Vec<NavigationProject>,
+    #[serde(default)]
+    pub conversations: Vec<NavigationConversationMetadata>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrincipalProjection {
@@ -94,7 +146,6 @@ pub struct RunProjection {
     pub status: RunStatus,
     #[serde(default)]
     pub harness: RunHarnessKind,
-    #[serde(default)]
     pub source: RunSource,
     pub execution_context: ExecutionContext,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -172,28 +223,9 @@ pub fn compute_session_status_from_runs(runs: &[RunProjection]) -> SessionStatus
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
     use ta_protocol::wire::AgentStreamTurnId;
 
     use super::*;
-
-    #[test]
-    fn run_projection_defaults_missing_source_to_user_when_context_is_present() {
-        let mut value = json!({
-            "id": "run-1",
-            "session_id": "session-1",
-            "runtime_profile_id": "runtime-openai-safe",
-            "objective": "Ship native child runs",
-            "status": "queued"
-        });
-        value["execution_context"] =
-            serde_json::to_value(crate::default_test_execution_context()).expect("test context");
-        let projection: RunProjection =
-            serde_json::from_value(value).expect("run projection should decode");
-
-        assert_eq!(projection.source, RunSource::default());
-        assert_eq!(projection.harness, RunHarnessKind::Unknown);
-    }
 
     #[test]
     fn run_projection_roundtrips_native_subagent_source() {
@@ -206,6 +238,7 @@ mod tests {
             status: RunStatus::Queued,
             harness: RunHarnessKind::Native,
             source: RunSource::NativeSubagent {
+                route: crate::default_test_run_source().route().clone(),
                 parent_run_id: RunId::new("run-parent").expect("parent run id"),
                 parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("parent turn id"),
                 output_contract: None,
@@ -244,6 +277,7 @@ mod tests {
             status: RunStatus::Queued,
             harness: RunHarnessKind::Native,
             source: RunSource::Forked {
+                route: crate::default_test_run_source().route().clone(),
                 parent_run_id: RunId::new("run-parent").expect("parent run id"),
                 parent_event_seq: 42,
             },
@@ -275,7 +309,7 @@ mod tests {
             objective: "resume".to_string(),
             status: RunStatus::Running,
             harness: RunHarnessKind::Native,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,
@@ -308,7 +342,7 @@ mod tests {
             objective: format!("Objective {id}"),
             status,
             harness: RunHarnessKind::Native,
-            source: RunSource::default(),
+            source: crate::default_test_run_source(),
             execution_context: crate::default_test_execution_context(),
             result: None,
             contract_violation: None,

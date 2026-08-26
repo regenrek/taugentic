@@ -134,24 +134,34 @@
           "type": "string"
         },
         "modelContextWindow": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "totalTokens": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "totalTokens",
+        "modelContextWindow"
       ],
       "type": "object"
     }

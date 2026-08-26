@@ -1,11 +1,14 @@
 use ta_protocol::wire::{
-    EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy,
-    SandboxProfile, TrustState, Workspace, WorkspaceId, WorkspacePath, WorkspaceScope,
+    AgentRuntimeModelId, AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState,
+    AuthProfileId, AuthProfileManagementMode, AuthProfileRef, AuthProfileState, EnvPolicy,
+    ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy, RunExecutionRoute,
+    RunHarnessKind, RunSource, RuntimeProfileId, SandboxProfile, TrustState, Workspace,
+    WorkspaceId, WorkspacePath, WorkspaceScope,
 };
 
 use crate::{
-    ArtifactRecord, EventRecord, PrincipalProjection, RunProjection, SessionProjection, StoreError,
-    WorkspaceProjection,
+    ArtifactRecord, AuthProfileProjection, EventRecord, PrincipalProjection, RunProjection,
+    SessionProjection, StoreError, WorkspaceProjection,
 };
 
 pub trait StoreSeedRepository {
@@ -100,5 +103,55 @@ pub fn default_test_execution_context() -> ExecutionContext {
         permission_policy: PermissionPolicy::Unrestricted,
         network_policy: NetworkPolicy::Open,
         env_policy: EnvPolicy::workspace_default(),
+    }
+}
+
+/// Explicit immutable route for tests that seed run projections directly.
+pub fn default_test_run_source() -> RunSource {
+    RunSource::User {
+        route: RunExecutionRoute {
+            runtime_profile_id: RuntimeProfileId::new("runtime-test").expect("runtime profile id"),
+            provider_id: AgentRuntimeStrategyId::new("provider-test").expect("provider id"),
+            harness: RunHarnessKind::Native,
+            model_id: Some(AgentRuntimeModelId::new("model-test").expect("model id")),
+            auth_profile_id: Some(AuthProfileId::new("profile-test").expect("auth profile id")),
+        },
+        output_contract: None,
+        model_id: None,
+        recipe_id: None,
+    }
+}
+
+/// Connected, non-secret auth metadata for tests exercising explicit route
+/// validation. This fixture never supplies credential material or bypasses a
+/// provider's production execution path.
+pub fn connected_test_auth_profile(
+    id: &str,
+    auth_method_id: &str,
+    provider_id: &str,
+) -> AuthProfileProjection {
+    AuthProfileProjection {
+        profile: AuthProfileState {
+            profile: AuthProfileRef {
+                id: AuthProfileId::new(id).expect("test auth profile id"),
+                auth_method_id: AuthMethodId::new(auth_method_id).expect("test auth method id"),
+                provider_id: AgentRuntimeStrategyId::new(provider_id).expect("test provider id"),
+                display_name: "Test Auth Profile".to_string(),
+                account_hint: None,
+                plan_tier: None,
+            },
+            connection_state: AuthProfileConnectionState::Connected,
+            last_error: None,
+            management_mode: AuthProfileManagementMode::Interactive,
+            can_login: false,
+            can_logout: true,
+            platform_org_linked: None,
+            setup_steps: Vec::new(),
+            action: None,
+            methods: Vec::new(),
+        },
+        external_account_id: None,
+        order: 0,
+        is_default: true,
     }
 }

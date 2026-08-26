@@ -1,6 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authProfileId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "runtimeProfileId": {
       "type": "string"
     }

@@ -16,10 +16,8 @@ impl OpenAiSubscriptionAuth {
             })?;
         profile::record_logged_out(self);
         Ok(AuthProfileLogoutResult {
-            auth_profile_id: ta_protocol::wire::AuthProfileId::new(
-                super::OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID,
-            )
-            .expect("OpenAI ChatGPT auth profile id"),
+            auth_profile_id: ta_protocol::wire::AuthProfileId::new(self.key().as_str())
+                .expect("credential key is a valid auth profile id"),
             disconnected: true,
         })
     }

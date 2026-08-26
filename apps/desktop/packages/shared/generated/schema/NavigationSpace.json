@@ -1,13 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "runtimeProfileId": {
+    "id": {
+      "type": "string"
+    },
+    "title": {
       "type": "string"
     }
   },
   "required": [
-    "runtimeProfileId"
+    "id",
+    "title"
   ],
-  "title": "DaemonAgentRuntimeSelectProfileParams",
+  "title": "NavigationSpace",
   "type": "object"
 }

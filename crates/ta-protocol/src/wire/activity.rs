@@ -14,7 +14,7 @@ use crate::wire::{DaemonEvent, DaemonEventKind, PublicDaemonEvent, u64_string};
 pub struct ActivityCursor {
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub sequence: u64,
 }
 
@@ -25,7 +25,7 @@ pub struct ActivityPageItem {
     pub cursor: ActivityCursor,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub event: DaemonEvent,
 }
@@ -37,7 +37,7 @@ pub struct PublicActivityPageItem {
     pub cursor: ActivityCursor,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub event: PublicDaemonEvent,
 }

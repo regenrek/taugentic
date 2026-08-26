@@ -244,6 +244,7 @@ fn receipt_rpc_app_methods_filter_and_transition() {
             .expect("run lookup")
             .expect("run should exist");
         run.source = RunSource::NativeSubagent {
+            route: ta_store::default_test_run_source().route().clone(),
             parent_run_id: parent_run_id.clone(),
             parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
             output_contract: None,

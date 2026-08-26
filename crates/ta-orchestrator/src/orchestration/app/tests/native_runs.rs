@@ -32,6 +32,7 @@ fn list_native_runs_filters_children_and_paginates() {
         &service,
         RunProjection {
             source: RunSource::NativeSubagent {
+                route: ta_store::default_test_run_source().route().clone(),
                 parent_run_id: RunId::new("run-parent-b").expect("parent run id"),
                 parent_turn_id: AgentStreamTurnId::new("turn-parent").expect("turn id"),
                 output_contract: None,

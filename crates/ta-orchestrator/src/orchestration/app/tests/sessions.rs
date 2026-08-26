@@ -287,6 +287,86 @@ fn open_session_creates_idle_projection() {
 }
 
 #[test]
+fn open_project_session_validates_membership_and_persists_project_placement() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let snapshot = service
+        .apply_navigation_intent(
+            TEST_OWNER_PRINCIPAL_ID,
+            ta_protocol::wire::DaemonNavigationIntent::CreateProject {
+                space_id: None,
+                title: "Desktop".to_string(),
+                workspace_ids: vec![ta_store::default_test_workspace_id()],
+            },
+        )
+        .expect("project should be created");
+    let project_id = snapshot.projects[0].id.clone();
+
+    let opened = service
+        .open_project_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Project conversation".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+            project_id.clone(),
+        )
+        .expect("project conversation should open");
+
+    let snapshot = service
+        .navigation_snapshot(TEST_OWNER_PRINCIPAL_ID, None)
+        .expect("navigation should load");
+    let conversation = snapshot
+        .conversations
+        .iter()
+        .find(|conversation| conversation.session_id == opened.id)
+        .expect("project conversation should be projected");
+    assert_eq!(
+        conversation.placement,
+        ta_protocol::wire::ConversationPlacement::Project { project_id }
+    );
+}
+
+#[test]
+fn open_project_session_rejects_workspace_outside_project() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let snapshot = service
+        .apply_navigation_intent(
+            TEST_OWNER_PRINCIPAL_ID,
+            ta_protocol::wire::DaemonNavigationIntent::CreateProject {
+                space_id: None,
+                title: "Empty project".to_string(),
+                workspace_ids: vec![],
+            },
+        )
+        .expect("project should be created");
+
+    let error = service
+        .open_project_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Invalid project conversation".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+            snapshot.projects[0].id.clone(),
+        )
+        .expect_err("workspace membership should be required");
+
+    assert!(matches!(error, AppServiceError::WorkspaceNotFound(_)));
+    assert!(
+        service
+            .list_sessions(
+                TEST_CLIENT_NAME,
+                TEST_OWNER_PRINCIPAL_ID,
+                &ListSessionsQuery {},
+            )
+            .expect("sessions should list")
+            .is_empty()
+    );
+}
+
+#[test]
 fn completing_all_runs_marks_session_completed() {
     let service = AppService::bootstrap().expect("app service should boot");
     let session = service

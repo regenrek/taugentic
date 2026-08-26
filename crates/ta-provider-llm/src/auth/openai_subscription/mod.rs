@@ -17,14 +17,12 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::error::LlmClientError;
-use crate::families::openai::OPENAI_CHATGPT_AUTH_PROFILE_ID;
 
 mod lifecycle;
 mod login;
 mod logout;
 mod profile;
 
-pub const OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID: &str = OPENAI_CHATGPT_AUTH_PROFILE_ID;
 const PENDING_LOGIN_ABORT_TIMEOUT: Duration = Duration::from_millis(250);
 
 type BrowserLauncher = dyn Fn(&Url) -> BrowserLaunch + Send + Sync;
@@ -86,8 +84,9 @@ impl OpenAiSubscriptionAuth {
         http: Arc<dyn OAuthHttpClient>,
         config: OAuthConfig,
         policy: RefreshPolicy,
+        auth_profile_id: AuthProfileId,
     ) -> Result<Self, LlmClientError> {
-        let key = subscription_credential_key()?;
+        let key = subscription_credential_key(auth_profile_id);
         Ok(Self::with_key(runtime, store, http, config, policy, key))
     }
 
@@ -148,9 +147,17 @@ impl OpenAiSubscriptionAuth {
         runtime: Handle,
         store: Arc<dyn CredentialStore>,
         http: Arc<dyn OAuthHttpClient>,
+        auth_profile_id: AuthProfileId,
     ) -> Result<Self, LlmClientError> {
         let config = default_chatgpt_subscription_config().map_err(map_oauth_error)?;
-        Self::new(runtime, store, http, config, RefreshPolicy::default())
+        Self::new(
+            runtime,
+            store,
+            http,
+            config,
+            RefreshPolicy::default(),
+            auth_profile_id,
+        )
     }
 
     pub fn current_state(&self) -> AuthProfileState {
@@ -294,10 +301,8 @@ impl OpenAiSubscriptionAuth {
     }
 }
 
-pub fn subscription_credential_key() -> Result<CredentialKey, LlmClientError> {
-    AuthProfileId::new(OPENAI_CHATGPT_SUBSCRIPTION_AUTH_PROFILE_ID)
-        .map(CredentialKey::new)
-        .map_err(|error| LlmClientError::InvalidConfig(error.to_string()))
+pub fn subscription_credential_key(auth_profile_id: AuthProfileId) -> CredentialKey {
+    CredentialKey::new(auth_profile_id)
 }
 
 fn map_refresh_error(error: ta_auth_openai::TokenRefreshError) -> LlmClientError {

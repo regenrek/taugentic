@@ -24,31 +24,13 @@ fn list_approvals_filters_by_session_and_returns_latest_first() {
         )
         .expect("session should open");
     let first = service
-        .start_run(
-            &session_a.id,
-            &StartRunCommand {
-                objective: "one".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session_a.id, &start_run_command(&service, "one"))
         .expect("run should start");
     service
-        .start_run(
-            &session_b.id,
-            &StartRunCommand {
-                objective: "other session".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session_b.id, &start_run_command(&service, "other session"))
         .expect("run should start");
     let latest = service
-        .start_run(
-            &session_a.id,
-            &StartRunCommand {
-                objective: "latest".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session_a.id, &start_run_command(&service, "latest"))
         .expect("run should start");
     let first_approval_id = first
         .requested_approval_id()
@@ -101,10 +83,7 @@ fn approving_pending_run_resumes_run_and_clears_approval() {
     let started = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&service, "Ship app server hard cut"),
         )
         .expect("run should start");
     let approval_id = started
@@ -215,14 +194,13 @@ fn rejecting_one_run_keeps_session_running_when_another_run_is_still_active() {
         )
         .expect("session should open");
 
-    select_runtime_profile(&service, "runtime-codex-deny");
     let first = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "Run A".to_string(),
-                ..StartRunCommand::default()
-            },
+            &StartRunCommand::new(
+                "Run A",
+                crate::orchestration::test_runtime_selection(&service, "runtime-codex-deny"),
+            ),
         )
         .expect("first run should start");
     assert_eq!(first.body.status, crate::RunStatus::Failed);
@@ -254,10 +232,7 @@ fn rejecting_only_run_marks_session_failed() {
     let started = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "Reject pending run".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&service, "Reject pending run"),
         )
         .expect("run should start");
     let approval_id = started
@@ -301,10 +276,7 @@ fn cancelling_one_run_keeps_session_running_when_another_runs_active() {
     let queued = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "Cancel queued run".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&service, "Cancel queued run"),
         )
         .expect("queued run should start");
     assert_eq!(queued.body.status, crate::RunStatus::Queued);
@@ -342,10 +314,7 @@ fn cancel_run_projects_cancelled_run_and_clears_pending_approval() {
     let started = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&service, "Ship app server hard cut"),
         )
         .expect("run should start");
 

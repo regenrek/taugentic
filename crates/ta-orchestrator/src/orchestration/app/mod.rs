@@ -12,6 +12,7 @@ mod approvals;
 mod diagnostics;
 mod errors;
 mod native_runs;
+mod navigation;
 mod projections;
 mod queries;
 mod receipts;
@@ -48,7 +49,7 @@ where
     pub(super) recipe_registry: Arc<RecipeRegistry>,
     pub(super) work_source_refresh_requested: Arc<AtomicBool>,
     pub(super) workflow: WorkflowManager,
-    pub(super) agent_runtime: AgentRuntimeService,
+    pub(super) agent_runtime: AgentRuntimeService<S>,
     pub(super) run_execution: RunExecutionService<S>,
 }
 
@@ -163,6 +164,18 @@ where
     S: PersistenceStore + Send,
 {
     #[cfg(any(test, feature = "test-support"))]
+    pub(crate) fn seed_auth_profile_for_tests(
+        &self,
+        profile: ta_store::AuthProfileProjection,
+    ) -> Result<(), AppServiceError> {
+        self.store
+            .lock()
+            .expect("app store should not be poisoned")
+            .save_auth_profile(profile)?;
+        Ok(())
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
     pub(crate) fn from_runtime(store: Arc<Mutex<S>>, runtime: &RuntimeService) -> Self {
         let recipe_registry =
             Arc::new(RecipeRegistry::load_builtin().expect("built-in recipes should load"));
@@ -174,15 +187,18 @@ where
         runtime: &RuntimeService,
         recipe_registry: Arc<RecipeRegistry>,
     ) -> Self {
+        let agent_runtime = AgentRuntimeService::new(
+            runtime.agent_runtime_runtime(),
+            runtime.agent_runtime_strategy_registry(),
+            store.clone(),
+        );
         Self {
             daemon_instance_id: runtime.daemon_instance_id(),
             runtime: runtime.clone(),
-            agent_runtime: AgentRuntimeService::new(
-                runtime.agent_runtime_runtime(),
-                runtime.agent_runtime_strategy_registry(),
-            ),
+            agent_runtime: agent_runtime.clone(),
             run_execution: RunExecutionService::new(
                 store.clone(),
+                agent_runtime,
                 runtime.run_execution_runtime(),
                 Arc::clone(&recipe_registry),
             ),
@@ -197,5 +213,25 @@ where
         self.run_execution
             .rehydrate_scheduler_on_boot()
             .map_err(map_run_execution_error)
+    }
+
+    pub(crate) fn register_navigation_sessions_for_principal(
+        &self,
+        principal_id: &str,
+    ) -> Result<(), AppServiceError> {
+        let principal_id = sanitize_session_owner_principal_id(principal_id)?;
+        let sessions = self
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
+            .sessions()?;
+        for session in sessions
+            .into_iter()
+            .filter(|session| session.owner_principal_id == principal_id)
+        {
+            self.runtime
+                .register_navigation_session(&session.id, &principal_id);
+        }
+        Ok(())
     }
 }

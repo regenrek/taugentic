@@ -4,4 +4,4 @@ import type { DaemonDiagnosticTokenUsage } from "./DaemonDiagnosticTokenUsage.js
 import type { DaemonProviderHealthDiagnostic } from "./DaemonProviderHealthDiagnostic.js";
 import type { DaemonSandboxCapabilitySnapshot } from "./DaemonSandboxCapabilitySnapshot.js";
 
-export type DaemonDiagnostics = { uptimeMs: bigint, inFlightRpcCount: number, inFlightCapsuleRunCount: number, recentErrorCount: number, recentErrors: Array<DaemonDiagnosticError>, tokenUsage: DaemonDiagnosticTokenUsage, worktreeCount: number, claimCount: number, sandbox: DaemonSandboxCapabilitySnapshot, providerHealth: Array<DaemonProviderHealthDiagnostic>, };
+export type DaemonDiagnostics = { uptimeMs: string, inFlightRpcCount: number, inFlightCapsuleRunCount: number, recentErrorCount: number, recentErrors: Array<DaemonDiagnosticError>, tokenUsage: DaemonDiagnosticTokenUsage, worktreeCount: number, claimCount: number, sandbox: DaemonSandboxCapabilitySnapshot, providerHealth: Array<DaemonProviderHealthDiagnostic>, };

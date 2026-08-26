@@ -1,0 +1,196 @@
+{
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NavigationAgentRow": {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "awaitingApproval": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "active",
+        "awaitingApproval"
+      ],
+      "type": "object"
+    },
+    "NavigationConversation": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus",
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+        },
+        "title": {
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "status",
+        "placement",
+        "archived",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "NavigationProject": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "NavigationSnapshot": {
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/NavigationAgentRow"
+          },
+          "type": "array"
+        },
+        "conversations": {
+          "items": {
+            "$ref": "#/$defs/NavigationConversation"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/NavigationProject"
+          },
+          "type": "array"
+        },
+        "spaces": {
+          "items": {
+            "$ref": "#/$defs/NavigationSpace"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "NavigationSpace": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "snapshot": {
+      "$ref": "#/$defs/NavigationSnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "DaemonNavigationSnapshotResult",
+  "type": "object"
+}

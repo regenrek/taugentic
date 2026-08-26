@@ -3,4 +3,4 @@ import type { AgentStreamFrame } from "./AgentStreamFrame.js";
 import type { AgentStreamItemId } from "./AgentStreamItemId.js";
 import type { AgentStreamTurnId } from "./AgentStreamTurnId.js";
 
-export type StreamEmission = { turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, fragmentSequence?: bigint | null, frame: AgentStreamFrame, };
+export type StreamEmission = { turnId?: AgentStreamTurnId | null, itemId?: AgentStreamItemId | null, fragmentSequence?: string | null, frame: AgentStreamFrame, };

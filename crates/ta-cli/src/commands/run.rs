@@ -1,5 +1,8 @@
 use ta_daemon_client::DaemonClient;
-use ta_protocol::wire::{ListRunsQuery, SessionId, StartRunCommand};
+use ta_protocol::wire::{
+    AgentRuntimeModelId, AgentRuntimeSelection, AuthProfileId, ListRunsQuery, RuntimeProfileId,
+    SessionId, StartRunCommand,
+};
 
 use crate::{args::RunCommands, error::CliError, output::CommandOutput};
 
@@ -19,15 +22,30 @@ pub fn run(
             let runs = client.list_runs(ListRunsQuery {})?;
             Ok(Some(CommandOutput::RunList(runs)))
         }
-        RunCommands::Start { session, objective } => {
+        RunCommands::Start {
+            session,
+            runtime_profile,
+            model,
+            auth_profile,
+            objective,
+        } => {
             let session_id = parse_session_id(session)?;
+            let selection = AgentRuntimeSelection {
+                runtime_profile_id: RuntimeProfileId::new(runtime_profile)
+                    .map_err(|error| CliError::InvalidInput(error.to_string()))?,
+                auth_profile_id: auth_profile
+                    .map(AuthProfileId::new)
+                    .transpose()
+                    .map_err(|error| CliError::InvalidInput(error.to_string()))?,
+                model_id: Some(
+                    AgentRuntimeModelId::new(model)
+                        .map_err(|error| CliError::InvalidInput(error.to_string()))?,
+                ),
+            };
             let mut client =
                 daemon_client.connect_persistent(CLI_CLIENT_NAME, CLI_CLIENT_VERSION)?;
             let _ = client.attach_session(session_id.clone())?;
-            let run = client.start_run(StartRunCommand {
-                objective,
-                ..StartRunCommand::default()
-            })?;
+            let run = client.start_run(StartRunCommand::new(objective, selection))?;
             Ok(Some(CommandOutput::RunStart(run)))
         }
     }

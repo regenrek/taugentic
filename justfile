@@ -28,11 +28,29 @@ set quiet
   "$binary"
 
 @desktop-dev:
-  @TAUGENTIC_DAEMON_SOCKET_NAME="${TAUGENTIC_DAEMON_SOCKET_NAME:-ta-daemon-gpui}" \
+  @cargo build -p ta-orchestrator --bin ta-daemon
+  @daemon_binary="$(cargo xtask print-daemon-binary)"; \
+  TAUGENTIC_DAEMON_SOCKET_NAME="${TAUGENTIC_DAEMON_SOCKET_NAME:-ta-daemon-gpui}" \
+  TAUGENTIC_DAEMON_BINARY="$daemon_binary" \
   pnpm --dir apps/desktop dev
+
+@desktop-native-check:
+  @cargo test -p ta-desktop-native
+  @cargo build -p ta-desktop-native
+  @pnpm --dir apps/desktop --filter @taugentic/desktop-daemon-native test
+
+@desktop-check:
+  @cargo build -p ta-desktop-native
+  @pnpm --dir apps/desktop --filter @taugentic/desktop-daemon-native stage-native
+  @pnpm --dir apps/desktop check
 
 @smoke:
   @cargo run -p xtask -- smoke-local-daemon
+
+@measure-m1:
+  @cargo build -p ta-orchestrator --release
+  @pnpm --dir apps/desktop run build
+  @TAUGENTIC_M1_DAEMON_PROFILE=release pnpm --dir apps/desktop run measure:m1
 
 @security-check:
   @node ./scripts/security-check.mjs

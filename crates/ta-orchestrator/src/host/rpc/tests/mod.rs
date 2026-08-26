@@ -11,38 +11,40 @@ pub(super) use super::{
     state::{DaemonRpcSessionState, approval_actor_from_session},
 };
 pub(super) use crate::{
-    ActivityPageQuery, AgentRuntimeSnapshot, AgentStreamEvent, AgentStreamFrame, ApprovalDecision,
-    ApprovalSnapshotResult, ArtifactId, ArtifactKind, ArtifactSnapshotResult, ArtifactSummary,
-    ContextReceipt, DAEMON_DEFAULT_SOCKET_NAME, DAEMON_PROTOCOL_VERSION,
-    DEFAULT_OUTBOUND_QUEUE_DEPTH, DaemonAgentRuntimeSelectProfileParams,
+    ActivityPageQuery, AgentRuntimeModelId, AgentRuntimeSelection, AgentRuntimeSnapshot,
+    AgentStreamEvent, AgentStreamFrame, ApprovalDecision, ApprovalSnapshotResult, ArtifactId,
+    ArtifactKind, ArtifactSnapshotResult, ArtifactSummary, AuthProfileId, ContextReceipt,
+    DAEMON_DEFAULT_SOCKET_NAME, DAEMON_PROTOCOL_VERSION, DEFAULT_OUTBOUND_QUEUE_DEPTH,
     DaemonApprovalDecideParams, DaemonApprovalDecideResult, DaemonControlStatusResult,
     DaemonDiagnostics, DaemonEventCursor, DaemonEventKind, DaemonInitializeResult,
-    DaemonRunCancelParams, DaemonSessionAttachParams, DaemonSessionAttachResult,
-    DaemonSessionOpenParams, DaemonSessionOpenResult, DaemonStatusResult, DaemonSubscribeResult,
-    GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery, GetRunTimelineQuery, GetSessionQuery,
-    HANDOFF_CLIENT_NAME, JsonRpcConnectionRuntime, JsonRpcMessage, JsonRpcRequest,
-    JsonRpcServerSession, ListApprovalsQuery, ListArtifactsQuery, ListReceiptsRequest,
-    ListReceiptsResult, ListRunsQuery, ListSessionsQuery, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
-    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT, METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
-    METHOD_DAEMON_AGENT_RUNTIME_GET, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT, METHOD_DAEMON_APPROVAL_DECIDE,
+    DaemonNavigationSubscribeResult, DaemonRunCancelParams, DaemonSessionAttachParams,
+    DaemonSessionAttachResult, DaemonSessionOpenParams, DaemonSessionOpenResult,
+    DaemonStatusResult, DaemonSubscribeResult, GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery,
+    GetRunTimelineQuery, GetSessionQuery, HANDOFF_CLIENT_NAME, JsonRpcConnectionRuntime,
+    JsonRpcMessage, JsonRpcRequest, JsonRpcServerSession, ListApprovalsQuery, ListArtifactsQuery,
+    ListReceiptsRequest, ListReceiptsResult, ListRunsQuery, ListSessionsQuery,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
+    METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
+    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
     METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST,
     METHOD_DAEMON_CONTEXT_RECEIPTS_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE,
     METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE, METHOD_DAEMON_CONTROL_STATUS,
-    METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_INITIALIZE, METHOD_DAEMON_RECIPES_LIST,
-    METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_GET,
-    METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
-    METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
-    METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
-    METHOD_DAEMON_STATUS, METHOD_DAEMON_SUBSCRIBE, METHOD_DAEMON_WORK_ITEM_DISMISS,
-    METHOD_DAEMON_WORK_ITEM_LIST, METHOD_DAEMON_WORK_ITEM_REFRESH, METHOD_DAEMON_WORK_ITEM_TRIGGER,
-    METHOD_NOT_FOUND_ERROR_CODE, METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD,
-    METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest, PromoteReceiptRequest,
-    PublicApprovalEvent, PublicDaemonEvent, QuarantineReceiptRequest, ReceiptKind, ReceiptState,
-    RecipeListResponse, RunDetail, RunEventDelta, RunEventStreamItem, RunEventStreamPayload, RunId,
-    RunStatus, RunSummary, RunTimeline, ServerConfig, SessionId, SessionOverviewLaneStatus,
-    SessionOverviewQuery, SessionOverviewResult, SessionStatus, SessionSummary, StartRunCommand,
-    StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult, WorkItemDismissParams,
+    METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_INITIALIZE,
+    METHOD_DAEMON_NAVIGATION_INVALIDATED, METHOD_DAEMON_NAVIGATION_SUBSCRIBE,
+    METHOD_DAEMON_RECIPES_LIST, METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_EVENT,
+    METHOD_DAEMON_RUN_GET, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START,
+    METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS, METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH,
+    METHOD_DAEMON_SESSION_GET, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
+    METHOD_DAEMON_SESSION_OVERVIEW, METHOD_DAEMON_STATUS, METHOD_DAEMON_SUBSCRIBE,
+    METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST, METHOD_DAEMON_WORK_ITEM_REFRESH,
+    METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_NOT_FOUND_ERROR_CODE, METHOD_WORKFLOW_LOAD,
+    METHOD_WORKFLOW_RELOAD, METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest,
+    PromoteReceiptRequest, PublicApprovalEvent, PublicDaemonEvent, QuarantineReceiptRequest,
+    ReceiptKind, ReceiptState, RecipeListResponse, RunDetail, RunEventDelta, RunEventStreamItem,
+    RunEventStreamPayload, RunId, RunStatus, RunSummary, RunTimeline, RuntimeProfileId,
+    ServerConfig, SessionId, SessionOverviewLaneStatus, SessionOverviewQuery,
+    SessionOverviewResult, SessionStatus, SessionSummary, StartRunCommand, StreamEmission,
+    SubscribeRunEventsRequest, SubscribeRunEventsResult, WorkItemDismissParams,
     WorkItemDismissResult, WorkItemListQuery, WorkItemListResult, WorkItemRefreshParams,
     WorkItemTriggerParams, WorkItemTriggerResult, WorkflowLoadParams, WorkflowReloadOutcome,
     WorkflowStatusResult, WorkflowValidateParams, WorkflowValidationReport, WorkspaceSelector,
@@ -91,10 +93,32 @@ fn ensure_running_run(
     session_id: &SessionId,
     objective: &str,
 ) -> crate::orchestration::AppDeferredMutationResult<RunSummary> {
+    let selection = explicit_runtime_selection(state);
     state
         .app
-        .seed_running_run_for_tests(session_id, objective)
+        .seed_running_run_for_tests(session_id, objective, &selection)
         .expect("seeded run should start")
+}
+
+fn explicit_runtime_selection(state: &BootstrapState) -> AgentRuntimeSelection {
+    state
+        .app
+        .seed_auth_profile_for_tests(ta_store::connected_test_auth_profile(
+            "profile-openai-test",
+            "openai-chatgpt",
+            "openai",
+        ))
+        .expect("test auth profile should persist");
+    AgentRuntimeSelection {
+        runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+            .expect("runtime profile id"),
+        auth_profile_id: Some(AuthProfileId::new("profile-openai-test").expect("auth profile id")),
+        model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+    }
+}
+
+fn start_run_command(state: &BootstrapState, objective: &str) -> StartRunCommand {
+    StartRunCommand::new(objective, explicit_runtime_selection(state))
 }
 
 mod approval_methods;

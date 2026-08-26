@@ -22,15 +22,15 @@ use ta_jsonrpc::{JsonRpcError, JsonRpcErrorObject};
 use ta_observability::LOG_DIR_ENV_VAR;
 use ta_protocol::local_control::RuntimeControlBootstrapCommand;
 use ta_protocol::wire::{
-    ApprovalDecision, DAEMON_PROTOCOL_VERSION, DaemonApprovalDecideParams,
-    DaemonApprovalDecideResult, DaemonClientCapabilities, DaemonRuntimeMode,
-    DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
-    DaemonSessionOpenResult, DaemonStatusParams, DaemonStatusResult, ListSessionsQuery,
-    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_CONTROL_STATUS, METHOD_DAEMON_INITIALIZE,
-    METHOD_DAEMON_RUN_START, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST,
-    METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_STATUS, RunId, RunStatus, RunSummary,
-    RuntimeProfileId, SessionAuthority, SessionId, SessionStatus, SessionSummary, StartRunCommand,
-    WorkspaceSelector,
+    AgentRuntimeModelId, AgentRuntimeSelection, ApprovalDecision, AuthProfileId,
+    DAEMON_PROTOCOL_VERSION, DaemonApprovalDecideParams, DaemonApprovalDecideResult,
+    DaemonClientCapabilities, DaemonRuntimeMode, DaemonSessionAttachParams,
+    DaemonSessionAttachResult, DaemonSessionOpenParams, DaemonSessionOpenResult,
+    DaemonStatusParams, DaemonStatusResult, ListSessionsQuery, METHOD_DAEMON_APPROVAL_DECIDE,
+    METHOD_DAEMON_CONTROL_STATUS, METHOD_DAEMON_INITIALIZE, METHOD_DAEMON_RUN_START,
+    METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
+    METHOD_DAEMON_STATUS, RunId, RunStatus, RunSummary, RuntimeProfileId, SessionAuthority,
+    SessionId, SessionStatus, SessionSummary, StartRunCommand, WorkspaceSelector,
 };
 
 #[cfg(unix)]
@@ -77,6 +77,10 @@ fn help_surfaces_include_expected_commands() {
         (&["workspace", "--help"], &["open", "list", "get"]),
         (&["approval", "--help"], &["list", "decide"]),
         (&["run", "--help"], &["list", "start"]),
+        (
+            &["run", "start", "--help"],
+            &["--runtime-profile", "--model", "--auth-profile"],
+        ),
     ];
 
     for (args, expected_fragments) in cases {
@@ -243,6 +247,12 @@ fn run_start_json_smoke_uses_persistent_session_first_flow() {
             "start",
             "--session",
             "session-1",
+            "--runtime-profile",
+            "runtime-codex-safe",
+            "--model",
+            "gpt-5.6-sol",
+            "--auth-profile",
+            "profile-codex-test",
             "Ship app server hard cut",
             "--json",
             "--socket",
@@ -2317,6 +2327,17 @@ fn spawn_run_start_server(listener: SocketListener) -> JoinHandle<()> {
         let start_params: StartRunCommand =
             parse_params(&start).expect("run.start params should parse");
         assert_eq!(start_params.objective, "Ship app server hard cut");
+        assert_eq!(
+            start_params.selection,
+            AgentRuntimeSelection {
+                runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe")
+                    .expect("runtime profile id"),
+                auth_profile_id: Some(
+                    AuthProfileId::new("profile-codex-test").expect("auth profile id"),
+                ),
+                model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+            }
+        );
         write_response(
             &mut reader,
             JsonRpcResponse::new(

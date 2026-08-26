@@ -32,9 +32,9 @@ mod test_support;
 
 use ta_policy::PolicyDecision;
 use ta_protocol::wire::{
-    AgentRuntimeModelId, ApprovalEvent, ApprovalId, ApprovalRequest, ApprovalScope, ApprovalTarget,
-    DaemonEvent, OutputContractKind, RecipeResolutionError, RunHarnessKind, RunId, RunRecord,
-    RunSource, RunStatus,
+    ApprovalEvent, ApprovalId, ApprovalRequest, ApprovalScope, ApprovalTarget, DaemonEvent,
+    OutputContractKind, RecipeResolutionError, RunHarnessKind, RunId, RunRecord, RunSource,
+    RunStatus,
 };
 use ta_store::{ArtifactRecord, EventRecord, InMemoryStore, PersistenceStore, RunProjection};
 use taugentic_agent::AgentExecutionHarness;
@@ -44,13 +44,16 @@ use errors::map_agent_runtime_error;
 use execution_context::{ExecutionContextRequest, workspace_mode_for_fork};
 use provider_sink::ProviderRunExecutionSink;
 
-use crate::{ArtifactSummary, RecipeRegistry, RunExecutionRuntime, RunSummary};
+use crate::{
+    AgentRuntimeService, ArtifactSummary, RecipeRegistry, RunExecutionRuntime, RunSummary,
+};
 
 pub struct RunExecutionService<S = InMemoryStore>
 where
     S: PersistenceStore + Send + 'static,
 {
     store: Arc<Mutex<S>>,
+    agent_runtime: AgentRuntimeService<S>,
     runtime: RunExecutionRuntime,
     recipe_registry: Arc<RecipeRegistry>,
 }
@@ -62,6 +65,7 @@ where
     fn clone(&self) -> Self {
         Self {
             store: Arc::clone(&self.store),
+            agent_runtime: self.agent_runtime.clone(),
             runtime: self.runtime.clone(),
             recipe_registry: Arc::clone(&self.recipe_registry),
         }
@@ -90,22 +94,19 @@ pub struct ArtifactMutationResult {
     pub events: Vec<EventRecord>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ExecutionRequestOverrides {
-    model_id: Option<AgentRuntimeModelId>,
-}
-
 impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
     pub(crate) fn new(
         store: Arc<Mutex<S>>,
+        agent_runtime: AgentRuntimeService<S>,
         runtime: RunExecutionRuntime,
         recipe_registry: Arc<RecipeRegistry>,
     ) -> Self {
         Self {
             store,
+            agent_runtime,
             runtime,
             recipe_registry,
         }
@@ -282,17 +283,6 @@ fn output_contract_for_run(run: &RunProjection) -> Option<OutputContractKind> {
     }
 }
 
-fn execution_overrides_for_run(run: &RunProjection) -> ExecutionRequestOverrides {
-    match &run.source {
-        RunSource::NativeSubagent { model_id, .. } | RunSource::User { model_id, .. } => {
-            ExecutionRequestOverrides {
-                model_id: model_id.clone(),
-            }
-        }
-        RunSource::Forked { .. } => ExecutionRequestOverrides::default(),
-    }
-}
-
 fn recipe_id_for_run(run: &RunProjection) -> Option<String> {
     match &run.source {
         RunSource::NativeSubagent { recipe_id, .. } | RunSource::User { recipe_id, .. } => {
@@ -319,7 +309,7 @@ fn map_recipe_resolution_error(error: RecipeResolutionError) -> RunExecutionErro
     }
 }
 
-fn run_harness_kind(harness: &AgentExecutionHarness) -> RunHarnessKind {
+pub(crate) fn run_harness_kind(harness: &AgentExecutionHarness) -> RunHarnessKind {
     match harness {
         AgentExecutionHarness::NativeLoop => RunHarnessKind::Native,
         AgentExecutionHarness::Acp { .. } => RunHarnessKind::Acp,

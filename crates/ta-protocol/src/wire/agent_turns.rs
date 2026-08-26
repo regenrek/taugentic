@@ -27,11 +27,11 @@ pub struct AgentAssistantRow {
     pub turn_id: Option<AgentStreamTurnId>,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub started_at_ms: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub completed_at_ms: u64,
     pub text: String,
 }
@@ -53,11 +53,11 @@ pub struct AgentToolCallRow {
     pub outcome: AgentToolCallOutcome,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub started_at_ms: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub completed_at_ms: u64,
 }
 
@@ -72,7 +72,7 @@ pub struct AgentPendingStateRow {
     pub turn_id: Option<AgentStreamTurnId>,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub occurred_at_ms: u64,
     pub state: RuntimeLanePendingState,
 }

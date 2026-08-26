@@ -43,6 +43,7 @@ fn build_fork_initial_state(
     let RunSource::Forked {
         parent_run_id,
         parent_event_seq,
+        ..
     } = &run.source
     else {
         return Ok(None);

@@ -14,14 +14,13 @@ use ta_provider_llm::auth::openai::OpenAiAuth;
 use ta_provider_llm::auth::openai_subscription::OpenAiSubscriptionAuth;
 use ta_provider_llm::client::openai_responses::OpenAiResponsesClient;
 use ta_provider_llm::client::{LlmClient, StreamMessage, StreamRequest};
-use ta_provider_llm::families::openai::OPENAI_CHATGPT_AUTH_PROFILE_ID;
 use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
 async fn chatgpt_subscription_oauth_smoke_covers_login_refresh_retry_and_logout() -> TestResult {
     let server = MockOpenAiServer::start().await?;
     let store = Arc::new(TestCredentialStore::default());
-    let key = CredentialKey::new(AuthProfileId::new(OPENAI_CHATGPT_AUTH_PROFILE_ID)?);
+    let key = CredentialKey::new(AuthProfileId::new("profile-test")?);
     let store_for_auth: Arc<dyn CredentialStore> = store.clone();
     let http: Arc<dyn OAuthHttpClient> = Arc::new(ReqwestOAuthHttpClient::default());
     let config = server.oauth_config();

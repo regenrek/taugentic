@@ -121,9 +121,12 @@ pub(super) fn map_app_service_error(
             invalid_params(error.to_string())
         }
         crate::orchestration::AppServiceError::AgentRuntime(error) => match error {
-            crate::orchestration::AgentRuntimeServiceError::NoRuntimeProviderConfigured
-            | crate::orchestration::AgentRuntimeServiceError::RuntimeProfileNotFound(_)
+            crate::orchestration::AgentRuntimeServiceError::RuntimeProfileNotFound(_)
+            | crate::orchestration::AgentRuntimeServiceError::AuthMethodNotFound(_)
             | crate::orchestration::AgentRuntimeServiceError::AuthProfileNotFound(_)
+            | crate::orchestration::AgentRuntimeServiceError::AuthProfileNotConnected(_)
+            | crate::orchestration::AgentRuntimeServiceError::MissingAuthProfile
+            | crate::orchestration::AgentRuntimeServiceError::MissingModel
             | crate::orchestration::AgentRuntimeServiceError::UnknownModel { .. }
             | crate::orchestration::AgentRuntimeServiceError::UnknownAuthProfile { .. }
             | crate::orchestration::AgentRuntimeServiceError::RuntimeExtensionNotFound(_)
@@ -140,6 +143,9 @@ pub(super) fn map_app_service_error(
                 detail.reason,
             ),
             crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(_) => {
+                internal_error(error.to_string())
+            }
+            crate::orchestration::AgentRuntimeServiceError::Store(_) => {
                 internal_error(error.to_string())
             }
         },

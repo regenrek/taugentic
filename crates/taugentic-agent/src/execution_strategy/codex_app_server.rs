@@ -211,13 +211,7 @@ fn map_codex_error(error: CodexLlmClientError) -> ExecutionError {
             timeout_ms: 0,
             detail,
         },
-        CodexLlmClientError::MissingApiKeyEnv => ExecutionError::CredentialsMissing(
-            "codex login with API key requires OPENAI_API_KEY".to_string(),
-        ),
         CodexLlmClientError::CommandFailed(detail) => ExecutionError::ProcessFailed(detail),
-        CodexLlmClientError::LoginDidNotAuthenticate => ExecutionError::Auth(
-            "codex login did not authenticate the requested profile".to_string(),
-        ),
         CodexLlmClientError::Auth(detail) => ExecutionError::Auth(detail),
         CodexLlmClientError::RateLimited {
             retry_after_ms,

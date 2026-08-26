@@ -40,11 +40,15 @@
     "AgentRuntimeModelRef": {
       "properties": {
         "contextLimit": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "displayName": {
@@ -54,11 +58,15 @@
           "type": "string"
         },
         "inputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "inputModalities": {
@@ -68,11 +76,15 @@
           "type": "array"
         },
         "outputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "reasoning": {
@@ -91,17 +103,6 @@
         "reasoning",
         "toolCall",
         "structuredOutput"
-      ],
-      "type": "object"
-    },
-    "AgentRuntimeSelection": {
-      "properties": {
-        "runtimeProfileId": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "runtimeProfileId"
       ],
       "type": "object"
     },
@@ -157,6 +158,33 @@
         "displayName",
         "modelCapability",
         "health"
+      ],
+      "type": "object"
+    },
+    "AuthMethodRef": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "managementMode": {
+          "$ref": "#/$defs/AuthProfileManagementMode"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "supportsMultipleProfiles": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "providerId",
+        "displayName",
+        "managementMode",
+        "supportsMultipleProfiles"
       ],
       "type": "object"
     },
@@ -225,11 +253,26 @@
     },
     "AuthProfileRef": {
       "properties": {
+        "accountHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authMethodId": {
+          "type": "string"
+        },
         "displayName": {
           "type": "string"
         },
         "id": {
           "type": "string"
+        },
+        "planTier": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "providerId": {
           "type": "string"
@@ -237,6 +280,7 @@
       },
       "required": [
         "id",
+        "authMethodId",
         "providerId",
         "displayName"
       ],
@@ -476,7 +520,7 @@
     },
     "RuntimeProfileSummary": {
       "properties": {
-        "authProfileId": {
+        "authMethodId": {
           "type": [
             "string",
             "null"
@@ -487,12 +531,6 @@
         },
         "id": {
           "type": "string"
-        },
-        "modelId": {
-          "type": [
-            "string",
-            "null"
-          ]
         },
         "policyMode": {
           "$ref": "#/$defs/RuntimePolicyMode"
@@ -512,6 +550,12 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authMethods": {
+      "items": {
+        "$ref": "#/$defs/AuthMethodRef"
+      },
+      "type": "array"
+    },
     "authProfiles": {
       "items": {
         "$ref": "#/$defs/AuthProfileState"
@@ -535,14 +579,8 @@
         "$ref": "#/$defs/RuntimeProfileSummary"
       },
       "type": "array"
-    },
-    "selection": {
-      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
-  "required": [
-    "selection"
-  ],
   "title": "AgentRuntimeSnapshot",
   "type": "object"
 }

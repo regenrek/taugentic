@@ -1,7 +1,5 @@
-use std::env;
-use std::io::{Read, Write};
+use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread;
@@ -9,149 +7,33 @@ use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 use ta_exec::{ExecEngine, LocalExecEngine, ProcessGroupPolicy, SpawnRequest, StdioPolicy};
-use ta_protocol::wire::ExecutionContext;
+use ta_protocol::wire::{AuthProfileId, ExecutionContext};
 use tokio::io::AsyncWriteExt;
 use tokio::process::{Child as TokioChild, ChildStdin as TokioChildStdin};
 use tokio::runtime::{Builder, Runtime};
 use tokio_util::sync::CancellationToken;
 
+use super::CodexLlmClientError;
 use super::events::{CodexAppServerEvent, event_from_notification, required_string};
 use super::launch::build_codex_perimeter_profile_for_context;
 use super::policy::CodexTurnPolicy;
 use super::process::{app_server_env, spawn_jsonl_reader, terminate_app_server};
 use super::search_path::{default_binary, resolve_codex_binary};
-use super::{
-    CODEX_API_KEY_AUTH_PROFILE_ID, CODEX_CHATGPT_AUTH_PROFILE_ID, CodexLlmClientError,
-    OPENAI_API_KEY_ENV_VAR,
-};
 
 const APP_SERVER_RECV_TICK: Duration = Duration::from_millis(50);
 const APP_SERVER_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 const APP_SERVER_TURN_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
-pub struct CodexCli {
-    binary: PathBuf,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CodexCommandOutput {
-    pub stdout: String,
-    pub stderr: String,
-}
-
-impl Default for CodexCli {
-    fn default() -> Self {
-        Self {
-            binary: default_binary(),
-        }
-    }
-}
-
-impl CodexCli {
-    #[cfg(test)]
-    pub(crate) fn with_binary(binary: impl Into<PathBuf>) -> Self {
-        Self {
-            binary: binary.into(),
-        }
-    }
-
-    pub(crate) fn run(
-        &self,
-        args: &[&str],
-        stdin: Option<&str>,
-    ) -> Result<CodexCommandOutput, CodexLlmClientError> {
-        self.run_with_timeout(args, stdin, None)
-    }
-
-    pub(crate) fn run_with_timeout(
-        &self,
-        args: &[&str],
-        stdin: Option<&str>,
-        timeout: Option<Duration>,
-    ) -> Result<CodexCommandOutput, CodexLlmClientError> {
-        let binary = resolve_codex_binary(&self.binary)?;
-        let mut command = Command::new(&binary);
-        command
-            .args(args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        if stdin.is_some() {
-            command.stdin(Stdio::piped());
-        }
-        let mut child = command.spawn().map_err(|error| {
-            CodexLlmClientError::CliUnavailable(format!(
-                "failed to spawn {}: {error}",
-                binary.display()
-            ))
-        })?;
-        if let Some(stdin_input) = stdin {
-            let mut child_stdin = child.stdin.take().ok_or_else(|| {
-                CodexLlmClientError::CommandFailed("codex command stdin was not piped".to_string())
-            })?;
-            child_stdin
-                .write_all(stdin_input.as_bytes())
-                .map_err(|error| {
-                    CodexLlmClientError::CommandFailed(format!(
-                        "failed to write codex command stdin: {error}"
-                    ))
-                })?;
-        }
-
-        let stdout_reader =
-            spawn_output_reader(child.stdout.take(), "stdout", binary.display().to_string())?;
-        let stderr_reader =
-            spawn_output_reader(child.stderr.take(), "stderr", binary.display().to_string())?;
-
-        let status = match timeout {
-            Some(timeout) => match wait_for_exit(&mut child, timeout)? {
-                Some(status) => status,
-                None => {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    let _ = stdout_reader.join();
-                    let _ = stderr_reader.join();
-                    return Err(CodexLlmClientError::CommandTimedOut(format!(
-                        "{} {} exceeded {}ms",
-                        binary.display(),
-                        args.join(" "),
-                        timeout.as_millis(),
-                    )));
-                }
-            },
-            None => child.wait().map_err(|error| {
-                CodexLlmClientError::CommandFailed(format!(
-                    "failed to wait for codex command exit: {error}"
-                ))
-            })?,
-        };
-
-        let stdout = join_output_reader(stdout_reader, "stdout")?;
-        let stderr = join_output_reader(stderr_reader, "stderr")?;
-        let stdout = String::from_utf8_lossy(&stdout).trim().to_string();
-        let stderr = String::from_utf8_lossy(&stderr).trim().to_string();
-        if !status.success() {
-            let detail = if stderr.is_empty() {
-                stdout.clone()
-            } else {
-                stderr.clone()
-            };
-            return Err(CodexLlmClientError::CommandFailed(detail));
-        }
-        Ok(CodexCommandOutput { stdout, stderr })
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct CodexAppServerClient {
-    cli: CodexCli,
+    binary: PathBuf,
     turn_idle_timeout: Duration,
 }
 
 impl Default for CodexAppServerClient {
     fn default() -> Self {
         Self {
-            cli: CodexCli::default(),
+            binary: default_binary(),
             turn_idle_timeout: APP_SERVER_TURN_IDLE_TIMEOUT,
         }
     }
@@ -168,6 +50,7 @@ pub struct CodexAppServerSession {
     child: TokioChild,
     stdin: TokioChildStdin,
     messages: Receiver<Result<Value, CodexLlmClientError>>,
+    deferred_notifications: VecDeque<Value>,
     reader_thread: Option<thread::JoinHandle<()>>,
     next_id: i64,
     thread_id: String,
@@ -180,9 +63,7 @@ pub struct CodexAppServerSession {
 impl CodexAppServerClient {
     pub fn with_binary(binary: impl Into<PathBuf>) -> Self {
         Self {
-            cli: CodexCli {
-                binary: binary.into(),
-            },
+            binary: binary.into(),
             turn_idle_timeout: APP_SERVER_TURN_IDLE_TIMEOUT,
         }
     }
@@ -193,9 +74,7 @@ impl CodexAppServerClient {
         turn_idle_timeout: Duration,
     ) -> Self {
         Self {
-            cli: CodexCli {
-                binary: binary.into(),
-            },
+            binary: binary.into(),
             turn_idle_timeout,
         }
     }
@@ -205,11 +84,14 @@ impl CodexAppServerClient {
         &self,
         input: CodexAppServerInput,
     ) -> Result<CodexAppServerSession, CodexLlmClientError> {
-        validate_auth_profile(input.auth_profile_id.as_deref())?;
-        let binary = resolve_codex_binary(&self.cli.binary)?;
+        let auth_profile_id = validate_auth_profile(input.auth_profile_id.as_deref())?;
+        let binary = resolve_codex_binary(&self.binary)?;
         let turn_policy = CodexTurnPolicy::from_execution_context(&input.execution_context)?;
-        let sandbox_profile =
-            build_codex_perimeter_profile_for_context(&input.execution_context, &binary)?;
+        let sandbox_profile = build_codex_perimeter_profile_for_context(
+            &input.execution_context,
+            &binary,
+            auth_profile_id,
+        )?;
         let request = SpawnRequest::new(binary.clone().into_os_string())
             .args(["app-server", "--listen", "stdio://"])
             .cwd(
@@ -224,7 +106,7 @@ impl CodexAppServerClient {
             .stderr(StdioPolicy::Inherit)
             .process_group(ProcessGroupPolicy::New)
             .sandbox_profile(sandbox_profile);
-        let mut session = self.spawn_app_server(request, input.auth_profile_id.as_deref())?;
+        let mut session = self.spawn_app_server(request, Some(auth_profile_id))?;
         session.turn_policy = Some(turn_policy);
         session.turn_idle_timeout = self.turn_idle_timeout;
         session.start_thread(input)?;
@@ -234,7 +116,7 @@ impl CodexAppServerClient {
     pub(super) fn start_control_session(
         &self,
     ) -> Result<CodexAppServerSession, CodexLlmClientError> {
-        let binary = resolve_codex_binary(&self.cli.binary)?;
+        let binary = resolve_codex_binary(&self.binary)?;
         let request = SpawnRequest::new(binary.into_os_string())
             .args(["app-server", "--listen", "stdio://"])
             .stdin(StdioPolicy::Piped)
@@ -242,6 +124,20 @@ impl CodexAppServerClient {
             .stderr(StdioPolicy::Inherit)
             .process_group(ProcessGroupPolicy::New);
         self.spawn_app_server(request, None)
+    }
+
+    pub(crate) fn start_control_session_for_profile(
+        &self,
+        auth_profile_id: &AuthProfileId,
+    ) -> Result<CodexAppServerSession, CodexLlmClientError> {
+        let binary = resolve_codex_binary(&self.binary)?;
+        let request = SpawnRequest::new(binary.into_os_string())
+            .args(["app-server", "--listen", "stdio://"])
+            .stdin(StdioPolicy::Piped)
+            .stdout(StdioPolicy::Piped)
+            .stderr(StdioPolicy::Inherit)
+            .process_group(ProcessGroupPolicy::New);
+        self.spawn_app_server(request, Some(auth_profile_id.as_str()))
     }
 
     fn spawn_app_server(
@@ -259,8 +155,10 @@ impl CodexAppServerClient {
                     "failed to create Codex app-server runtime: {error}"
                 ))
             })?;
-        for (name, value) in app_server_env(auth_profile_id)? {
-            request = request.env(name, value);
+        if let Some(auth_profile_id) = auth_profile_id {
+            for (name, value) in app_server_env(auth_profile_id)? {
+                request = request.env(name, value);
+            }
         }
         let mut child = {
             let _runtime_guard = runtime.enter();
@@ -282,6 +180,7 @@ impl CodexAppServerClient {
             child,
             stdin,
             messages,
+            deferred_notifications: VecDeque::new(),
             reader_thread: Some(reader_thread),
             next_id: 1,
             thread_id: String::new(),
@@ -500,6 +399,15 @@ impl CodexAppServerSession {
         self.read_until_response(id)
     }
 
+    pub(super) fn request_without_params(
+        &mut self,
+        method: &str,
+    ) -> Result<Value, CodexLlmClientError> {
+        let id = self.next_request_id();
+        self.send(json!({"id": id, "method": method}))?;
+        self.read_until_response(id)
+    }
+
     fn read_until_response(&mut self, expected_id: i64) -> Result<Value, CodexLlmClientError> {
         let deadline = Instant::now() + APP_SERVER_REQUEST_TIMEOUT;
         loop {
@@ -509,7 +417,7 @@ impl CodexAppServerSession {
                     APP_SERVER_REQUEST_TIMEOUT.as_millis()
                 )));
             }
-            let Some(message) = self.recv_message_tick()? else {
+            let Some(message) = self.recv_transport_message_tick()? else {
                 self.ensure_child_running()?;
                 continue;
             };
@@ -525,11 +433,22 @@ impl CodexAppServerSession {
                     message.get("id").cloned().unwrap_or(Value::Null)
                 )));
             }
-            self.respond_to_server_request(&message)?;
+            if message.get("id").is_none() && message.get("method").is_some() {
+                self.deferred_notifications.push_back(message);
+            } else {
+                self.respond_to_server_request(&message)?;
+            }
         }
     }
 
-    fn recv_message_tick(&mut self) -> Result<Option<Value>, CodexLlmClientError> {
+    pub(super) fn recv_message_tick(&mut self) -> Result<Option<Value>, CodexLlmClientError> {
+        if let Some(message) = self.deferred_notifications.pop_front() {
+            return Ok(Some(message));
+        }
+        self.recv_transport_message_tick()
+    }
+
+    fn recv_transport_message_tick(&mut self) -> Result<Option<Value>, CodexLlmClientError> {
         match self.messages.recv_timeout(APP_SERVER_RECV_TICK) {
             Ok(result) => result.map(Some),
             Err(RecvTimeoutError::Timeout) => Ok(None),
@@ -539,7 +458,7 @@ impl CodexAppServerSession {
         }
     }
 
-    fn ensure_child_running(&mut self) -> Result<(), CodexLlmClientError> {
+    pub(super) fn ensure_child_running(&mut self) -> Result<(), CodexLlmClientError> {
         match self.child.try_wait().map_err(|error| {
             CodexLlmClientError::CommandFailed(format!(
                 "failed to poll codex app-server status: {error}"
@@ -552,7 +471,10 @@ impl CodexAppServerSession {
         }
     }
 
-    fn respond_to_server_request(&mut self, message: &Value) -> Result<(), CodexLlmClientError> {
+    pub(super) fn respond_to_server_request(
+        &mut self,
+        message: &Value,
+    ) -> Result<(), CodexLlmClientError> {
         let Some(id) = message.get("id").cloned() else {
             return Ok(());
         };
@@ -609,64 +531,15 @@ fn parse_json_rpc_error(error: &Value) -> CodexLlmClientError {
     }
 }
 
-fn validate_auth_profile(auth_profile_id: Option<&str>) -> Result<(), CodexLlmClientError> {
-    match auth_profile_id {
-        Some(CODEX_API_KEY_AUTH_PROFILE_ID) if env::var_os(OPENAI_API_KEY_ENV_VAR).is_none() => {
-            Err(CodexLlmClientError::MissingApiKeyEnv)
-        }
-        Some(CODEX_API_KEY_AUTH_PROFILE_ID | CODEX_CHATGPT_AUTH_PROFILE_ID) | None => Ok(()),
-        Some(other) => Err(CodexLlmClientError::UnknownAuthProfile(other.to_string())),
-    }
-}
-
-fn wait_for_exit(
-    child: &mut Child,
-    timeout: Duration,
-) -> Result<Option<ExitStatus>, CodexLlmClientError> {
-    let deadline = Instant::now() + timeout;
-    loop {
-        match child.try_wait().map_err(|error| {
-            CodexLlmClientError::CommandFailed(format!(
-                "failed to poll codex command status: {error}"
-            ))
-        })? {
-            Some(status) => return Ok(Some(status)),
-            None if Instant::now() >= deadline => return Ok(None),
-            None => thread::sleep(Duration::from_millis(10)),
-        }
-    }
-}
-
-fn spawn_output_reader<R: Read + Send + 'static>(
-    mut reader: Option<R>,
-    stream_name: &'static str,
-    binary_display: String,
-) -> Result<thread::JoinHandle<Result<Vec<u8>, CodexLlmClientError>>, CodexLlmClientError> {
-    let mut reader = reader.take().ok_or_else(|| {
-        CodexLlmClientError::CommandFailed(format!(
-            "{binary_display} command {stream_name} was not piped"
-        ))
+fn validate_auth_profile(auth_profile_id: Option<&str>) -> Result<&str, CodexLlmClientError> {
+    let auth_profile_id = auth_profile_id.ok_or_else(|| {
+        CodexLlmClientError::InvalidConfig(
+            "Codex execution requires an explicit auth profile".to_string(),
+        )
     })?;
-    Ok(thread::spawn(move || {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).map_err(|error| {
-            CodexLlmClientError::CommandFailed(format!(
-                "failed to read codex command {stream_name}: {error}"
-            ))
-        })?;
-        Ok(bytes)
-    }))
-}
-
-fn join_output_reader(
-    handle: thread::JoinHandle<Result<Vec<u8>, CodexLlmClientError>>,
-    stream_name: &'static str,
-) -> Result<Vec<u8>, CodexLlmClientError> {
-    handle.join().map_err(|_| {
-        CodexLlmClientError::CommandFailed(format!(
-            "codex command {stream_name} reader thread panicked"
-        ))
-    })?
+    ta_protocol::wire::AuthProfileId::new(auth_profile_id)
+        .map_err(|error| CodexLlmClientError::InvalidConfig(error.to_string()))?;
+    Ok(auth_profile_id)
 }
 
 #[cfg(test)]

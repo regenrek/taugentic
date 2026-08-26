@@ -185,6 +185,7 @@ pub enum DaemonConfigError {
 pub struct DaemonConfig {
     socket_name: String,
     store_path: PathBuf,
+    artifact_root: PathBuf,
     pub server: ServerConfig,
     pub runtime_mode: DaemonRuntimeMode,
     pub control_token: Option<ControlToken>,
@@ -268,7 +269,7 @@ impl DaemonConfig {
     }
 
     pub fn artifact_root(&self) -> PathBuf {
-        resolved_daemon_artifact_root(&self.socket_name)
+        self.artifact_root.clone()
     }
 
     pub fn log_path(&self) -> PathBuf {
@@ -291,6 +292,7 @@ impl DaemonConfig {
     fn from_resolved(resolved: ResolvedDaemonConfig) -> Result<Self, DaemonConfigError> {
         Ok(Self {
             store_path: resolved_daemon_store_path(&resolved.socket_name),
+            artifact_root: resolved_daemon_artifact_root(&resolved.socket_name),
             socket_name: resolved.socket_name,
             server: resolved.server,
             runtime_mode: resolved.runtime_mode.value,
@@ -465,6 +467,7 @@ pub(crate) fn test_config() -> DaemonConfig {
     )
     .expect("daemon config should build");
     config.store_path = isolated_test_store_path(&config.socket_name);
+    config.artifact_root = isolated_test_artifact_root(&config.socket_name);
     config
 }
 
@@ -478,6 +481,13 @@ fn isolated_test_store_path(socket_name: &str) -> PathBuf {
     env::temp_dir()
         .join("taugentic-test-store")
         .join(format!("{socket_name}.sqlite3"))
+}
+
+#[cfg(test)]
+fn isolated_test_artifact_root(socket_name: &str) -> PathBuf {
+    env::temp_dir()
+        .join("taugentic-test-artifacts")
+        .join(socket_name)
 }
 
 pub fn resolved_daemon_log_path_for_socket_address(
@@ -821,6 +831,27 @@ mod tests {
                 isolated_test_store_path(config.socket_name())
             );
         });
+    }
+
+    #[test]
+    fn daemon_config_artifact_root_is_immutable_across_other_config_home_scopes() {
+        let config = test_config();
+        let artifact_root = config.artifact_root();
+
+        with_test_config_home("artifact-root-immutability", || {
+            assert_eq!(config.artifact_root(), artifact_root);
+            assert_ne!(
+                resolved_daemon_artifact_root(config.socket_name()),
+                artifact_root,
+                "the scoped config-home must differ from test_config's isolated artifact root"
+            );
+        });
+
+        assert_eq!(config.artifact_root(), artifact_root);
+        assert_eq!(
+            artifact_root,
+            isolated_test_artifact_root(config.socket_name())
+        );
     }
 
     #[test]

@@ -1,4 +1,99 @@
 use crate::support::*;
+use ta_daemon_client::DaemonClient;
+use ta_orchestrator::start_desktop_runtime;
+
+const DESKTOP_RUNTIME_START_CHILD_ENV: &str = "TAUGENTIC_DESKTOP_RUNTIME_START_CHILD";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DesktopRuntimeLifecycleStage {
+    RuntimeStart,
+    PersistentClient,
+    RuntimeRelease,
+    OwnedClose,
+}
+
+#[test]
+fn desktop_runtime_start_runs_against_an_isolated_release_daemon() {
+    if std::env::var_os(DESKTOP_RUNTIME_START_CHILD_ENV).is_some() {
+        assert_eq!(
+            run_desktop_runtime_start_child(),
+            Ok(DesktopRuntimeLifecycleStage::OwnedClose)
+        );
+        return;
+    }
+
+    let root = test_temp_dir("ta-daemon-it-desktop-runtime-start");
+    let runtime_dir = root.join("runtime");
+    let log_dir = root.join("logs");
+    let config_home = config_home_for_root(&root);
+    let socket_name = unique_name("ta-daemon-it-desktop-runtime-start");
+    let release_daemon = PathBuf::from(env!("CARGO_BIN_EXE_ta-daemon"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("the Cargo target directory should contain the test daemon")
+        .join("release")
+        .join(if cfg!(windows) {
+            "ta-daemon.exe"
+        } else {
+            "ta-daemon"
+        });
+
+    assert!(
+        release_daemon.is_file(),
+        "the release daemon must be built before this lifecycle contract"
+    );
+    fs::create_dir_all(&runtime_dir).expect("isolated runtime directory should exist");
+    fs::create_dir_all(&log_dir).expect("isolated log directory should exist");
+    fs::create_dir_all(config_base_dir_for_root(&root))
+        .expect("isolated configuration directory should exist");
+
+    let status = Command::new(std::env::current_exe().expect("test executable should resolve"))
+        .arg("desktop_runtime_start_runs_against_an_isolated_release_daemon")
+        .env(DESKTOP_RUNTIME_START_CHILD_ENV, "1")
+        .env("TAUGENTIC_DAEMON_BINARY", release_daemon)
+        .env(DAEMON_SOCKET_NAME_ENV_VAR, socket_name)
+        .env(DAEMON_RUNTIME_MODE_ENV_VAR, "local")
+        .env("XDG_RUNTIME_DIR", runtime_dir)
+        .env(LOG_DIR_ENV_VAR, log_dir)
+        .env(LOG_STDERR_ENV_VAR, "0")
+        .env("HOME", &config_home)
+        .env("USERPROFILE", &config_home)
+        .env("XDG_CONFIG_HOME", config_home.join(".config"))
+        .env("APPDATA", config_home.join("AppData").join("Roaming"))
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("desktop lifecycle child should spawn");
+
+    assert!(
+        status.success(),
+        "desktop lifecycle child must complete its typed lifecycle contract"
+    );
+}
+
+fn run_desktop_runtime_start_child()
+-> Result<DesktopRuntimeLifecycleStage, DesktopRuntimeLifecycleStage> {
+    let started =
+        start_desktop_runtime().map_err(|_| DesktopRuntimeLifecycleStage::RuntimeStart)?;
+    let control_status = started.control_status().clone();
+    let client = DaemonClient::from_control_status(&control_status, "ta-desktop-lifecycle-test")
+        .map_err(|_| DesktopRuntimeLifecycleStage::PersistentClient)?;
+    let persistent = client
+        .connect_persistent("ta-desktop-lifecycle-test", env!("CARGO_PKG_VERSION"))
+        .map_err(|_| DesktopRuntimeLifecycleStage::PersistentClient)?;
+    persistent.close();
+
+    let mut runtime = started.into_handle();
+    runtime
+        .release()
+        .map_err(|_| DesktopRuntimeLifecycleStage::RuntimeRelease)?;
+    if client.status().is_ok() {
+        return Err(DesktopRuntimeLifecycleStage::OwnedClose);
+    }
+
+    Ok(DesktopRuntimeLifecycleStage::OwnedClose)
+}
 
 #[test]
 fn real_daemon_status_reports_ready_payload() {

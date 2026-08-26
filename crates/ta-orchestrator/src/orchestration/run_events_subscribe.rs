@@ -9,8 +9,8 @@ use ta_store::{PersistenceStore, RunEventRangeQuery, StoreError, event_run_id};
 
 use super::app::{AppService, AppServiceError};
 use crate::{
-    DaemonEventKind, PublicDaemonEvent, RunEventDelta, RunEventStreamError, RunHarnessKind,
-    RunStatus, SubscribeRunEventsRequest,
+    DaemonEventKind, PublicDaemonEvent, RunEventDelta, RunEventStreamError, RunStatus,
+    SubscribeRunEventsRequest,
 };
 
 pub(super) const RUN_EVENT_REPLAY_BATCH_LIMIT: usize = 500;
@@ -81,20 +81,14 @@ where
                 run.id.as_str().to_string(),
             ));
         }
-        if run.harness != RunHarnessKind::Native {
-            return Err(AppServiceError::RunNotNativeHarness(
-                run.id.as_str().to_string(),
-            ));
-        }
         (run.status, run.last_event_seq)
     };
 
-    let should_subscribe_live = matches!(
-        run_status,
-        RunStatus::Running | RunStatus::WaitingForApproval
-    ) && service
-        .run_execution
-        .is_live_run_running(&request.run_id, session_id);
+    let should_subscribe_live = run_status == RunStatus::WaitingForApproval
+        || (run_status == RunStatus::Running
+            && service
+                .run_execution
+                .is_live_run_running(&request.run_id, session_id));
 
     let live_subscription = if should_subscribe_live {
         before_live_subscribe();
@@ -336,8 +330,8 @@ fn spawn_run_event_delta_bridge(
 mod tests {
     use super::*;
     use crate::{
-        AppDeferredMutationResult, DaemonEvent, OpenSessionRequest, RunId, RunSource, RunSummary,
-        RuntimeProfileId, SessionId,
+        AppDeferredMutationResult, DaemonEvent, OpenSessionRequest, RunHarnessKind, RunId,
+        RunSummary, RuntimeProfileId, SessionId,
     };
     use ta_store::{
         EventRecord, ProjectionRepository, RunProjection, test_support::StoreSeedRepository,
@@ -365,7 +359,22 @@ mod tests {
         objective: &str,
     ) -> AppDeferredMutationResult<RunSummary> {
         service
-            .seed_running_run_for_tests(session_id, objective)
+            .seed_auth_profile_for_tests(ta_store::connected_test_auth_profile(
+                "profile-openai-test",
+                "openai-chatgpt",
+                "openai",
+            ))
+            .expect("test auth profile should persist");
+        let selection = crate::AgentRuntimeSelection {
+            runtime_profile_id: crate::RuntimeProfileId::new("runtime-openai-safe")
+                .expect("runtime profile id"),
+            auth_profile_id: Some(
+                crate::AuthProfileId::new("profile-openai-test").expect("auth profile id"),
+            ),
+            model_id: Some(crate::AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+        };
+        service
+            .seed_running_run_for_tests(session_id, objective, &selection)
             .expect("seeded run should start")
     }
 
@@ -399,7 +408,7 @@ mod tests {
                 objective: objective.to_string(),
                 status: RunStatus::Running,
                 harness: RunHarnessKind::Native,
-                source: RunSource::default(),
+                source: ta_store::default_test_run_source(),
                 execution_context: ta_store::default_test_execution_context(),
                 result: None,
                 contract_violation: None,
@@ -458,6 +467,49 @@ mod tests {
             store.save_run(run).expect("run projection should update");
         }
         service.runtime.publish_record(&record);
+    }
+
+    #[test]
+    fn waiting_for_approval_subscription_stays_live_for_resume_events() {
+        let service = AppService::bootstrap().expect("app service should boot");
+        let session = open_session(&service);
+        let run_id = RunId::new("run-waiting-for-resume").expect("run id");
+        seed_native_run_projection(&service, &session.id, &run_id, "Resume after approval");
+        {
+            let mut store = service
+                .store
+                .lock()
+                .expect("app store should not be poisoned");
+            let mut run = store
+                .run(&run_id)
+                .expect("run lookup should succeed")
+                .expect("run should exist");
+            run.status = RunStatus::WaitingForApproval;
+            store.save_run(run).expect("waiting run should persist");
+        }
+
+        let subscription = subscribe_run_events(
+            &service,
+            &session.id,
+            &SubscribeRunEventsRequest {
+                session_id: session.id.clone(),
+                run_id: run_id.clone(),
+                after_seq: None,
+            },
+        )
+        .expect("waiting run should keep a live subscription");
+
+        assert!(subscription.live);
+        append_and_publish_run_event(&service, &session.id, &run_id, 10_000, "Approval granted");
+        assert_eq!(
+            subscription
+                .receiver
+                .recv_timeout(std::time::Duration::from_millis(200))
+                .expect("resume event should arrive")
+                .expect("resume event should be valid")
+                .seq,
+            10_000
+        );
     }
 
     #[test]

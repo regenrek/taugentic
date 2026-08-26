@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::wire::RunId;
+use crate::wire::{RunId, u64_string};
 
 macro_rules! identifier {
     ($name:ident, $label:literal) => {
@@ -83,6 +83,9 @@ pub struct StreamEmission {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub item_id: Option<AgentStreamItemId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub fragment_sequence: Option<u64>,
     pub frame: AgentStreamFrame,
 }
@@ -114,9 +117,15 @@ pub enum AgentStreamFrame {
     TokenUsageUpdated {
         #[serde(rename = "totalTokens")]
         #[ts(rename = "totalTokens")]
+        #[serde(with = "u64_string::option")]
+        #[schemars(schema_with = "u64_string::option::json_schema")]
+        #[ts(type = "string | null")]
         total_tokens: Option<u64>,
         #[serde(rename = "modelContextWindow")]
         #[ts(rename = "modelContextWindow")]
+        #[serde(with = "u64_string::option")]
+        #[schemars(schema_with = "u64_string::option::json_schema")]
+        #[ts(type = "string | null")]
         model_context_window: Option<u64>,
     },
 }

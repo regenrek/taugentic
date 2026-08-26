@@ -148,24 +148,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -191,11 +201,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "fragmentSequence": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "frame": {
@@ -360,24 +374,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "string"
         },
         "modelContextWindow": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "totalTokens": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "required": [
-        "kind"
+        "kind",
+        "totalTokens",
+        "modelContextWindow"
       ],
       "type": "object"
     }
@@ -1490,11 +1514,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -1639,24 +1667,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -3050,11 +3088,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -3199,24 +3241,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -6274,11 +6326,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -6423,24 +6479,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -7798,11 +7864,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -7947,24 +8017,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -9624,6 +9704,223 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "DaemonWorkspaceOpenResult",
   "type": "object"
 },
+  DaemonProjectOpenParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "trustAcknowledged": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "path",
+    "trustAcknowledged"
+  ],
+  "title": "DaemonProjectOpenParams",
+  "type": "object"
+},
+  DaemonProjectOpenResult: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NavigationAgentRow": {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "awaitingApproval": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "active",
+        "awaitingApproval"
+      ],
+      "type": "object"
+    },
+    "NavigationConversation": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus",
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+        },
+        "title": {
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "status",
+        "placement",
+        "archived",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "NavigationProject": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "NavigationSnapshot": {
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/NavigationAgentRow"
+          },
+          "type": "array"
+        },
+        "conversations": {
+          "items": {
+            "$ref": "#/$defs/NavigationConversation"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/NavigationProject"
+          },
+          "type": "array"
+        },
+        "spaces": {
+          "items": {
+            "$ref": "#/$defs/NavigationSpace"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "NavigationSpace": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/NavigationSnapshot"
+    }
+  },
+  "required": [
+    "projectId",
+    "snapshot"
+  ],
+  "title": "DaemonProjectOpenResult",
+  "type": "object"
+},
   DaemonWorkspaceListParams: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DaemonWorkspaceListParams",
@@ -10624,11 +10921,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -10773,24 +11074,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -12339,6 +12650,1279 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "ApprovalAttentionState",
   "type": "string"
 },
+  SpaceId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  ProjectId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  NavigationSpace: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "NavigationSpace",
+  "type": "object"
+},
+  NavigationProject: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "spaceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "workspaceIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "NavigationProject",
+  "type": "object"
+},
+  ConversationPlacement: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "project",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "projectId"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "standalone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "temporary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ConversationPlacement"
+},
+  NavigationConversation: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "archived": {
+      "type": "boolean"
+    },
+    "pinned": {
+      "type": "boolean"
+    },
+    "placement": {
+      "$ref": "#/$defs/ConversationPlacement"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/SessionStatus",
+      "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+    },
+    "title": {
+      "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "title",
+    "status",
+    "placement",
+    "archived",
+    "pinned"
+  ],
+  "title": "NavigationConversation",
+  "type": "object"
+},
+  NavigationAgentRow: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "awaitingApproval": {
+      "type": "boolean"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "title",
+    "active",
+    "awaitingApproval"
+  ],
+  "title": "NavigationAgentRow",
+  "type": "object"
+},
+  NavigationSnapshot: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NavigationAgentRow": {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "awaitingApproval": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "active",
+        "awaitingApproval"
+      ],
+      "type": "object"
+    },
+    "NavigationConversation": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus",
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+        },
+        "title": {
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "status",
+        "placement",
+        "archived",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "NavigationProject": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "NavigationSpace": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "agents": {
+      "items": {
+        "$ref": "#/$defs/NavigationAgentRow"
+      },
+      "type": "array"
+    },
+    "conversations": {
+      "items": {
+        "$ref": "#/$defs/NavigationConversation"
+      },
+      "type": "array"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/NavigationProject"
+      },
+      "type": "array"
+    },
+    "spaces": {
+      "items": {
+        "$ref": "#/$defs/NavigationSpace"
+      },
+      "type": "array"
+    }
+  },
+  "title": "NavigationSnapshot",
+  "type": "object"
+},
+  DaemonNavigationSnapshotParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "search": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "title": "DaemonNavigationSnapshotParams",
+  "type": "object"
+},
+  DaemonNavigationSnapshotResult: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NavigationAgentRow": {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "awaitingApproval": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "active",
+        "awaitingApproval"
+      ],
+      "type": "object"
+    },
+    "NavigationConversation": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus",
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+        },
+        "title": {
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "status",
+        "placement",
+        "archived",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "NavigationProject": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "NavigationSnapshot": {
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/NavigationAgentRow"
+          },
+          "type": "array"
+        },
+        "conversations": {
+          "items": {
+            "$ref": "#/$defs/NavigationConversation"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/NavigationProject"
+          },
+          "type": "array"
+        },
+        "spaces": {
+          "items": {
+            "$ref": "#/$defs/NavigationSpace"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "NavigationSpace": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "snapshot": {
+      "$ref": "#/$defs/NavigationSnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "DaemonNavigationSnapshotResult",
+  "type": "object"
+},
+  DaemonNavigationIntent: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "createSpace",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "createProject",
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "workspaceIds"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "setProjectWorkspaces",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "projectId",
+        "workspaceIds"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "placeConversation",
+          "type": "string"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "placement"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "setPinned",
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "setArchived",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "archived"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "closeTemporaryConversation",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "DaemonNavigationIntent"
+},
+  DaemonNavigationIntentParams: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DaemonNavigationIntent": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "createSpace",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "title"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "createProject",
+              "type": "string"
+            },
+            "spaceId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "workspaceIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "title",
+            "workspaceIds"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "setProjectWorkspaces",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "workspaceIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId",
+            "workspaceIds"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "placeConversation",
+              "type": "string"
+            },
+            "placement": {
+              "$ref": "#/$defs/ConversationPlacement"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sessionId",
+            "placement"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "setPinned",
+              "type": "string"
+            },
+            "pinned": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sessionId",
+            "pinned"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "archived": {
+              "type": "boolean"
+            },
+            "kind": {
+              "const": "setArchived",
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sessionId",
+            "archived"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "closeTemporaryConversation",
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sessionId"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "intent": {
+      "$ref": "#/$defs/DaemonNavigationIntent"
+    }
+  },
+  "required": [
+    "intent"
+  ],
+  "title": "DaemonNavigationIntentParams",
+  "type": "object"
+},
+  DaemonNavigationIntentResult: {
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NavigationAgentRow": {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "awaitingApproval": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "active",
+        "awaitingApproval"
+      ],
+      "type": "object"
+    },
+    "NavigationConversation": {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus",
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value."
+        },
+        "title": {
+          "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "title",
+        "status",
+        "placement",
+        "archived",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    "NavigationProject": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "NavigationSnapshot": {
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/NavigationAgentRow"
+          },
+          "type": "array"
+        },
+        "conversations": {
+          "items": {
+            "$ref": "#/$defs/NavigationConversation"
+          },
+          "type": "array"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/NavigationProject"
+          },
+          "type": "array"
+        },
+        "spaces": {
+          "items": {
+            "$ref": "#/$defs/NavigationSpace"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "NavigationSpace": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SessionStatus": {
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "failed",
+        "completed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "snapshot": {
+      "$ref": "#/$defs/NavigationSnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "DaemonNavigationIntentResult",
+  "type": "object"
+},
+  DaemonNavigationSubscribeParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "DaemonNavigationSubscribeParams",
+  "type": "object"
+},
+  DaemonNavigationSubscribeResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "DaemonNavigationSubscribeResult",
+  "type": "object"
+},
+  DaemonNavigationInvalidatedParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "DaemonNavigationInvalidatedParams",
+  "type": "object"
+},
+  DesktopDaemonLifecycleStatus: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Redacted connection state for the desktop lifecycle projection.\n\nThe desktop receives only whether it may render current snapshots. Daemon\nidentity, cursors, transport details, and recovery mechanics remain in the\nRust client boundary.",
+  "enum": [
+    "ready",
+    "snapshotRehydrationRequired",
+    "disconnected"
+  ],
+  "title": "DesktopDaemonLifecycleStatus",
+  "type": "string"
+},
+  DesktopDaemonLifecycleProjection: {
+  "$defs": {
+    "DesktopDaemonLifecycleStatus": {
+      "description": "Redacted connection state for the desktop lifecycle projection.\n\nThe desktop receives only whether it may render current snapshots. Daemon\nidentity, cursors, transport details, and recovery mechanics remain in the\nRust client boundary.",
+      "enum": [
+        "ready",
+        "snapshotRehydrationRequired",
+        "disconnected"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Safe desktop-facing lifecycle signal.\n\n`invalidated` tells the presentation cache to refresh daemon snapshots;\nit intentionally carries neither event payload nor resume lineage.",
+  "properties": {
+    "foreignRuntimeRestricted": {
+      "type": "boolean"
+    },
+    "invalidated": {
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/DesktopDaemonLifecycleStatus"
+    }
+  },
+  "required": [
+    "status",
+    "invalidated",
+    "foreignRuntimeRestricted"
+  ],
+  "title": "DesktopDaemonLifecycleProjection",
+  "type": "object"
+},
   DaemonInitializeParams: {
   "$defs": {
     "DaemonClientCapabilities": {
@@ -12480,6 +14064,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id"
       ],
       "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "byProject",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "projectId",
+        "workspaceId"
+      ],
+      "type": "object"
     }
   ],
   "title": "WorkspaceSelector"
@@ -12521,6 +14125,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "required": [
             "kind",
             "id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "byProject",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "workspaceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId",
+            "workspaceId"
           ],
           "type": "object"
         }
@@ -14275,6 +15899,31 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "type": "object"
 },
   WorkItemTriggerParams: {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "key": {
@@ -14285,10 +15934,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "string",
         "null"
       ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
   "required": [
-    "key"
+    "key",
+    "selection"
   ],
   "title": "WorkItemTriggerParams",
   "type": "object"
@@ -19865,6 +21518,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
     "RunHarnessKind": {
       "enum": [
         "unknown",
@@ -19903,10 +21587,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "route"
           ],
           "type": "object"
         },
@@ -19954,6 +21642,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "null"
               ]
             },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
             "workspaceScope": {
               "$ref": "#/$defs/WorkspaceMode",
               "default": "worktreeWrite"
@@ -19961,6 +21652,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentTurnId"
           ],
@@ -19979,10 +21671,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -20591,6 +22287,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
     "RunHarnessKind": {
       "enum": [
         "unknown",
@@ -20736,10 +22463,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "route"
           ],
           "type": "object"
         },
@@ -20787,6 +22518,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "null"
               ]
             },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
             "workspaceScope": {
               "$ref": "#/$defs/WorkspaceMode",
               "default": "worktreeWrite"
@@ -20794,6 +22528,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentTurnId"
           ],
@@ -20812,10 +22547,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -21309,6 +23048,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
     "RunHarnessKind": {
       "enum": [
         "unknown",
@@ -21454,10 +23224,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "string",
                 "null"
               ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "route"
           ],
           "type": "object"
         },
@@ -21505,6 +23279,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
                 "null"
               ]
             },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
             "workspaceScope": {
               "$ref": "#/$defs/WorkspaceMode",
               "default": "worktreeWrite"
@@ -21512,6 +23289,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentTurnId"
           ],
@@ -21530,10 +23308,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -21781,11 +23563,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -21930,24 +23716,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -23332,11 +25128,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -23481,24 +25281,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -24917,11 +26727,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -25066,24 +26880,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -26517,11 +28341,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -26666,24 +28494,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -28096,11 +29934,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "frame": {
@@ -28245,24 +30087,34 @@ export const PROTOCOL_JSON_SCHEMAS = {
               "type": "string"
             },
             "modelContextWindow": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "totalTokens": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
+              "anyOf": [
+                {
+                  "maxLength": 20,
+                  "pattern": "^[0-9]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
           "required": [
-            "kind"
+            "kind",
+            "totalTokens",
+            "modelContextWindow"
           ],
           "type": "object"
         }
@@ -29824,14 +31676,33 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "type": "object"
 },
   StartRunCommand: {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "modelId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "objective": {
       "type": "string"
     },
@@ -29840,10 +31711,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "string",
         "null"
       ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
   "required": [
-    "objective"
+    "objective",
+    "selection"
   ],
   "title": "StartRunCommand",
   "type": "object"
@@ -30285,19 +32160,27 @@ export const PROTOCOL_JSON_SCHEMAS = {
           ]
         },
         "max_tokens": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "max_wall_time_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
@@ -30420,14 +32303,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "additionalProperties": false,
       "properties": {
         "initial_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         },
         "max_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         }
       },
       "required": [
@@ -30636,14 +32519,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "additionalProperties": false,
       "properties": {
         "initial_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         },
         "max_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
         }
       },
       "required": [
@@ -30683,14 +32566,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "additionalProperties": false,
   "properties": {
     "initial_ms": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": "integer"
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
     },
     "max_ms": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": "integer"
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
     }
   },
   "required": [
@@ -30930,19 +32813,27 @@ export const PROTOCOL_JSON_SCHEMAS = {
           ]
         },
         "max_tokens": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "max_wall_time_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
@@ -30985,19 +32876,27 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ]
     },
     "max_tokens": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "max_wall_time_ms": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     }
   },
@@ -31351,6 +33250,25 @@ export const PROTOCOL_JSON_SCHEMAS = {
   ],
   "title": "WorkflowReloadOutcome"
 },
+  DaemonRunCancelParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId"
+  ],
+  "title": "DaemonRunCancelParams",
+  "type": "object"
+},
   AgentRuntimeStrategyId: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "string",
@@ -31365,11 +33283,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "contextLimit": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "displayName": {
@@ -31379,11 +33301,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "inputCostPerMillionMicros": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "inputModalities": {
@@ -31393,11 +33319,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "array"
     },
     "outputCostPerMillionMicros": {
-      "format": "uint64",
-      "minimum": 0,
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "reasoning": {
@@ -31503,11 +33433,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentRuntimeModelRef": {
       "properties": {
         "contextLimit": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "displayName": {
@@ -31517,11 +33451,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "string"
         },
         "inputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "inputModalities": {
@@ -31531,11 +33469,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "array"
         },
         "outputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "reasoning": {
@@ -31614,6 +33556,53 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "AgentRuntimeStrategyInfo",
   "type": "object"
 },
+  AuthMethodId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  AuthMethodRef: {
+  "$defs": {
+    "AuthProfileManagementMode": {
+      "enum": [
+        "interactive",
+        "nativeAcpAuth",
+        "terminalCliDelegated",
+        "environment",
+        "none",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "displayName": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "managementMode": {
+      "$ref": "#/$defs/AuthProfileManagementMode"
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "supportsMultipleProfiles": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "providerId",
+    "displayName",
+    "managementMode",
+    "supportsMultipleProfiles"
+  ],
+  "title": "AuthMethodRef",
+  "type": "object"
+},
   AuthProfileId: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "string",
@@ -31644,11 +33633,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
   AuthProfileRef: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "accountHint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authMethodId": {
+      "type": "string"
+    },
     "displayName": {
       "type": "string"
     },
     "id": {
       "type": "string"
+    },
+    "planTier": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "providerId": {
       "type": "string"
@@ -31656,6 +33660,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "required": [
     "id",
+    "authMethodId",
     "providerId",
     "displayName"
   ],
@@ -31729,11 +33734,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileRef": {
       "properties": {
+        "accountHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authMethodId": {
+          "type": "string"
+        },
         "displayName": {
           "type": "string"
         },
         "id": {
           "type": "string"
+        },
+        "planTier": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "providerId": {
           "type": "string"
@@ -31741,6 +33761,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
       },
       "required": [
         "id",
+        "authMethodId",
         "providerId",
         "displayName"
       ],
@@ -31962,11 +33983,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileRef": {
       "properties": {
+        "accountHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authMethodId": {
+          "type": "string"
+        },
         "displayName": {
           "type": "string"
         },
         "id": {
           "type": "string"
+        },
+        "planTier": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "providerId": {
           "type": "string"
@@ -31974,6 +34010,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
       },
       "required": [
         "id",
+        "authMethodId",
         "providerId",
         "displayName"
       ],
@@ -32542,7 +34579,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "authProfileId": {
+    "authMethodId": {
       "type": [
         "string",
         "null"
@@ -32553,12 +34590,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "id": {
       "type": "string"
-    },
-    "modelId": {
-      "type": [
-        "string",
-        "null"
-      ]
     },
     "policyMode": {
       "$ref": "#/$defs/RuntimePolicyMode"
@@ -32576,74 +34607,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "RuntimeProfileSummary",
   "type": "object"
 },
-  RuntimeProfileModelIdPatch: {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "oneOf": [
-    {
-      "properties": {
-        "kind": {
-          "const": "set",
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "value"
-      ],
-      "type": "object"
-    },
-    {
-      "properties": {
-        "kind": {
-          "const": "clear",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    }
-  ],
-  "title": "RuntimeProfileModelIdPatch"
-},
-  RuntimeProfileAuthProfilePatch: {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "oneOf": [
-    {
-      "properties": {
-        "kind": {
-          "const": "set",
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "value"
-      ],
-      "type": "object"
-    },
-    {
-      "properties": {
-        "kind": {
-          "const": "clear",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    }
-  ],
-  "title": "RuntimeProfileAuthProfilePatch"
-},
   RuntimeProfilePatch: {
   "$defs": {
     "RuntimePolicyMode": {
@@ -32653,98 +34616,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "deny"
       ],
       "type": "string"
-    },
-    "RuntimeProfileAuthProfilePatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
-    },
-    "RuntimeProfileModelIdPatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "authProfile": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RuntimeProfileAuthProfilePatch"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "displayName": {
       "type": [
         "string",
         "null"
-      ]
-    },
-    "modelId": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/RuntimeProfileModelIdPatch"
-        },
-        {
-          "type": "null"
-        }
       ]
     },
     "policyMode": {
@@ -32756,12 +34635,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "null"
         }
       ]
-    },
-    "providerId": {
-      "type": [
-        "string",
-        "null"
-      ]
     }
   },
   "title": "RuntimeProfilePatch",
@@ -32770,6 +34643,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
   AgentRuntimeSelection: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authProfileId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "runtimeProfileId": {
       "type": "string"
     }
@@ -32822,11 +34707,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentRuntimeModelRef": {
       "properties": {
         "contextLimit": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "displayName": {
@@ -32836,11 +34725,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "string"
         },
         "inputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "inputModalities": {
@@ -32850,11 +34743,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "array"
         },
         "outputCostPerMillionMicros": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "reasoning": {
@@ -32873,17 +34770,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "reasoning",
         "toolCall",
         "structuredOutput"
-      ],
-      "type": "object"
-    },
-    "AgentRuntimeSelection": {
-      "properties": {
-        "runtimeProfileId": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "runtimeProfileId"
       ],
       "type": "object"
     },
@@ -32939,6 +34825,33 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "displayName",
         "modelCapability",
         "health"
+      ],
+      "type": "object"
+    },
+    "AuthMethodRef": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "managementMode": {
+          "$ref": "#/$defs/AuthProfileManagementMode"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "supportsMultipleProfiles": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "providerId",
+        "displayName",
+        "managementMode",
+        "supportsMultipleProfiles"
       ],
       "type": "object"
     },
@@ -33007,11 +34920,26 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "AuthProfileRef": {
       "properties": {
+        "accountHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authMethodId": {
+          "type": "string"
+        },
         "displayName": {
           "type": "string"
         },
         "id": {
           "type": "string"
+        },
+        "planTier": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "providerId": {
           "type": "string"
@@ -33019,6 +34947,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
       },
       "required": [
         "id",
+        "authMethodId",
         "providerId",
         "displayName"
       ],
@@ -33258,7 +35187,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     },
     "RuntimeProfileSummary": {
       "properties": {
-        "authProfileId": {
+        "authMethodId": {
           "type": [
             "string",
             "null"
@@ -33269,12 +35198,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
         },
         "id": {
           "type": "string"
-        },
-        "modelId": {
-          "type": [
-            "string",
-            "null"
-          ]
         },
         "policyMode": {
           "$ref": "#/$defs/RuntimePolicyMode"
@@ -33294,6 +35217,12 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authMethods": {
+      "items": {
+        "$ref": "#/$defs/AuthMethodRef"
+      },
+      "type": "array"
+    },
     "authProfiles": {
       "items": {
         "$ref": "#/$defs/AuthProfileState"
@@ -33317,33 +35246,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "$ref": "#/$defs/RuntimeProfileSummary"
       },
       "type": "array"
-    },
-    "selection": {
-      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
-  "required": [
-    "selection"
-  ],
   "title": "AgentRuntimeSnapshot",
   "type": "object"
 },
   GetAgentRuntimeQuery: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GetAgentRuntimeQuery",
-  "type": "object"
-},
-  DaemonAgentRuntimeSelectProfileParams: {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "properties": {
-    "runtimeProfileId": {
-      "type": "string"
-    }
-  },
-  "required": [
-    "runtimeProfileId"
-  ],
-  "title": "DaemonAgentRuntimeSelectProfileParams",
   "type": "object"
 },
   DaemonAgentRuntimePatchProfileParams: {
@@ -33356,96 +35266,12 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
-    "RuntimeProfileAuthProfilePatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
-    },
-    "RuntimeProfileModelIdPatch": {
-      "oneOf": [
-        {
-          "properties": {
-            "kind": {
-              "const": "set",
-              "type": "string"
-            },
-            "value": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "value"
-          ],
-          "type": "object"
-        },
-        {
-          "properties": {
-            "kind": {
-              "const": "clear",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        }
-      ]
-    },
     "RuntimeProfilePatch": {
       "properties": {
-        "authProfile": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RuntimeProfileAuthProfilePatch"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "displayName": {
           "type": [
             "string",
             "null"
-          ]
-        },
-        "modelId": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/RuntimeProfileModelIdPatch"
-            },
-            {
-              "type": "null"
-            }
           ]
         },
         "policyMode": {
@@ -33456,12 +35282,6 @@ export const PROTOCOL_JSON_SCHEMAS = {
             {
               "type": "null"
             }
-          ]
-        },
-        "providerId": {
-          "type": [
-            "string",
-            "null"
           ]
         }
       },
@@ -33487,6 +35307,19 @@ export const PROTOCOL_JSON_SCHEMAS = {
   DaemonAgentRuntimeAuthLoginParams: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authMethodId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "authMethodId"
+  ],
+  "title": "DaemonAgentRuntimeAuthLoginParams",
+  "type": "object"
+},
+  DaemonAgentRuntimeAuthLoginCompleteParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
     "authProfileId": {
       "type": "string"
     }
@@ -33494,7 +35327,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "required": [
     "authProfileId"
   ],
-  "title": "DaemonAgentRuntimeAuthLoginParams",
+  "title": "DaemonAgentRuntimeAuthLoginCompleteParams",
   "type": "object"
 },
   DaemonAgentRuntimeAuthLogoutParams: {

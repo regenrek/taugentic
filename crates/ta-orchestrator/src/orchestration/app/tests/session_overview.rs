@@ -24,13 +24,7 @@ fn session_overview_projects_lane_activity_and_approval_attention() {
         )
         .expect("session should open");
     let started = service
-        .start_run(
-            &selected.id,
-            &StartRunCommand {
-                objective: "needs approval".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&selected.id, &start_run_command(&service, "needs approval"))
         .expect("run should start");
     assert_eq!(started.body.status, RunStatus::WaitingForApproval);
 
@@ -84,13 +78,7 @@ fn session_overview_uses_latest_run_not_latest_non_run_activity() {
         .expect("session should open");
     let running = ensure_running_run(&service, &session.id, "artifact producer");
     let queued = service
-        .start_run(
-            &session.id,
-            &StartRunCommand {
-                objective: "latest waiting".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session.id, &start_run_command(&service, "latest waiting"))
         .expect("run should start");
     service
         .record_artifact(ArtifactRecord {
@@ -155,10 +143,7 @@ fn session_overview_caps_recent_activity_limit_server_side() {
             service
                 .start_run(
                     &session.id,
-                    &StartRunCommand {
-                        objective: format!("run-{index}"),
-                        ..StartRunCommand::default()
-                    },
+                    &start_run_command(&service, &format!("run-{index}")),
                 )
                 .expect("run should start")
                 .body
@@ -204,13 +189,7 @@ fn session_overview_preserves_preview_metadata_when_recent_activity_is_zero() {
         )
         .expect("session should open");
     service
-        .start_run(
-            &session.id,
-            &StartRunCommand {
-                objective: "needs approval".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session.id, &start_run_command(&service, "needs approval"))
         .expect("run should start");
 
     let snapshot = service
@@ -248,10 +227,7 @@ fn session_overview_excludes_agent_stream_events_from_recent_activity() {
     let started = service
         .start_run(
             &session.id,
-            &StartRunCommand {
-                objective: "agent stream excluded".to_string(),
-                ..StartRunCommand::default()
-            },
+            &start_run_command(&service, "agent stream excluded"),
         )
         .expect("run should start");
     append_agent_stream_tool_started_event(

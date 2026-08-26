@@ -47,6 +47,7 @@ pub struct WorkItem {
     pub body: String,
     pub labels: Vec<String>,
     pub url: String,
+    #[ts(type = "number")]
     pub fetched_at_ms: u64,
     pub status: WorkItemStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -158,5 +159,33 @@ mod tests {
                 .matches(&labels)
         );
         assert!(!WorkSourceLabelFilter::All(vec!["missing".to_string()]).matches(&labels));
+    }
+
+    #[test]
+    fn work_item_timestamp_remains_a_numeric_domain_value() {
+        let item = WorkItem {
+            key: WorkItemKey::new("github:owner/repo#1").expect("work item key"),
+            source: WorkSource::GitHub {
+                repo_owner: "owner".to_string(),
+                repo_name: "repo".to_string(),
+            },
+            external_id: "1".to_string(),
+            title: "title".to_string(),
+            body: String::new(),
+            labels: Vec::new(),
+            url: "https://example.invalid/1".to_string(),
+            fetched_at_ms: 1_725_000_000_000,
+            status: WorkItemStatus::Available,
+            triggered_run_id: None,
+        };
+
+        let json = serde_json::to_value(&item).expect("work item should serialize");
+        assert_eq!(json["fetchedAtMs"], 1_725_000_000_000_u64);
+        assert_eq!(
+            serde_json::from_value::<WorkItem>(json)
+                .expect("numeric work item should deserialize")
+                .fetched_at_ms,
+            item.fetched_at_ms
+        );
     }
 }

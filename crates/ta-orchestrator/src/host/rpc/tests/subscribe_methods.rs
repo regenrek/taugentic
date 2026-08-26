@@ -1,6 +1,110 @@
 use super::*;
 
 #[test]
+fn navigation_subscribe_requires_initialize_but_not_session_attachment() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session = test_session();
+    let uninitialized = Arc::new(Mutex::new(DaemonRpcSessionState::default()));
+    let request = || JsonRpcRequest {
+        jsonrpc: "2.0".to_string(),
+        id: crate::RequestId::Integer(401),
+        method: METHOD_DAEMON_NAVIGATION_SUBSCRIBE.to_string(),
+        params: Some(serde_json::json!({})),
+    };
+
+    assert!(
+        handle_request(
+            &state,
+            &shutdown_requested,
+            &session,
+            &uninitialized,
+            request()
+        )
+        .is_err()
+    );
+
+    let initialized = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: None,
+    }));
+    let result: DaemonNavigationSubscribeResult = serde_json::from_value(
+        handle_request(
+            &state,
+            &shutdown_requested,
+            &session,
+            &initialized,
+            request(),
+        )
+        .expect("initialized principal may subscribe without an attached session"),
+    )
+    .expect("empty result");
+    assert_eq!(result, DaemonNavigationSubscribeResult {});
+}
+
+#[test]
+fn navigation_invalidation_is_empty_and_principal_scoped() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let owned = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Owned navigation".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let (owner_runtime, mut owner_outbound) =
+        JsonRpcConnectionRuntime::new(402, DEFAULT_OUTBOUND_QUEUE_DEPTH);
+    let owner_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        attached_session_id: None,
+    }));
+    handle_request(
+        &state,
+        &shutdown_requested,
+        &owner_runtime.session(),
+        &owner_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(402),
+            method: METHOD_DAEMON_NAVIGATION_SUBSCRIBE.to_string(),
+            params: Some(serde_json::json!({})),
+        },
+    )
+    .expect("owner subscribes");
+    for action in owner_runtime.take_after_response_actions() {
+        action();
+    }
+
+    state.runtime.publish_record(&EventRecord {
+        sequence: 2,
+        session_id: owned.id.clone(),
+        occurred_at_ms: 2,
+        payload: crate::DaemonEvent::Session(crate::SessionEvent {
+            session_id: owned.id.clone(),
+            status: SessionStatus::Running,
+        }),
+    });
+
+    let message = owner_outbound.blocking_recv().expect("owner notification");
+    let JsonRpcMessage::Notification(notification) = message else {
+        panic!("expected notification");
+    };
+    assert_eq!(notification.method, METHOD_DAEMON_NAVIGATION_INVALIDATED);
+    assert_eq!(notification.params, Some(serde_json::json!({})));
+}
+
+#[test]
 fn daemon_session_attach_rejects_unknown_session() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));

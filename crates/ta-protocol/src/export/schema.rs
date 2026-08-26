@@ -25,11 +25,37 @@ pub(super) fn build_runtime_json_schemas()
     Ok(schemas)
 }
 
+struct JsonSchemaPublicType {
+    write: fn(&Path) -> Result<(), ProtocolExportError>,
+    runtime: fn() -> Result<(&'static str, serde_json::Value), ProtocolExportError>,
+}
+
+const CANCELLATION_SCHEMAS: &[JsonSchemaPublicType] = &[JsonSchemaPublicType {
+    write: write_schema::<DaemonRunCancelParams>,
+    runtime: schema_pair::<DaemonRunCancelParams>,
+}];
+
 fn write_schema<T: JsonSchema>(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     let schema_path = schema_dir.join(format!("{}.json", simple_type_name::<T>()));
     let schema_json = serde_json::to_string_pretty(&schema_value::<T>()?)?;
     fs::write(schema_path, format!("{schema_json}\n"))?;
     Ok(())
+}
+
+fn write_selected_schemas(
+    schemas: &[JsonSchemaPublicType],
+    schema_dir: &Path,
+) -> Result<(), ProtocolExportError> {
+    for schema in schemas {
+        (schema.write)(schema_dir)?;
+    }
+    Ok(())
+}
+
+fn selected_runtime_schemas(
+    schemas: &[JsonSchemaPublicType],
+) -> Result<Vec<(&'static str, serde_json::Value)>, ProtocolExportError> {
+    schemas.iter().map(|schema| (schema.runtime)()).collect()
 }
 
 fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
@@ -82,6 +108,8 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<Workspace>(schema_dir)?;
     write_schema::<DaemonWorkspaceOpenParams>(schema_dir)?;
     write_schema::<DaemonWorkspaceOpenResult>(schema_dir)?;
+    write_schema::<DaemonProjectOpenParams>(schema_dir)?;
+    write_schema::<DaemonProjectOpenResult>(schema_dir)?;
     write_schema::<DaemonWorkspaceListParams>(schema_dir)?;
     write_schema::<DaemonWorkspaceListResult>(schema_dir)?;
     write_schema::<DaemonWorkspaceGetParams>(schema_dir)?;
@@ -99,7 +127,25 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<SessionOverviewResult>(schema_dir)?;
     write_schema::<SessionOverviewLaneStatus>(schema_dir)?;
     write_schema::<ApprovalAttentionState>(schema_dir)?;
+    write_schema::<SpaceId>(schema_dir)?;
+    write_schema::<ProjectId>(schema_dir)?;
+    write_schema::<NavigationSpace>(schema_dir)?;
+    write_schema::<NavigationProject>(schema_dir)?;
+    write_schema::<ConversationPlacement>(schema_dir)?;
+    write_schema::<NavigationConversation>(schema_dir)?;
+    write_schema::<NavigationAgentRow>(schema_dir)?;
+    write_schema::<NavigationSnapshot>(schema_dir)?;
+    write_schema::<DaemonNavigationSnapshotParams>(schema_dir)?;
+    write_schema::<DaemonNavigationSnapshotResult>(schema_dir)?;
+    write_schema::<DaemonNavigationIntent>(schema_dir)?;
+    write_schema::<DaemonNavigationIntentParams>(schema_dir)?;
+    write_schema::<DaemonNavigationIntentResult>(schema_dir)?;
+    write_schema::<DaemonNavigationSubscribeParams>(schema_dir)?;
+    write_schema::<DaemonNavigationSubscribeResult>(schema_dir)?;
+    write_schema::<DaemonNavigationInvalidatedParams>(schema_dir)?;
     write_schema::<DaemonActualRuntimeMode>(schema_dir)?;
+    write_schema::<DesktopDaemonLifecycleStatus>(schema_dir)?;
+    write_schema::<DesktopDaemonLifecycleProjection>(schema_dir)?;
     write_schema::<DaemonClientCapabilities>(schema_dir)?;
     write_schema::<DaemonControlAction>(schema_dir)?;
     write_schema::<DaemonControlErrorCode>(schema_dir)?;
@@ -208,6 +254,7 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<RunStatus>(schema_dir)?;
     write_schema::<StartRunCommand>(schema_dir)?;
     write_schema::<DaemonRunCompleteWithResultParams>(schema_dir)?;
+    write_selected_schemas(CANCELLATION_SCHEMAS, schema_dir)?;
     write_schema::<WorkflowDefinition>(schema_dir)?;
     write_schema::<WorkflowSourceBinding>(schema_dir)?;
     write_schema::<WorkflowSourceKind>(schema_dir)?;
@@ -241,6 +288,8 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<AgentRuntimeStrategyHealthStatus>(schema_dir)?;
     write_schema::<AgentRuntimeStrategyHealth>(schema_dir)?;
     write_schema::<AgentRuntimeStrategyInfo>(schema_dir)?;
+    write_schema::<AuthMethodId>(schema_dir)?;
+    write_schema::<AuthMethodRef>(schema_dir)?;
     write_schema::<AuthProfileId>(schema_dir)?;
     write_schema::<AuthProfileConnectionState>(schema_dir)?;
     write_schema::<AuthProfileLoginMethod>(schema_dir)?;
@@ -261,15 +310,13 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<RuntimeProfileId>(schema_dir)?;
     write_schema::<RuntimePolicyMode>(schema_dir)?;
     write_schema::<RuntimeProfileSummary>(schema_dir)?;
-    write_schema::<RuntimeProfileModelIdPatch>(schema_dir)?;
-    write_schema::<RuntimeProfileAuthProfilePatch>(schema_dir)?;
     write_schema::<RuntimeProfilePatch>(schema_dir)?;
     write_schema::<AgentRuntimeSelection>(schema_dir)?;
     write_schema::<AgentRuntimeSnapshot>(schema_dir)?;
     write_schema::<GetAgentRuntimeQuery>(schema_dir)?;
-    write_schema::<DaemonAgentRuntimeSelectProfileParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimePatchProfileParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimeAuthLoginParams>(schema_dir)?;
+    write_schema::<DaemonAgentRuntimeAuthLoginCompleteParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimeAuthLogoutParams>(schema_dir)?;
     write_schema::<DaemonAgentRuntimeSetExtensionEnabledParams>(schema_dir)?;
     Ok(())
@@ -277,7 +324,7 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
 
 fn build_core_runtime_json_schemas()
 -> Result<Vec<(&'static str, serde_json::Value)>, ProtocolExportError> {
-    Ok(vec![
+    let mut schemas = vec![
         schema_pair::<AgentStreamTurnId>()?,
         schema_pair::<AgentStreamItemId>()?,
         schema_pair::<AgentToolCallOutcome>()?,
@@ -334,6 +381,8 @@ fn build_core_runtime_json_schemas()
         schema_pair::<Workspace>()?,
         schema_pair::<DaemonWorkspaceOpenParams>()?,
         schema_pair::<DaemonWorkspaceOpenResult>()?,
+        schema_pair::<DaemonProjectOpenParams>()?,
+        schema_pair::<DaemonProjectOpenResult>()?,
         schema_pair::<DaemonWorkspaceListParams>()?,
         schema_pair::<DaemonWorkspaceListResult>()?,
         schema_pair::<DaemonWorkspaceGetParams>()?,
@@ -351,6 +400,24 @@ fn build_core_runtime_json_schemas()
         schema_pair::<SessionOverviewResult>()?,
         schema_pair::<SessionOverviewLaneStatus>()?,
         schema_pair::<ApprovalAttentionState>()?,
+        schema_pair::<SpaceId>()?,
+        schema_pair::<ProjectId>()?,
+        schema_pair::<NavigationSpace>()?,
+        schema_pair::<NavigationProject>()?,
+        schema_pair::<ConversationPlacement>()?,
+        schema_pair::<NavigationConversation>()?,
+        schema_pair::<NavigationAgentRow>()?,
+        schema_pair::<NavigationSnapshot>()?,
+        schema_pair::<DaemonNavigationSnapshotParams>()?,
+        schema_pair::<DaemonNavigationSnapshotResult>()?,
+        schema_pair::<DaemonNavigationIntent>()?,
+        schema_pair::<DaemonNavigationIntentParams>()?,
+        schema_pair::<DaemonNavigationIntentResult>()?,
+        schema_pair::<DaemonNavigationSubscribeParams>()?,
+        schema_pair::<DaemonNavigationSubscribeResult>()?,
+        schema_pair::<DaemonNavigationInvalidatedParams>()?,
+        schema_pair::<DesktopDaemonLifecycleStatus>()?,
+        schema_pair::<DesktopDaemonLifecycleProjection>()?,
         schema_pair::<DaemonInitializeParams>()?,
         schema_pair::<DaemonInitializeResult>()?,
         schema_pair::<DaemonRuntimeMode>()?,
@@ -470,7 +537,9 @@ fn build_core_runtime_json_schemas()
         schema_pair::<WorkflowStatusResult>()?,
         schema_pair::<WorkflowLoadedStatus>()?,
         schema_pair::<WorkflowReloadOutcome>()?,
-    ])
+    ];
+    schemas.extend(selected_runtime_schemas(CANCELLATION_SCHEMAS)?);
+    Ok(schemas)
 }
 
 fn agent_runtime_runtime_schemas()
@@ -482,6 +551,8 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<AgentRuntimeStrategyHealthStatus>()?,
         schema_pair::<AgentRuntimeStrategyHealth>()?,
         schema_pair::<AgentRuntimeStrategyInfo>()?,
+        schema_pair::<AuthMethodId>()?,
+        schema_pair::<AuthMethodRef>()?,
         schema_pair::<AuthProfileId>()?,
         schema_pair::<AuthProfileConnectionState>()?,
         schema_pair::<AuthProfileLoginMethod>()?,
@@ -502,15 +573,13 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<RuntimeProfileId>()?,
         schema_pair::<RuntimePolicyMode>()?,
         schema_pair::<RuntimeProfileSummary>()?,
-        schema_pair::<RuntimeProfileModelIdPatch>()?,
-        schema_pair::<RuntimeProfileAuthProfilePatch>()?,
         schema_pair::<RuntimeProfilePatch>()?,
         schema_pair::<AgentRuntimeSelection>()?,
         schema_pair::<AgentRuntimeSnapshot>()?,
         schema_pair::<GetAgentRuntimeQuery>()?,
-        schema_pair::<DaemonAgentRuntimeSelectProfileParams>()?,
         schema_pair::<DaemonAgentRuntimePatchProfileParams>()?,
         schema_pair::<DaemonAgentRuntimeAuthLoginParams>()?,
+        schema_pair::<DaemonAgentRuntimeAuthLoginCompleteParams>()?,
         schema_pair::<DaemonAgentRuntimeAuthLogoutParams>()?,
         schema_pair::<DaemonAgentRuntimeSetExtensionEnabledParams>()?,
     ])

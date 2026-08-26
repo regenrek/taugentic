@@ -1,0 +1,196 @@
+{
+  "$defs": {
+    "ConversationPlacement": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "project",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "temporary",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "createSpace",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "createProject",
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "workspaceIds"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "setProjectWorkspaces",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "workspaceIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "projectId",
+        "workspaceIds"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "placeConversation",
+          "type": "string"
+        },
+        "placement": {
+          "$ref": "#/$defs/ConversationPlacement"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "placement"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "setPinned",
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "pinned"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "kind": {
+          "const": "setArchived",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId",
+        "archived"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "closeTemporaryConversation",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sessionId"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "DaemonNavigationIntent"
+}

@@ -25,7 +25,7 @@ pub struct WorkSourceSyncStatus {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub last_fetched_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
@@ -68,6 +68,7 @@ pub struct WorkItemDismissResult {
 #[ts(export_to = "generated/")]
 pub struct WorkItemTriggerParams {
     pub key: ta_work_source::WorkItemKey,
+    pub selection: crate::wire::AgentRuntimeSelection,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
 }

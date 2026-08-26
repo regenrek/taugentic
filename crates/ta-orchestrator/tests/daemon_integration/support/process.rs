@@ -287,6 +287,13 @@ pub fn seed_default_test_workspace_for_daemon(root_dir: &Path, socket_name: &str
     let mut store = SqliteStore::open(&store_path).expect("daemon store should open");
     ta_store::WorkspaceRepository::upsert_workspace(&mut store, ta_store::default_test_workspace())
         .expect("seed default test workspace");
+    store
+        .save_auth_profile(ta_store::connected_test_auth_profile(
+            "profile-openai-test",
+            "openai-chatgpt",
+            "openai",
+        ))
+        .expect("seed test auth profile metadata");
 }
 
 pub fn wait_for_daily_log_file(log_dir: &Path, file_name: &str) -> Result<PathBuf, String> {

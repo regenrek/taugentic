@@ -4,8 +4,8 @@ use crate::{
     RunId, SessionId,
     orchestration::{AppService, RunExecutionService},
 };
-use ta_protocol::wire::{ApprovalActor, ApprovalResolution, RunHarnessKind, RunSource, RunStatus};
-use ta_store::{CommitRepository, CommitRunTransition, InMemoryStore, RunProjection};
+use ta_protocol::wire::{ApprovalActor, ApprovalResolution};
+use ta_store::InMemoryStore;
 use taugentic_agent::ExecutionHandle;
 
 use super::*;
@@ -20,12 +20,8 @@ pub(super) fn app_and_execution_with_runtime(
     RunExecutionService<InMemoryStore>,
 ) {
     let store = Arc::new(Mutex::new(InMemoryStore::current()));
-    let execution_runtime = runtime.run_execution_runtime();
-    let recipe_registry =
-        Arc::new(crate::RecipeRegistry::load_builtin().expect("built-in recipes should load"));
-    let execution =
-        RunExecutionService::new(store.clone(), execution_runtime.clone(), recipe_registry);
     let app = AppService::from_runtime(store, &runtime);
+    let execution = app.run_execution.clone();
     app.upsert_workspace(ta_store::default_test_workspace())
         .expect("seed default test workspace");
     (app, execution)
@@ -70,70 +66,26 @@ fn dispatch_git<const N: usize>(repo: &std::path::Path, args: [&str; N]) {
 }
 
 pub(super) fn ensure_running_run(
+    app: &AppService<InMemoryStore>,
     execution: &RunExecutionService<InMemoryStore>,
     session_id: &SessionId,
     objective: &str,
 ) -> RunSummary {
-    let run_id = RunId::new(format!("run-{}", uuid::Uuid::new_v4().simple())).expect("run id");
-    let runtime_profile = execution
-        .runtime
-        .selected_runtime_profile()
-        .expect("selected runtime profile should exist");
-    let prepared_context = execution
-        .prepare_execution_context(
-            session_id,
-            &run_id,
-            &runtime_profile,
-            ExecutionContextRequest::workspace_write(),
-        )
-        .expect("seeded run execution context should resolve");
-    {
-        let mut store = execution
-            .store
-            .lock()
-            .expect("app store should not be poisoned");
-        store
-            .commit_run_transition(CommitRunTransition {
-                session_id: session_id.clone(),
-                run: RunProjection {
-                    id: run_id.clone(),
-                    session_id: session_id.clone(),
-                    runtime_profile_id: runtime_profile.id.clone(),
-                    objective: objective.to_string(),
-                    status: RunStatus::Running,
-                    harness: RunHarnessKind::Native,
-                    source: RunSource::default(),
-                    execution_context: prepared_context.execution_context,
-                    result: None,
-                    contract_violation: None,
-                    started_at_ms: None,
-                    ended_at_ms: None,
-                    last_event_seq: None,
-                    workspace_info: prepared_context.workspace_info,
-                    claimed_files: prepared_context.claimed_files,
-                    conflict_summary: prepared_context.conflict_summary,
-                },
-                events: vec![DaemonEvent::Run(crate::RunEvent {
-                    run_id: run_id.clone(),
-                    status: RunStatus::Running,
-                    detail: "Seeded live run for owner-layer proof".to_string(),
-                    output_contract: None,
-                    recipe_id: None,
-                    result: None,
-                })],
-                occurred_at_ms: current_time_ms(),
-            })
-            .expect("seeded running run should persist");
-    }
+    ensure_running_run_with_profile(app, execution, session_id, objective, "runtime-openai-safe")
+}
+
+pub(super) fn ensure_running_run_with_profile(
+    app: &AppService<InMemoryStore>,
+    execution: &RunExecutionService<InMemoryStore>,
+    session_id: &SessionId,
+    objective: &str,
+    runtime_profile_id: &str,
+) -> RunSummary {
+    let selection = validated_runtime_selection(app, runtime_profile_id);
     execution
-        .runtime
-        .claim_live_run(run_id.clone(), session_id.clone());
-    RunSummary {
-        id: run_id,
-        runtime_profile_id: runtime_profile.id,
-        objective: objective.to_string(),
-        status: RunStatus::Running,
-    }
+        .seed_running_run_for_tests(session_id.clone(), objective.to_string(), selection)
+        .expect("seeded running run should persist")
+        .run
 }
 
 pub(super) fn provider_sink(
@@ -205,12 +157,25 @@ pub(super) fn approval_actor() -> ApprovalActor {
     ApprovalActor::new(TEST_OWNER_PRINCIPAL_ID).expect("approval actor")
 }
 
-pub(super) fn select_runtime_profile(app: &AppService<InMemoryStore>, runtime_profile_id: &str) {
-    app.select_agent_runtime_profile(&crate::DaemonAgentRuntimeSelectProfileParams {
-        runtime_profile_id: crate::RuntimeProfileId::new(runtime_profile_id)
-            .expect("runtime profile id"),
-    })
-    .expect("runtime profile should select");
+pub(super) fn start_run_command(
+    app: &AppService<InMemoryStore>,
+    objective: &str,
+    runtime_profile_id: &str,
+) -> crate::StartRunCommand {
+    crate::StartRunCommand::new(
+        objective,
+        crate::orchestration::test_runtime_selection(app, runtime_profile_id),
+    )
+}
+
+pub(super) fn validated_runtime_selection(
+    app: &AppService<InMemoryStore>,
+    runtime_profile_id: &str,
+) -> crate::orchestration::ValidatedRunSelection {
+    let selection = crate::orchestration::test_runtime_selection(app, runtime_profile_id);
+    app.agent_runtime
+        .validate_run_selection(&selection)
+        .expect("explicit runtime selection should validate")
 }
 
 pub(super) fn open_session(app: &AppService<InMemoryStore>, title: &str) -> crate::SessionSummary {

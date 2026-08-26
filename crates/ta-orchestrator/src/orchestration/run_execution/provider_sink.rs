@@ -730,6 +730,7 @@ mod tests {
                         status: RunStatus::Running,
                         harness: RunHarnessKind::Native,
                         source: RunSource::NativeSubagent {
+                            route: ta_store::default_test_run_source().route().clone(),
                             parent_run_id: parent_run_id.clone(),
                             parent_turn_id: ta_protocol::wire::AgentStreamTurnId::new(
                                 "turn-parent-contract",

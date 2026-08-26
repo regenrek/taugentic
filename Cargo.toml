@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/ta-daemon-client",
+  "crates/ta-desktop-native",
   "crates/ta-auth-openai",
   "crates/ta-exec",
   "crates/ta-host-platform",
@@ -70,6 +71,9 @@ uuid = { version = "1.18.1", features = ["v4"] }
 sha2 = "0.10.9"
 url = "2"
 windows-sys = "0.52"
+napi = { version = "3.7.0", default-features = false, features = ["napi4"] }
+napi-derive = "3.4.0"
+napi-build = "2.2.4"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

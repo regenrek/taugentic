@@ -1,29 +1,8 @@
 use crate::error::LlmClientError;
-use ta_protocol::wire::{
-    AgentRuntimeStrategyInfo, AuthProfileId, AuthProfileLoginResult, AuthProfileLogoutResult,
-    AuthProfileState,
-};
+use ta_protocol::wire::{AuthProfileLoginResult, AuthProfileLogoutResult};
 use thiserror::Error;
 
 pub const CODEX_PROVIDER_ID: &str = "codex";
-pub const CODEX_CHATGPT_AUTH_PROFILE_ID: &str = "auth-codex-chatgpt";
-pub const CODEX_API_KEY_AUTH_PROFILE_ID: &str = "auth-codex-api-key";
-pub const OPENAI_API_KEY_ENV_VAR: &str = "OPENAI_API_KEY";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CodexAuthMode {
-    Chatgpt,
-    ApiKey,
-    LoggedOut,
-    Unknown(String),
-    Unavailable(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CodexProviderSnapshot {
-    pub provider: AgentRuntimeStrategyInfo,
-    pub auth_profiles: Vec<AuthProfileState>,
-}
 
 #[derive(Debug, Clone, Error)]
 pub enum CodexLlmClientError {
@@ -33,12 +12,8 @@ pub enum CodexLlmClientError {
     CliUnavailable(String),
     #[error("codex command timed out: {0}")]
     CommandTimedOut(String),
-    #[error("codex login with API key requires {OPENAI_API_KEY_ENV_VAR} in the daemon environment")]
-    MissingApiKeyEnv,
     #[error("codex command failed: {0}")]
     CommandFailed(String),
-    #[error("codex login did not authenticate the requested profile")]
-    LoginDidNotAuthenticate,
     #[error("codex auth failed: {0}")]
     Auth(String),
     #[error("codex app-server rate limited: {detail}")]
@@ -74,12 +49,6 @@ impl From<CodexLlmClientError> for LlmClientError {
             | CodexLlmClientError::CommandTimedOut(message)
             | CodexLlmClientError::CommandFailed(message)
             | CodexLlmClientError::Protocol(message) => LlmClientError::ProcessFailed(message),
-            CodexLlmClientError::MissingApiKeyEnv => LlmClientError::CredentialsMissing(format!(
-                "codex login with API key requires {OPENAI_API_KEY_ENV_VAR}"
-            )),
-            CodexLlmClientError::LoginDidNotAuthenticate => LlmClientError::Auth(
-                "codex login did not authenticate the requested profile".into(),
-            ),
             CodexLlmClientError::Auth(message) => LlmClientError::Auth(message),
             CodexLlmClientError::RateLimited {
                 retry_after_ms,
@@ -112,10 +81,3 @@ impl From<CodexLlmClientError> for LlmClientError {
 
 pub type CodexLoginResult = Result<AuthProfileLoginResult, CodexLlmClientError>;
 pub type CodexLogoutResult = Result<AuthProfileLogoutResult, CodexLlmClientError>;
-
-pub fn matches_auth_profile_id(auth_profile_id: &AuthProfileId) -> bool {
-    matches!(
-        auth_profile_id.as_str(),
-        CODEX_CHATGPT_AUTH_PROFILE_ID | CODEX_API_KEY_AUTH_PROFILE_ID
-    )
-}

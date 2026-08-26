@@ -16,7 +16,7 @@ fn budget_allows_streaming_when_usage_stays_within_limits() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
     let session = open_session(&app, "Budget baseline");
-    let running = ensure_running_run(&execution, &session.id, "Stay in budget");
+    let running = ensure_running_run(&app, &execution, &session.id, "Stay in budget");
     set_budget_policy(
         &execution,
         BudgetLimits {
@@ -52,7 +52,7 @@ fn token_budget_breach_fails_running_run_mid_stream() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
     let session = open_session(&app, "Token budget");
-    let running = ensure_running_run(&execution, &session.id, "Spend tokens");
+    let running = ensure_running_run(&app, &execution, &session.id, "Spend tokens");
     attach_noop_handle(&execution, &running.id);
     set_budget_policy(
         &execution,
@@ -85,7 +85,7 @@ fn tool_call_budget_breach_fails_running_run_mid_stream() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
     let session = open_session(&app, "Tool budget");
-    let running = ensure_running_run(&execution, &session.id, "Use tools");
+    let running = ensure_running_run(&app, &execution, &session.id, "Use tools");
     attach_noop_handle(&execution, &running.id);
     set_budget_policy(
         &execution,
@@ -117,7 +117,7 @@ fn wall_clock_budget_breach_fails_running_run_mid_stream() {
     let runtime = crate::RuntimeService::bootstrap();
     let (app, execution) = app_and_execution_with_runtime(runtime);
     let session = open_session(&app, "Wall budget");
-    let running = ensure_running_run(&execution, &session.id, "Run too long");
+    let running = ensure_running_run(&app, &execution, &session.id, "Run too long");
     attach_noop_handle(&execution, &running.id);
     set_budget_policy(
         &execution,
@@ -149,8 +149,13 @@ fn parent_aggregate_budget_prevents_child_dispatch() {
     let (app, execution) = app_and_execution_with_runtime(runtime);
     set_default_test_workspace_root(&app, repo.path());
     let session = open_session(&app, "Inherited budget");
-    select_runtime_profile(&app, "runtime-openai-allow");
-    let parent = ensure_running_run(&execution, &session.id, "Parent budget owner");
+    let parent = ensure_running_run_with_profile(
+        &app,
+        &execution,
+        &session.id,
+        "Parent budget owner",
+        "runtime-openai-allow",
+    );
     provider_sink(&execution, &session.id, &parent.id)
         .push_stream(emission(AgentStreamFrame::TokenUsageUpdated {
             total_tokens: Some(6),

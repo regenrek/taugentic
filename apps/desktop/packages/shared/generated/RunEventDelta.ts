@@ -7,4 +7,4 @@ import type { PublicDaemonEvent } from "./PublicDaemonEvent.js";
  * The sequence is the persisted daemon-event sequence, so clients can dedupe
  * replay and live deliveries with one cursor.
  */
-export type RunEventDelta = { seq: bigint, event: PublicDaemonEvent, };
+export type RunEventDelta = { seq: string, event: PublicDaemonEvent, };

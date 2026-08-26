@@ -34,11 +34,8 @@ fn daemon_run_start_requires_attached_session() {
             id: crate::RequestId::Integer(35),
             method: METHOD_DAEMON_RUN_START.to_string(),
             params: Some(
-                serde_json::to_value(StartRunCommand {
-                    objective: "Ship app server hard cut".to_string(),
-                    ..Default::default()
-                })
-                .expect("params"),
+                serde_json::to_value(start_run_command(&state, "Ship app server hard cut"))
+                    .expect("params"),
             ),
         },
     )
@@ -83,11 +80,8 @@ fn daemon_run_start_commits_follow_up_transition_before_response() {
             id: crate::RequestId::Integer(36),
             method: METHOD_DAEMON_RUN_START.to_string(),
             params: Some(
-                serde_json::to_value(StartRunCommand {
-                    objective: "Ship app server hard cut".to_string(),
-                    ..Default::default()
-                })
-                .expect("params"),
+                serde_json::to_value(start_run_command(&state, "Ship app server hard cut"))
+                    .expect("params"),
             ),
         },
     )
@@ -165,11 +159,8 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
                 id: crate::RequestId::Integer(36),
                 method: METHOD_DAEMON_RUN_START.to_string(),
                 params: Some(
-                    serde_json::to_value(StartRunCommand {
-                        objective: "Occupy active slot".to_string(),
-                        ..Default::default()
-                    })
-                    .expect("params"),
+                    serde_json::to_value(start_run_command(&state, "Occupy active slot"))
+                        .expect("params"),
                 ),
             },
         )
@@ -188,11 +179,8 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
                 id: crate::RequestId::Integer(37),
                 method: METHOD_DAEMON_RUN_START.to_string(),
                 params: Some(
-                    serde_json::to_value(StartRunCommand {
-                        objective: "Queue behind active slot".to_string(),
-                        ..Default::default()
-                    })
-                    .expect("params"),
+                    serde_json::to_value(start_run_command(&state, "Queue behind active slot"))
+                        .expect("params"),
                 ),
             },
         )
@@ -408,10 +396,7 @@ fn daemon_run_cancel_requires_attached_session() {
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..Default::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
 
@@ -496,10 +481,7 @@ fn daemon_run_cancel_redacts_actor_in_public_activity_page_and_marks_run_cancell
         .app
         .start_run(
             &opened.id,
-            &StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..Default::default()
-            },
+            &start_run_command(&state, "Ship app server hard cut"),
         )
         .expect("run should start");
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {

@@ -5,7 +5,7 @@ use crate::orchestration::run_events_subscribe::{
 };
 use crate::{
     ApprovalActor, ArtifactSummary, DaemonRunCompleteWithResultParams, PublicDaemonEvent,
-    ResumeRunRequest, ResumeRunResult, RunEventDelta, RunHarnessKind, RunSummary, StartRunCommand,
+    ResumeRunRequest, ResumeRunResult, RunEventDelta, RunSummary, StartRunCommand,
     SubscribeRunEventsRequest, SubscribeRunEventsResult,
 };
 
@@ -89,12 +89,6 @@ where
                 run.id.as_str().to_string(),
             ));
         }
-        if run.harness != RunHarnessKind::Native {
-            return Err(AppServiceError::RunNotNativeHarness(
-                run.id.as_str().to_string(),
-            ));
-        }
-
         let range = store.read_run_events(&RunEventRangeQuery {
             session_id: session_id.clone(),
             run_id: request.run_id.clone(),
@@ -141,9 +135,18 @@ where
         &self,
         session_id: &crate::SessionId,
         objective: &str,
+        selection: &crate::AgentRuntimeSelection,
     ) -> Result<AppDeferredMutationResult<RunSummary>, AppServiceError> {
+        let validated_selection = self
+            .agent_runtime
+            .validate_run_selection(selection)
+            .map_err(AppServiceError::from)?;
         self.run_execution
-            .seed_running_run_for_tests(session_id.clone(), objective.to_string())
+            .seed_running_run_for_tests(
+                session_id.clone(),
+                objective.to_string(),
+                validated_selection,
+            )
             .map(map_run_mutation_result)
             .map_err(map_run_execution_error)
     }

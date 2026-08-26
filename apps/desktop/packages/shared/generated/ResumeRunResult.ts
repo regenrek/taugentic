@@ -2,4 +2,4 @@
 import type { ResumeRunState } from "./ResumeRunState.js";
 import type { RunRecord } from "./RunRecord.js";
 
-export type ResumeRunResult = { run: RunRecord, state: ResumeRunState, latestEventSeq?: bigint | null, };
+export type ResumeRunResult = { run: RunRecord, state: ResumeRunState, latestEventSeq?: string | null, };

@@ -90,7 +90,15 @@ pub fn start_run(
             Some(
                 serde_json::to_value(StartRunCommand {
                     objective: objective.to_string(),
-                    ..StartRunCommand::default()
+                    selection: AgentRuntimeSelection {
+                        runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+                            .expect("runtime profile id"),
+                        auth_profile_id: Some(
+                            AuthProfileId::new("profile-openai-test").expect("auth profile id"),
+                        ),
+                        model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+                    },
+                    recipe_id: None,
                 })
                 .expect("run start params should serialize"),
             ),

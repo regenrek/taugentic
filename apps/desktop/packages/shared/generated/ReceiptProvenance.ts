@@ -11,4 +11,4 @@ import type { ArtifactId } from "./ArtifactId.js";
  * `stream_cursor` is descriptive metadata (e.g. for UI navigation) and may be
  * present in any shape. It is never part of the unique identity.
  */
-export type ReceiptProvenance = { artifactId?: ArtifactId | null, agentTurnId?: AgentStreamTurnId | null, eventSeq?: bigint | null, streamCursor?: string | null, };
+export type ReceiptProvenance = { artifactId?: ArtifactId | null, agentTurnId?: AgentStreamTurnId | null, eventSeq?: string | null, streamCursor?: string | null, };

@@ -2,4 +2,4 @@
 import type { BudgetScope } from "./BudgetScope.js";
 import type { RunId } from "./RunId.js";
 
-export type BudgetSnapshot = { runId: RunId, parentRunId?: RunId | null, scope: BudgetScope, totalTokens: bigint, wallClockMs: bigint, toolCalls: bigint, };
+export type BudgetSnapshot = { runId: RunId, parentRunId?: RunId | null, scope: BudgetScope, totalTokens: string, wallClockMs: string, toolCalls: string, };

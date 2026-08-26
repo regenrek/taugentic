@@ -13,10 +13,11 @@ fn execution_context_preparation_rejects_unverified_workspace() {
     ))
     .expect("unverified test workspace should update");
     let session = open_session(&app, "Unverified workspace");
-    select_runtime_profile(&app, "runtime-openai-safe");
     let runtime_profile = execution
         .runtime
-        .selected_runtime_profile()
+        .runtime_profile(
+            &crate::RuntimeProfileId::new("runtime-openai-safe").expect("runtime profile id"),
+        )
         .expect("runtime profile");
     let run_id = RunId::new("run-unverified-workspace").expect("run id");
 
@@ -152,7 +153,9 @@ fn seed_dispatch_child(
         .expect("schedule should start");
     let runtime_profile = execution
         .runtime
-        .selected_runtime_profile()
+        .runtime_profile(
+            &crate::RuntimeProfileId::new("runtime-openai-safe").expect("runtime profile id"),
+        )
         .expect("profile");
     let planned_write_files = planned_write_files
         .into_iter()
@@ -196,6 +199,7 @@ fn seed_dispatch_child(
                 status: RunStatus::Running,
                 harness: RunHarnessKind::Native,
                 source: RunSource::NativeSubagent {
+                    route: ta_store::default_test_run_source().route().clone(),
                     parent_run_id: RunId::new("run-parent-dispatch").expect("parent id"),
                     parent_turn_id: ta_protocol::wire::AgentStreamTurnId::new("turn-dispatch")
                         .expect("turn id"),

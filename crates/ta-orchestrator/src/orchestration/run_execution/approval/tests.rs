@@ -1,6 +1,6 @@
 use super::*;
+use crate::DaemonApprovalDecideParams;
 use crate::orchestration::run_execution::test_support::*;
-use crate::{DaemonApprovalDecideParams, StartRunCommand};
 use ta_protocol::wire::{
     AgentStreamItemId, ApprovalDecision, ApprovalEvent, ApprovalId, ApprovalRequest,
     ApprovalResolutionReason, ApprovalScope, ApprovalTarget, DaemonEvent, RunHarnessKind, RunId,
@@ -26,10 +26,7 @@ fn decide_approval_rejects_already_resolved_request() {
     let started = execution
         .start_run(
             session.id.clone(),
-            StartRunCommand {
-                objective: "Ship app server hard cut".to_string(),
-                ..StartRunCommand::default()
-            },
+            start_run_command(&app, "Ship app server hard cut", "runtime-openai-safe"),
         )
         .expect("run should start");
     let approval_id = started
@@ -140,6 +137,7 @@ fn list_approvals_expires_stale_waiting_request() {
                     status: RunStatus::WaitingForApproval,
                     harness: RunHarnessKind::Native,
                     source: RunSource::User {
+                        route: ta_store::default_test_run_source().route().clone(),
                         output_contract: None,
                         model_id: None,
                         recipe_id: None,
@@ -215,7 +213,7 @@ fn decide_approval_resolves_live_provider_handle_without_restarting_run() {
             },
         )
         .expect("session should open");
-    let running = ensure_running_run(&execution, &session.id, "Resolve live tool approval");
+    let running = ensure_running_run(&app, &execution, &session.id, "Resolve live tool approval");
     let resolved = attach_recording_handle(&execution, &running.id);
     let tool_call_id = AgentStreamItemId::new("tool-call-live").expect("tool call id");
     let requested_at_ms = current_time_ms();

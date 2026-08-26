@@ -64,13 +64,13 @@ pub struct RuntimeExecutionPaths {
 
 pub(crate) struct ProviderRunStart<'a> {
     pub runtime_profile: &'a ta_protocol::wire::RuntimeProfileSummary,
+    pub route: &'a ta_protocol::wire::RunExecutionRoute,
     pub session_id: &'a SessionId,
     pub run_id: &'a RunId,
     pub objective: &'a str,
     pub execution_context: Arc<ta_protocol::wire::ExecutionContext>,
     pub fork_initial_state: Option<ForkInitialState>,
     pub output_contract: Option<ta_protocol::wire::OutputContractKind>,
-    pub model_id: Option<&'a ta_protocol::wire::AgentRuntimeModelId>,
     pub subagent_recipes: Vec<ta_protocol::wire::CapsuleRecipe>,
 }
 
@@ -167,13 +167,6 @@ impl RunExecutionRuntime {
         }
     }
 
-    pub(crate) fn selected_runtime_profile(
-        &self,
-    ) -> Result<ta_protocol::wire::RuntimeProfileSummary, AgentRuntimeServiceError> {
-        let profile = self.policy.selected_profile()?;
-        validate_runtime_profile(&profile, &self.strategy_registry)
-    }
-
     pub(crate) fn runtime_profile(
         &self,
         runtime_profile_id: &crate::RuntimeProfileId,
@@ -203,36 +196,39 @@ impl RunExecutionRuntime {
     ) -> Result<ExecutionRequest, crate::orchestration::AgentRuntimeServiceError> {
         let ProviderRunStart {
             runtime_profile,
+            route,
             session_id,
             run_id,
             objective,
             execution_context,
             fork_initial_state,
             output_contract,
-            model_id,
             subagent_recipes,
         } = start;
         let runtime_profile = validate_runtime_profile(runtime_profile, &self.strategy_registry)?;
         let execution_harness = self
             .strategy_registry
             .execution_harness_for_runtime_profile(&runtime_profile)?;
+        if crate::orchestration::run_harness_kind(&execution_harness) != route.harness
+            || runtime_profile.id != route.runtime_profile_id
+            || runtime_profile.provider_id != route.provider_id
+        {
+            return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "stored run route does not match runtime metadata".to_string(),
+            ));
+        }
         let system_prompt =
             system_prompt_for_execution_request(&execution_harness, subagent_recipes.len());
-        let requested_model = model_id.or(runtime_profile.model_id.as_ref());
-        let resolved_model = self
-            .strategy_registry
-            .resolve_model(&runtime_profile.provider_id, requested_model)?;
-
         Ok(ExecutionRequest {
             session_id: session_id.clone(),
             run_id: run_id.clone(),
-            runtime_profile_id: runtime_profile.id.clone(),
-            provider_id: runtime_profile.provider_id.clone(),
+            runtime_profile_id: route.runtime_profile_id.clone(),
+            provider_id: route.provider_id.clone(),
             execution_harness,
             system_prompt,
             objective: objective.to_string(),
-            model_id: resolved_model,
-            auth_profile_id: runtime_profile.auth_profile_id.clone(),
+            model_id: route.model_id.clone(),
+            auth_profile_id: route.auth_profile_id.clone(),
             resume_provider_session_id: None,
             runtime_extensions: self.policy.runtime_extensions(),
             execution_context,

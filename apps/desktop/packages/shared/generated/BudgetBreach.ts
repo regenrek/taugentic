@@ -2,4 +2,4 @@
 import type { BudgetMetric } from "./BudgetMetric.js";
 import type { BudgetScope } from "./BudgetScope.js";
 
-export type BudgetBreach = { scope: BudgetScope, metric: BudgetMetric, limit: bigint, actual: bigint, };
+export type BudgetBreach = { scope: BudgetScope, metric: BudgetMetric, limit: string, actual: string, };

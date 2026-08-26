@@ -1,6 +1,7 @@
 mod credential_store;
 mod persistent;
 
+use std::path::PathBuf;
 use ta_jsonrpc::{
     ClientConfig, JsonRpcClient, JsonRpcClientError, SocketAddress, resolve_local_endpoint_name,
 };
@@ -15,7 +16,10 @@ use crate::credential_store::{
 
 const DEFAULT_CLIENT_NAME: &str = "ta-cli";
 
-pub use persistent::PersistentDaemonClient;
+pub use persistent::{
+    DaemonLifecycleSubscription, DaemonLifecycleSubscriptionState, DaemonLifecycleUpdate,
+    PersistentDaemonClient, RunEventSubscription,
+};
 
 #[derive(Debug, Clone)]
 pub struct DaemonClient {
@@ -23,6 +27,33 @@ pub struct DaemonClient {
 }
 
 impl DaemonClient {
+    /// Converts the protocol-owned runtime-control result at the Rust client
+    /// boundary. UI and N-API callers never see or interpret socket paths.
+    pub fn from_control_status(
+        control: &DaemonControlStatusResult,
+        client_name: &str,
+    ) -> Result<Self, JsonRpcClientError> {
+        if control.socket_path.trim().is_empty() {
+            return Err(JsonRpcClientError::ConnectionClosed);
+        }
+        #[cfg(unix)]
+        let socket_address = SocketAddress::Unix(PathBuf::from(&control.socket_path));
+        #[cfg(windows)]
+        let socket_address = SocketAddress::NamedPipe(control.socket_path.clone());
+        Ok(Self::from_config(ClientConfig {
+            service_name: client_name.to_string(),
+            socket_address,
+            io_timeout: std::time::Duration::from_secs(30),
+        }))
+    }
+    /// Creates a client from a platform-owned control result. Callers must not
+    /// rederive a local socket path when runtime-control already provided it.
+    pub fn from_config(config: ClientConfig) -> Self {
+        Self {
+            inner: JsonRpcClient::new(config),
+        }
+    }
+
     pub fn new(socket_override: Option<&str>) -> Self {
         Self::with_client_name(DEFAULT_CLIENT_NAME, socket_override)
     }
@@ -52,7 +83,7 @@ impl DaemonClient {
         client_name: &str,
         client_version: &str,
     ) -> Result<PersistentDaemonClient, JsonRpcClientError> {
-        let mut client =
+        let client =
             PersistentDaemonClient::connect(self.inner.config().clone(), client_name.to_string())?;
         let stored_credential = load_client_credential(self.inner.config(), client_name);
         let initialize =

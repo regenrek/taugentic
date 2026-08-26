@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "DesktopDaemonLifecycleStatus": {
+      "description": "Redacted connection state for the desktop lifecycle projection.\n\nThe desktop receives only whether it may render current snapshots. Daemon\nidentity, cursors, transport details, and recovery mechanics remain in the\nRust client boundary.",
+      "enum": [
+        "ready",
+        "snapshotRehydrationRequired",
+        "disconnected"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Safe desktop-facing lifecycle signal.\n\n`invalidated` tells the presentation cache to refresh daemon snapshots;\nit intentionally carries neither event payload nor resume lineage.",
+  "properties": {
+    "foreignRuntimeRestricted": {
+      "type": "boolean"
+    },
+    "invalidated": {
+      "type": "boolean"
+    },
+    "status": {
+      "$ref": "#/$defs/DesktopDaemonLifecycleStatus"
+    }
+  },
+  "required": [
+    "status",
+    "invalidated",
+    "foreignRuntimeRestricted"
+  ],
+  "title": "DesktopDaemonLifecycleProjection",
+  "type": "object"
+}

@@ -62,7 +62,7 @@ pub struct SessionOverview {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde(with = "u64_string::option")]
     #[schemars(schema_with = "u64_string::option::json_schema")]
-    #[ts(type = "bigint | null")]
+    #[ts(type = "string | null")]
     pub last_activity_at_ms: Option<u64>,
     /// Compact daemon-owned preview of the newest activity item for this session.
     #[serde(default, skip_serializing_if = "Option::is_none")]

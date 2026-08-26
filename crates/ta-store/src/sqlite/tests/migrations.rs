@@ -36,7 +36,7 @@ fn open_rejects_foreign_key_violations() {
                     .expect("runtime profile id"),
                 objective: "Corrupt".to_string(),
                 status: RunStatus::Running,
-                source: RunSource::default(),
+                source: crate::default_test_run_source(),
                 execution_context: crate::default_test_execution_context(),
                 harness: RunHarnessKind::Unknown,
                 result: None,

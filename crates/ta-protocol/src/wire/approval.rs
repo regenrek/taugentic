@@ -222,11 +222,11 @@ pub struct ApprovalRequest {
     pub scope: ApprovalScope,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub requested_at_ms: u64,
     #[serde(with = "u64_string")]
     #[schemars(schema_with = "u64_string::json_schema")]
-    #[ts(as = "u64")]
+    #[ts(type = "string")]
     pub expires_at_ms: u64,
     pub target: ApprovalTarget,
     pub reason: String,

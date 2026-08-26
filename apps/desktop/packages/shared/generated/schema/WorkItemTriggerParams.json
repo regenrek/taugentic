@@ -1,4 +1,29 @@
 {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "key": {
@@ -9,10 +34,14 @@
         "string",
         "null"
       ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
     }
   },
   "required": [
-    "key"
+    "key",
+    "selection"
   ],
   "title": "WorkItemTriggerParams",
   "type": "object"

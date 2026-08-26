@@ -5,4 +5,4 @@ import type { ReceiptState } from "./ReceiptState.js";
 import type { RunId } from "./RunId.js";
 import type { SessionId } from "./SessionId.js";
 
-export type ContextReceipt = { id: string, sessionId: SessionId, runId: RunId, parentRunId?: RunId | null, kind: ReceiptKind, provenance: ReceiptProvenance, state: ReceiptState, title?: string | null, summary?: string | null, createdAtMs: bigint, promotedAtMs?: bigint | null, quarantinedAtMs?: bigint | null, };
+export type ContextReceipt = { id: string, sessionId: SessionId, runId: RunId, parentRunId?: RunId | null, kind: ReceiptKind, provenance: ReceiptProvenance, state: ReceiptState, title?: string | null, summary?: string | null, createdAtMs: string, promotedAtMs?: string | null, quarantinedAtMs?: string | null, };

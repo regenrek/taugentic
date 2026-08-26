@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentRuntimeModelId, AuthProfileId, CapsuleRecipe, DaemonEventCursor, DaemonEventKind,
-    DaemonRuntimeMode, OutputContractKind, RuntimeExtensionId, RuntimeProfileId,
+    AgentRuntimeModelId, AuthMethodId, AuthProfileId, CapsuleRecipe, DaemonEventCursor,
+    DaemonEventKind, DaemonRuntimeMode, OutputContractKind, RuntimeExtensionId, RuntimeProfileId,
     RuntimeProfilePatch, WorkspaceMode, WorktreeCleanupPolicy,
 };
 
@@ -25,6 +25,11 @@ pub const METHOD_DAEMON_SESSION_ATTACH: &str = "daemon.session.attach";
 pub const METHOD_DAEMON_WORKSPACE_OPEN: &str = "daemon.workspace.open";
 pub const METHOD_DAEMON_WORKSPACE_LIST: &str = "daemon.workspace.list";
 pub const METHOD_DAEMON_WORKSPACE_GET: &str = "daemon.workspace.get";
+pub const METHOD_DAEMON_PROJECT_OPEN: &str = "daemon.project.open";
+pub const METHOD_DAEMON_NAVIGATION_SNAPSHOT: &str = "daemon.navigation.snapshot";
+pub const METHOD_DAEMON_NAVIGATION_INTENT: &str = "daemon.navigation.intent";
+pub const METHOD_DAEMON_NAVIGATION_SUBSCRIBE: &str = "daemon.navigation.subscribe";
+pub const METHOD_DAEMON_NAVIGATION_INVALIDATED: &str = "daemon.navigation.invalidated";
 pub const METHOD_DAEMON_ACTIVITY_PAGE: &str = "daemon.activity.page";
 pub const METHOD_DAEMON_AGENT_TURNS_PAGE: &str = "daemon.agent.turns.page";
 pub const METHOD_DAEMON_APPROVAL_LIST: &str = "daemon.approval.list";
@@ -56,9 +61,10 @@ pub const METHOD_DAEMON_RUN_GET: &str = "daemon.run.get";
 pub const METHOD_DAEMON_RUN_TIMELINE: &str = "daemon.run.timeline";
 pub const METHOD_DAEMON_RECIPES_LIST: &str = "daemon.recipes.list";
 pub const METHOD_DAEMON_AGENT_RUNTIME_GET: &str = "daemon.agent.runtime.get";
-pub const METHOD_DAEMON_AGENT_RUNTIME_PROFILE_SELECT: &str = "daemon.agent.runtime.profile.select";
 pub const METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH: &str = "daemon.agent.runtime.profile.patch";
 pub const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN: &str = "daemon.agent.runtime.auth.login";
+pub const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE: &str =
+    "daemon.agent.runtime.auth.login.complete";
 pub const METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT: &str = "daemon.agent.runtime.auth.logout";
 pub const METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET: &str = "daemon.agent.runtime.extension.set";
 pub const METHOD_WORKFLOW_LOAD: &str = "workflow.load";
@@ -191,13 +197,6 @@ pub enum DaemonSubscribeResult {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
-pub struct DaemonAgentRuntimeSelectProfileParams {
-    pub runtime_profile_id: RuntimeProfileId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export_to = "generated/")]
 pub struct DaemonAgentRuntimePatchProfileParams {
     pub runtime_profile_id: RuntimeProfileId,
     pub patch: RuntimeProfilePatch,
@@ -207,6 +206,13 @@ pub struct DaemonAgentRuntimePatchProfileParams {
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
 pub struct DaemonAgentRuntimeAuthLoginParams {
+    pub auth_method_id: AuthMethodId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct DaemonAgentRuntimeAuthLoginCompleteParams {
     pub auth_profile_id: AuthProfileId,
 }
 

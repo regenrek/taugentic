@@ -2,4 +2,4 @@
 import type { ActivityCursor } from "./ActivityCursor.js";
 import type { PublicDaemonEvent } from "./PublicDaemonEvent.js";
 
-export type PublicActivityPageItem = { cursor: ActivityCursor, occurredAtMs: bigint, event: PublicDaemonEvent, };
+export type PublicActivityPageItem = { cursor: ActivityCursor, occurredAtMs: string, event: PublicDaemonEvent, };

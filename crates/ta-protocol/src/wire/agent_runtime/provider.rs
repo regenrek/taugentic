@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::wire::identifier;
+use crate::wire::{identifier, u64_string};
 
 identifier!(AgentRuntimeStrategyId, "agent runtime provider");
 identifier!(AgentRuntimeModelId, "agent runtime model");
@@ -14,10 +14,19 @@ pub struct AgentRuntimeModelRef {
     pub id: AgentRuntimeModelId,
     pub display_name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub context_limit: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub input_cost_per_million_micros: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(with = "u64_string::option")]
+    #[schemars(schema_with = "u64_string::option::json_schema")]
+    #[ts(type = "string | null")]
     pub output_cost_per_million_micros: Option<u64>,
     pub reasoning: bool,
     pub tool_call: bool,

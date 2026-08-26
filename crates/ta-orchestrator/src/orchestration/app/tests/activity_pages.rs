@@ -24,22 +24,10 @@ fn activity_page_filters_by_session_kind_and_cursor() {
         )
         .expect("session should open");
     service
-        .start_run(
-            &session_a.id,
-            &StartRunCommand {
-                objective: "run-a".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session_a.id, &start_run_command(&service, "run-a"))
         .expect("run should start");
     service
-        .start_run(
-            &session_b.id,
-            &StartRunCommand {
-                objective: "run-b".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&session_b.id, &start_run_command(&service, "run-b"))
         .expect("run should start");
 
     let page = service
@@ -287,13 +275,7 @@ fn latest_event_cursor_for_session_ignores_live_only_agent_stream_frames() {
         )
         .expect("session should open");
     let started = service
-        .start_run(
-            &opened.id,
-            &StartRunCommand {
-                objective: "stream".to_string(),
-                ..StartRunCommand::default()
-            },
-        )
+        .start_run(&opened.id, &start_run_command(&service, "stream"))
         .expect("run should start");
     commit_agent_stream_events(
         &service,

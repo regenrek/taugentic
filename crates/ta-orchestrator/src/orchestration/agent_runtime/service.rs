@@ -3,16 +3,20 @@ use std::sync::{Arc, Mutex};
 #[cfg(test)]
 use ta_protocol::wire::RuntimePolicyMode;
 use ta_protocol::wire::{
-    AgentRuntimeSnapshot, AuthProfileLoginResult, DaemonAgentRuntimeAuthLoginParams,
-    DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
-    DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
+    AgentRuntimeSelection, AgentRuntimeSnapshot, AuthProfileConnectionState,
+    AuthProfileLoginResult, AuthProfileRef, DaemonAgentRuntimeAuthLoginCompleteParams,
+    DaemonAgentRuntimeAuthLoginParams, DaemonAgentRuntimeAuthLogoutParams,
+    DaemonAgentRuntimePatchProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
     GetAgentRuntimeQuery, RuntimeExtensionState, RuntimeProfileId, RuntimeProfileSummary,
 };
+use ta_store::{AuthProfileProjection, PersistenceStore};
+use taugentic_agent::AgentExecutionHarness;
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::orchestration::agent_runtime::{
     StrategyRegistry,
-    auth_profiles::{login_auth_profile, logout_auth_profile},
+    auth_profiles::{complete_auth_profile_login, login_auth_profile, logout_auth_profile},
     config::{apply_runtime_profile_patch, validate_runtime_profile},
     extensions::{built_in_extensions, set_extension_enabled},
     snapshot::build_snapshot,
@@ -30,16 +34,6 @@ impl AgentRuntimeRuntime {
                 inner: Arc::new(Mutex::new(default_agent_runtime_state(runtime_profiles))),
             },
         }
-    }
-
-    pub(crate) fn selected_profile(
-        &self,
-    ) -> Result<RuntimeProfileSummary, AgentRuntimeServiceError> {
-        self.state
-            .lock()
-            .expect("runtime state should not be poisoned")
-            .selected_profile()
-            .cloned()
     }
 
     pub(crate) fn runtime_profile(
@@ -64,10 +58,27 @@ impl AgentRuntimeRuntime {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct AgentRuntimeService {
+#[derive(Debug)]
+pub(crate) struct AgentRuntimeService<S>
+where
+    S: PersistenceStore + Send,
+{
     registry: StrategyRegistry,
     state: SharedAgentRuntimeState,
+    store: Arc<Mutex<S>>,
+}
+
+impl<S> Clone for AgentRuntimeService<S>
+where
+    S: PersistenceStore + Send,
+{
+    fn clone(&self) -> Self {
+        Self {
+            registry: self.registry.clone(),
+            state: self.state.clone(),
+            store: Arc::clone(&self.store),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -77,20 +88,48 @@ struct SharedAgentRuntimeState {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AgentRuntimeState {
-    pub selection: Option<RuntimeProfileId>,
     pub runtime_profiles: Vec<RuntimeProfileSummary>,
     pub runtime_extensions: Vec<RuntimeExtensionState>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ValidatedRunSelection {
+    runtime_profile: RuntimeProfileSummary,
+    route: ta_protocol::wire::RunExecutionRoute,
+    execution_harness: AgentExecutionHarness,
+}
+
+impl ValidatedRunSelection {
+    pub(crate) fn runtime_profile(&self) -> &RuntimeProfileSummary {
+        &self.runtime_profile
+    }
+
+    pub(crate) fn route(&self) -> &ta_protocol::wire::RunExecutionRoute {
+        &self.route
+    }
+
+    pub(crate) fn execution_harness(&self) -> &AgentExecutionHarness {
+        &self.execution_harness
+    }
 }
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum AgentRuntimeServiceError {
-    #[error("no runtime provider configured")]
-    NoRuntimeProviderConfigured,
+    #[error(transparent)]
+    Store(#[from] ta_store::StoreError),
     #[error("runtime profile does not exist: {0}")]
     RuntimeProfileNotFound(String),
     #[error("auth profile does not exist: {0}")]
     AuthProfileNotFound(String),
+    #[error("auth method does not exist: {0}")]
+    AuthMethodNotFound(String),
+    #[error("auth profile is not connected: {0}")]
+    AuthProfileNotConnected(String),
+    #[error("runtime selection requires an auth profile")]
+    MissingAuthProfile,
+    #[error("runtime selection requires a model")]
+    MissingModel,
     #[error("runtime profile references unknown model {model_id} for provider {provider_id}")]
     UnknownModel {
         provider_id: String,
@@ -113,10 +152,21 @@ pub enum AgentRuntimeServiceError {
     ProviderExecutionFailed(String),
 }
 
-impl AgentRuntimeService {
-    pub(crate) fn new(runtime: AgentRuntimeRuntime, registry: StrategyRegistry) -> Self {
+impl<S> AgentRuntimeService<S>
+where
+    S: PersistenceStore + Send,
+{
+    pub(crate) fn new(
+        runtime: AgentRuntimeRuntime,
+        registry: StrategyRegistry,
+        store: Arc<Mutex<S>>,
+    ) -> Self {
         let state = runtime.state.clone();
-        Self { registry, state }
+        Self {
+            registry,
+            state,
+            store,
+        }
     }
 
     pub(crate) fn snapshot(
@@ -127,25 +177,40 @@ impl AgentRuntimeService {
         self.build_snapshot(&state)
     }
 
-    pub(crate) fn select_profile(
+    pub(crate) fn validate_run_selection(
         &self,
-        params: &DaemonAgentRuntimeSelectProfileParams,
-    ) -> Result<AgentRuntimeSnapshot, AgentRuntimeServiceError> {
-        let mut state = self.state.lock()?;
-        let selected_id = state
-            .runtime_profiles
-            .iter()
-            .find(|profile| profile.id == params.runtime_profile_id)
-            .map(|profile| profile.id.clone())
-            .ok_or_else(|| {
-                AgentRuntimeServiceError::RuntimeProfileNotFound(
-                    params.runtime_profile_id.as_str().to_string(),
-                )
-            })?;
-        state.selection = Some(selected_id);
-        let snapshot_state = state.clone();
-        drop(state);
-        self.build_snapshot(&snapshot_state)
+        selection: &AgentRuntimeSelection,
+    ) -> Result<ValidatedRunSelection, AgentRuntimeServiceError> {
+        let runtime_profile = {
+            let state = self.state.lock()?;
+            state
+                .runtime_profiles
+                .iter()
+                .find(|profile| profile.id == selection.runtime_profile_id)
+                .cloned()
+                .ok_or_else(|| {
+                    AgentRuntimeServiceError::RuntimeProfileNotFound(
+                        selection.runtime_profile_id.as_str().to_string(),
+                    )
+                })?
+        };
+        let runtime_profile = validate_runtime_profile(&runtime_profile, &self.registry)?;
+        self.validate_selection(selection, std::slice::from_ref(&runtime_profile))?;
+        let execution_harness = self
+            .registry
+            .execution_harness_for_runtime_profile(&runtime_profile)?;
+        let route = ta_protocol::wire::RunExecutionRoute {
+            runtime_profile_id: runtime_profile.id.clone(),
+            provider_id: runtime_profile.provider_id.clone(),
+            harness: crate::orchestration::run_harness_kind(&execution_harness),
+            model_id: selection.model_id.clone(),
+            auth_profile_id: selection.auth_profile_id.clone(),
+        };
+        Ok(ValidatedRunSelection {
+            runtime_profile,
+            route,
+            execution_harness,
+        })
     }
 
     pub(crate) fn patch_profile(
@@ -168,14 +233,136 @@ impl AgentRuntimeService {
         &self,
         params: &DaemonAgentRuntimeAuthLoginParams,
     ) -> Result<AuthProfileLoginResult, AgentRuntimeServiceError> {
-        login_auth_profile(&self.registry, &params.auth_profile_id).await
+        let method = self
+            .registry
+            .auth_method_ref(&params.auth_method_id)
+            .cloned()
+            .ok_or_else(|| {
+                AgentRuntimeServiceError::AuthMethodNotFound(
+                    params.auth_method_id.as_str().to_string(),
+                )
+            })?;
+        let auth_profile_id =
+            ta_protocol::wire::AuthProfileId::new(format!("profile-{}", Uuid::new_v4().simple()))
+                .expect("generated auth profile id");
+        let result =
+            login_auth_profile(&self.registry, &params.auth_method_id, &auth_profile_id).await?;
+        if result.auth_profile.profile.auth_method_id != method.id
+            || result.auth_profile.profile.provider_id != method.provider_id
+        {
+            return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "provider returned an auth profile for a different method".to_string(),
+            ));
+        }
+        let mut store = self.store.lock().map_err(|_| {
+            AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "auth profile store should not be poisoned".to_string(),
+            )
+        })?;
+        let order = store.auth_profiles()?.len() as u32;
+        store.save_auth_profile(AuthProfileProjection {
+            profile: result.auth_profile.clone(),
+            external_account_id: None,
+            order,
+            is_default: false,
+        })?;
+        Ok(result)
     }
 
     pub(crate) async fn logout_auth_profile(
         &self,
         params: &DaemonAgentRuntimeAuthLogoutParams,
     ) -> Result<ta_protocol::wire::AuthProfileLogoutResult, AgentRuntimeServiceError> {
-        logout_auth_profile(&self.registry, &params.auth_profile_id).await
+        let mut profile = {
+            let store = self.store.lock().map_err(|_| {
+                AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                    "auth profile store should not be poisoned".to_string(),
+                )
+            })?;
+            store
+                .auth_profile(&params.auth_profile_id)?
+                .ok_or_else(|| {
+                    AgentRuntimeServiceError::AuthProfileNotFound(
+                        params.auth_profile_id.as_str().to_string(),
+                    )
+                })?
+        };
+        let result = logout_auth_profile(&self.registry, &profile.profile.profile).await?;
+        profile.profile.connection_state = AuthProfileConnectionState::LoggedOut;
+        profile.profile.can_logout = false;
+        profile.profile.can_login = true;
+        let mut store = self.store.lock().map_err(|_| {
+            AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "auth profile store should not be poisoned".to_string(),
+            )
+        })?;
+        store.save_auth_profile(profile)?;
+        Ok(result)
+    }
+
+    pub(crate) async fn complete_auth_profile_login(
+        &self,
+        params: &DaemonAgentRuntimeAuthLoginCompleteParams,
+    ) -> Result<AuthProfileLoginResult, AgentRuntimeServiceError> {
+        let mut projection = {
+            let store = self.store.lock().map_err(|_| {
+                AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                    "auth profile store should not be poisoned".to_string(),
+                )
+            })?;
+            store
+                .auth_profile(&params.auth_profile_id)?
+                .ok_or_else(|| {
+                    AgentRuntimeServiceError::AuthProfileNotFound(
+                        params.auth_profile_id.as_str().to_string(),
+                    )
+                })?
+        };
+        if projection.profile.connection_state != AuthProfileConnectionState::PendingLogin {
+            return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "auth profile login is not pending".to_string(),
+            ));
+        }
+
+        let result = complete_auth_profile_login(&self.registry, &projection.profile.profile).await;
+        match result {
+            Ok(result) => {
+                if !same_auth_profile_identity(
+                    &result.auth_profile.profile,
+                    &projection.profile.profile,
+                ) {
+                    return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                        "provider completed a different auth profile".to_string(),
+                    ));
+                }
+                projection.profile = result.auth_profile.clone();
+                self.store
+                    .lock()
+                    .map_err(|_| {
+                        AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                            "auth profile store should not be poisoned".to_string(),
+                        )
+                    })?
+                    .save_auth_profile(projection)?;
+                Ok(result)
+            }
+            Err(error) => {
+                projection.profile.connection_state = AuthProfileConnectionState::Error;
+                projection.profile.last_error =
+                    Some("Authentication did not complete.".to_string());
+                projection.profile.can_login = true;
+                projection.profile.can_logout = false;
+                self.store
+                    .lock()
+                    .map_err(|_| {
+                        AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                            "auth profile store should not be poisoned".to_string(),
+                        )
+                    })?
+                    .save_auth_profile(projection)?;
+                Err(error)
+            }
+        }
     }
 
     pub(crate) fn set_extension_enabled(
@@ -204,8 +391,96 @@ impl AgentRuntimeService {
             .iter()
             .map(|profile| validate_runtime_profile(profile, &self.registry))
             .collect::<Result<Vec<_>, _>>()?;
-        build_snapshot(&snapshot_state, runtime.providers, runtime.auth_profiles)
+        let auth_profiles = self
+            .store
+            .lock()
+            .map_err(|_| {
+                AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                    "auth profile store should not be poisoned".to_string(),
+                )
+            })?
+            .auth_profiles()?
+            .into_iter()
+            .map(|profile| profile.profile)
+            .collect();
+        build_snapshot(
+            &snapshot_state,
+            runtime.providers,
+            runtime.auth_methods,
+            auth_profiles,
+        )
     }
+
+    fn validate_selection(
+        &self,
+        selection: &AgentRuntimeSelection,
+        profiles: &[RuntimeProfileSummary],
+    ) -> Result<(), AgentRuntimeServiceError> {
+        let runtime_profile = profiles
+            .iter()
+            .find(|profile| profile.id == selection.runtime_profile_id)
+            .ok_or_else(|| {
+                AgentRuntimeServiceError::RuntimeProfileNotFound(
+                    selection.runtime_profile_id.as_str().to_string(),
+                )
+            })?;
+        let model_id = selection
+            .model_id
+            .as_ref()
+            .ok_or(AgentRuntimeServiceError::MissingModel)?;
+        if !self
+            .registry
+            .has_model(&runtime_profile.provider_id, model_id)
+        {
+            return Err(AgentRuntimeServiceError::UnknownModel {
+                provider_id: runtime_profile.provider_id.as_str().to_string(),
+                model_id: model_id.as_str().to_string(),
+            });
+        }
+        match (&runtime_profile.auth_method_id, &selection.auth_profile_id) {
+            (None, None) => Ok(()),
+            (Some(_), None) => Err(AgentRuntimeServiceError::MissingAuthProfile),
+            (None, Some(_)) => Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "runtime profile does not accept an auth profile".to_string(),
+            )),
+            (Some(auth_method_id), Some(auth_profile_id)) => {
+                let profile = self
+                    .store
+                    .lock()
+                    .map_err(|_| {
+                        AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                            "auth profile store should not be poisoned".to_string(),
+                        )
+                    })?
+                    .auth_profile(auth_profile_id)?
+                    .ok_or_else(|| {
+                        AgentRuntimeServiceError::AuthProfileNotFound(
+                            auth_profile_id.as_str().to_string(),
+                        )
+                    })?;
+                if profile.auth_method_id() != auth_method_id
+                    || profile.profile.profile.provider_id != runtime_profile.provider_id
+                {
+                    return Err(AgentRuntimeServiceError::UnknownAuthProfile {
+                        provider_id: runtime_profile.provider_id.as_str().to_string(),
+                        auth_profile_id: auth_profile_id.as_str().to_string(),
+                    });
+                }
+                if profile.profile.connection_state != AuthProfileConnectionState::Connected {
+                    return Err(AgentRuntimeServiceError::AuthProfileNotConnected(
+                        auth_profile_id.as_str().to_string(),
+                    ));
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+fn same_auth_profile_identity(left: &AuthProfileRef, right: &AuthProfileRef) -> bool {
+    left.id == right.id
+        && left.auth_method_id == right.auth_method_id
+        && left.provider_id == right.provider_id
 }
 
 impl SharedAgentRuntimeState {
@@ -220,23 +495,8 @@ impl SharedAgentRuntimeState {
     }
 }
 
-impl AgentRuntimeState {
-    fn selected_profile(&self) -> Result<&RuntimeProfileSummary, AgentRuntimeServiceError> {
-        let selection = self
-            .selection
-            .as_ref()
-            .ok_or(AgentRuntimeServiceError::NoRuntimeProviderConfigured)?;
-        self.runtime_profiles
-            .iter()
-            .find(|profile| profile.id == *selection)
-            .ok_or(AgentRuntimeServiceError::NoRuntimeProviderConfigured)
-    }
-}
-
 fn default_agent_runtime_state(runtime_profiles: Vec<RuntimeProfileSummary>) -> AgentRuntimeState {
-    let selection = runtime_profiles.first().map(|profile| profile.id.clone());
     AgentRuntimeState {
-        selection,
         runtime_profiles,
         runtime_extensions: built_in_extensions(),
     }
@@ -248,13 +508,47 @@ mod tests {
     use crate::orchestration::agent_runtime::{
         built_in_agent_runtime_strategies, built_in_runtime_profiles,
     };
+    use ta_protocol::wire::{AgentRuntimeStrategyId, AuthMethodId, AuthProfileId};
+
+    fn auth_profile_ref(provider_id: &str) -> AuthProfileRef {
+        AuthProfileRef {
+            id: AuthProfileId::new("profile-test").expect("auth profile id"),
+            auth_method_id: AuthMethodId::new("codex-chatgpt").expect("auth method id"),
+            provider_id: AgentRuntimeStrategyId::new(provider_id).expect("provider id"),
+            display_name: "Codex ChatGPT".to_string(),
+            account_hint: None,
+            plan_tier: None,
+        }
+    }
+
+    #[test]
+    fn auth_completion_accepts_provider_enriched_profile_metadata() {
+        let pending = auth_profile_ref("codex");
+        let mut completed = pending.clone();
+        completed.account_hint = Some("person@example.test".to_string());
+        completed.plan_tier = Some("pro".to_string());
+
+        assert!(same_auth_profile_identity(&pending, &completed));
+    }
+
+    #[test]
+    fn auth_completion_rejects_a_different_profile_owner() {
+        let pending = auth_profile_ref("codex");
+        let completed = auth_profile_ref("openai");
+
+        assert!(!same_auth_profile_identity(&pending, &completed));
+    }
 
     #[test]
     fn patching_selected_profile_updates_live_policy_mode() {
         let registry = StrategyRegistry::from_registered(built_in_agent_runtime_strategies())
             .expect("provider registry should initialize");
         let runtime = AgentRuntimeRuntime::new(built_in_runtime_profiles(&registry));
-        let service = AgentRuntimeService::new(runtime.clone(), registry);
+        let service = AgentRuntimeService::new(
+            runtime.clone(),
+            registry,
+            Arc::new(Mutex::new(ta_store::InMemoryStore::current())),
+        );
 
         let snapshot = service
             .patch_profile(&DaemonAgentRuntimePatchProfileParams {
@@ -273,13 +567,6 @@ mod tests {
             .expect("runtime profile should exist");
 
         assert_eq!(selected_profile.policy_mode, RuntimePolicyMode::Allow);
-        assert_eq!(
-            runtime
-                .selected_profile()
-                .expect("runtime profile should exist")
-                .policy_mode,
-            RuntimePolicyMode::Allow
-        );
     }
 
     #[test]
@@ -287,7 +574,11 @@ mod tests {
         let registry = StrategyRegistry::from_registered(built_in_agent_runtime_strategies())
             .expect("provider registry should initialize");
         let runtime = AgentRuntimeRuntime::new(built_in_runtime_profiles(&registry));
-        let service = AgentRuntimeService::new(runtime, registry);
+        let service = AgentRuntimeService::new(
+            runtime,
+            registry,
+            Arc::new(Mutex::new(ta_store::InMemoryStore::current())),
+        );
 
         let snapshot = service
             .set_extension_enabled(&DaemonAgentRuntimeSetExtensionEnabledParams {
@@ -306,19 +597,23 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_fails_without_configured_runtime_provider() {
+    fn snapshot_represents_an_empty_runtime_without_implicit_selection() {
         let registry =
             StrategyRegistry::new(Vec::new()).expect("empty provider registry should initialize");
         let runtime = AgentRuntimeRuntime::new(Vec::new());
-        let service = AgentRuntimeService::new(runtime, registry);
+        let service = AgentRuntimeService::new(
+            runtime,
+            registry,
+            Arc::new(Mutex::new(ta_store::InMemoryStore::current())),
+        );
 
-        let error = service
+        let snapshot = service
             .snapshot(&GetAgentRuntimeQuery {})
-            .expect_err("empty runtime config should fail");
+            .expect("empty runtime config should project");
 
-        assert!(matches!(
-            error,
-            AgentRuntimeServiceError::NoRuntimeProviderConfigured
-        ));
+        assert!(snapshot.providers.is_empty());
+        assert!(snapshot.auth_methods.is_empty());
+        assert!(snapshot.auth_profiles.is_empty());
+        assert!(snapshot.runtime_profiles.is_empty());
     }
 }

@@ -264,7 +264,7 @@ mod tests {
                 },
             )
             .expect("session should open");
-        let started = ensure_running_run(&execution, &session.id, "Ship patch");
+        let started = ensure_running_run(&app, &execution, &session.id, "Ship patch");
         let sink = provider_sink(&execution, &session.id, &started.id);
         let subscription = subscription_runtime.subscribe_events(
             &session.id,
@@ -410,7 +410,7 @@ mod tests {
                 },
             )
             .expect("session should open");
-        let started = ensure_running_run(&execution, &session.id, "Ship patch");
+        let started = ensure_running_run(&app, &execution, &session.id, "Ship patch");
         let artifact_id = ArtifactId::new("artifact-a").expect("artifact id");
 
         execution
@@ -476,7 +476,7 @@ mod tests {
                 },
             )
             .expect("session should open");
-        let started = ensure_running_run(&execution, &session.id, "Ship patch");
+        let started = ensure_running_run(&app, &execution, &session.id, "Ship patch");
         let artifact_id = ArtifactId::new("artifact-receipt-fails").expect("artifact id");
         {
             let mut store = app.store.lock().expect("store lock");
@@ -544,7 +544,7 @@ mod tests {
                 },
             )
             .expect("session should open");
-        let started = ensure_running_run(&execution, &session.id, "Ship patch");
+        let started = ensure_running_run(&app, &execution, &session.id, "Ship patch");
 
         assert!(
             runtime

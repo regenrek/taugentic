@@ -1,9 +1,9 @@
 use ta_store::PersistenceStore;
 
 use crate::{
-    AuthProfileLoginResult, AuthProfileLogoutResult, DaemonAgentRuntimeAuthLoginParams,
-    DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
-    DaemonAgentRuntimeSelectProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
+    AuthProfileLoginResult, AuthProfileLogoutResult, DaemonAgentRuntimeAuthLoginCompleteParams,
+    DaemonAgentRuntimeAuthLoginParams, DaemonAgentRuntimeAuthLogoutParams,
+    DaemonAgentRuntimePatchProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
     GetAgentRuntimeQuery,
 };
 
@@ -19,15 +19,6 @@ where
     ) -> Result<crate::AgentRuntimeSnapshot, AppServiceError> {
         self.agent_runtime
             .snapshot(query)
-            .map_err(AppServiceError::from)
-    }
-
-    pub fn select_agent_runtime_profile(
-        &self,
-        params: &DaemonAgentRuntimeSelectProfileParams,
-    ) -> Result<crate::AgentRuntimeSnapshot, AppServiceError> {
-        self.agent_runtime
-            .select_profile(params)
             .map_err(AppServiceError::from)
     }
 
@@ -56,6 +47,16 @@ where
     ) -> Result<AuthProfileLogoutResult, AppServiceError> {
         self.agent_runtime
             .logout_auth_profile(params)
+            .await
+            .map_err(AppServiceError::from)
+    }
+
+    pub async fn complete_agent_runtime_auth_profile_login(
+        &self,
+        params: &DaemonAgentRuntimeAuthLoginCompleteParams,
+    ) -> Result<AuthProfileLoginResult, AppServiceError> {
+        self.agent_runtime
+            .complete_auth_profile_login(params)
             .await
             .map_err(AppServiceError::from)
     }

@@ -2,4 +2,4 @@
 import type { RunId } from "./RunId.js";
 import type { SessionId } from "./SessionId.js";
 
-export type ForkRunRequest = { sessionId: SessionId, parentRunId: RunId, parentEventSeq: bigint, objective?: string | null, };
+export type ForkRunRequest = { sessionId: SessionId, parentRunId: RunId, parentEventSeq: string, objective?: string | null, };

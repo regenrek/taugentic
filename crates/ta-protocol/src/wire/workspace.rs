@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::wire::{RunId, identifier};
+use crate::wire::{NavigationSnapshot, ProjectId, RunId, identifier};
 
 identifier!(WorkspaceId, "workspace");
 
@@ -148,6 +148,22 @@ pub struct DaemonWorkspaceOpenParams {
 #[ts(export_to = "generated/")]
 pub struct DaemonWorkspaceOpenResult {
     pub workspace: Workspace,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct DaemonProjectOpenParams {
+    pub path: WorkspacePath,
+    pub trust_acknowledged: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct DaemonProjectOpenResult {
+    pub project_id: ProjectId,
+    pub snapshot: NavigationSnapshot,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

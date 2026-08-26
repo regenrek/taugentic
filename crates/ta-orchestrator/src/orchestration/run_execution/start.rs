@@ -18,6 +18,7 @@ where
         session_id: crate::SessionId,
         command: StartRunCommand,
     ) -> Result<RunMutationResult, RunExecutionError> {
+        let selection = command.selection.clone();
         let resolved_command = self.resolve_start_run_command(command)?;
         let objective = resolved_command.objective.trim();
         if objective.is_empty() {
@@ -31,13 +32,15 @@ where
                 ));
             }
         }
+        let validated_selection = self
+            .agent_runtime
+            .validate_run_selection(&selection)
+            .map_err(map_agent_runtime_error)?;
+        let runtime_profile = validated_selection.runtime_profile().clone();
+        let route = validated_selection.route().clone();
 
         let run_id = crate::RunId::new(format!("run-{}", Uuid::new_v4().simple()))
             .expect("generated run id should be valid");
-        let runtime_profile = self
-            .runtime
-            .selected_runtime_profile()
-            .map_err(map_agent_runtime_error)?;
         let disposition = self
             .runtime
             .schedule_run_start(&session_id, run_id.clone())
@@ -63,11 +66,7 @@ where
             &prepared_context.execution_context,
             &Operation::new(ApprovalScope::ProcessExec, "execute run"),
         );
-        let harness = self
-            .runtime
-            .execution_harness_for_runtime_profile(&runtime_profile)
-            .map_err(map_agent_runtime_error)
-            .map_err(fail_scheduled_run)?;
+        let harness = validated_selection.execution_harness();
 
         let (mut run, mut events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");
@@ -91,6 +90,7 @@ where
                 status,
                 harness: run_harness_kind(&harness),
                 source: RunSource::User {
+                    route: route.clone(),
                     output_contract: resolved_command.output_contract,
                     model_id: resolved_command.model_id.clone(),
                     recipe_id: resolved_command.recipe_id.clone(),
@@ -125,7 +125,7 @@ where
                 &run.id,
                 &run.objective,
                 &runtime_profile,
-                execution_overrides_for_run(&run),
+                run.source.route(),
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
@@ -159,7 +159,7 @@ where
             DelegateRecipeResolutionRequest {
                 objective: command.objective,
                 output_contract: None,
-                model_id: command.model_id,
+                model_id: command.selection.model_id,
                 recipe_id: command.recipe_id,
             },
         )
@@ -172,7 +172,7 @@ where
         run_id: &RunId,
         objective: &str,
         runtime_profile: &crate::RuntimeProfileSummary,
-        overrides: ExecutionRequestOverrides,
+        route: &ta_protocol::wire::RunExecutionRoute,
     ) -> Result<(), RunExecutionError> {
         self.enforce_budget_before_dispatch(session_id, run_id)?;
         let fork_initial_state = self.fork_initial_state_for_run(session_id, run_id)?;
@@ -182,13 +182,13 @@ where
             .start_provider_run(
                 crate::ProviderRunStart {
                     runtime_profile,
+                    route,
                     session_id,
                     run_id,
                     objective,
                     execution_context: Arc::new(run.execution_context),
                     fork_initial_state,
                     output_contract,
-                    model_id: overrides.model_id.as_ref(),
                     subagent_recipes: self
                         .recipe_registry
                         .recipes()
@@ -209,8 +209,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SessionId;
     use crate::orchestration::run_execution::test_support::*;
-    use crate::{SessionId, StartRunCommand};
     use ta_protocol::wire::{OutputContractKind, RunSource, RunStatus};
 
     #[test]
@@ -231,10 +231,7 @@ mod tests {
         let error = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "   ".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "   ", "runtime-openai-safe"),
             )
             .expect_err("blank objective must fail");
 
@@ -244,15 +241,12 @@ mod tests {
     #[test]
     fn start_run_rejects_unknown_session() {
         let runtime = crate::RuntimeService::bootstrap();
-        let (_, execution) = app_and_execution_with_runtime(runtime);
+        let (app, execution) = app_and_execution_with_runtime(runtime);
 
         let error = execution
             .start_run(
                 SessionId::new("session-missing").expect("session id"),
-                StartRunCommand {
-                    objective: "Ship app server hard cut".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship app server hard cut", "runtime-openai-safe"),
             )
             .expect_err("missing session must fail");
 
@@ -277,14 +271,10 @@ mod tests {
             )
             .expect("session should open");
 
-        select_runtime_profile(&app, "runtime-codex-safe");
         let started = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship policy gated run".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship policy gated run", "runtime-codex-safe"),
             )
             .expect("run should start");
 
@@ -298,25 +288,17 @@ mod tests {
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Cross-harness context");
 
-        select_runtime_profile(&app, "runtime-openai-safe");
         let native = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Native context proof".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Native context proof", "runtime-openai-safe"),
             )
             .expect("native run should persist before approval");
 
-        select_runtime_profile(&app, "runtime-codex-acp-safe");
         let acp = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "ACP context proof".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "ACP context proof", "runtime-codex-acp-safe"),
             )
             .expect("ACP run should queue and persist");
 
@@ -358,14 +340,10 @@ mod tests {
             )
             .expect("session should open");
 
-        select_runtime_profile(&app, "runtime-codex-allow");
         let started = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship policy allow run".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship policy allow run", "runtime-codex-allow"),
             )
             .expect("run should start");
 
@@ -388,16 +366,14 @@ mod tests {
             )
             .expect("session should open");
 
-        select_runtime_profile(&app, "runtime-codex-allow");
+        let mut command = start_run_command(
+            &app,
+            "Find the failing login redirect",
+            "runtime-codex-allow",
+        );
+        command.recipe_id = Some("debug-agent".to_string());
         let started = execution
-            .start_run(
-                session.id.clone(),
-                StartRunCommand {
-                    objective: "Find the failing login redirect".to_string(),
-                    recipe_id: Some("debug-agent".to_string()),
-                    model_id: None,
-                },
-            )
+            .start_run(session.id.clone(), command)
             .expect("recipe-backed run should start");
         let run = execution
             .load_run_projection(&started.run.id)
@@ -433,14 +409,10 @@ mod tests {
             )
             .expect("session should open");
 
-        select_runtime_profile(&app, "runtime-codex-deny");
         let started = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship policy denied run".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship policy denied run", "runtime-codex-deny"),
             )
             .expect("run should start");
 
@@ -449,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn patching_selected_profile_updates_live_run_policy() {
+    fn patching_explicit_profile_updates_live_run_policy() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = app
@@ -473,26 +445,20 @@ mod tests {
                 },
             })
             .expect("runtime profile patch should succeed");
-        let selected_profile = snapshot
+        let patched_profile = snapshot
             .runtime_profiles
             .iter()
             .find(|profile| profile.id.as_str() == "runtime-codex-safe")
-            .expect("selected runtime profile should exist");
+            .expect("patched runtime profile should exist");
 
         let started = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship patched policy run".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship patched policy run", "runtime-codex-safe"),
             )
             .expect("run should start");
 
-        assert_eq!(
-            selected_profile.policy_mode,
-            crate::RuntimePolicyMode::Allow
-        );
+        assert_eq!(patched_profile.policy_mode, crate::RuntimePolicyMode::Allow);
         assert_ne!(started.run.status, RunStatus::WaitingForApproval);
         assert!(started.requested_approval_id().is_none());
     }
@@ -515,19 +481,13 @@ mod tests {
         let first = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship queue owner".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship queue owner", "runtime-openai-safe"),
             )
             .expect("first run should start");
         let second = execution
             .start_run(
                 session.id.clone(),
-                StartRunCommand {
-                    objective: "Ship follow-up queue item".to_string(),
-                    ..StartRunCommand::default()
-                },
+                start_run_command(&app, "Ship follow-up queue item", "runtime-openai-safe"),
             )
             .expect("second run should queue");
 

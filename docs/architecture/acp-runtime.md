@@ -1,11 +1,11 @@
-# ACP Runtime Architecture
+# ACP runtime architecture
 
 This document is the canonical reference for ACP runtime ownership after the
 typed harness dispatch hard cut. Its job is to prevent future work from
 reintroducing runtime-profile string dispatch, provider/harness confusion,
 legacy ACP flavor paths, or UI-owned runtime truth.
 
-## Owner Map
+## Owner map
 
 - `runtime_profile_id` is an identity only and must not be parsed as the
   source of dispatch, flavor, provider policy, model choice, auth state, or
@@ -14,7 +14,8 @@ legacy ACP flavor paths, or UI-owned runtime truth.
   distinct from `ProviderId`, selected model, auth profile, and policy mode.
 - `ta-orchestrator` owns runtime selection. It derives the harness from
   `StrategyRegistry`, `StrategyKind`, and normalized runtime profile metadata,
-  then passes the typed decision on `ExecutionRequest`.
+  validates the explicit `AgentRuntimeSelection`, and records the typed decision
+  in `RunExecutionRoute` before dispatch.
 - `taugentic-agent` consumes `ExecutionRequest.execution_harness` with an
   exhaustive match. It must not parse `runtime_profile_id`, provider ids, or
   ACP-flavored strings to choose a strategy.
@@ -26,7 +27,7 @@ legacy ACP flavor paths, or UI-owned runtime truth.
 - `apps/desktop` presents daemon snapshots. It does not own runtime profile
   semantics, approval truth, or harness selection.
 
-## Harness Ownership Boundary
+## Harness ownership boundary
 
 `AgentExecutionHarness` has two ownership kinds:
 
@@ -42,29 +43,28 @@ Harness selection must not be inferred from auth. Native + OpenAI API key and
 future Native + OpenAI OAuth/subscription are both native harness executions;
 OAuth or subscription auth must not imply Codex app-server routing.
 
-## Runtime Profile And Harness Selection
+## Runtime profile and harness selection
 
-Runtime profiles describe user-selectable runtime identity plus profile data:
-provider id, optional model id, optional auth profile id, and policy mode. The
-profile id is stable storage and UI identity; it is not a routing language.
+Runtime profiles describe user-selectable policy and provider identity. They do
+not contain a model or an account. `AgentRuntimeSelection` carries the explicit
+runtime profile, model, and optional auth profile for a run. The daemon derives
+the harness and freezes all four choices in `RunExecutionRoute`.
 
 The canonical request flow is:
 
 1. `agent_runtime::providers` registers runtime strategies.
 2. `StrategyRegistry` stores each strategy with a `StrategyKind`.
-3. `agent_runtime::config::normalize_for_snapshot` clears stale implicit
-   durable/read values to `None`.
-4. Explicit profile patches use the same config owner and reject invalid
-   `Set` values up front with typed runtime service errors.
-5. `RunExecutionRuntime::build_execution_request` asks `StrategyRegistry` for
+3. `AgentRuntimeService` validates the selected model and auth profile against
+   the registered provider and durable auth-profile state.
+4. `RunExecutionRuntime::build_execution_request` asks `StrategyRegistry` for
    the `AgentExecutionHarness` for the normalized profile.
-6. `taugentic-agent::execution_strategy::dispatch` runs the selected harness.
+5. `taugentic-agent::execution_strategy::dispatch` runs the selected harness.
 
 Native/API-key style runs remain canonical in the native harness. OpenAI,
 Anthropic, and declarative OpenAI-compatible providers resolve their clients in
 `native_loop`; ACP provider adapters must not leak into `turn_loop`.
 
-## ACP Provider Registration
+## ACP provider registration
 
 ACP provider registration and execution are descriptor/spec owned:
 
