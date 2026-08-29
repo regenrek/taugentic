@@ -1,5 +1,5 @@
 import type { DockLayout } from "@regenrek/gpuix-react"
-import type { WorkspaceId } from "@taugentic/desktop-protocol"
+import type { ProjectId, SessionId, WorkspaceId } from "@taugentic/desktop-protocol"
 
 import { commandById, commandRegistry, normalizeShortcut, type CommandId } from "../../features/commands/registry.js"
 
@@ -15,11 +15,18 @@ export type DesktopAppearance = {
 }
 
 export type DesktopPresentation = { theme: DesktopTheme; layout: DockLayout }
+export type DesktopNavigation = {
+  sidebarView: "spaces" | "projects" | "agents" | "archived"
+  expandedSpaceIds: readonly string[]
+  selectedProjectId?: ProjectId
+  selectedSessionId?: SessionId
+}
 
 export type DesktopSettingsDocument = {
   appearance: DesktopAppearance
   layouts: Record<WorkspaceId, DockLayout>
   shortcuts: Partial<Record<CommandId, string>>
+  navigation: DesktopNavigation
 }
 
 export type DesktopSettingsPersistence = {
@@ -35,7 +42,12 @@ export const defaultDesktopAppearance: DesktopAppearance = {
 }
 
 function emptyDocument(): DesktopSettingsDocument {
-  return { appearance: { ...defaultDesktopAppearance }, layouts: {}, shortcuts: {} }
+  return {
+    appearance: { ...defaultDesktopAppearance },
+    layouts: {},
+    shortcuts: {},
+    navigation: { sidebarView: "spaces", expandedSpaceIds: [] },
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -70,14 +82,21 @@ function isDockLayout(value: unknown): value is DockLayout {
 function parseDocument(documentJson: string): DesktopSettingsDocument {
   let candidate: unknown
   try { candidate = JSON.parse(documentJson) } catch { throw new Error("Desktop settings data is malformed.") }
-  if (!isRecord(candidate) || !hasOnlyKeys(candidate, ["appearance", "layouts", "shortcuts"])) throw new Error("Desktop settings data is malformed.")
-  const { appearance, layouts, shortcuts } = candidate
+  if (!isRecord(candidate) || !hasOnlyKeys(candidate, ["appearance", "layouts", "shortcuts", "navigation"])) throw new Error("Desktop settings data is malformed.")
+  const { appearance, layouts, shortcuts, navigation } = candidate
   if (!isRecord(appearance) || !hasOnlyKeys(appearance, ["theme", "contrast", "fontScale", "reducedMotion"])
     || (appearance.theme !== "dark" && appearance.theme !== "light")
     || (appearance.contrast !== "standard" && appearance.contrast !== "high")
     || (appearance.fontScale !== "standard" && appearance.fontScale !== "large")
     || typeof appearance.reducedMotion !== "boolean"
-    || !isRecord(layouts) || !isRecord(shortcuts)) throw new Error("Desktop settings data is malformed.")
+    || !isRecord(layouts) || !isRecord(shortcuts)
+    || !isRecord(navigation)
+    || !hasOnlyKeys(navigation, ["sidebarView", "expandedSpaceIds", "selectedProjectId", "selectedSessionId"])
+    || !["spaces", "projects", "agents", "archived"].includes(String(navigation.sidebarView))
+    || !Array.isArray(navigation.expandedSpaceIds)
+    || !navigation.expandedSpaceIds.every((spaceId) => typeof spaceId === "string" && spaceId.length > 0)
+    || (navigation.selectedProjectId !== undefined && (typeof navigation.selectedProjectId !== "string" || !navigation.selectedProjectId))
+    || (navigation.selectedSessionId !== undefined && (typeof navigation.selectedSessionId !== "string" || !navigation.selectedSessionId))) throw new Error("Desktop settings data is malformed.")
   for (const [workspaceId, layout] of Object.entries(layouts)) {
     if (!workspaceId || !isDockLayout(layout)) throw new Error("Desktop settings data is malformed.")
   }
@@ -90,6 +109,12 @@ function parseDocument(documentJson: string): DesktopSettingsDocument {
     appearance: { theme: appearance.theme, contrast: appearance.contrast, fontScale: appearance.fontScale, reducedMotion: appearance.reducedMotion },
     layouts: layouts as Record<WorkspaceId, DockLayout>,
     shortcuts: shortcuts as Partial<Record<CommandId, string>>,
+    navigation: {
+      sidebarView: navigation.sidebarView as DesktopNavigation["sidebarView"],
+      expandedSpaceIds: [...navigation.expandedSpaceIds],
+      selectedProjectId: navigation.selectedProjectId as ProjectId | undefined,
+      selectedSessionId: navigation.selectedSessionId as SessionId | undefined,
+    },
   }
 }
 
@@ -109,6 +134,9 @@ export class DesktopSettings {
     return layout ? { theme: this.#document.appearance.theme, layout } : undefined
   }
   shortcut(commandId: CommandId): string | undefined { return this.#document.shortcuts[commandId] }
+  navigation(): DesktopNavigation {
+    return { ...this.#document.navigation, expandedSpaceIds: [...this.#document.navigation.expandedSpaceIds] }
+  }
   error(): string | undefined { return this.#error }
   loaded(): boolean { return this.#loaded }
   revision = (): number => this.#revision
@@ -143,6 +171,10 @@ export class DesktopSettings {
 
   saveAppearance(patch: Partial<DesktopAppearance>): void {
     this.#commit({ ...this.#document, appearance: { ...this.#document.appearance, ...patch } })
+  }
+
+  saveNavigation(navigation: DesktopNavigation): void {
+    this.#commit({ ...this.#document, navigation: { ...navigation, expandedSpaceIds: [...navigation.expandedSpaceIds] } })
   }
 
   saveShortcut(commandId: CommandId, shortcut: string): "saved" | "conflict" {

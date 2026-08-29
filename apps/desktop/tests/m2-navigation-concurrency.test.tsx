@@ -10,7 +10,8 @@ import { commandRegistry, createCommandDispatcher } from "../src/features/comman
 import { RuntimeRoutePicker } from "../src/features/auth-profiles/auth-profiles.js"
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
 import { App, Workbench, workbenchSelection } from "../src/app/App.js"
-import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, openProject, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, triggerWorkItem, workspaceShell, workspaceShellMachine } from "../src/features/runtime/workspace-shell-machine.js"
+import { workspaceShellMachine } from "../src/features/runtime/workspace-shell-machine.js"
+import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, createWorkspaceNavigationRecovery, desktopRuntime, openProject, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, triggerWorkItem, workspaceShell } from "../src/features/runtime/workspace-shell.js"
 import { defaultWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
 import { archivedProjectConversations, projectConversations, sidebarReduce, Sidebar, standaloneConversations, temporaryConversations, type SidebarState } from "../src/features/sidebar/sidebar.js"
 import { createDesktopRuntime } from "../src/platform/daemon/desktop-runtime.js"
@@ -18,7 +19,7 @@ import { navigationQuery, navigationQueryKey } from "../src/platform/daemon/navi
 import { desktopQueryClient } from "../src/platform/daemon/query-client.js"
 import { runActivityQueryRoot } from "../src/platform/daemon/run-activity-query.js"
 import { scheduledWorkQueryKey } from "../src/platform/daemon/scheduled-work-query.js"
-import { desktopSettings } from "../src/platform/settings/desktop-settings.js"
+import { DesktopSettings, desktopSettings } from "../src/platform/settings/desktop-settings.js"
 
 function lifecycle(
   status: DesktopDaemonLifecycleProjection["status"],
@@ -469,6 +470,72 @@ describe("M2 navigation concurrency", () => {
       renderer.nativeSimulateKeystrokes(renderer.findByTestId("new-conversation-title")!.id, "enter")
       expect(created).toEqual(["created"])
     } finally { unmount() }
+  })
+
+  it("round-trips only current-shape navigation settings and rejects the old shape", async () => {
+    const writes: string[] = []
+    const document = {
+      appearance: { theme: "dark", contrast: "standard", fontScale: "standard", reducedMotion: false },
+      layouts: {},
+      shortcuts: {},
+      navigation: { sidebarView: "projects", expandedSpaceIds: ["space-a"], selectedProjectId: "project-a", selectedSessionId: "session-a" },
+    } as const
+    const settings = new DesktopSettings()
+    await settings.initialize({ read: async () => JSON.stringify(document), write: async (value) => { writes.push(value) } })
+    expect(settings.navigation()).toEqual(document.navigation)
+    settings.saveNavigation({ sidebarView: "archived", expandedSpaceIds: [], selectedProjectId: "project-b" })
+    await Promise.resolve()
+    expect(JSON.parse(writes[0] ?? "{}").navigation).toEqual({ sidebarView: "archived", expandedSpaceIds: [], selectedProjectId: "project-b" })
+    expect(JSON.parse(writes[0] ?? "{}").navigation).not.toHaveProperty("filter")
+
+    const oldShape = new DesktopSettings()
+    await oldShape.initialize({ read: async () => JSON.stringify({ appearance: document.appearance, layouts: {}, shortcuts: {} }), write: async () => {} })
+    expect(oldShape.error()).toBeDefined()
+    expect(oldShape.navigation()).toEqual({ sidebarView: "spaces", expandedSpaceIds: [] })
+  })
+
+  it("restores valid saved navigation once through the existing attach route", async () => {
+    const shell = createActor(workspaceShellMachine).start()
+    const settings = new DesktopSettings()
+    const snapshot = {
+      spaces: [{ id: "space-a", title: "Space A" }],
+      agents: [],
+      projects: [{ id: "project-a", title: "Project A", workspaceIds: ["workspace-a"] }],
+      conversations: [{ sessionId: "session-a", workspaceId: "workspace-a", title: "Session A", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false }],
+    }
+    const attached: string[] = []
+    settings.saveNavigation({ sidebarView: "projects", expandedSpaceIds: ["space-a"], selectedProjectId: "project-a", selectedSessionId: "session-a" })
+    const recovery = createWorkspaceNavigationRecovery(shell, settings, async (sessionId) => {
+      attached.push(sessionId)
+      shell.send({ type: "SELECTED", sessionId })
+    })
+    try {
+      shell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
+      recovery.applyStoredSidebarPresentation()
+      await recovery.restoreOnce(snapshot)
+      expect(shell.getSnapshot().context.selectedProjectId).toBe("project-a")
+      expect(shell.getSnapshot().context.sidebar.selectedConversationId).toBe("session-a")
+      expect(attached).toEqual(["session-a"])
+      await recovery.restoreOnce(snapshot)
+      expect(attached).toEqual(["session-a"])
+    } finally {
+      shell.stop()
+    }
+  })
+
+  it("leaves invalid saved identities unselected without a replacement attach", async () => {
+    const shell = createActor(workspaceShellMachine).start()
+    const settings = new DesktopSettings()
+    const attached: string[] = []
+    settings.saveNavigation({ sidebarView: "spaces", expandedSpaceIds: [], selectedProjectId: "absent-project", selectedSessionId: "archived-session" })
+    const recovery = createWorkspaceNavigationRecovery(shell, settings, async (sessionId) => { attached.push(sessionId) })
+    try {
+      shell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
+      await recovery.restoreOnce({ spaces: [], agents: [], projects: [{ id: "present-project", title: "Present", workspaceIds: ["workspace-present"] }], conversations: [{ sessionId: "archived-session", workspaceId: "workspace-present", title: "Archived", status: "idle" as const, placement: { kind: "project" as const, projectId: "present-project" }, archived: true, pinned: false }] })
+      expect(shell.getSnapshot().context.selectedProjectId).toBeUndefined()
+      expect(shell.getSnapshot().context.sidebar.selectedConversationId).toBeUndefined()
+      expect(attached).toEqual([])
+    } finally { shell.stop() }
   })
 
 })

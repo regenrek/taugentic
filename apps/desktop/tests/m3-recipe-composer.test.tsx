@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 
 import { ConversationPanel } from "../src/features/workspace-layout/panels.js"
 import { createCommandDispatcher } from "../src/features/commands/registry.js"
-import { desktopRuntime, startSelectedRun, workspaceShell } from "../src/features/runtime/workspace-shell-machine.js"
+import { desktopRuntime, startSelectedRun, workspaceShell } from "../src/features/runtime/workspace-shell.js"
 import { recipesQuery, recipesQueryKey } from "../src/platform/daemon/recipes-query.js"
 import { DesktopSettings } from "../src/platform/settings/desktop-settings.js"
 

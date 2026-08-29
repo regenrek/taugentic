@@ -21,7 +21,7 @@ import { useScheduledWork } from "../features/scheduled-work/use-scheduled-work.
 import { PluginsPanel } from "../features/plugins/plugins-panel.js"
 import { usePlugins } from "../features/plugins/use-plugins.js"
 import { DiagnosticsPanel } from "../features/diagnostics/diagnostics-panel.js"
-import { archiveConversation, cancelSelectedRun, cancelSideChat, closeSideChat, closeTemporaryConversation, closeWorkspaceShell, continueSideChat, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, joinFreshRun, loginAuthMethod, logoutAuthProfile, openProject, openSideChat, openSideChatPanel, removeRunAttachment, replaceAuthProfilePreferences, requestVoicePermission, restoreConversation, selectConversation, selectProject, setConversationPinned, setProjectSpace, spawnFreshRun, startSelectedRun, toggleRunAttachment, triggerWorkItem, updateRuntimeDraft, workspaceShell } from "../features/runtime/workspace-shell-machine.js"
+import { applySidebarAction, archiveConversation, cancelSelectedRun, cancelSideChat, closeSideChat, closeTemporaryConversation, closeWorkspaceShell, continueSideChat, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, joinFreshRun, loginAuthMethod, logoutAuthProfile, openProject, openSideChat, openSideChatPanel, removeRunAttachment, replaceAuthProfilePreferences, requestVoicePermission, restoreConversation, selectConversation, selectProject, setConversationPinned, setProjectSpace, spawnFreshRun, startSelectedRun, toggleRunAttachment, triggerWorkItem, updateRuntimeDraft, workspaceShell } from "../features/runtime/workspace-shell.js"
 import { Sidebar } from "../features/sidebar/sidebar.js"
 import { isDockPanelVisible, resetWorkspaceLayout, saveDesktopTheme, saveWorkspaceLayout, workspacePresentation } from "../features/workspace-layout/layout-store.js"
 import { panelRegistry } from "../features/workspace-layout/panels.js"
@@ -350,7 +350,7 @@ export function App() {
           if (created) setTemporaryTitle("")
         })
       }} dispatch={(action) => {
-        workspaceShell.send({ type: "SIDEBAR", action })
+        applySidebarAction(action)
         if (action.type === "selectConversation") void selectConversation(action.sessionId)
         if (action.type === "selectProject") selectProject(action.projectId)
         if (action.type === "openProject") void chooseProjectDirectory()
