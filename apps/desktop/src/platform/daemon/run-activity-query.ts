@@ -59,11 +59,11 @@ export function runReplayQuery(runtime: DesktopRuntime, sessionId: SessionId, ru
   })
 }
 
-export function approvalsQuery(runtime: DesktopRuntime, sessionId: SessionId, runId?: RunId) {
+export function approvalsInboxQuery(runtime: DesktopRuntime, sessionId: SessionId) {
   return queryOptions({
-    queryKey: [...runActivityQueryRoot, sessionId, "approvals", runId ?? "all"] as const,
+    queryKey: [...runActivityQueryRoot, sessionId, "approvals"] as const,
     queryFn: async (): Promise<ApprovalSnapshotResult> => decodeProtocolJson(
-      await runtime.bridge.listApprovals(JSON.stringify(runId ? { runId } : {})),
+      await runtime.bridge.listApprovals(JSON.stringify({})),
     ),
   })
 }

@@ -1,9 +1,8 @@
 import { Fragment } from "react"
 
 import { palette } from "../../app/theme.js"
+import { Pressable } from "../../ui/pressable.js"
 import type { WorkInboxState } from "./use-work-inbox.js"
-
-function activates(event: { key?: string }): boolean { return event.key === "enter" || event.key === "space" }
 
 function actionStyle(enabled: boolean) {
   return { cursor: enabled ? "pointer" : "default", padding: 6, backgroundColor: enabled ? palette.panelRaised : palette.panel, opacity: enabled ? 1 : 0.6 }
@@ -15,7 +14,7 @@ export function WorkInboxPanel({ inbox, canTrigger }: { inbox: WorkInboxState; c
   return <div testId="work-inbox" style={{ display: "flex", flexDirection: "column", gap: 7, paddingTop: 8 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <text style={{ color: palette.textFaint, fontSize: 10, fontWeight: 700 }}>WORK INBOX</text><div style={{ flexGrow: 1 }} />
-      <div testId="refresh-work-inbox" tabIndex={refreshEnabled ? 0 : -1} accessibilityRole="button" accessibilityName="Refresh Work Inbox" accessibilityDisabled={!refreshEnabled} onClick={() => { if (refreshEnabled) inbox.refresh() }} onKeyDown={(event) => { if (activates(event) && refreshEnabled) inbox.refresh() }} style={actionStyle(refreshEnabled)}><text style={{ fontSize: 10 }}>Refresh</text></div>
+      <Pressable testId="refresh-work-inbox" name="Refresh Work Inbox" disabled={!refreshEnabled} onPress={inbox.refresh} style={actionStyle(refreshEnabled)}><text style={{ fontSize: 10 }}>Refresh</text></Pressable>
     </div>
     {inbox.sync && <text testId="work-inbox-sync" style={{ color: palette.textMuted, fontSize: 10 }}>{inbox.sync.state}{inbox.sync.detail ? ` · ${inbox.sync.detail}` : ""}</text>}
     {inbox.error && <text testId="work-inbox-error" style={{ color: "#f08080", fontSize: 11 }}>{inbox.error}</text>}
@@ -29,8 +28,8 @@ export function WorkInboxPanel({ inbox, canTrigger }: { inbox: WorkInboxState; c
       <text style={{ color: palette.text, fontSize: 12, fontWeight: 600 }}>{item.title}</text>
       <text style={{ color: palette.textMuted, fontSize: 10 }}>{item.status}{item.labels.length ? ` · ${item.labels.join(", ")}` : ""}</text>
       <div style={{ display: "flex", gap: 6 }}>
-        <div testId={`trigger-work-item-${item.key}`} tabIndex={triggerEnabled ? 0 : -1} accessibilityRole="button" accessibilityName={`Run work item ${item.title}`} accessibilityDisabled={!triggerEnabled} onClick={() => { if (triggerEnabled) inbox.trigger(item) }} onKeyDown={(event) => { if (activates(event) && triggerEnabled) inbox.trigger(item) }} style={actionStyle(triggerEnabled)}><text style={{ fontSize: 10 }}>Run</text></div>
-        <div testId={`dismiss-work-item-${item.key}`} tabIndex={dismissEnabled ? 0 : -1} accessibilityRole="button" accessibilityName={`Dismiss work item ${item.title}`} accessibilityDisabled={!dismissEnabled} onClick={() => { if (dismissEnabled) inbox.dismiss(item.key) }} onKeyDown={(event) => { if (activates(event) && dismissEnabled) inbox.dismiss(item.key) }} style={actionStyle(dismissEnabled)}><text style={{ fontSize: 10 }}>Dismiss</text></div>
+        <Pressable testId={`trigger-work-item-${item.key}`} name={`Run work item ${item.title}`} disabled={!triggerEnabled} onPress={() => inbox.trigger(item)} style={actionStyle(triggerEnabled)}><text style={{ fontSize: 10 }}>Run</text></Pressable>
+        <Pressable testId={`dismiss-work-item-${item.key}`} name={`Dismiss work item ${item.title}`} disabled={!dismissEnabled} onPress={() => inbox.dismiss(item.key)} style={actionStyle(dismissEnabled)}><text style={{ fontSize: 10 }}>Dismiss</text></Pressable>
       </div>
     </div></Fragment>
     })}

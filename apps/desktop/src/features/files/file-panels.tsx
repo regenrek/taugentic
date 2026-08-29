@@ -3,6 +3,7 @@ import type { BoundedFileContent, NativeImagePreview, WorkspaceFileEntry } from 
 import { Fragment, useMemo, useState } from "react"
 
 import { palette } from "../../app/theme.js"
+import { Pressable } from "../../ui/pressable.js"
 
 export type FilePanelState = {
   entries: readonly WorkspaceFileEntry[]
@@ -54,7 +55,7 @@ function PanelFrame(props: { testId: string; title: string; actions?: React.Reac
 
 function Action(props: { testId: string; label: string; disabled?: boolean; active?: boolean; onClick(): void }) {
   const enabled = !props.disabled
-  return <div testId={props.testId} tabIndex={enabled ? 0 : -1} onClick={() => { if (enabled) props.onClick() }} style={{ padding: 6, borderRadius: 5, cursor: enabled ? "pointer" : "default", color: enabled ? palette.text : palette.textFaint, backgroundColor: props.active ? palette.accentDim : palette.panelRaised }}><text style={{ fontSize: 10 }}>{props.label}</text></div>
+  return <Pressable testId={props.testId} name={props.label} disabled={!enabled} selected={props.active} onPress={props.onClick} style={{ padding: 6, borderRadius: 5, cursor: enabled ? "pointer" : "default", color: enabled ? palette.text : palette.textFaint, backgroundColor: props.active ? palette.accentDim : palette.panelRaised }}><text style={{ fontSize: 10 }}>{props.label}</text></Pressable>
 }
 
 function Message(props: { children: string; error?: boolean }) {
@@ -90,18 +91,20 @@ export function FileTreePanel(props: FilePanelState) {
         const directory = entry.kind === "directory"
         const selected = props.selectedPath === entry.path
         const depth = Math.max(0, entry.path.split("/").length - 1)
-        return <Fragment key={entry.path}><div
+        return <Fragment key={entry.path}><Pressable
           testId={`file-${entry.path}`}
-          tabIndex={entry.isSymlink ? -1 : 0}
-          accessibilityName={`${directory ? "Folder" : "File"} ${entry.path}`}
-          accessibilitySelected={selected}
-          onClick={() => directory ? toggleDirectory(entry.path) : props.selectEntry(entry)}
+          name={`${directory ? "Folder" : "File"} ${entry.path}`}
+          role={directory ? "button" : "option"}
+          disabled={entry.isSymlink}
+          selected={selected}
+          expanded={directory ? !collapsed.has(entry.path) : undefined}
+          onPress={() => directory ? toggleDirectory(entry.path) : props.selectEntry(entry)}
           style={{ display: "flex", alignItems: "center", minHeight: 28, paddingLeft: 8 + depth * 14, paddingRight: 8, cursor: entry.isSymlink ? "default" : "pointer", backgroundColor: selected ? palette.panelRaised : palette.canvas, color: entry.isSymlink ? palette.textFaint : palette.text }}
         >
           <text style={{ width: 18, color: palette.textMuted }}>{directory ? (collapsed.has(entry.path) ? "▸" : "▾") : entry.kind === "image" ? "◫" : entry.kind === "pdf" ? "PDF" : "·"}</text>
           <text style={{ fontSize: 11 }}>{entry.name}</text>
           {entry.isSymlink && <text style={{ marginLeft: 8, color: palette.warning, fontSize: 9 }}>symlink</text>}
-        </div></Fragment>
+        </Pressable></Fragment>
       }}
       style={{ flexGrow: 1, minHeight: 0, width: "100%" }}
     /></div>}

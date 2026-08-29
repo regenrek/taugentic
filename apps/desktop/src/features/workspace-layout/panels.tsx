@@ -7,6 +7,7 @@ import { ArtifactsPanel, artifactDisplayName, type ArtifactPanelState } from "..
 import { PullRequestsPanel } from "../code-host/pull-requests-panel.js"
 import { RunActivityPanel } from "../run-activity/run-activity-panel.js"
 import type { ReturnTypeUseRunActivity } from "../run-activity/types.js"
+import type { ApprovalsInboxState } from "../approvals/use-approvals-inbox.js"
 import type { WorkbenchCodeHostState } from "../code-host/use-workbench-code-host.js"
 import { DiffPanel, FileTreePanel, ImagePanel, PdfPanel, SourcePanel, type FilePanelState } from "../files/file-panels.js"
 import { GitPanel } from "../git/git-panel.js"
@@ -71,6 +72,7 @@ export type WorkbenchPanelProps = ConversationPanelProps & {
   codeHost: WorkbenchCodeHostState
   threadWorkspace: ThreadWorkspacePanelState
   runActivity?: ReturnTypeUseRunActivity | undefined
+  approvalsInbox?: ApprovalsInboxState | undefined
   openUrl(url: string): void
   artifacts: ArtifactPanelState & {
     selectedContent?: BoundedFileContent
@@ -142,7 +144,7 @@ export function panelRegistry(props: WorkbenchPanelProps): readonly DockPanel[] 
     {
       id: "activity",
       label: "Activity",
-      content: props.runActivity ? <RunActivityPanel activity={props.runActivity} /> : <div testId="run-activity-panel" style={{ padding: 20 }}><text style={{ color: palette.textMuted }}>Run activity is unavailable.</text></div>,
+      content: props.runActivity ? <RunActivityPanel activity={props.runActivity} inbox={props.approvalsInbox} /> : <div testId="run-activity-panel" style={{ padding: 20 }}><text style={{ color: palette.textMuted }}>Run activity is unavailable.</text></div>,
       closable: false,
     },
     {

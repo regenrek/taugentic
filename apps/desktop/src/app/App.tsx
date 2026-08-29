@@ -7,6 +7,7 @@ import { CommandSurface } from "../features/commands/command-surface.js"
 import { createCommandDispatcher, eventShortcut } from "../features/commands/registry.js"
 import { RuntimeRoutePicker } from "../features/auth-profiles/auth-profiles.js"
 import { useWorkbenchArtifacts } from "../features/artifacts/use-workbench-artifacts.js"
+import { useApprovalsInbox } from "../features/approvals/use-approvals-inbox.js"
 import { useWorkbenchCodeHost } from "../features/code-host/use-workbench-code-host.js"
 import { useWorkbenchFiles } from "../features/files/use-workbench-files.js"
 import { useWorkbenchGit } from "../features/git/use-workbench-git.js"
@@ -164,11 +165,18 @@ export function App() {
     sessionId: selectedSessionId,
     enabled: shell.context.phase === "ready",
   })
+  const approvalsInbox = useApprovalsInbox({
+    runtime: desktopRuntime,
+    sessionId: selectedSessionId,
+    enabled: shell.context.phase === "ready",
+  })
   const runActivity = useRunActivity({
     runtime: desktopRuntime,
     sessionId: selectedSessionId,
     replacementSelection,
     enabled: shell.context.phase === "ready",
+    approvals: approvalsInbox.approvals,
+    decideApproval: approvalsInbox.decide,
     openArtifact: (artifactId) => {
       artifacts.selectArtifact(artifactId)
       workspaceShell.send({ type: "FOCUS_PANEL", panelId: "image" })
@@ -292,6 +300,7 @@ export function App() {
     codeHost,
     threadWorkspace,
     runActivity,
+    approvalsInbox,
     openUrl: (url) => renderer.openUrl(url),
   })
   const chooseProjectDirectory = async (): Promise<void> => {

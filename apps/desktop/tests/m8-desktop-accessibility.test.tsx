@@ -1,5 +1,6 @@
 import { createTestRoot } from "@regenrek/gpuix-react/testing"
 import { describe, expect, it } from "bun:test"
+import type { AgentRuntimeSnapshot } from "@taugentic/desktop-protocol"
 
 import { ProductState } from "../src/app/product-state.js"
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
@@ -58,6 +59,26 @@ describe("M8 desktop accessibility", () => {
       expect(decisions).toEqual([true])
       expect(renderer.findByTestId("runtime-route-options")).toBeDefined()
       expect(actions).toEqual(["toggleSpace"])
+    } finally { unmount() }
+  })
+
+  it("keeps each route choice semantic and names unavailable account and model causes", () => {
+    const drafts: unknown[] = []
+    const snapshot = {
+      providers: [{ id: "codex", displayName: "Codex", models: [{ id: "gpt", displayName: "GPT", reasoning: true, toolCall: true, structuredOutput: true, mediaCapabilities: {} }], modelCapability: { availability: "enumerated", canSetModel: true }, health: { status: "ready" } }],
+      authMethods: [{ id: "chatgpt", providerId: "codex", displayName: "ChatGPT" }],
+      runtimeProfiles: [{ id: "safe", displayName: "Safe", providerId: "codex", authMethodId: "chatgpt", policyMode: "requireApproval" }],
+      authProfiles: [{ profile: { id: "offline", providerId: "codex", authMethodId: "chatgpt", displayName: "Offline" }, preferences: { label: "Offline account", order: 0, isDefault: false }, usage: { kind: "unavailable" }, connectionState: "disconnected", exhaustion: null, canLogin: true, canLogout: false, lastError: "Sign in required" }],
+    } as unknown as AgentRuntimeSnapshot
+    const { render, renderer, unmount } = createTestRoot()
+    try {
+      render(<RuntimeRoutePicker snapshot={snapshot} draft={{ runtimeProfileId: "safe" }} pendingAuthMethodIds={[]} onDraft={(draft) => drafts.push(draft)} onLogin={() => {}} onLogout={() => {}} onPreferences={() => {}} />)
+      renderer.nativeSimulateKeystrokes(renderer.findByTestId("runtime-route-toggle")!.id, "space")
+      renderer.nativeSimulateKeystrokes(renderer.findByTestId("runtime-profile-safe")!.id, "space")
+      renderer.nativeSimulateKeystrokes(renderer.findByTestId("runtime-model-gpt")!.id, "space")
+      expect(drafts).toEqual([{ runtimeProfileId: "safe" }, { modelId: "gpt" }])
+      expect(renderer.getAutomationTree()).toContain("Offline account unavailable: Sign in required")
+      expect(renderer.getAllText().join(" ")).toContain("Choose a model explicitly for this run.")
     } finally { unmount() }
   })
 })

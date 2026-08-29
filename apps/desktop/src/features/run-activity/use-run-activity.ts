@@ -1,10 +1,10 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 
-import type { AgentRuntimeSelection, ApprovalDecision, ApprovalId, ArtifactId, RunId, SessionId, SwitchAccountAndResumeRequest } from "@taugentic/desktop-protocol"
+import type { AgentRuntimeSelection, ApprovalDecision, ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId, SwitchAccountAndResumeRequest } from "@taugentic/desktop-protocol"
 
 import type { DesktopRuntime } from "../../platform/daemon/desktop-runtime.js"
-import { approvalsQuery, getActivityPage, nativeRunsQuery, runActivityQueryRoot, runDetailQuery, runReplayQuery, runTimelineQuery } from "../../platform/daemon/run-activity-query.js"
+import { getActivityPage, nativeRunsQuery, runActivityQueryRoot, runDetailQuery, runReplayQuery, runTimelineQuery } from "../../platform/daemon/run-activity-query.js"
 
 const NO_SESSION = "session-not-selected" as SessionId
 
@@ -30,7 +30,7 @@ export async function requestSwitchAccountAndResume(
   return true
 }
 
-export function useRunActivity(input: { runtime: DesktopRuntime; sessionId?: SessionId; replacementSelection?: AgentRuntimeSelection; enabled: boolean; openArtifact(artifactId: ArtifactId): void }) {
+export function useRunActivity(input: { runtime: DesktopRuntime; sessionId?: SessionId; replacementSelection?: AgentRuntimeSelection; enabled: boolean; approvals: readonly ApprovalRequest[]; decideApproval(approvalId: ApprovalId, decision: ApprovalDecision): Promise<void>; openArtifact(artifactId: ArtifactId): void }) {
   const sessionId = input.sessionId ?? NO_SESSION
   const queryClient = useQueryClient()
   const [selectedRunId, setSelectedRunId] = useState<RunId>()
@@ -52,7 +52,6 @@ export function useRunActivity(input: { runtime: DesktopRuntime; sessionId?: Ses
     getNextPageParam: (page) => page.nextBefore?.sequence ?? undefined,
     enabled,
   })
-  const approvals = useQuery({ ...approvalsQuery(input.runtime, sessionId, selectedRunId), enabled })
   const replay = useQuery({ ...runReplayQuery(input.runtime, sessionId, selectedRunId ?? ("run-not-selected" as RunId)), enabled: enabled && Boolean(selectedRunId) })
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: [...runActivityQueryRoot, sessionId] }) }
   const switchEligible = Boolean(input.sessionId && selectedRunId && detail.data?.authProfileExhaustion && input.replacementSelection)
@@ -60,17 +59,14 @@ export function useRunActivity(input: { runtime: DesktopRuntime; sessionId?: Ses
     runs: runs.data?.runs ?? [], selectedRunId, selectRun: setSelectedRunId,
     detail: detail.data, timeline: timeline.data, replay: replay.data?.events ?? [],
     activity: activity.data?.pages.flatMap((page) => page.items ?? []) ?? [],
-    approvals: approvals.data?.items ?? [],
+    approvals: input.approvals.filter((approval) => approval.runId === selectedRunId),
     hasOlderActivity: Boolean(activity.hasNextPage),
     loadingOlderActivity: activity.isFetchingNextPage,
     loadOlderActivity: () => { void activity.fetchNextPage({ cancelRefetch: true }) },
     loading: runs.isLoading || detail.isLoading || timeline.isLoading,
-    error: runs.isError || detail.isError || timeline.isError || activity.isError || approvals.isError || replay.isError ? "Run activity could not be loaded." : undefined,
+    error: runs.isError || detail.isError || timeline.isError || activity.isError || replay.isError ? "Run activity could not be loaded." : undefined,
     refresh,
-    decide: async (approvalId: ApprovalId, decision: ApprovalDecision) => {
-      await input.runtime.bridge.decideApproval(JSON.stringify({ approvalId, decision }))
-      refresh()
-    },
+    decide: input.decideApproval,
     cancel: async (runId: RunId) => { await input.runtime.bridge.cancelRun(runId); refresh() },
     switchAccountAndResume: async () => {
       const started = await requestSwitchAccountAndResume(input.runtime, {
