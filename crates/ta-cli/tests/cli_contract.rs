@@ -30,7 +30,8 @@ use ta_protocol::wire::{
     METHOD_DAEMON_CONTROL_STATUS, METHOD_DAEMON_INITIALIZE, METHOD_DAEMON_RUN_START,
     METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
     METHOD_DAEMON_STATUS, RunId, RunStatus, RunSummary, RuntimeProfileId, SessionAuthority,
-    SessionId, SessionStatus, SessionSummary, StartRunCommand, WorkspaceSelector,
+    SessionId, SessionNextRunSelection, SessionStatus, SessionSummary, StartRunCommand,
+    WorkspaceSelector,
 };
 
 #[cfg(unix)]
@@ -102,6 +103,7 @@ fn session_list_json_smoke_outputs_parseable_payload() {
             id: SessionId::new("session-1").expect("session id"),
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            next_run_selection: SessionNextRunSelection::Unselected,
         }],
     );
 
@@ -126,7 +128,8 @@ fn session_list_json_smoke_outputs_parseable_payload() {
         json!([{
             "id": "session-1",
             "title": "Build daemon app server",
-            "status": "idle"
+            "status": "idle",
+            "nextRunSelection": { "kind": "unselected" }
         }])
     );
 }
@@ -149,6 +152,7 @@ fn session_open_json_smoke_outputs_parseable_payload() {
             id: SessionId::new("session-2").expect("session id"),
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
+            next_run_selection: SessionNextRunSelection::Unselected,
         },
     );
 
@@ -198,6 +202,7 @@ fn session_open_trust_workspace_sets_workspace_selector_trust_acknowledged() {
             id: SessionId::new("session-3").expect("session id"),
             title: "Trusted daemon app server".to_string(),
             status: SessionStatus::Idle,
+            next_run_selection: SessionNextRunSelection::Unselected,
         },
     );
 
@@ -2311,6 +2316,7 @@ fn spawn_run_start_server(listener: SocketListener) -> JoinHandle<()> {
                         id: SessionId::new("session-1").expect("session id"),
                         title: "Build daemon app server".to_string(),
                         status: SessionStatus::Idle,
+                        next_run_selection: SessionNextRunSelection::Unselected,
                     },
                     latest_cursor: None,
                     session_authority: SessionAuthority::new(
@@ -2387,6 +2393,7 @@ fn spawn_approval_decide_server(listener: SocketListener) -> JoinHandle<()> {
                         id: SessionId::new("session-1").expect("session id"),
                         title: "Build daemon app server".to_string(),
                         status: SessionStatus::Running,
+                        next_run_selection: SessionNextRunSelection::Unselected,
                     },
                     latest_cursor: None,
                     session_authority: SessionAuthority::new(
