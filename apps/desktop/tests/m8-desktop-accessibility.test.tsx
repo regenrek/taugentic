@@ -6,6 +6,8 @@ import { ProductState } from "../src/app/product-state.js"
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
 import { RuntimeRoutePicker } from "../src/features/auth-profiles/auth-profiles.js"
 import { Sidebar } from "../src/features/sidebar/sidebar.js"
+import { CommandSurface } from "../src/features/commands/command-surface.js"
+import { createCommandDispatcher } from "../src/features/commands/registry.js"
 import { DesktopSettings } from "../src/platform/settings/desktop-settings.js"
 
 describe("M8 desktop accessibility", () => {
@@ -32,6 +34,19 @@ describe("M8 desktop accessibility", () => {
     expect(reads).toBe(1)
     expect(settings.error()).toBe("Desktop settings could not be loaded. Fix or remove the local settings document before changing preferences.")
     expect(settings.appearance().theme).toBe("dark")
+    const resets: string[] = []
+    let closed = 0
+    const { render, renderer, unmount } = createTestRoot()
+    try {
+      const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+      render(<CommandSurface dispatcher={dispatcher} settings={settings} workspaceId="workspace-malformed" settingsOpen onSettingsOpenChange={(open) => { if (!open) closed += 1 }} onResetWorkspaceLayout={() => resets.push("reset")} />)
+      const reset = renderer.findByTestId("reset-workspace-layout")!
+      expect(renderer.getAutomationTree()).toContain('"name":"Reset workspace layout","disabled":true')
+      renderer.nativeSimulateKeystrokes(reset.id, "space")
+      expect(resets).toEqual([])
+      renderer.nativeSimulateKeystrokes(renderer.findByTestId("close-settings")!.id, "enter")
+      expect(closed).toBe(1)
+    } finally { unmount() }
   })
 
   it("does not persist an unconfigured workspace read", async () => {

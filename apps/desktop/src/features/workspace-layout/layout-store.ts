@@ -56,6 +56,10 @@ export function saveWorkspaceLayout(workspaceId: WorkspaceId, layout: DockLayout
   desktopSettings.saveLayout(workspaceId, layout)
 }
 
+export function resetWorkspaceLayout(workspaceId: WorkspaceId): void {
+  desktopSettings.deleteLayout(workspaceId)
+}
+
 export function saveDesktopTheme(theme: DesktopTheme): void {
   desktopSettings.saveAppearance({ theme })
 }

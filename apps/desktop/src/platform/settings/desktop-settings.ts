@@ -135,6 +135,12 @@ export class DesktopSettings {
     this.#commit({ ...this.#document, layouts: { ...this.#document.layouts, [workspaceId]: layout } })
   }
 
+  deleteLayout(workspaceId: WorkspaceId): void {
+    if (!(workspaceId in this.#document.layouts)) return
+    const { [workspaceId]: _, ...layouts } = this.#document.layouts
+    this.#commit({ ...this.#document, layouts })
+  }
+
   saveAppearance(patch: Partial<DesktopAppearance>): void {
     this.#commit({ ...this.#document, appearance: { ...this.#document.appearance, ...patch } })
   }

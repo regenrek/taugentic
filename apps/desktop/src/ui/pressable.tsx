@@ -1,7 +1,8 @@
 import type { StyleDesc } from "@regenrek/gpuix-react"
-import type { ReactNode } from "react"
+import { forwardRef, type ForwardedRef, type ReactNode } from "react"
 
 type PressableRole = "button" | "checkbox" | "menuitem" | "option" | "radio" | "tab" | "treeitem"
+type PressableElement = { id: number }
 
 export type PressableProps = {
   children: ReactNode
@@ -20,8 +21,13 @@ function activates(event: { key?: string }): boolean {
   return event.key === "enter" || event.key === "space"
 }
 
+function setRef(ref: ForwardedRef<PressableElement>, element: PressableElement | null): void {
+  if (typeof ref === "function") ref(element)
+  else if (ref) ref.current = element
+}
+
 /** Desktop-owned semantic activation for Taugentic product controls. */
-export function Pressable({
+export const Pressable = forwardRef<PressableElement, PressableProps>(function Pressable({
   children,
   name,
   onPress,
@@ -32,12 +38,13 @@ export function Pressable({
   checked,
   expanded,
   style,
-}: PressableProps) {
+}, ref) {
   const activate = () => {
     if (!disabled) onPress()
   }
 
   return <div
+    ref={(instance) => setRef(ref, instance === null ? null : { id: instance.id })}
     testId={testId}
     tabIndex={disabled ? -1 : 0}
     accessibilityRole={role}
@@ -50,4 +57,4 @@ export function Pressable({
     onKeyDown={(event) => { if (activates(event)) activate() }}
     style={style}
   >{children}</div>
-}
+})

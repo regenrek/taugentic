@@ -1,6 +1,7 @@
 import { createActor } from "xstate"
 import { describe, expect, it } from "bun:test"
 import { createTestRoot } from "@regenrek/gpuix-react/testing"
+import type { DockLayout } from "@regenrek/gpuix-react"
 import { QueryClientProvider } from "@tanstack/react-query"
 
 import type { AgentRuntimeSnapshot, DesktopDaemonLifecycleProjection, RunEventDelta, RunStatus } from "@taugentic/desktop-protocol"
@@ -11,7 +12,7 @@ import { RuntimeRoutePicker } from "../src/features/auth-profiles/auth-profiles.
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
 import { App, Workbench, workbenchSelection } from "../src/app/App.js"
 import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, openProject, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, triggerWorkItem, workspaceShell, workspaceShellMachine } from "../src/features/runtime/workspace-shell-machine.js"
-import { defaultWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
+import { defaultWorkspaceLayout, resetWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
 import { archivedProjectConversations, projectConversations, sidebarReduce, Sidebar, standaloneConversations, temporaryConversations, type SidebarState } from "../src/features/sidebar/sidebar.js"
 import { createDesktopRuntime } from "../src/platform/daemon/desktop-runtime.js"
 import { navigationQuery, navigationQueryKey } from "../src/platform/daemon/navigation-query.js"
@@ -83,6 +84,35 @@ describe("M2 desktop shell ownership", () => {
       noProject.unmount()
       firstProject.unmount()
       unsubscribe()
+    }
+  })
+
+  it("resets only the selected workspace layout and derives its default without persisting it", () => {
+    const selectedWorkspaceId = "workspace-layout-reset-selected"
+    const otherWorkspaceId = "workspace-layout-reset-other"
+    const custom: DockLayout = { kind: "tabs", id: "custom", panels: ["terminal"], active: "terminal" }
+    const originalAppearance = desktopSettings.appearance()
+    const originalShortcut = desktopSettings.shortcut("focus-git")
+    const appearance = { ...originalAppearance, theme: originalAppearance.theme === "dark" ? "light" as const : "dark" as const }
+    const shortcut = "ctrl+shift+g"
+    try {
+      desktopSettings.saveAppearance(appearance)
+      expect(desktopSettings.saveShortcut("focus-git", shortcut)).toBe("saved")
+      desktopSettings.saveLayout(selectedWorkspaceId, custom)
+      desktopSettings.saveLayout(otherWorkspaceId, custom)
+
+      resetWorkspaceLayout(selectedWorkspaceId)
+
+      expect(desktopSettings.presentation(selectedWorkspaceId)).toBeUndefined()
+      expect(workspacePresentation(selectedWorkspaceId)).toEqual({ theme: appearance.theme, layout: defaultWorkspaceLayout })
+      expect(desktopSettings.presentation(otherWorkspaceId)?.layout).toEqual(custom)
+      expect(desktopSettings.appearance()).toEqual(appearance)
+      expect(desktopSettings.shortcut("focus-git")).toBe(shortcut)
+    } finally {
+      desktopSettings.deleteLayout(selectedWorkspaceId)
+      desktopSettings.deleteLayout(otherWorkspaceId)
+      desktopSettings.saveAppearance(originalAppearance)
+      desktopSettings.saveShortcut("focus-git", originalShortcut ?? "")
     }
   })
 

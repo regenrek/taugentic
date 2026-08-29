@@ -23,7 +23,7 @@ import { usePlugins } from "../features/plugins/use-plugins.js"
 import { DiagnosticsPanel } from "../features/diagnostics/diagnostics-panel.js"
 import { archiveConversation, cancelSelectedRun, cancelSideChat, closeSideChat, closeTemporaryConversation, closeWorkspaceShell, continueSideChat, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, joinFreshRun, loginAuthMethod, logoutAuthProfile, openProject, openSideChat, openSideChatPanel, removeRunAttachment, replaceAuthProfilePreferences, requestVoicePermission, restoreConversation, selectConversation, selectProject, setConversationPinned, setProjectSpace, spawnFreshRun, startSelectedRun, toggleRunAttachment, triggerWorkItem, updateRuntimeDraft, workspaceShell } from "../features/runtime/workspace-shell-machine.js"
 import { Sidebar } from "../features/sidebar/sidebar.js"
-import { isDockPanelVisible, saveDesktopTheme, saveWorkspaceLayout, workspacePresentation } from "../features/workspace-layout/layout-store.js"
+import { isDockPanelVisible, resetWorkspaceLayout, saveDesktopTheme, saveWorkspaceLayout, workspacePresentation } from "../features/workspace-layout/layout-store.js"
 import { panelRegistry } from "../features/workspace-layout/panels.js"
 import { navigationQuery } from "../platform/daemon/navigation-query.js"
 import { diagnosticsQuery } from "../platform/daemon/diagnostics-query.js"
@@ -326,7 +326,7 @@ export function App() {
       <text style={{ color: palette.text, fontSize: 13, fontWeight: 650 }}>TAUGENTIC</text><div style={{ flexGrow: 1 }} />
       <div testId="open-system-diagnostics" tabIndex={0} accessibilityRole="button" accessibilityName="Open System Diagnostics" onClick={() => setDiagnosticsOpen(true)} onKeyDown={(event) => { if (activates(event)) setDiagnosticsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Diagnostics</text></div>
       <div testId="open-plugins" tabIndex={0} accessibilityRole="button" accessibilityName="Open Plugins" onClick={() => setPluginsOpen(true)} onKeyDown={(event) => { if (activates(event)) setPluginsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Plugins</text></div>
-      {commands && <CommandSurface dispatcher={commands} settings={desktopSettings} settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} />}
+      {commands && <CommandSurface dispatcher={commands} settings={desktopSettings} workspaceId={selectedWorkspaceId} settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} onResetWorkspaceLayout={() => { if (selectedWorkspaceId) resetWorkspaceLayout(selectedWorkspaceId) }} />}
       <text testId="daemon-status" style={{ color: shell.context.phase === "ready" ? palette.accent : shell.context.phase === "unavailable" ? palette.warning : palette.textMuted, fontSize: 11 }}>{shellStatus(shell.context.phase)}</text>
     </div>
     <div style={{ height: 1, backgroundColor: palette.border }} />

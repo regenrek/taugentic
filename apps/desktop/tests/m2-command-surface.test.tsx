@@ -157,6 +157,23 @@ describe("M2 command surface", () => {
     } finally { unmount() }
   })
 
+  it("requires confirmation before resetting only the selected workspace layout", () => {
+    const settings = new DesktopSettings()
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const resets: string[] = []
+    const { render, renderer, unmount } = createTestRoot()
+    const click = (testId: string) => { const element = renderer.findByTestId(testId)!; const [x = 0, y = 0, width = 0, height = 0] = renderer.getElementBounds(element.id)!; renderer.nativeSimulateClick(x + width / 2, y + height / 2) }
+    try {
+      render(<CommandSurface dispatcher={dispatcher} settings={settings} workspaceId="workspace-reset" settingsOpen onSettingsOpenChange={() => {}} onResetWorkspaceLayout={() => resets.push("workspace-reset")} />)
+      click("reset-workspace-layout")
+      expect(renderer.findByTestId("confirm-reset-workspace-layout")).toBeDefined()
+      expect(resets).toEqual([])
+      click("confirm-reset-workspace-layout")
+      expect(resets).toEqual(["workspace-reset"])
+      expect(renderer.findByTestId("reset-workspace-layout")).toBeDefined()
+    } finally { unmount() }
+  })
+
   it("uses the mounted Workbench conversation route for composer commands, disabled accessibility, and focus restoration", () => {
     const calls: string[] = []
     const { render, renderer, unmount } = createTestRoot()
