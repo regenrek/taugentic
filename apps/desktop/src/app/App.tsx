@@ -302,6 +302,7 @@ export function App() {
     runActivity,
     approvalsInbox,
     openUrl: (url) => renderer.openUrl(url),
+    copyText: (text) => renderer.writeClipboardText(text),
   })
   const chooseProjectDirectory = async (): Promise<void> => {
     try {

@@ -3,6 +3,7 @@ import type { AgentTurnRow, ArtifactSummary, BoundedFileContent, CapsuleRecipe, 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { palette } from "../../app/theme.js"
+import { CopyTextButton } from "../../ui/copy-text-button.js"
 import { Pressable } from "../../ui/pressable.js"
 import { ArtifactsPanel, artifactDisplayName, type ArtifactPanelState } from "../artifacts/artifacts-panel.js"
 import { PullRequestsPanel } from "../code-host/pull-requests-panel.js"
@@ -40,6 +41,7 @@ export type ConversationPanelProps = {
   runStatus?: RunStatus
   onObjectiveChange(value: string): void
   onRemoveAttachment(path: string): void
+  copyText?(text: string): void
   recipes?: readonly CapsuleRecipe[]
   recipesLoading?: boolean
   recipesError?: string
@@ -143,7 +145,7 @@ export function panelRegistry(props: WorkbenchPanelProps): readonly DockPanel[] 
     {
       id: "activity",
       label: "Activity",
-      content: props.runActivity ? <RunActivityPanel activity={props.runActivity} inbox={props.approvalsInbox} /> : <div testId="run-activity-panel" style={{ padding: 20 }}><text style={{ color: palette.textMuted }}>Run activity is unavailable.</text></div>,
+      content: props.runActivity ? <RunActivityPanel activity={props.runActivity} inbox={props.approvalsInbox} copyText={props.copyText} /> : <div testId="run-activity-panel" style={{ padding: 20 }}><text style={{ color: palette.textMuted }}>Run activity is unavailable.</text></div>,
       closable: false,
     },
     {
@@ -179,7 +181,7 @@ export function panelRegistry(props: WorkbenchPanelProps): readonly DockPanel[] 
     {
       id: "diff",
       label: "Diff",
-      content: <DiffPanel {...patch} />,
+      content: <DiffPanel {...patch} copyText={props.copyText} />,
       closable: false,
     },
     {
@@ -225,6 +227,7 @@ export function ConversationPanel(props: ConversationPanelProps) {
         onOpenSideChat={props.onOpenSideChat}
         onOpenFreshSpawn={(parentRunId) => setFreshSpawnParentRunId(parentRunId)}
         onPinThreadWorkspace={props.onPinThreadWorkspace}
+        copyText={props.copyText}
       />
       <div style={{ display: "flex", flexDirection: "column", flexBasis: 320, minWidth: 260, gap: 10, overflow: "scroll" }}>
         <ConversationBranchGraph graph={props.branchGraph} state={props.branchGraphState} visible={props.cortexVisible === true} onOpen={(runId) => props.onOpenSideChatPanel?.(runId)} />
@@ -290,6 +293,7 @@ const Transcript = memo(function Transcript(props: {
   onOpenSideChat?(parentRunId: string, parentEventSeq: string): void
   onOpenFreshSpawn?(parentRunId: string): void
   onPinThreadWorkspace?(runId: string, cursor: string): void
+  copyText?(text: string): void
 }) {
   const [followTail, setFollowTail] = useState(true)
   useEffect(() => setFollowTail(true), [props.sessionId])
@@ -318,8 +322,8 @@ const Transcript = memo(function Transcript(props: {
       </Pressable></Fragment>
     }
     const item = rows[index - loadOlderOffset]
-    return item ? <TranscriptRow key={item.key} item={item} onOpenSideChat={props.onOpenSideChat} onOpenFreshSpawn={props.onOpenFreshSpawn} onPinThreadWorkspace={props.onPinThreadWorkspace} /> : null
-  }, [loadOlderOffset, props.hasOlder, props.loadingOlder, props.onLoadOlder, props.onOpenFreshSpawn, props.onOpenSideChat, props.onPinThreadWorkspace, rows])
+    return item ? <TranscriptRow key={item.key} item={item} onOpenSideChat={props.onOpenSideChat} onOpenFreshSpawn={props.onOpenFreshSpawn} onPinThreadWorkspace={props.onPinThreadWorkspace} copyText={props.copyText} /> : null
+  }, [loadOlderOffset, props.copyText, props.hasOlder, props.loadingOlder, props.onLoadOlder, props.onOpenFreshSpawn, props.onOpenSideChat, props.onPinThreadWorkspace, rows])
 
   if (!props.sessionId) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text style={{ color: palette.textMuted }}>Select a conversation to see its transcript.</text></div>
   if (props.loading && !rows.length) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text style={{ color: palette.textMuted }}>Loading conversation...</text></div>
@@ -344,7 +348,7 @@ const Transcript = memo(function Transcript(props: {
   </div>
 })
 
-function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWorkspace }: { item: TranscriptViewRow; onOpenSideChat?(parentRunId: string, parentEventSeq: string): void; onOpenFreshSpawn?(parentRunId: string): void; onPinThreadWorkspace?(runId: string, cursor: string): void }) {
+function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWorkspace, copyText }: { item: TranscriptViewRow; onOpenSideChat?(parentRunId: string, parentEventSeq: string): void; onOpenFreshSpawn?(parentRunId: string): void; onPinThreadWorkspace?(runId: string, cursor: string): void; copyText?(text: string): void }) {
   if (item.kind === "liveAssistant") {
     return <div testId={`assistant-message-${item.message.id}`} style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12, paddingBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
       <text style={{ color: palette.accent, fontSize: 10 }}>ASSISTANT · STREAMING</text>
@@ -364,7 +368,7 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
   if (row.kind === "user") {
     return <div testId={`user-message-${row.cursor.sequence}`} style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, paddingBottom: 12, paddingLeft: 56, paddingRight: 8 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 760, padding: 12, borderRadius: 12, backgroundColor: palette.panelRaised }}>
-        <text style={{ color: palette.text, fontSize: 13, userSelect: "text" }}>{row.text}</text>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}><text style={{ color: palette.text, fontSize: 13, userSelect: "text" }}>{row.text}</text><CopyTextButton testId={`copy-transcript-${row.cursor.sequence}`} text={row.text} copyText={copyText} label="Copy" /></div>
         {!!row.attachments.length && <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{row.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.revision}`}><div style={{ padding: 6, borderRadius: 6, borderWidth: 1, borderColor: palette.border }}><text style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>{attachment.kind === "image" ? `Image · ${attachment.path}` : attachment.path}</text></div></Fragment>)}</div>}
       </div>
       {sideChat}{freshSpawn}{pin}
@@ -373,7 +377,7 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
   if (row.kind === "assistant") {
     return <div testId={`assistant-message-${row.cursor.sequence}`} style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12, paddingBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
       <text style={{ color: palette.textFaint, fontSize: 10 }}>ASSISTANT</text>
-      <markdown source={row.text} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}><markdown source={row.text} /><CopyTextButton testId={`copy-transcript-${row.cursor.sequence}`} text={row.text} copyText={copyText} label="Copy" /></div>
       {sideChat}{freshSpawn}{pin}
     </div>
   }
@@ -381,10 +385,10 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
     const outputIsDiff = isUnifiedDiff(row.output)
     return <div testId={`tool-call-${row.cursor.sequence}`} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, marginBottom: 8, padding: 12, borderWidth: 1, borderColor: palette.border, borderRadius: 9, backgroundColor: palette.panel }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}><text style={{ color: palette.text, fontSize: 12, fontWeight: 600 }}>{row.toolName}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{String(row.outcome).toUpperCase()}</text></div>
-      {row.input && <code code={row.input} language="json" showHeader={false} />}
+      {row.input && <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}><code code={row.input} language="json" showHeader={false} /><CopyTextButton testId={`copy-tool-input-${row.cursor.sequence}`} text={row.input} copyText={copyText} label="Copy input" /></div>}
       {row.output && (outputIsDiff
-        ? <diff patch={row.output} wordDiff maxLines={240} />
-        : <code code={row.output} showHeader={false} />)}
+        ? <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}><diff patch={row.output} wordDiff maxLines={240} /><CopyTextButton testId={`copy-tool-output-${row.cursor.sequence}`} text={row.output} copyText={copyText} label="Copy output" /></div>
+        : <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}><code code={row.output} showHeader={false} /><CopyTextButton testId={`copy-tool-output-${row.cursor.sequence}`} text={row.output} copyText={copyText} label="Copy output" /></div>)}
       {sideChat}{freshSpawn}{pin}
     </div>
   }

@@ -3,6 +3,7 @@ import type { BoundedFileContent, NativeImagePreview, WorkspaceFileEntry } from 
 import { Fragment, useMemo, useState } from "react"
 
 import { palette } from "../../app/theme.js"
+import { CopyTextButton } from "../../ui/copy-text-button.js"
 import { Pressable } from "../../ui/pressable.js"
 
 export type FilePanelState = {
@@ -138,9 +139,9 @@ export function SourcePanel(props: FilePanelState) {
   </PanelFrame>
 }
 
-export function DiffPanel(props: PreviewSource) {
+export function DiffPanel(props: PreviewSource & { copyText?(text: string): void }) {
   const patch = props.content?.kind === "text" ? props.content.text : undefined
-  return <PanelFrame testId="diff-panel" title={props.label ? `Diff · ${props.label}` : "Diff"}>
+  return <PanelFrame testId="diff-panel" title={props.label ? `Diff · ${props.label}` : "Diff"} actions={patch ? <CopyTextButton testId="copy-selected-diff" text={patch} copyText={props.copyText} label="Copy patch" /> : undefined}>
     {props.loading && <Message>Loading diff…</Message>}
     {props.error && <Message error>{props.error}</Message>}
     {!props.loading && !props.error && !patch && <Message>Select a patch or diff.</Message>}
