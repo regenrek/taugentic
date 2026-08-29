@@ -1,6 +1,7 @@
 use ta_protocol::wire::{
-    ConversationPlacement, DaemonNavigationIntent, NavigationAgentRow, NavigationConversation,
-    NavigationSnapshot, ProjectId, SessionStatus, SpaceId,
+    ConversationPlacement, DaemonNavigationIntent, NavigationAgentRow, NavigationAttention,
+    NavigationConversation, NavigationSnapshot, ProjectId, ScheduledWorkOccurrenceState,
+    SessionStatus, SpaceId,
 };
 use ta_store::{
     NavigationConversationMetadata, NavigationState, PersistenceStore, SessionApprovalQuery,
@@ -34,6 +35,37 @@ where
             .iter()
             .map(|session| session.id.clone())
             .collect::<std::collections::BTreeSet<_>>();
+        let mut scheduled_work_attention = std::collections::BTreeSet::new();
+        for occurrence in store.scheduled_work_occurrences()? {
+            if !scheduled_work_requires_action(&occurrence.state) {
+                continue;
+            }
+            if let Some(definition) = store.scheduled_work(&occurrence.scheduled_work_id)? {
+                if session_ids.contains(&definition.session_id) {
+                    scheduled_work_attention.insert(definition.session_id);
+                }
+            }
+        }
+        let attention = sessions
+            .iter()
+            .map(|session| {
+                let pending_approval = !store
+                    .approvals_for_session(&SessionApprovalQuery {
+                        session_id: session.id.clone(),
+                        run_id: None,
+                        approval_id: None,
+                    })?
+                    .is_empty();
+                Ok((
+                    session.id.clone(),
+                    NavigationAttention {
+                        pending_approval,
+                        scheduled_work_requires_action: scheduled_work_attention
+                            .contains(&session.id),
+                    },
+                ))
+            })
+            .collect::<Result<std::collections::BTreeMap<_, _>, ta_store::StoreError>>()?;
         let conversation_metadata = state
             .conversations
             .into_iter()
@@ -48,14 +80,21 @@ where
                 search
                     .as_ref()
                     .is_none_or(|needle| session.title.to_lowercase().contains(needle))
-                    .then_some(NavigationConversation {
-                        session_id: item.session_id,
-                        workspace_id: session.workspace_id.clone(),
-                        title: session.title.clone(),
-                        status: session.status,
-                        placement: item.placement,
-                        archived: item.archived,
-                        pinned: item.pinned,
+                    .then(|| {
+                        let attention = attention
+                            .get(&item.session_id)
+                            .cloned()
+                            .expect("navigation attention exists for owned session");
+                        NavigationConversation {
+                            session_id: item.session_id,
+                            workspace_id: session.workspace_id.clone(),
+                            title: session.title.clone(),
+                            status: session.status,
+                            attention,
+                            placement: item.placement,
+                            archived: item.archived,
+                            pinned: item.pinned,
+                        }
                     })
             })
             .collect::<Vec<_>>();
@@ -67,18 +106,14 @@ where
                     .is_none_or(|needle| session.title.to_lowercase().contains(needle))
             })
             .map(|session| {
-                let awaiting_approval = store
-                    .approvals_for_session(&SessionApprovalQuery {
-                        session_id: session.id.clone(),
-                        run_id: None,
-                        approval_id: None,
-                    })
-                    .map(|items| !items.is_empty())?;
                 Ok(NavigationAgentRow {
+                    awaiting_approval: attention
+                        .get(&session.id)
+                        .expect("navigation attention exists for owned session")
+                        .pending_approval,
                     session_id: session.id,
                     title: session.title,
                     active: matches!(session.status, SessionStatus::Running),
-                    awaiting_approval,
                 })
             })
             .collect::<Result<Vec<_>, ta_store::StoreError>>()?;
@@ -245,6 +280,16 @@ where
         drop(store);
         self.navigation_snapshot(&owner_principal_id, None)
     }
+}
+
+fn scheduled_work_requires_action(state: &ScheduledWorkOccurrenceState) -> bool {
+    matches!(
+        state,
+        ScheduledWorkOccurrenceState::Failed { .. }
+            | ScheduledWorkOccurrenceState::BudgetExceeded { .. }
+            | ScheduledWorkOccurrenceState::PreparationFailed { .. }
+            | ScheduledWorkOccurrenceState::CleanupRequired { .. }
+    )
 }
 
 fn navigation_title(value: String) -> Result<String, AppServiceError> {

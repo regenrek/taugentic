@@ -1,4 +1,6 @@
 use super::*;
+use ta_protocol::wire::{CreateScheduledWorkRequest, RunId};
+use ta_store::{ReserveScheduledWorkOccurrence, ScheduledWorkRepository};
 
 #[test]
 fn get_session_returns_projected_summary() {
@@ -465,6 +467,61 @@ fn navigation_snapshot_search_normalizes_once_and_includes_all_conversation_plac
             .iter()
             .any(|conversation| conversation.session_id == temporary.id)
     );
+}
+
+#[test]
+fn navigation_snapshot_derives_scheduled_work_attention_without_persisting_it() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let session = service
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Attention required".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let created = service
+        .create_scheduled_work(
+            &session.id,
+            CreateScheduledWorkRequest {
+                objective: "Review failed work".to_string(),
+                selection: crate::orchestration::test_runtime_selection(
+                    &service,
+                    "runtime-openai-safe",
+                ),
+                due_at_ms: u64::MAX,
+            },
+        )
+        .expect("scheduled work should persist");
+    let run_id = RunId::new("run-navigation-attention").expect("run id");
+    let mut store = service.store.lock().expect("store should lock");
+    store
+        .reserve_scheduled_work_occurrence(ReserveScheduledWorkOccurrence {
+            scheduled_work_id: created.definition.id,
+            occurrence_id: created.occurrence.id.clone(),
+            run_id: run_id.clone(),
+        })
+        .expect("scheduled work should prepare");
+    store
+        .fail_preparing_scheduled_work_occurrence(
+            &created.occurrence.id,
+            &run_id,
+            "preparation failed".to_string(),
+        )
+        .expect("scheduled work should fail preparation");
+    drop(store);
+
+    let snapshot = service
+        .navigation_snapshot(TEST_OWNER_PRINCIPAL_ID, None)
+        .expect("navigation should load");
+    assert!(
+        snapshot.conversations[0]
+            .attention
+            .scheduled_work_requires_action
+    );
+    assert!(!snapshot.conversations[0].attention.pending_approval);
 }
 
 #[test]

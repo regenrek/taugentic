@@ -95,9 +95,10 @@ type SidebarProps = {
   onArchiveConversation?(sessionId: SessionId): void
   onRestoreConversation?(sessionId: SessionId): void
   onCloseTemporaryConversation?(sessionId: SessionId): void
+  onOpenAttention?(sessionId: SessionId): void
 }
 
-export function Sidebar({ snapshot, state, selectedProjectId, spaceTitle = "", conversationTitle, standaloneTitle = "", temporaryTitle = "", canCreateSpace = false, canCreateConversation, canCreateStandalone = false, canCreateTemporary = false, canOrganizeConversations = false, canOrganizeProjects = false, searchMode = false, searchLoading = false, searchError = false, workInbox, scheduledWork, dispatch, onSpaceTitleChange, onCreateSpace, onSetProjectSpace, onConversationTitleChange, onStandaloneTitleChange, onTemporaryTitleChange, onCreateConversation, onCreateStandalone, onCreateTemporary, onSetPinnedConversation, onArchiveConversation, onRestoreConversation, onCloseTemporaryConversation }: SidebarProps) {
+export function Sidebar({ snapshot, state, selectedProjectId, spaceTitle = "", conversationTitle, standaloneTitle = "", temporaryTitle = "", canCreateSpace = false, canCreateConversation, canCreateStandalone = false, canCreateTemporary = false, canOrganizeConversations = false, canOrganizeProjects = false, searchMode = false, searchLoading = false, searchError = false, workInbox, scheduledWork, dispatch, onSpaceTitleChange, onCreateSpace, onSetProjectSpace, onConversationTitleChange, onStandaloneTitleChange, onTemporaryTitleChange, onCreateConversation, onCreateStandalone, onCreateTemporary, onSetPinnedConversation, onArchiveConversation, onRestoreConversation, onCloseTemporaryConversation, onOpenAttention }: SidebarProps) {
   const activeConversations = projectConversations(snapshot, selectedProjectId)
   const archivedConversations = archivedProjectConversations(snapshot, selectedProjectId)
   const standalone = standaloneConversations(snapshot)
@@ -152,7 +153,7 @@ export function Sidebar({ snapshot, state, selectedProjectId, spaceTitle = "", c
     </div>}
     {searchLoading && <text testId="sidebar-search-loading" style={{ color: palette.textMuted, fontSize: 12 }}>Searching conversations…</text>}
     {searchError && <text testId="sidebar-search-error" accessibilityRole="alert" style={{ color: palette.warning, fontSize: 12 }}>Search results could not be loaded.</text>}
-    {!searchLoading && !searchError && conversations.map((conversation) => <ConversationRow key={conversation.sessionId} conversation={conversation} archived={conversation.archived} selected={state.selectedConversationId === conversation.sessionId} canOrganize={canOrganizeConversations} onOpen={() => dispatch({ type: "selectConversation", sessionId: conversation.sessionId })} onSetPinned={(pinned) => onSetPinnedConversation?.(conversation.sessionId, pinned)} onArchive={() => onArchiveConversation?.(conversation.sessionId)} onRestore={() => onRestoreConversation?.(conversation.sessionId)} onCloseTemporary={() => onCloseTemporaryConversation?.(conversation.sessionId)} />)}
+    {!searchLoading && !searchError && conversations.map((conversation) => <ConversationRow key={conversation.sessionId} conversation={conversation} archived={conversation.archived} selected={state.selectedConversationId === conversation.sessionId} canOrganize={canOrganizeConversations} onOpen={() => dispatch({ type: "selectConversation", sessionId: conversation.sessionId })} onOpenAttention={() => onOpenAttention?.(conversation.sessionId)} onSetPinned={(pinned) => onSetPinnedConversation?.(conversation.sessionId, pinned)} onArchive={() => onArchiveConversation?.(conversation.sessionId)} onRestore={() => onRestoreConversation?.(conversation.sessionId)} onCloseTemporary={() => onCloseTemporaryConversation?.(conversation.sessionId)} />)}
     {!searchLoading && !searchError && !conversations.length && <text style={{ color: palette.textMuted, fontSize: 12 }}>{searchMode ? "No matching conversations." : state.view === "archived" ? "No archived conversations available." : "No conversations available."}</text>}
   </div>
 }
@@ -161,15 +162,21 @@ function ProjectSpaceAction({ testId, label, selected, enabled, onActivate }: { 
   return <Pressable testId={testId} name={`Move project to ${label}`} disabled={!enabled} selected={selected} onPress={onActivate} style={{ cursor: enabled ? "pointer" : "default", padding: 5, backgroundColor: selected ? palette.accentDim : palette.panelRaised }}><text>{label}</text></Pressable>
 }
 
-function ConversationRow({ conversation, archived, selected, canOrganize, onOpen, onSetPinned, onArchive, onRestore, onCloseTemporary }: { conversation: NavigationConversation; archived: boolean; selected: boolean; canOrganize: boolean; onOpen(): void; onSetPinned(pinned: boolean): void; onArchive(): void; onRestore(): void; onCloseTemporary(): void }) {
+function ConversationRow({ conversation, archived, selected, canOrganize, onOpen, onOpenAttention, onSetPinned, onArchive, onRestore, onCloseTemporary }: { conversation: NavigationConversation; archived: boolean; selected: boolean; canOrganize: boolean; onOpen(): void; onOpenAttention(): void; onSetPinned(pinned: boolean): void; onArchive(): void; onRestore(): void; onCloseTemporary(): void }) {
   const canCloseTemporary = canOrganize && (
     conversation.status === "idle"
     || conversation.status === "failed"
     || conversation.status === "completed"
   )
   const buttonStyle = { cursor: canOrganize ? "pointer" : "default", padding: 4, backgroundColor: palette.panelRaised }
+  const attention = conversation.attention
+  const attentionLabel = [
+    attention.pendingApproval && "pending approval",
+    attention.scheduledWorkRequiresAction && "scheduled work requires action",
+  ].filter(Boolean).join("; ")
   return <div style={{ display: "flex", alignItems: "center", gap: 6, padding: 5, borderRadius: 7, backgroundColor: selected ? palette.panelRaised : palette.panel }}>
     <Pressable testId={`conversation-entry-${conversation.sessionId}`} name={`Open conversation ${conversation.title}`} selected={selected} onPress={onOpen} style={{ flexGrow: 1, padding: 4, cursor: "pointer" }}><text style={{ color: palette.text, fontSize: 13 }}>{conversation.pinned ? "★ " : ""}{conversation.title}</text></Pressable>
+    {attentionLabel && <Pressable testId={`conversation-attention-${conversation.sessionId}`} name={`Open Activity for ${conversation.title}: ${attentionLabel}`} onPress={onOpenAttention} style={{ padding: 4, backgroundColor: palette.warning }}><text>!</text></Pressable>}
     {archived
       ? <Pressable testId={`restore-conversation-${conversation.sessionId}`} name={`Restore conversation ${conversation.title}`} disabled={!canOrganize} onPress={onRestore} style={buttonStyle}><text>Restore</text></Pressable>
       : <><Pressable testId={`pin-conversation-${conversation.sessionId}`} name={`${conversation.pinned ? "Unpin" : "Pin"} conversation ${conversation.title}`} disabled={!canOrganize} onPress={() => onSetPinned(!conversation.pinned)} style={buttonStyle}><text>{conversation.pinned ? "Unpin" : "Pin"}</text></Pressable>{conversation.placement.kind === "temporary" ? <Pressable testId={`close-temporary-conversation-${conversation.sessionId}`} name={`Close temporary conversation ${conversation.title}`} disabled={!canCloseTemporary} onPress={onCloseTemporary} style={{ ...buttonStyle, cursor: canCloseTemporary ? "pointer" : "default" }}><text>Close</text></Pressable> : <Pressable testId={`archive-conversation-${conversation.sessionId}`} name={`Archive conversation ${conversation.title}`} disabled={!canOrganize} onPress={onArchive} style={buttonStyle}><text>Archive</text></Pressable>}</>}

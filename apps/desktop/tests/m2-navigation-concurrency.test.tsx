@@ -59,8 +59,8 @@ describe("M2 navigation concurrency", () => {
       spaces: [], agents: [],
       projects: [{ id: "project-a", title: "Project A", workspaceIds: ["workspace-a"] }],
       conversations: [
-        { sessionId: "old", title: "Old", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
-        { sessionId: "target", title: "Target", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "old", title: "Old", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "target", title: "Target", status: "idle" as const, attention: { pendingApproval: true, scheduledWorkRequiresAction: true }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
       ],
     }
     const root = createTestRoot()
@@ -72,7 +72,7 @@ describe("M2 navigation concurrency", () => {
       workspaceShell.send({ type: "SELECTED", sessionId: "old" })
       bridge.attachSession = () => new Promise<string>((resolve) => { resolveAttach = resolve })
       root.render(<QueryClientProvider client={desktopQueryClient}><App /></QueryClientProvider>)
-      const entry = root.renderer.findByTestId("conversation-entry-target")!
+      const entry = root.renderer.findByTestId("conversation-attention-target")!
       const sidebar = root.renderer.findByTestId("workspace-sidebar")!
       const [sidebarX = 0, sidebarY = 0, sidebarWidth = 0, sidebarHeight = 0] = root.renderer.getElementBounds(sidebar.id) ?? []
       const [, entryY = 0, , entryHeight = 0] = root.renderer.getElementBounds(entry.id) ?? []
@@ -89,6 +89,8 @@ describe("M2 navigation concurrency", () => {
       resolveAttach(JSON.stringify({ id: "target", nextRunSelection: { kind: "none" } }))
       await Promise.resolve()
       expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("target")
+      expect(workspaceShell.getSnapshot().context.focusPanelId).toBe("activity")
+      expect(root.renderer.getAutomationTree()).toContain('"testId":"conversation-attention-target","accessibility":{"role":"button","name":"Open Activity for Target: pending approval; scheduled work requires action"')
     } finally {
       bridge.attachSession = originalAttach
       root.unmount()
@@ -208,7 +210,7 @@ describe("M2 navigation concurrency", () => {
     const originalOpen = bridge.openProject
     let resolveIntent!: (value: string) => void
     let resolveOpen!: (value: string) => void
-    const baseline = { spaces: [], projects: [], agents: [], conversations: [{ sessionId: "baseline", title: "Baseline", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: false }] }
+    const baseline = { spaces: [], projects: [], agents: [], conversations: [{ sessionId: "baseline", title: "Baseline", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: false }] }
     workspaceShell.start()
     try {
       desktopQueryClient.setQueryData(navigationQueryKey, baseline)
@@ -218,7 +220,7 @@ describe("M2 navigation concurrency", () => {
 
       const pin = setConversationPinned("conversation-stale", true)
       const open = openProject("/project", true)
-      resolveIntent(JSON.stringify({ spaces: [], projects: [], agents: [], conversations: [{ sessionId: "stale", title: "Stale", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: true }] }))
+      resolveIntent(JSON.stringify({ spaces: [], projects: [], agents: [], conversations: [{ sessionId: "stale", title: "Stale", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: true }] }))
       await pin
       expect(desktopQueryClient.getQueryData<unknown>(navigationQueryKey)).toEqual(baseline)
       resolveOpen(JSON.stringify({ projectId: "project-opened", snapshot: baseline }))
@@ -269,7 +271,7 @@ describe("M2 navigation concurrency", () => {
     const originalOpenSession = bridge.openSession
     let resolveIntent!: (value: string) => void
     let resolveSession!: (value: string) => void
-    const baseline = { spaces: [], projects: [], agents: [], conversations: [{ sessionId: "baseline", title: "Baseline", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: false }] }
+    const baseline = { spaces: [], projects: [], agents: [], conversations: [{ sessionId: "baseline", title: "Baseline", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: false }] }
     workspaceShell.start()
     try {
       desktopQueryClient.setQueryData(navigationQueryKey, baseline)
@@ -279,7 +281,7 @@ describe("M2 navigation concurrency", () => {
 
       const pin = setConversationPinned("conversation-stale", true)
       const create = createProjectConversation("project-a", "workspace-a", "Created")
-      resolveIntent(JSON.stringify({ spaces: [], projects: [], agents: [], conversations: [{ sessionId: "stale", title: "Stale", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: true }] }))
+      resolveIntent(JSON.stringify({ spaces: [], projects: [], agents: [], conversations: [{ sessionId: "stale", title: "Stale", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: true }] }))
       await pin
       expect(desktopQueryClient.getQueryData<unknown>(navigationQueryKey)).toEqual(baseline)
       resolveSession(JSON.stringify({ id: "created", nextRunSelection: { kind: "none" } }))
@@ -424,6 +426,7 @@ describe("M2 navigation concurrency", () => {
       workspaceId: "workspace-scroll-owner",
       title: `Conversation ${index}`,
       status: "idle" as const,
+      attention: { pendingApproval: false, scheduledWorkRequiresAction: false },
       placement: { kind: "project" as const, projectId },
       archived: false,
       pinned: false,
@@ -501,7 +504,7 @@ describe("M2 navigation concurrency", () => {
       spaces: [{ id: "space-a", title: "Space A" }],
       agents: [],
       projects: [{ id: "project-a", title: "Project A", workspaceIds: ["workspace-a"] }],
-      conversations: [{ sessionId: "session-a", workspaceId: "workspace-a", title: "Session A", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false }],
+      conversations: [{ sessionId: "session-a", workspaceId: "workspace-a", title: "Session A", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false }],
     }
     const attached: string[] = []
     settings.saveNavigation({ sidebarView: "projects", expandedSpaceIds: ["space-a"], selectedProjectId: "project-a", selectedSessionId: "session-a" })
@@ -531,7 +534,7 @@ describe("M2 navigation concurrency", () => {
     const recovery = createWorkspaceNavigationRecovery(shell, settings, async (sessionId) => { attached.push(sessionId) })
     try {
       shell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
-      await recovery.restoreOnce({ spaces: [], agents: [], projects: [{ id: "present-project", title: "Present", workspaceIds: ["workspace-present"] }], conversations: [{ sessionId: "archived-session", workspaceId: "workspace-present", title: "Archived", status: "idle" as const, placement: { kind: "project" as const, projectId: "present-project" }, archived: true, pinned: false }] })
+      await recovery.restoreOnce({ spaces: [], agents: [], projects: [{ id: "present-project", title: "Present", workspaceIds: ["workspace-present"] }], conversations: [{ sessionId: "archived-session", workspaceId: "workspace-present", title: "Archived", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "present-project" }, archived: true, pinned: false }] })
       expect(shell.getSnapshot().context.selectedProjectId).toBeUndefined()
       expect(shell.getSnapshot().context.sidebar.selectedConversationId).toBeUndefined()
       expect(attached).toEqual([])

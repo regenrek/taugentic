@@ -14691,10 +14691,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "NavigationConversation": {
       "properties": {
         "archived": {
           "type": "boolean"
+        },
+        "attention": {
+          "$ref": "#/$defs/NavigationAttention",
+          "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
         },
         "pinned": {
           "type": "boolean"
@@ -14723,6 +14742,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "workspaceId",
         "title",
         "status",
+        "attention",
         "placement",
         "archived",
         "pinned"
@@ -22063,6 +22083,23 @@ export const PROTOCOL_JSON_SCHEMAS = {
   ],
   "title": "ConversationPlacement"
 },
+  NavigationAttention: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "pendingApproval": {
+      "type": "boolean"
+    },
+    "scheduledWorkRequiresAction": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "pendingApproval",
+    "scheduledWorkRequiresAction"
+  ],
+  "title": "NavigationAttention",
+  "type": "object"
+},
   NavigationConversation: {
   "$defs": {
     "ConversationPlacement": {
@@ -22109,6 +22146,21 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -22124,6 +22176,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "properties": {
     "archived": {
       "type": "boolean"
+    },
+    "attention": {
+      "$ref": "#/$defs/NavigationAttention",
+      "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
     },
     "pinned": {
       "type": "boolean"
@@ -22152,6 +22208,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "workspaceId",
     "title",
     "status",
+    "attention",
     "placement",
     "archived",
     "pinned"
@@ -22253,10 +22310,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "NavigationConversation": {
       "properties": {
         "archived": {
           "type": "boolean"
+        },
+        "attention": {
+          "$ref": "#/$defs/NavigationAttention",
+          "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
         },
         "pinned": {
           "type": "boolean"
@@ -22285,6 +22361,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "workspaceId",
         "title",
         "status",
+        "attention",
         "placement",
         "archived",
         "pinned"
@@ -22456,10 +22533,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "NavigationConversation": {
       "properties": {
         "archived": {
           "type": "boolean"
+        },
+        "attention": {
+          "$ref": "#/$defs/NavigationAttention",
+          "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
         },
         "pinned": {
           "type": "boolean"
@@ -22488,6 +22584,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "workspaceId",
         "title",
         "status",
+        "attention",
         "placement",
         "archived",
         "pinned"
@@ -23104,10 +23201,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "NavigationConversation": {
       "properties": {
         "archived": {
           "type": "boolean"
+        },
+        "attention": {
+          "$ref": "#/$defs/NavigationAttention",
+          "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
         },
         "pinned": {
           "type": "boolean"
@@ -23136,6 +23252,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "workspaceId",
         "title",
         "status",
+        "attention",
         "placement",
         "archived",
         "pinned"

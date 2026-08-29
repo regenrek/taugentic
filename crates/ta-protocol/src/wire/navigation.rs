@@ -54,9 +54,20 @@ pub struct NavigationConversation {
     /// Derived from the canonical session projection when the snapshot is read.
     /// Navigation persistence deliberately does not retain this value.
     pub status: SessionStatus,
+    /// Bounded, daemon-derived operator attention. Navigation persistence
+    /// deliberately does not retain this value.
+    pub attention: NavigationAttention,
     pub placement: ConversationPlacement,
     pub archived: bool,
     pub pinned: bool,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct NavigationAttention {
+    pub pending_approval: bool,
+    pub scheduled_work_requires_action: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

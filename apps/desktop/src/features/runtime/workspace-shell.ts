@@ -30,10 +30,12 @@ import { createDesktopRuntime } from "../../platform/daemon/desktop-runtime.js"
 import { desktopQueryClient } from "../../platform/daemon/query-client.js"
 import { decodeProtocolJson } from "../../platform/daemon/protocol-json.js"
 import { runActivityQueryRoot } from "../../platform/daemon/run-activity-query.js"
+import { scheduledWorkQueryKey } from "../../platform/daemon/scheduled-work-query.js"
 import { invalidateTranscript, transcriptHasCommittedAssistant, transcriptQueryKey } from "../../platform/daemon/transcript-query.js"
 import { observeVoice, requestVoicePermission as requestNativeVoicePermission } from "../../platform/daemon/voice-query.js"
 import { workItemsQueryKey } from "../../platform/daemon/work-items-query.js"
 import { desktopSettings } from "../../platform/settings/desktop-settings.js"
+import type { FocusablePanelId } from "../commands/registry.js"
 import type { SidebarAction } from "../sidebar/sidebar.js"
 import { isTerminalStatus, statusForDeltas, workspaceShellMachine, type ShellContext } from "./workspace-shell-machine.js"
 export const desktopRuntime = createDesktopRuntime()
@@ -87,7 +89,10 @@ async function receiveLifecycle(projection: DesktopDaemonLifecycleProjection): P
   }
   const sessionId = workspaceShell.getSnapshot().context.sidebar.selectedConversationId
   if (sessionId && (projection.invalidated || projection.status === "snapshotRehydrationRequired")) {
-    await invalidateConversationBranchesForLifecycleRecovery(desktopQueryClient, sessionId)
+    await Promise.all([
+      invalidateConversationBranchesForLifecycleRecovery(desktopQueryClient, sessionId),
+      desktopQueryClient.invalidateQueries({ queryKey: scheduledWorkQueryKey(sessionId) }),
+    ])
   }
 }
 function isShellReady(): boolean {
@@ -242,7 +247,7 @@ export async function replaceAuthProfilePreferences(
     workspaceShell.send({ type: "ERROR", message: "The account preferences could not be saved." })
   }
 }
-export async function selectConversation(sessionId: SessionId, persist = true): Promise<void> {
+export async function selectConversation(sessionId: SessionId, persist = true, focusPanelId: FocusablePanelId = "conversation"): Promise<void> {
   if (!isShellReady()) return
   const requestId = ++selectionRequestId
   pendingSelection = { sessionId, requestId }
@@ -252,6 +257,7 @@ export async function selectConversation(sessionId: SessionId, persist = true): 
     pendingSelection = undefined
     desktopRuntime.bridge.releaseRunEventSubscription()
     workspaceShell.send({ type: "SELECTED", sessionId })
+    if (focusPanelId !== "conversation") workspaceShell.send({ type: "FOCUS_PANEL", panelId: focusPanelId })
     if (persist) navigationRecovery.persist()
     if (session.nextRunSelection.kind === "selected") {
       workspaceShell.send({ type: "RUNTIME_DRAFT", draft: session.nextRunSelection.selection })

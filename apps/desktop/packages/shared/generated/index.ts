@@ -220,6 +220,7 @@ export type { ProjectId } from "./ProjectId.js";
 export type { NavigationSpace } from "./NavigationSpace.js";
 export type { NavigationProject } from "./NavigationProject.js";
 export type { ConversationPlacement } from "./ConversationPlacement.js";
+export type { NavigationAttention } from "./NavigationAttention.js";
 export type { NavigationConversation } from "./NavigationConversation.js";
 export type { NavigationAgentRow } from "./NavigationAgentRow.js";
 export type { NavigationSnapshot } from "./NavigationSnapshot.js";

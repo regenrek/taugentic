@@ -137,7 +137,7 @@ describe("M2 desktop shell ownership", () => {
       desktopQueryClient.clear()
       desktopQueryClient.setQueryData(navigationQueryKey, {
         spaces: [], agents: [], projects: [],
-        conversations: [{ sessionId, workspaceId: "workspace-scheduled", title: "Scheduled conversation", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: false }],
+        conversations: [{ sessionId, workspaceId: "workspace-scheduled", title: "Scheduled conversation", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: false }],
       })
       desktopQueryClient.setQueryData(scheduledWorkQueryKey(sessionId as never), {
         occurrences: [{ id: "occurrence-scheduled", scheduledWorkId: "scheduled-one", dueAtMs: "1780000000000", state: { kind: "claimed", run_id: linkedRunId } }],
@@ -189,8 +189,8 @@ describe("M2 desktop shell ownership", () => {
         { id: "project-conversation", title: "Conversation", workspaceIds: ["workspace-conversation"] },
       ],
       conversations: [
-        { sessionId: "standalone", workspaceId: "workspace-standalone", title: "Standalone", status: "idle", placement: { kind: "standalone" }, archived: false, pinned: false },
-        { sessionId: "project-thread", workspaceId: "workspace-thread", title: "Project thread", status: "idle", placement: { kind: "project", projectId: "project-conversation" }, archived: false, pinned: false },
+        { sessionId: "standalone", workspaceId: "workspace-standalone", title: "Standalone", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: false },
+        { sessionId: "project-thread", workspaceId: "workspace-thread", title: "Project thread", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project", projectId: "project-conversation" }, archived: false, pinned: false },
       ],
     } as never
 
@@ -329,9 +329,9 @@ describe("M2 desktop shell ownership", () => {
       projects: [],
       agents: [],
       conversations: [
-        { sessionId: "conversation-a", workspaceId: "workspace-a", title: "A", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
-        { sessionId: "conversation-b", workspaceId: "workspace-b", title: "B", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-b" }, archived: false, pinned: false },
-        { sessionId: "conversation-c", workspaceId: "workspace-c", title: "C", status: "idle" as const, placement: { kind: "standalone" as const }, archived: false, pinned: false },
+        { sessionId: "conversation-a", workspaceId: "workspace-a", title: "A", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "conversation-b", workspaceId: "workspace-b", title: "B", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-b" }, archived: false, pinned: false },
+        { sessionId: "conversation-c", workspaceId: "workspace-c", title: "C", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" as const }, archived: false, pinned: false },
       ],
     }
 
@@ -343,8 +343,8 @@ describe("M2 desktop shell ownership", () => {
     const snapshot = {
       spaces: [], projects: [], agents: [],
       conversations: [
-        { sessionId: "active", workspaceId: "workspace-a", title: "Active", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: true },
-        { sessionId: "archived", workspaceId: "workspace-a", title: "Archived", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
+        { sessionId: "active", workspaceId: "workspace-a", title: "Active", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: true },
+        { sessionId: "archived", workspaceId: "workspace-a", title: "Archived", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
       ],
     }
 
@@ -356,9 +356,9 @@ describe("M2 desktop shell ownership", () => {
     const snapshot = {
       spaces: [], projects: [], agents: [],
       conversations: [
-        { sessionId: "standalone", workspaceId: "workspace-a", title: "Standalone", status: "idle" as const, placement: { kind: "standalone" as const }, archived: false, pinned: false },
-        { sessionId: "temporary", workspaceId: "workspace-a", title: "Temporary", status: "completed" as const, placement: { kind: "temporary" as const }, archived: false, pinned: false },
-        { sessionId: "project", workspaceId: "workspace-a", title: "Project", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "standalone", workspaceId: "workspace-a", title: "Standalone", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" as const }, archived: false, pinned: false },
+        { sessionId: "temporary", workspaceId: "workspace-a", title: "Temporary", status: "completed" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "temporary" as const }, archived: false, pinned: false },
+        { sessionId: "project", workspaceId: "workspace-a", title: "Project", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
       ],
     }
 
@@ -371,10 +371,10 @@ describe("M2 desktop shell ownership", () => {
     const resultSnapshot = {
       spaces: [], projects: [], agents: [],
       conversations: [
-        { sessionId: "project-result", workspaceId: "workspace-a", title: "Needle project", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
-        { sessionId: "standalone-result", workspaceId: "workspace-a", title: "Needle standalone", status: "idle" as const, placement: { kind: "standalone" as const }, archived: false, pinned: false },
-        { sessionId: "temporary-result", workspaceId: "workspace-a", title: "Needle temporary", status: "idle" as const, placement: { kind: "temporary" as const }, archived: false, pinned: false },
-        { sessionId: "archived-result", workspaceId: "workspace-a", title: "Needle archived", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
+        { sessionId: "project-result", workspaceId: "workspace-a", title: "Needle project", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "standalone-result", workspaceId: "workspace-a", title: "Needle standalone", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" as const }, archived: false, pinned: false },
+        { sessionId: "temporary-result", workspaceId: "workspace-a", title: "Needle temporary", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "temporary" as const }, archived: false, pinned: false },
+        { sessionId: "archived-result", workspaceId: "workspace-a", title: "Needle archived", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
       ],
     }
     const runtime = createDesktopRuntime({
@@ -427,8 +427,8 @@ describe("M2 desktop shell ownership", () => {
         snapshot={{
           spaces: [], projects: [], agents: [],
           conversations: [
-            { sessionId: "temporary-idle", workspaceId: "workspace-a", title: "Idle temporary", status: "idle", placement: { kind: "temporary" }, archived: false, pinned: false },
-            { sessionId: "temporary-paused", workspaceId: "workspace-a", title: "Paused temporary", status: "paused", placement: { kind: "temporary" }, archived: false, pinned: false },
+            { sessionId: "temporary-idle", workspaceId: "workspace-a", title: "Idle temporary", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "temporary" }, archived: false, pinned: false },
+            { sessionId: "temporary-paused", workspaceId: "workspace-a", title: "Paused temporary", status: "paused", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "temporary" }, archived: false, pinned: false },
           ],
         }}
         state={{ view: "spaces", filter: "", expandedSpaceIds: [] }}
@@ -466,9 +466,9 @@ describe("M2 desktop shell ownership", () => {
     const snapshot = {
       spaces: [], projects: [], agents: [],
       conversations: [
-        { sessionId: "active", workspaceId: "workspace-a", title: "Active", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
-        { sessionId: "pinned", workspaceId: "workspace-a", title: "Pinned", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: true },
-        { sessionId: "archived", workspaceId: "workspace-a", title: "Archived", status: "idle" as const, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
+        { sessionId: "active", workspaceId: "workspace-a", title: "Active", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: false },
+        { sessionId: "pinned", workspaceId: "workspace-a", title: "Pinned", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: false, pinned: true },
+        { sessionId: "archived", workspaceId: "workspace-a", title: "Archived", status: "idle" as const, attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project" as const, projectId: "project-a" }, archived: true, pinned: false },
       ],
     }
     try {

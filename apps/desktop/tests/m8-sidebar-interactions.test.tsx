@@ -19,7 +19,7 @@ describe("M8 sidebar interaction semantics", () => {
           spaces: [{ id: "space-one", title: "Product" }],
           projects: [{ id: "project-one", title: "Desktop", spaceId: "space-one", workspaceIds: [] }],
           agents: [],
-          conversations: [{ sessionId: "conversation-one", workspaceId: "workspace-one", title: "Design review", status: "idle", placement: { kind: "project", projectId: "project-one" }, archived: false, pinned: false }],
+          conversations: [{ sessionId: "conversation-one", workspaceId: "workspace-one", title: "Design review", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "project", projectId: "project-one" }, archived: false, pinned: false }],
         }}
         state={{ view: "spaces", filter: "", expandedSpaceIds: ["space-one"], selectedConversationId: "conversation-one" }}
         selectedProjectId="project-one"

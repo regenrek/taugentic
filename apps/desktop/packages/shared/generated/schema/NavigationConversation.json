@@ -44,6 +44,21 @@
         }
       ]
     },
+    "NavigationAttention": {
+      "properties": {
+        "pendingApproval": {
+          "type": "boolean"
+        },
+        "scheduledWorkRequiresAction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pendingApproval",
+        "scheduledWorkRequiresAction"
+      ],
+      "type": "object"
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -59,6 +74,10 @@
   "properties": {
     "archived": {
       "type": "boolean"
+    },
+    "attention": {
+      "$ref": "#/$defs/NavigationAttention",
+      "description": "Bounded, daemon-derived operator attention. Navigation persistence\ndeliberately does not retain this value."
     },
     "pinned": {
       "type": "boolean"
@@ -87,6 +106,7 @@
     "workspaceId",
     "title",
     "status",
+    "attention",
     "placement",
     "archived",
     "pinned"

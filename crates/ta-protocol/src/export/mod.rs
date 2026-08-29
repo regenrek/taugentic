@@ -5,7 +5,10 @@ use thiserror::Error;
 use crate::wire::DAEMON_PROTOCOL_VERSION;
 
 mod schema;
+mod schema_core;
+mod schema_core_runtime;
 mod typescript;
+mod typescript_generated;
 
 pub use schema::export_json_schemas;
 pub use typescript::export_typescript_bindings;
