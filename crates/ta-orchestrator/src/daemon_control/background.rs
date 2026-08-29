@@ -692,16 +692,16 @@ mod tests {
     #[test]
     fn launch_agent_paths_match_for_same_plist() {
         assert!(launch_agent_paths_match(
-            Path::new("/Users/kregenrek/Library/LaunchAgents/com.taugentic.daemon.plist"),
-            "/Users/kregenrek/Library/LaunchAgents/com.taugentic.daemon.plist",
+            Path::new("Library/LaunchAgents/com.taugentic.daemon.plist"),
+            "Library/LaunchAgents/com.taugentic.daemon.plist",
         ));
     }
 
     #[test]
     fn launch_agent_paths_do_not_match_for_temp_agent() {
         assert!(!launch_agent_paths_match(
-            Path::new("/Users/kregenrek/Library/LaunchAgents/com.taugentic.daemon.plist"),
-            "/Users/kregenrek/taugentic-dev/tmp/ta-cli-control-serve-mutating-1775928468144206000/Library/LaunchAgents/com.taugentic.daemon.plist",
+            Path::new("Library/LaunchAgents/com.taugentic.daemon.plist"),
+            "tmp/test/Library/LaunchAgents/com.taugentic.daemon.plist",
         ));
     }
 }

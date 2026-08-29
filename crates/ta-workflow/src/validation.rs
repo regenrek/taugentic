@@ -73,6 +73,15 @@ fn validate_workflow(workflow: &WorkflowDefinition, errors: &mut Vec<WorkflowVal
             "github_issues source requires repo in owner/name form",
         );
     }
+    if workflow.source.kind == WorkflowSourceKind::GithubIssues
+        && workflow.source.code_host_account_id.is_none()
+    {
+        push(
+            errors,
+            "$.source.code_host_account_id",
+            "github_issues source requires an explicit code-host account id",
+        );
+    }
     validate_positive_u32(
         workflow.orchestrator.max_concurrent_missions,
         "$.orchestrator.max_concurrent_missions",
@@ -226,6 +235,7 @@ name: default-github-implementation
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-test
   active_states: ["ready"]
   terminal_states: ["done", "cancelled"]
 orchestrator:
@@ -282,6 +292,7 @@ name: invalid
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-test
   active_states: ["ready"]
   terminal_states: ["done"]
 orchestrator:

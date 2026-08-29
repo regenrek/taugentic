@@ -1,6 +1,7 @@
 use ta_protocol::wire::{
     AgentStreamEvent, AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, DaemonEvent,
-    ForkRunRequest, RunId, RunStatus, StreamEmission,
+    ForkRunRequest, RunId, RunStatus, StreamEmission, WorkspaceFileAttachment,
+    WorkspaceFileAttachmentRequest, WorkspaceFileKind,
 };
 use ta_store::{CommitRepository, CommitRunTransition, InMemoryStore, ProjectionRepository};
 
@@ -48,11 +49,59 @@ fn append_parent_events(
         .commit_run_transition(CommitRunTransition {
             session_id: session_id.clone(),
             run: existing,
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
             events,
             occurred_at_ms: current_time_ms(),
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("parent events should persist")
         .events
+}
+
+fn append_parent_user_turn(
+    execution: &RunExecutionService<InMemoryStore>,
+    session_id: &SessionId,
+    parent_run_id: &RunId,
+) {
+    let mut store = execution.store.lock().expect("store should not poison");
+    let existing = store
+        .run(parent_run_id)
+        .expect("run lookup should work")
+        .expect("parent should exist");
+    let text = existing.objective.clone();
+    let status = existing.status;
+    let event = match status {
+        RunStatus::Queued | RunStatus::Running | RunStatus::WaitingForApproval => {
+            crate::RunEvent::active(parent_run_id.clone(), status, None, None, None)
+                .expect("parent user-turn status should be active")
+        }
+        RunStatus::Completed
+        | RunStatus::Failed
+        | RunStatus::BudgetExceeded
+        | RunStatus::Cancelled => crate::RunEvent::terminal(
+            parent_run_id.clone(),
+            status,
+            crate::RunStatusReason::new("parent user turn")
+                .expect("parent user-turn terminal reason should be valid"),
+            None,
+            None,
+            None,
+        )
+        .expect("parent user-turn status should be terminal"),
+    };
+    store
+        .commit_run_transition(CommitRunTransition {
+            session_id: session_id.clone(),
+            run: existing,
+            user_turn: ta_store::UserTurnCommit::Append {
+                text,
+                attachments: Vec::new(),
+            },
+            events: vec![DaemonEvent::Run(event)],
+            occurred_at_ms: current_time_ms(),
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+        })
+        .expect("parent user turn should persist");
 }
 
 fn assistant_turn_events(run_id: &RunId, turn: &str, text: &str) -> Vec<DaemonEvent> {
@@ -96,19 +145,33 @@ fn set_parent_status(
         .run(parent_run_id)
         .expect("run lookup should work")
         .expect("parent should exist");
+    let event = match status {
+        RunStatus::Queued | RunStatus::Running | RunStatus::WaitingForApproval => {
+            crate::RunEvent::active(parent_run_id.clone(), status, None, None, None)
+                .expect("parent status should be active")
+        }
+        RunStatus::Completed
+        | RunStatus::Failed
+        | RunStatus::BudgetExceeded
+        | RunStatus::Cancelled => crate::RunEvent::terminal(
+            parent_run_id.clone(),
+            status,
+            crate::RunStatusReason::new(format!("parent {status:?}"))
+                .expect("parent terminal status reason should be valid"),
+            None,
+            None,
+            None,
+        )
+        .expect("parent status should be terminal"),
+    };
     store
         .commit_run_transition(CommitRunTransition {
             session_id: session_id.clone(),
             run: RunProjection { status, ..existing },
-            events: vec![DaemonEvent::Run(crate::RunEvent {
-                run_id: parent_run_id.clone(),
-                status,
-                detail: format!("parent {status:?}"),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            })],
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(event)],
             occurred_at_ms: current_time_ms(),
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("status update should persist");
 }
@@ -126,6 +189,7 @@ fn fork_run_replays_parent_state_through_turn_boundary() {
             selection,
         )
         .expect("parent should seed");
+    append_parent_user_turn(&execution, &session.id, &parent.run.id);
     let turn_one = append_parent_events(
         &execution,
         &session.id,
@@ -147,13 +211,69 @@ fn fork_run_replays_parent_state_through_turn_boundary() {
         )
         .expect("turn-boundary fork should pass");
     let initial_state = execution
-        .fork_initial_state_for_run(&session.id, &fork.run.id)
+        .fork_ancestor_history_for_run(&session.id, &fork.run.id)
         .expect("fork state should build")
         .expect("fork state should exist");
 
     assert_eq!(initial_state.messages.len(), 2);
     assert_eq!(initial_state.messages[0].content, "Parent objective");
     assert_eq!(initial_state.messages[1].content, "first answer");
+}
+
+#[test]
+fn fork_run_replays_the_parent_attachment_manifest() {
+    let runtime = crate::RuntimeService::bootstrap();
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    let session = open_session(&app, "Attachment fork replay");
+    let mut command = start_run_command(&app, "Parent with context", "runtime-openai-safe");
+    command.attachments = vec![WorkspaceFileAttachmentRequest {
+        path: "docs/context.md".to_string(),
+        expected_revision: "sha256:context".to_string(),
+    }];
+    let parent = execution
+        .start_run_with_validated_attachments(
+            session.id.clone(),
+            command,
+            vec![WorkspaceFileAttachment {
+                path: "docs/context.md".to_string(),
+                revision: "sha256:context".to_string(),
+                kind: WorkspaceFileKind::Text,
+                byte_len: 128,
+            }],
+        )
+        .expect("validated parent should start");
+    let events = append_parent_events(
+        &execution,
+        &session.id,
+        &parent.run.id,
+        assistant_turn_events(&parent.run.id, "turn-1", "context accepted"),
+    );
+    let boundary = events.last().expect("turn boundary").sequence;
+
+    let fork = execution
+        .fork_run(
+            session.id.clone(),
+            fork_request(&session.id, &parent.run.id, boundary),
+        )
+        .expect("attachment parent should fork");
+    let initial_state = execution
+        .fork_ancestor_history_for_run(&session.id, &fork.run.id)
+        .expect("fork state should build")
+        .expect("fork state should exist");
+
+    assert_eq!(initial_state.messages.len(), 2);
+    assert!(
+        initial_state.messages[0]
+            .content
+            .starts_with("Parent with context\n\n<taugentic_workspace_attachments>")
+    );
+    assert!(
+        initial_state.messages[0]
+            .content
+            .contains("docs/context.md")
+    );
+    assert!(initial_state.messages[0].content.contains("sha256:context"));
+    assert_eq!(initial_state.messages[1].content, "context accepted");
 }
 
 #[test]
@@ -225,6 +345,7 @@ fn fork_run_replays_completed_parent_to_last_event() {
             selection,
         )
         .expect("parent should seed");
+    append_parent_user_turn(&execution, &session.id, &parent.run.id);
     append_parent_events(
         &execution,
         &session.id,
@@ -252,7 +373,7 @@ fn fork_run_replays_completed_parent_to_last_event() {
         )
         .expect("completed parent should fork");
     let initial_state = execution
-        .fork_initial_state_for_run(&session.id, &fork.run.id)
+        .fork_ancestor_history_for_run(&session.id, &fork.run.id)
         .expect("fork state should build")
         .expect("fork state should exist");
 

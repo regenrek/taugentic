@@ -14,6 +14,25 @@ const MACOS_CA_BUNDLE: &str = "/private/etc/ssl/cert.pem";
 const SSL_CERT_FILE_ENV: &str = "SSL_CERT_FILE";
 const CODEX_HOME_ENV: &str = "CODEX_HOME";
 
+pub(crate) fn run_on_control_thread<T, F>(task: F) -> Result<T, CodexLlmClientError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, CodexLlmClientError> + Send + 'static,
+{
+    thread::Builder::new()
+        .name("taugentic-codex-control".to_string())
+        .spawn(task)
+        .map_err(|error| {
+            CodexLlmClientError::CommandFailed(format!(
+                "failed to spawn Codex control worker: {error}"
+            ))
+        })?
+        .join()
+        .map_err(|_| {
+            CodexLlmClientError::CommandFailed("Codex control worker panicked".to_string())
+        })?
+}
+
 pub(crate) fn app_server_env(
     auth_profile_id: &str,
 ) -> Result<Vec<(&'static str, OsString)>, CodexLlmClientError> {

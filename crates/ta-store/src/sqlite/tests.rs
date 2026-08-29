@@ -43,11 +43,15 @@ fn test_db_path(label: &str) -> PathBuf {
 mod agent_turns;
 mod artifacts;
 mod checkpoints;
+mod code_host_accounts;
 mod commits;
 mod events;
 mod migrations;
+mod plugins;
 mod principals;
 mod runs_list;
+mod scheduled_work;
 mod sessions;
+mod thread_workspace;
 mod work_items;
 mod workspaces;

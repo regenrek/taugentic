@@ -1,5 +1,9 @@
 use super::*;
-use ta_protocol::wire::{AuthProfileManagementMode, RuntimePolicyMode};
+use crate::orchestration::agent_runtime::built_in_agent_runtime_strategies;
+use ta_protocol::wire::{
+    AgentRuntimeMediaCapabilities, AgentRuntimeMediaCapability, AuthProfileManagementMode,
+    RuntimePolicyMode,
+};
 use ta_provider_acp::descriptor::{AcpLaunchKind, AcpProviderDescriptor};
 
 fn strategy_id(value: &str) -> AgentRuntimeStrategyId {
@@ -37,6 +41,7 @@ fn fake_strategy(provider: &str, runtime_profile: &str) -> StrategyDescriptor {
             provider_id,
             auth_method_id: Some(auth_method_id),
             policy_mode: RuntimePolicyMode::Allow,
+            execution_kind: ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun,
         }],
     )
 }
@@ -68,6 +73,7 @@ fn fake_runtime_profile(provider: &str, runtime_profile: &str) -> RuntimeProfile
         provider_id: strategy_id(provider),
         auth_method_id: Some(auth_method_id(&format!("auth-{provider}"))),
         policy_mode: RuntimePolicyMode::Allow,
+        execution_kind: ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun,
     }
 }
 
@@ -226,6 +232,7 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
                 provider_id,
                 auth_method_id: None,
                 policy_mode: RuntimePolicyMode::RequireApproval,
+                execution_kind: ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun,
             }],
         ),
         StrategyKind::AcpChildProcess { provider },
@@ -237,4 +244,27 @@ fn acp_snapshot_encodes_descriptor_owned_delegated_auth_and_runtime_model_discov
     assert!(snapshot.auth_methods.is_empty());
     assert!(snapshot.providers[0].models.is_empty());
     assert_eq!(snapshot.providers[0].id.as_str(), "test-acp");
+}
+
+#[test]
+fn model_media_capabilities_are_closed_and_projected() {
+    let registry = StrategyRegistry::from_registered(built_in_agent_runtime_strategies()).unwrap();
+    let snapshot = registry.runtime_snapshot().unwrap();
+    let realtime = snapshot
+        .providers
+        .into_iter()
+        .find(|provider| provider.id.as_str() == "openai")
+        .unwrap()
+        .models
+        .into_iter()
+        .find(|model| model.id.as_str() == "gpt-realtime-2.1")
+        .unwrap();
+    assert_eq!(
+        realtime.media_capabilities.voice_input,
+        AgentRuntimeMediaCapability::Supported
+    );
+    assert_eq!(
+        realtime.media_capabilities.voice_output,
+        AgentRuntimeMediaCapability::Supported
+    );
 }

@@ -31,8 +31,26 @@ pub struct AgentRuntimeModelRef {
     pub reasoning: bool,
     pub tool_call: bool,
     pub structured_output: bool,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub input_modalities: Vec<String>,
+    pub media_capabilities: AgentRuntimeMediaCapabilities,
+}
+
+/// Closed capabilities for the selected runtime model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum AgentRuntimeMediaCapability {
+    Unsupported,
+    Supported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentRuntimeMediaCapabilities {
+    pub image_input: AgentRuntimeMediaCapability,
+    pub image_output: AgentRuntimeMediaCapability,
+    pub voice_input: AgentRuntimeMediaCapability,
+    pub voice_output: AgentRuntimeMediaCapability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

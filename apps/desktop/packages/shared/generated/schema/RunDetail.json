@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "CapsuleResult": {
       "oneOf": [
         {
@@ -1166,6 +1174,16 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authProfileExhaustion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthProfileExhaustion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "claimedFiles": {
       "items": {
         "type": "string"

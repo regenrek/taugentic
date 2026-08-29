@@ -1,6 +1,7 @@
 use ta_protocol::wire::{
     AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState, AuthProfileId,
-    AuthProfileManagementMode, AuthProfileRef, AuthProfileState,
+    AuthProfileManagementMode, AuthProfilePreferences, AuthProfileRef, AuthProfileState,
+    AuthProfileUsage,
 };
 use ta_store::{AuthProfileProjection, AuthProfileRepository, InMemoryStore};
 
@@ -17,6 +18,13 @@ fn durable_auth_profiles_keep_method_and_provider_ownership() {
                 account_hint: None,
                 plan_tier: None,
             },
+            preferences: AuthProfilePreferences {
+                label: "Codex ChatGPT".to_string(),
+                order: 0,
+                is_default: false,
+            },
+            usage: AuthProfileUsage::Unavailable,
+            exhaustion: None,
             connection_state: AuthProfileConnectionState::Connected,
             last_error: None,
             management_mode: AuthProfileManagementMode::Interactive,
@@ -28,8 +36,6 @@ fn durable_auth_profiles_keep_method_and_provider_ownership() {
             methods: Vec::new(),
         },
         external_account_id: None,
-        order: 0,
-        is_default: false,
     };
     store
         .save_auth_profile(projection.clone())

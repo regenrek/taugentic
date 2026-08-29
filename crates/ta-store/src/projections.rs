@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
     AuthMethodId, AuthProfileId, AuthProfileState, ConversationPlacement, NavigationProject,
-    NavigationSpace,
+    NavigationSpace, SessionNextRunSelection,
 };
 use ta_protocol::wire::{
     CapsuleResult, ConflictSummary, ExecutionContext, RunHarnessKind, RunId, RunSource, RunStatus,
@@ -17,8 +17,6 @@ pub struct AuthProfileProjection {
     pub profile: AuthProfileState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_account_id: Option<String>,
-    pub order: u32,
-    pub is_default: bool,
 }
 
 impl AuthProfileProjection {
@@ -78,6 +76,7 @@ pub struct SessionProjection {
     pub title: String,
     pub status: SessionStatus,
     pub workspace_id: WorkspaceId,
+    pub next_run_selection: SessionNextRunSelection,
 }
 
 /// Workspace projection persisted alongside sessions and runs. Wraps the
@@ -167,6 +166,10 @@ pub struct RunProjection {
 }
 
 impl RunProjection {
+    pub fn route(&self) -> &ta_protocol::wire::RunExecutionRoute {
+        self.source.route()
+    }
+
     pub fn with_commit_metadata(
         mut self,
         existing: Option<&RunProjection>,

@@ -86,6 +86,7 @@ fn session_overview_uses_latest_run_not_latest_non_run_activity() {
             session_id: session.id.clone(),
             run_id: running.body.id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-a/patch.diff".to_string(),
         })
         .expect("artifact should record");

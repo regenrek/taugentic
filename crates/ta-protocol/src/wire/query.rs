@@ -38,6 +38,8 @@ pub struct ListApprovalsQuery {
 #[ts(export_to = "generated/")]
 pub struct GetArtifactQuery {
     pub artifact_id: ArtifactId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pdf_page_index: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

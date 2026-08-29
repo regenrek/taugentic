@@ -1,6 +1,6 @@
 use super::test_support::{
     app_and_execution_with_runtime, open_session, set_default_test_workspace_root,
-    validated_runtime_selection,
+    start_native_child_run_for_tests, validated_runtime_selection,
 };
 use super::*;
 use crate::{ListReceiptsRequest, ReceiptState};
@@ -253,20 +253,20 @@ fn recipe_delegate_lineage_events_carry_recipe_id() {
 #[test]
 fn delegate_without_recipe_id_preserves_legacy_flow() {
     let (_app, execution, session, parent) = native_parent("Legacy delegate");
-    let child = execution
-        .start_native_child_run(
-            session.id.clone(),
-            NativeChildRunRequest::new(
-                parent.id.clone(),
-                turn_id("turn-legacy"),
-                "Legacy child objective",
-                None,
-                Some(model_id("legacy-model")),
-                None,
-            )
-            .expect("legacy child request"),
+    let child = start_native_child_run_for_tests(
+        &execution,
+        &session.id,
+        NativeChildRunRequest::new(
+            parent.id.clone(),
+            turn_id("turn-legacy"),
+            "Legacy child objective",
+            None,
+            Some(model_id("legacy-model")),
+            None,
         )
-        .expect("legacy delegate should start");
+        .expect("legacy child request"),
+    )
+    .expect("legacy delegate should start");
     let stored_child = run(&execution, &child.run_id);
 
     assert_eq!(stored_child.objective, "Legacy child objective");
@@ -510,18 +510,22 @@ fn delegate_recipe(
     output_contract: Option<OutputContractKind>,
     model_id: Option<AgentRuntimeModelId>,
 ) -> Result<taugentic_agent::NativeChildRunResult, RunExecutionError> {
-    execution.start_native_child_run(
-        session_id.clone(),
-        NativeChildRunRequest::new(
-            parent_run_id.clone(),
-            turn_id(&format!("turn-{recipe_id}")),
-            format!("Execute {recipe_id} recipe objective"),
-            output_contract,
-            model_id,
-            Some(recipe_id.to_string()),
-        )
-        .expect("recipe child request"),
+    let request = NativeChildRunRequest::new(
+        parent_run_id.clone(),
+        turn_id(&format!("turn-{recipe_id}")),
+        format!("Execute {recipe_id} recipe objective"),
+        output_contract,
+        model_id,
+        Some(recipe_id.to_string()),
     )
+    .expect("recipe child request");
+    let generation = execution
+        .runtime
+        .live_execution_for(parent_run_id)
+        .filter(|live_execution| live_execution.session_id == *session_id)
+        .ok_or_else(|| RunExecutionError::RunNotLiveOwned(parent_run_id.as_str().to_string()))?
+        .generation;
+    execution.start_native_child_run_from_generation(session_id.clone(), request, generation)
 }
 
 fn start_worktree_child(
@@ -533,23 +537,23 @@ fn start_worktree_child(
     cleanup_policy: WorktreeCleanupPolicy,
     planned_file: &str,
 ) -> taugentic_agent::NativeChildRunResult {
-    execution
-        .start_native_child_run(
-            session_id.clone(),
-            NativeChildRunRequest::new(
-                parent_run_id.clone(),
-                turn_id(turn_id_value),
-                objective,
-                Some(OutputContractKind::Patch),
-                None,
-                None,
-            )
-            .expect("worktree child request")
-            .with_workspace_scope(WorkspaceMode::WorktreeWrite)
-            .with_cleanup_policy(cleanup_policy)
-            .with_planned_write_files(vec![planned_file.to_string()]),
+    start_native_child_run_for_tests(
+        execution,
+        session_id,
+        NativeChildRunRequest::new(
+            parent_run_id.clone(),
+            turn_id(turn_id_value),
+            objective,
+            Some(OutputContractKind::Patch),
+            None,
+            None,
         )
-        .expect("worktree child should start")
+        .expect("worktree child request")
+        .with_workspace_scope(WorkspaceMode::WorktreeWrite)
+        .with_cleanup_policy(cleanup_policy)
+        .with_planned_write_files(vec![planned_file.to_string()]),
+    )
+    .expect("worktree child should start")
 }
 
 fn patch_result(receipt_id: &str, touched_file: &str) -> CapsuleResult {
@@ -705,15 +709,13 @@ fn mark_child_running_for_capsule_completion(
                     status: RunStatus::Running,
                     ..existing_run
                 },
-                events: vec![DaemonEvent::Run(RunEvent {
-                    run_id: run_id.clone(),
-                    status: RunStatus::Running,
-                    detail: "Seeded live recipe child for capsule completion".to_string(),
-                    output_contract: None,
-                    recipe_id,
-                    result: None,
-                })],
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                events: vec![DaemonEvent::Run(
+                    RunEvent::active(run_id.clone(), RunStatus::Running, None, recipe_id, None)
+                        .expect("active status"),
+                )],
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })
             .expect("child running transition should commit");
     }
@@ -787,18 +789,11 @@ fn assert_run_event(
         events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(RunEvent {
-                    run_id: event_run_id,
-                    status: event_status,
-                    output_contract: event_output_contract,
-                    recipe_id: event_recipe_id,
-                    result: event_result,
-                    ..
-                }) if event_run_id == run_id
-                    && *event_status == status
-                    && *event_output_contract == output_contract
-                    && event_recipe_id.as_deref() == recipe_id
-                    && event_result.as_ref() == result
+                DaemonEvent::Run(RunEvent::Status(event)) if event.run_id() == run_id
+                    && event.status() == status
+                    && event.output_contract() == output_contract.as_ref()
+                    && event.recipe_id() == recipe_id
+                    && event.result() == result
             )
         }),
         "missing run event for {run_id:?} status {status:?} recipe {recipe_id:?}"

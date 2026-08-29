@@ -4,7 +4,8 @@ use crate::ExecutionError;
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeStrategyId, AgentStreamTurnId, ApprovalResolution,
     AuthProfileId, CapsuleRecipe, ExecutionContext, OutputContractKind, RunId, RunStatus,
-    RuntimeExtensionState, RuntimeProfileId, SessionId, WorkspaceMode, WorktreeCleanupPolicy,
+    RuntimeExtensionState, RuntimeProfileId, SessionId, WorkspaceFileAttachment, WorkspaceMode,
+    WorktreeCleanupPolicy,
 };
 use ta_provider_acp::descriptor::AcpProviderSpec;
 use ta_provider_llm::client::StreamMessage;
@@ -77,9 +78,12 @@ pub struct ExecutionRequest {
     pub resume_provider_session_id: Option<String>,
     pub runtime_extensions: Vec<RuntimeExtensionState>,
     pub execution_context: Arc<ExecutionContext>,
-    pub fork_initial_state: Option<ForkInitialState>,
+    pub native_history: Option<NativeHistoryInitialState>,
     pub output_contract: Option<OutputContractKind>,
     pub subagent_recipes: Vec<CapsuleRecipe>,
+    /// Immutable, revision-validated workspace attachments. The orchestrator
+    /// owns validation; harnesses only receive this bound execution input.
+    pub attachments: Vec<WorkspaceFileAttachment>,
 }
 
 impl ExecutionRequest {
@@ -88,16 +92,18 @@ impl ExecutionRequest {
     }
 }
 
-/// Initial native-loop history for forked runs.
-///
-/// Callers must provide deterministic provider history up to the fork boundary,
-/// without appending the fork prompt. The native loop appends
-/// [`ExecutionRequest::objective`] as the next user message when it builds the
-/// run session.
+/// Canonical native-loop history plus explicit objective handling.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ForkInitialState {
+pub struct NativeHistoryInitialState {
     pub messages: Vec<StreamMessage>,
     pub provider_session_id: Option<String>,
+    pub objective_policy: NativeHistoryObjectivePolicy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeHistoryObjectivePolicy {
+    AppendNextObjective,
+    ObjectiveAlreadyInHistory,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,8 +1,12 @@
-use std::sync::Arc;
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration as StdDuration, SystemTime, UNIX_EPOCH},
+};
+
 use ta_observability::{ObservabilityHandle, ObservabilityInitError, init};
-use ta_work_source::HostSecretsGitHubCredentialProvider;
 use thiserror::Error;
 use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
+use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant, interval_at};
 use tokio_util::sync::CancellationToken;
 
@@ -18,6 +22,81 @@ use crate::host::{
 };
 
 use super::{BootstrapStateError, open_bootstrap_state};
+
+/// The one daemon-owned Scheduled Work deadline coordinator. It replaces a
+/// cancellable next-deadline sleep after a successful mutation; it never polls.
+#[derive(Clone)]
+pub(crate) struct ScheduledWorkDeadline {
+    wake: mpsc::UnboundedSender<()>,
+    receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<()>>>>,
+}
+
+impl ScheduledWorkDeadline {
+    pub(crate) fn new() -> Self {
+        let (wake, receiver) = mpsc::unbounded_channel();
+        Self {
+            wake,
+            receiver: Arc::new(Mutex::new(Some(receiver))),
+        }
+    }
+
+    pub(crate) fn rearm(&self) {
+        let _ = self.wake.send(());
+    }
+
+    pub(crate) fn start<S>(
+        &self,
+        app: crate::AppService<S>,
+        cancellation: CancellationToken,
+    ) -> tokio::task::JoinHandle<()>
+    where
+        S: ta_store::PersistenceStore + Send + 'static,
+    {
+        let mut receiver = self
+            .receiver
+            .lock()
+            .expect("scheduled work deadline receiver should not be poisoned")
+            .take()
+            .expect("scheduled work deadline must start exactly once");
+        tokio::spawn(async move {
+            loop {
+                let Some(deadline_ms) = (match app.next_scheduled_work_deadline_ms() {
+                    Ok(deadline) => deadline,
+                    Err(error) => {
+                        tracing::error!(error = %error, "scheduled work deadline lookup failed");
+                        return;
+                    }
+                }) else {
+                    tokio::select! {
+                        _ = cancellation.cancelled() => return,
+                        wake = receiver.recv() => if wake.is_none() { return; },
+                    }
+                    continue;
+                };
+
+                let now_ms = current_time_ms();
+                if deadline_ms <= now_ms {
+                    if let Err(error) = app.process_due_scheduled_work() {
+                        tracing::error!(error = %error, "scheduled work due processing failed");
+                        return;
+                    }
+                    continue;
+                }
+                let delay = StdDuration::from_millis(deadline_ms.saturating_sub(now_ms));
+                tokio::select! {
+                    _ = cancellation.cancelled() => return,
+                    wake = receiver.recv() => if wake.is_none() { return; },
+                    _ = tokio::time::sleep(delay) => {
+                        if let Err(error) = app.process_due_scheduled_work() {
+                            tracing::error!(error = %error, "scheduled work due processing failed");
+                            return;
+                        }
+                    }
+                }
+            }
+        })
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum DaemonError {
@@ -72,13 +151,16 @@ async fn run_async() -> Result<(), DaemonError> {
         state.runtime.agent_runtime_strategy_registry(),
         poller_cancellation.clone(),
     );
-    let github_credentials = Arc::new(HostSecretsGitHubCredentialProvider::from_default_store()?);
     let poller = state
         .app
-        .spawn_work_source_poller(poller_cancellation.clone(), github_credentials);
+        .spawn_work_source_poller(poller_cancellation.clone());
+    let scheduled_work_deadline = state
+        .scheduled_work_deadline
+        .start(state.app.clone(), poller_cancellation.clone());
     let serve_result = serve(state).await;
     poller_cancellation.cancel();
     let _ = poller.await;
+    let _ = scheduled_work_deadline.await;
     let _ = model_catalog_refresh.await;
     serve_result?;
     Ok(())
@@ -131,4 +213,11 @@ fn daemon_runtime() -> Result<Runtime, DaemonError> {
         .enable_all()
         .build()
         .map_err(DaemonError::Runtime)
+}
+
+fn current_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_millis() as u64
 }

@@ -1,0 +1,484 @@
+{
+  "$defs": {
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "status",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/RunStatusEvent"
+        }
+      },
+      "required": [
+        "kind",
+        "payload"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "RunEvent"
+}

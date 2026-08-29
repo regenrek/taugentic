@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "staged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "unstaged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "lastTurn",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "checkpointId": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "checkpoint",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "checkpointId"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "GitDiffScope"
+}

@@ -1,0 +1,40 @@
+{
+  "$defs": {
+    "PluginCapability": {
+      "enum": [
+        "workspaceRead",
+        "workspaceWrite",
+        "processExecute",
+        "network"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digestSha256": {
+      "type": "string"
+    },
+    "pluginId": {
+      "type": "string"
+    },
+    "requestedCapabilities": {
+      "items": {
+        "$ref": "#/$defs/PluginCapability"
+      },
+      "type": "array"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pluginId",
+    "version",
+    "digestSha256",
+    "requestedCapabilities"
+  ],
+  "title": "PluginInspection",
+  "type": "object"
+}

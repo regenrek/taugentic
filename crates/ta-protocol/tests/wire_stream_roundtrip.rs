@@ -212,7 +212,8 @@ fn daemon_event_envelope_roundtrips_with_full_lineage() {
                 id: ArtifactId::new("artifact-1").expect("artifact id"),
                 run_id: RunId::new("run-1").expect("run id"),
                 kind: ArtifactKind::Patch,
-                storage_path: "artifacts/run-1/patch.diff".to_string(),
+                display_name: "patch.diff".to_string(),
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             },
         }),
     };
@@ -333,6 +334,7 @@ fn session_summary() -> SessionSummary {
         id: SessionId::new("session-1").expect("session id"),
         title: "Build daemon app server".to_string(),
         status: SessionStatus::Idle,
+        next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
     }
 }
 

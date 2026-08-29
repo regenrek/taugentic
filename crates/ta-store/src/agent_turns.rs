@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use ta_protocol::wire::{
     ActivityCursor, AgentAssistantRow, AgentPendingStateRow, AgentStreamEvent, AgentStreamFrame,
-    AgentStreamItemId, AgentStreamTurnId, AgentToolCallRow, AgentTurnRow, RunId, SessionId,
+    AgentStreamItemId, AgentStreamTurnId, AgentToolCallRow, AgentTurnRow, AgentUserRow, RunId,
+    SessionId, WorkspaceFileAttachment,
 };
 
 use crate::{EventRecord, StoreError};
@@ -60,6 +61,7 @@ pub struct InFlightToolCall {
 
 pub fn row_sequence(row: &AgentTurnRow) -> u64 {
     match row {
+        AgentTurnRow::User(row) => row.cursor.sequence,
         AgentTurnRow::Assistant(row) => row.cursor.sequence,
         AgentTurnRow::ToolCall(row) => row.cursor.sequence,
         AgentTurnRow::PendingState(row) => row.cursor.sequence,
@@ -68,10 +70,28 @@ pub fn row_sequence(row: &AgentTurnRow) -> u64 {
 
 pub fn row_session_id(row: &AgentTurnRow) -> &SessionId {
     match row {
+        AgentTurnRow::User(row) => &row.session_id,
         AgentTurnRow::Assistant(row) => &row.session_id,
         AgentTurnRow::ToolCall(row) => &row.session_id,
         AgentTurnRow::PendingState(row) => &row.session_id,
     }
+}
+
+pub fn user_row(
+    run: &crate::RunProjection,
+    sequence: u64,
+    occurred_at_ms: u64,
+    text: String,
+    attachments: Vec<WorkspaceFileAttachment>,
+) -> AgentTurnRow {
+    AgentTurnRow::User(AgentUserRow {
+        cursor: ActivityCursor { sequence },
+        session_id: run.session_id.clone(),
+        run_id: run.id.clone(),
+        occurred_at_ms,
+        text,
+        attachments,
+    })
 }
 
 pub fn apply_agent_stream_event(

@@ -15,6 +15,14 @@ pub enum RuntimePolicyMode {
     Deny,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum RuntimeProfileExecutionKind {
+    AgentRun,
+    RealtimeVoice,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
@@ -25,6 +33,7 @@ pub struct RuntimeProfileSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth_method_id: Option<AuthMethodId>,
     pub policy_mode: RuntimePolicyMode,
+    pub execution_kind: RuntimeProfileExecutionKind,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

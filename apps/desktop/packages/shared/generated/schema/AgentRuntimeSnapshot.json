@@ -1,5 +1,36 @@
 {
   "$defs": {
+    "AgentRuntimeMediaCapabilities": {
+      "properties": {
+        "imageInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "imageOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        }
+      },
+      "required": [
+        "imageInput",
+        "imageOutput",
+        "voiceInput",
+        "voiceOutput"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    },
     "AgentRuntimeModelAvailability": {
       "enum": [
         "enumerated",
@@ -69,11 +100,8 @@
             }
           ]
         },
-        "inputModalities": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+        "mediaCapabilities": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapabilities"
         },
         "outputCostPerMillionMicros": {
           "anyOf": [
@@ -102,7 +130,8 @@
         "displayName",
         "reasoning",
         "toolCall",
-        "structuredOutput"
+        "structuredOutput",
+        "mediaCapabilities"
       ],
       "type": "object"
     },
@@ -221,6 +250,14 @@
       ],
       "type": "string"
     },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "AuthProfileManagementMode": {
       "enum": [
         "interactive",
@@ -248,6 +285,28 @@
         "id",
         "displayName",
         "managementMode"
+      ],
+      "type": "object"
+    },
+    "AuthProfilePreferences": {
+      "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+      "properties": {
+        "isDefault": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "order",
+        "isDefault"
       ],
       "type": "object"
     },
@@ -307,6 +366,16 @@
         "connectionState": {
           "$ref": "#/$defs/AuthProfileConnectionState"
         },
+        "exhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "lastError": {
           "type": [
             "string",
@@ -328,6 +397,9 @@
             "null"
           ]
         },
+        "preferences": {
+          "$ref": "#/$defs/AuthProfilePreferences"
+        },
         "profile": {
           "$ref": "#/$defs/AuthProfileRef"
         },
@@ -336,14 +408,89 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/AuthProfileUsage"
         }
       },
       "required": [
         "profile",
+        "preferences",
+        "usage",
         "connectionState",
         "managementMode",
         "canLogin",
         "canLogout"
+      ],
+      "type": "object"
+    },
+    "AuthProfileUsage": {
+      "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "observed",
+              "type": "string"
+            },
+            "observedAtMs": {
+              "type": "string"
+            },
+            "windows": {
+              "items": {
+                "$ref": "#/$defs/AuthProfileUsageWindow"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAtMs",
+            "windows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
       ],
       "type": "object"
     },
@@ -518,6 +665,13 @@
       ],
       "type": "string"
     },
+    "RuntimeProfileExecutionKind": {
+      "enum": [
+        "agentRun",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
     "RuntimeProfileSummary": {
       "properties": {
         "authMethodId": {
@@ -528,6 +682,9 @@
         },
         "displayName": {
           "type": "string"
+        },
+        "executionKind": {
+          "$ref": "#/$defs/RuntimeProfileExecutionKind"
         },
         "id": {
           "type": "string"
@@ -543,7 +700,8 @@
         "id",
         "displayName",
         "providerId",
-        "policyMode"
+        "policyMode",
+        "executionKind"
       ],
       "type": "object"
     }

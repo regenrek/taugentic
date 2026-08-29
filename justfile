@@ -27,21 +27,22 @@ set quiet
   fi; \
   "$binary"
 
+@desktop-native-stage:
+  @cargo build -p ta-desktop-native
+  @pnpm --dir apps/desktop --filter @taugentic/desktop-daemon-native stage-native
+
 @desktop-dev:
-  @cargo build -p ta-orchestrator --bin ta-daemon
-  @daemon_binary="$(cargo xtask print-daemon-binary)"; \
-  TAUGENTIC_DAEMON_SOCKET_NAME="${TAUGENTIC_DAEMON_SOCKET_NAME:-ta-daemon-gpui}" \
-  TAUGENTIC_DAEMON_BINARY="$daemon_binary" \
-  pnpm --dir apps/desktop dev
+  @pnpm --dir apps/desktop dev
+
+@desktop-release:
+  @pnpm --dir apps/desktop start
 
 @desktop-native-check:
   @cargo test -p ta-desktop-native
   @cargo build -p ta-desktop-native
   @pnpm --dir apps/desktop --filter @taugentic/desktop-daemon-native test
 
-@desktop-check:
-  @cargo build -p ta-desktop-native
-  @pnpm --dir apps/desktop --filter @taugentic/desktop-daemon-native stage-native
+@desktop-check: desktop-native-stage
   @pnpm --dir apps/desktop check
 
 @smoke:
@@ -61,7 +62,7 @@ set quiet
 @release-check:
   @cargo build -p ta-cli -p ta-orchestrator
   @cargo test -p ta-cli --lib
-  @cargo test -p ta-orchestrator --lib
+  @TAUGENTIC_CODEX_APP_SERVER_BIN=/__taugentic_release_check_no_codex__ cargo test -p ta-orchestrator --lib
   @cargo xtask check-daemon-foundation
   @cargo xtask smoke-local-daemon
   @pnpm --dir apps/desktop check

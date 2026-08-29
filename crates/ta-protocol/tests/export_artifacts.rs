@@ -30,6 +30,20 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(index.contains("export type { PublicDaemonEventEnvelope }"));
     assert!(index.contains("export type { AgentStreamEvent }"));
     assert!(index.contains("export type { AgentStreamFrame }"));
+    for name in [
+        "ThreadWorkspaceQuery",
+        "ThreadWorkspaceUpdateCommand",
+        "ThreadWorkspaceMutation",
+        "ThreadWorkspacePin",
+        "ThreadWorkspaceWorkLogEntry",
+        "ThreadWorkspaceWorkLogKind",
+        "ThreadWorkspaceResult",
+    ] {
+        assert!(
+            index.contains(&format!("export type {{ {name} }}")),
+            "generated barrel must export {name}"
+        );
+    }
     assert!(index.contains("export type { OutputContractKind }"));
     assert!(index.contains("export type { CapsuleResult }"));
     assert!(index.contains("export type { DebugResult }"));

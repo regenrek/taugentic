@@ -28,7 +28,16 @@
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
       ],
       "type": "string"
     },
@@ -209,6 +218,16 @@
       "oneOf": [
         {
           "properties": {
+            "auth_profile_exhaustion": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AuthProfileExhaustion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "detail": {
               "type": "string"
             },

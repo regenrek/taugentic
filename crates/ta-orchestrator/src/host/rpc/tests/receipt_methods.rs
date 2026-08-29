@@ -8,7 +8,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "selected".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -19,7 +19,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "other".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -30,7 +30,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(selected_session.id.clone()),
     }));
     let session = test_session();
@@ -44,6 +44,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
                 session_id: selected_session.id.clone(),
                 run_id: selected_run.body.id.clone(),
                 kind: ArtifactKind::Patch,
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
                 storage_path: format!("artifacts/{suffix}/patch.diff"),
             })
             .expect("artifact should record");
@@ -55,6 +56,7 @@ fn daemon_context_receipt_methods_dispatch_and_scope_by_session() {
             session_id: other_session.id.clone(),
             run_id: other_run.body.id,
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/other/patch.diff".to_string(),
         })
         .expect("other artifact should record");

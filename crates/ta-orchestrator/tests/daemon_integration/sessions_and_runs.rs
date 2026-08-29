@@ -422,15 +422,9 @@ fn real_daemon_run_start_creates_session_scoped_run_over_canonical_protocol() {
             .expect("daemon event params should deserialize");
     assert!(matches!(
         waiting_envelope.event,
-        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent {
-            run_id,
-            status,
-            detail,
-            ..
-        })
-            if run_id == run.id
-                && status == ta_protocol::wire::RunStatus::WaitingForApproval
-                && detail == "Waiting for approval"
+        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == ta_protocol::wire::RunStatus::WaitingForApproval
     ));
 
     let approval_event = read_event_notification(&JsonLineCodec, &mut stream);
@@ -500,15 +494,9 @@ fn real_daemon_run_start_creates_session_scoped_run_over_canonical_protocol() {
     ));
     assert!(matches!(
         &activity_page.items[1].event,
-        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent {
-            run_id,
-            status,
-            detail,
-            ..
-        })
-            if *run_id == run.id
-                && *status == ta_protocol::wire::RunStatus::WaitingForApproval
-                && detail == "Waiting for approval"
+        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == ta_protocol::wire::RunStatus::WaitingForApproval
     ));
 }
 
@@ -563,8 +551,8 @@ fn real_daemon_replay_run_events_replays_history_after_cursor_and_rejects_sessio
     );
     assert!(matches!(
         &replay.events[0].event,
-        ta_protocol::wire::PublicDaemonEvent::Run(ta_protocol::wire::RunEvent { run_id, status, .. })
-            if *run_id == run.id && *status == RunStatus::WaitingForApproval
+        ta_protocol::wire::PublicDaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id && event.status() == RunStatus::WaitingForApproval
     ));
     assert!(matches!(
         &replay.events[1].event,

@@ -22,6 +22,7 @@ impl CodexAppServerSession {
         &mut self,
         expected_login_id: &str,
     ) -> Result<(), CodexLlmClientError> {
+        let mut login_completed = false;
         loop {
             let Some(message) = self.recv_message_tick()? else {
                 self.ensure_child_running()?;
@@ -36,6 +37,9 @@ impl CodexAppServerSession {
                 self.respond_to_server_request(&message)?;
                 continue;
             };
+            if method == "account/updated" && login_completed {
+                return Ok(());
+            }
             if method != "account/login/completed" {
                 self.respond_to_server_request(&message)?;
                 continue;
@@ -44,15 +48,15 @@ impl CodexAppServerSession {
             if params.get("loginId").and_then(Value::as_str) != Some(expected_login_id) {
                 continue;
             }
-            return match params.get("success").and_then(Value::as_bool) {
-                Some(true) => Ok(()),
+            match params.get("success").and_then(Value::as_bool) {
+                Some(true) => login_completed = true,
                 Some(false) => Err(CodexLlmClientError::Auth(
                     "Codex ChatGPT login was not completed".to_string(),
-                )),
+                ))?,
                 None => Err(CodexLlmClientError::Protocol(
                     "account/login/completed omitted success".to_string(),
-                )),
-            };
+                ))?,
+            }
         }
     }
 

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+  "properties": {
+    "isDefault": {
+      "type": "boolean"
+    },
+    "label": {
+      "type": "string"
+    },
+    "order": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "label",
+    "order",
+    "isDefault"
+  ],
+  "title": "AuthProfilePreferences",
+  "type": "object"
+}

@@ -1,0 +1,27 @@
+{
+  "$defs": {
+    "VoicePhase": {
+      "enum": [
+        "connecting",
+        "listening",
+        "speaking"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "phase": {
+      "$ref": "#/$defs/VoicePhase"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "phase"
+  ],
+  "title": "VoiceEvent",
+  "type": "object"
+}

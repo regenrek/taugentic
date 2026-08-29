@@ -276,6 +276,14 @@ pub fn store_path_for_root(root_dir: &Path, socket_name: &str) -> PathBuf {
         .join(format!("{socket_name}.sqlite3"))
 }
 
+pub fn artifact_root_for_root(root_dir: &Path, socket_name: &str) -> PathBuf {
+    config_base_dir_for_root(root_dir)
+        .join("taugentic")
+        .join("daemon")
+        .join("artifacts")
+        .join(socket_name)
+}
+
 /// Pre-seed the canonical default test workspace into the daemon's store so
 /// integration tests can call `daemon.session.open` with the default workspace
 /// id before slice 3 introduces `daemon.workspace.open`.

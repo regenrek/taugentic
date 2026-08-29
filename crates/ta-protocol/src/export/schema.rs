@@ -66,6 +66,9 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<AgentStreamEvent>(schema_dir)?;
     write_schema::<StreamEmission>(schema_dir)?;
     write_schema::<AgentStreamFrame>(schema_dir)?;
+    write_schema::<VoicePermissionState>(schema_dir)?;
+    write_schema::<VoicePhase>(schema_dir)?;
+    write_schema::<VoiceEvent>(schema_dir)?;
     write_schema::<BudgetScope>(schema_dir)?;
     write_schema::<BudgetMetric>(schema_dir)?;
     write_schema::<BudgetBreach>(schema_dir)?;
@@ -74,18 +77,31 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<BudgetEvent>(schema_dir)?;
     write_schema::<ArtifactId>(schema_dir)?;
     write_schema::<ArtifactKind>(schema_dir)?;
+    write_schema::<ArtifactMetadata>(schema_dir)?;
+    write_schema::<ImageMediaType>(schema_dir)?;
+    write_schema::<ImageArtifactProvenance>(schema_dir)?;
+    write_schema::<ImageArtifactMetadata>(schema_dir)?;
     write_schema::<ArtifactEvent>(schema_dir)?;
     write_schema::<ArtifactSummary>(schema_dir)?;
+    write_schema::<ArtifactContentResult>(schema_dir)?;
     write_schema::<ActivityCursor>(schema_dir)?;
     write_schema::<ActivityPageQuery>(schema_dir)?;
     write_schema::<PublicActivityPageItem>(schema_dir)?;
     write_schema::<PublicActivityPageResult>(schema_dir)?;
     write_schema::<AgentTurnsPageQuery>(schema_dir)?;
+    write_schema::<AgentUserRow>(schema_dir)?;
     write_schema::<AgentAssistantRow>(schema_dir)?;
     write_schema::<AgentToolCallRow>(schema_dir)?;
     write_schema::<AgentPendingStateRow>(schema_dir)?;
     write_schema::<AgentTurnRow>(schema_dir)?;
     write_schema::<AgentTurnsPageResult>(schema_dir)?;
+    write_schema::<ThreadWorkspaceQuery>(schema_dir)?;
+    write_schema::<ThreadWorkspaceUpdateCommand>(schema_dir)?;
+    write_schema::<ThreadWorkspaceMutation>(schema_dir)?;
+    write_schema::<ThreadWorkspacePin>(schema_dir)?;
+    write_schema::<ThreadWorkspaceWorkLogEntry>(schema_dir)?;
+    write_schema::<ThreadWorkspaceWorkLogKind>(schema_dir)?;
+    write_schema::<ThreadWorkspaceResult>(schema_dir)?;
     write_schema::<DaemonEventCursor>(schema_dir)?;
     write_schema::<PublicApprovalEvent>(schema_dir)?;
     write_schema::<ContextReceipt>(schema_dir)?;
@@ -96,6 +112,35 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<ReceiptProvenance>(schema_dir)?;
     write_schema::<ReceiptState>(schema_dir)?;
     write_schema::<RunFailureKind>(schema_dir)?;
+    write_schema::<RunStatusReason>(schema_dir)?;
+    write_schema::<RunStatusEvent>(schema_dir)?;
+    write_schema::<ScheduledWorkId>(schema_dir)?;
+    write_schema::<ScheduledWorkOccurrenceId>(schema_dir)?;
+    write_schema::<ScheduledWorkExecutionRequest>(schema_dir)?;
+    write_schema::<ScheduledWorkUnpublishedResource>(schema_dir)?;
+    write_schema::<ScheduledWorkAttentionPolicy>(schema_dir)?;
+    write_schema::<ScheduledWorkDefinition>(schema_dir)?;
+    write_schema::<ScheduledWorkOccurrenceState>(schema_dir)?;
+    write_schema::<ScheduledWorkPreparationTerminal>(schema_dir)?;
+    write_schema::<ScheduledWorkOccurrence>(schema_dir)?;
+    write_schema::<CreateScheduledWorkRequest>(schema_dir)?;
+    write_schema::<CreateScheduledWorkResult>(schema_dir)?;
+    write_schema::<ListScheduledWorkRequest>(schema_dir)?;
+    write_schema::<ListScheduledWorkResult>(schema_dir)?;
+    write_schema::<CancelScheduledWorkRequest>(schema_dir)?;
+    write_schema::<PluginId>(schema_dir)?;
+    write_schema::<PluginCapability>(schema_dir)?;
+    write_schema::<PluginLifecycleState>(schema_dir)?;
+    write_schema::<PluginLifecycleFailure>(schema_dir)?;
+    write_schema::<PluginInspection>(schema_dir)?;
+    write_schema::<PluginInstallation>(schema_dir)?;
+    write_schema::<InspectPluginPackageRequest>(schema_dir)?;
+    write_schema::<InstallPluginPackageRequest>(schema_dir)?;
+    write_schema::<InstallPluginPackageResult>(schema_dir)?;
+    write_schema::<ListPluginInstallationsRequest>(schema_dir)?;
+    write_schema::<ListPluginInstallationsResult>(schema_dir)?;
+    write_schema::<UninstallPluginRequest>(schema_dir)?;
+    write_schema::<RunEvent>(schema_dir)?;
     write_schema::<RunReconciledOnStartupEvent>(schema_dir)?;
     write_schema::<TokenUsageRecordedEvent>(schema_dir)?;
     write_schema::<TokenUsageTotals>(schema_dir)?;
@@ -114,6 +159,97 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<DaemonWorkspaceListResult>(schema_dir)?;
     write_schema::<DaemonWorkspaceGetParams>(schema_dir)?;
     write_schema::<DaemonWorkspaceGetResult>(schema_dir)?;
+    write_schema::<WorkspaceFileKind>(schema_dir)?;
+    write_schema::<WorkspaceFileEntry>(schema_dir)?;
+    write_schema::<WorkspaceFileAttachmentRequest>(schema_dir)?;
+    write_schema::<WorkspaceFileAttachment>(schema_dir)?;
+    write_schema::<NativeImagePreview>(schema_dir)?;
+    write_schema::<WorkspaceFileTreeParams>(schema_dir)?;
+    write_schema::<WorkspaceFileTreeResult>(schema_dir)?;
+    write_schema::<WorkspaceFileReadParams>(schema_dir)?;
+    write_schema::<BoundedFileContent>(schema_dir)?;
+    write_schema::<WorkspaceFileReadResult>(schema_dir)?;
+    write_schema::<WorkspaceFileWriteParams>(schema_dir)?;
+    write_schema::<WorkspaceFileWriteResult>(schema_dir)?;
+    write_schema::<WorkspaceFileOpenExternalParams>(schema_dir)?;
+    write_schema::<WorkspaceFileOpenExternalResult>(schema_dir)?;
+    write_schema::<GitChangeKind>(schema_dir)?;
+    write_schema::<GitFileStatus>(schema_dir)?;
+    write_schema::<GitWorktreeSummary>(schema_dir)?;
+    write_schema::<GitRepositorySnapshot>(schema_dir)?;
+    write_schema::<GitRepositorySnapshotParams>(schema_dir)?;
+    write_schema::<GitRepositorySnapshotResult>(schema_dir)?;
+    write_schema::<GitDiffScope>(schema_dir)?;
+    write_schema::<GitDiffParams>(schema_dir)?;
+    write_schema::<GitDiffResult>(schema_dir)?;
+    write_schema::<GitPathsMutationParams>(schema_dir)?;
+    write_schema::<GitCommitParams>(schema_dir)?;
+    write_schema::<GitMutationResult>(schema_dir)?;
+    write_schema::<GitCheckpointPhase>(schema_dir)?;
+    write_schema::<GitCheckpointSummary>(schema_dir)?;
+    write_schema::<GitCheckpointListParams>(schema_dir)?;
+    write_schema::<GitCheckpointListResult>(schema_dir)?;
+    write_schema::<GitCheckpointPrepareRevertParams>(schema_dir)?;
+    write_schema::<GitCheckpointPrepareRevertResult>(schema_dir)?;
+    write_schema::<GitCheckpointApplyRevertParams>(schema_dir)?;
+    write_schema::<CodeHostAccountId>(schema_dir)?;
+    write_schema::<CodeHostPullRequestId>(schema_dir)?;
+    write_schema::<CodeHostProviderKind>(schema_dir)?;
+    write_schema::<CodeHostAccount>(schema_dir)?;
+    write_schema::<CodeHostAccountListParams>(schema_dir)?;
+    write_schema::<CodeHostAccountListResult>(schema_dir)?;
+    write_schema::<CodeHostAccountConnectParams>(schema_dir)?;
+    write_schema::<CodeHostAccountConnectResult>(schema_dir)?;
+    write_schema::<CodeHostAccountDisconnectParams>(schema_dir)?;
+    write_schema::<CodeHostAccountDisconnectResult>(schema_dir)?;
+    write_schema::<CodeHostRepositoryRef>(schema_dir)?;
+    write_schema::<CodeHostRemote>(schema_dir)?;
+    write_schema::<CodeHostRepositoryContextParams>(schema_dir)?;
+    write_schema::<CodeHostRepositoryContextResult>(schema_dir)?;
+    write_schema::<CodeHostCommitSummary>(schema_dir)?;
+    write_schema::<CodeHostPushPrepareParams>(schema_dir)?;
+    write_schema::<CodeHostPushPrepareResult>(schema_dir)?;
+    write_schema::<CodeHostPushApplyParams>(schema_dir)?;
+    write_schema::<CodeHostPushApplyResult>(schema_dir)?;
+    write_schema::<CodeHostPullRequestState>(schema_dir)?;
+    write_schema::<CodeHostPullRequestSummary>(schema_dir)?;
+    write_schema::<CodeHostPullRequestDetail>(schema_dir)?;
+    write_schema::<CodeHostPage>(schema_dir)?;
+    write_schema::<CodeHostPullRequestListParams>(schema_dir)?;
+    write_schema::<CodeHostPullRequestDetailParams>(schema_dir)?;
+    write_schema::<CodeHostPullRequestEnsureParams>(schema_dir)?;
+    write_schema::<CodeHostPullRequestEnsureResult>(schema_dir)?;
+    write_schema::<CodeHostCheckStatus>(schema_dir)?;
+    write_schema::<CodeHostCheck>(schema_dir)?;
+    write_schema::<CodeHostPullRequestChecksResult>(schema_dir)?;
+    write_schema::<CodeHostPullRequestChecksParams>(schema_dir)?;
+    write_schema::<CodeHostCommentKind>(schema_dir)?;
+    write_schema::<CodeHostComment>(schema_dir)?;
+    write_schema::<CodeHostReview>(schema_dir)?;
+    write_schema::<CodeHostTimelineItem>(schema_dir)?;
+    write_schema::<CodeHostPullRequestActivityResult>(schema_dir)?;
+    write_schema::<CodeHostPullRequestActivityParams>(schema_dir)?;
+    write_schema::<CodeHostPullRequestCommentCreateParams>(schema_dir)?;
+    write_schema::<CodeHostPullRequestCommentCreateResult>(schema_dir)?;
+    write_schema::<TerminalSessionId>(schema_dir)?;
+    write_schema::<TerminalSessionStatus>(schema_dir)?;
+    write_schema::<TerminalSessionSummary>(schema_dir)?;
+    write_schema::<TerminalSpawnParams>(schema_dir)?;
+    write_schema::<TerminalSpawnResult>(schema_dir)?;
+    write_schema::<TerminalListParams>(schema_dir)?;
+    write_schema::<TerminalListResult>(schema_dir)?;
+    write_schema::<TerminalAttachParams>(schema_dir)?;
+    write_schema::<TerminalAttachResult>(schema_dir)?;
+    write_schema::<TerminalInputParams>(schema_dir)?;
+    write_schema::<TerminalInputResult>(schema_dir)?;
+    write_schema::<TerminalResizeParams>(schema_dir)?;
+    write_schema::<TerminalResizeResult>(schema_dir)?;
+    write_schema::<TerminalDetachParams>(schema_dir)?;
+    write_schema::<TerminalDetachResult>(schema_dir)?;
+    write_schema::<TerminalCloseParams>(schema_dir)?;
+    write_schema::<TerminalCloseResult>(schema_dir)?;
+    write_schema::<TerminalStreamEvent>(schema_dir)?;
+    write_schema::<TerminalEventParams>(schema_dir)?;
     write_schema::<TrustState>(schema_dir)?;
     write_schema::<ExecutionContext>(schema_dir)?;
     write_schema::<WorkspaceScope>(schema_dir)?;
@@ -177,8 +313,8 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<GetSessionQuery>(schema_dir)?;
     write_schema::<ListApprovalsQuery>(schema_dir)?;
     write_schema::<ApprovalSnapshotResult>(schema_dir)?;
-    write_schema::<ta_work_source::WorkItemKey>(schema_dir)?;
-    write_schema::<ta_work_source::WorkItem>(schema_dir)?;
+    write_schema::<crate::wire::WorkItemKey>(schema_dir)?;
+    write_schema::<crate::wire::WorkItem>(schema_dir)?;
     write_schema::<WorkItemListResult>(schema_dir)?;
     write_schema::<WorkItemRefreshParams>(schema_dir)?;
     write_schema::<WorkItemDismissParams>(schema_dir)?;
@@ -192,6 +328,9 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<ListNativeRunsRequest>(schema_dir)?;
     write_schema::<RunListEntry>(schema_dir)?;
     write_schema::<ListNativeRunsResult>(schema_dir)?;
+    write_schema::<RunLineageGraphRequest>(schema_dir)?;
+    write_schema::<RunLineageGraphEdge>(schema_dir)?;
+    write_schema::<RunLineageGraphResult>(schema_dir)?;
     write_schema::<GetRunTimelineQuery>(schema_dir)?;
     write_schema::<RunTimeline>(schema_dir)?;
     write_schema::<RunTimelineRun>(schema_dir)?;
@@ -232,6 +371,14 @@ fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExportError> {
     write_schema::<ResumeRunState>(schema_dir)?;
     write_schema::<ForkRunRequest>(schema_dir)?;
     write_schema::<ForkRunResult>(schema_dir)?;
+    write_schema::<ContinueRunRequest>(schema_dir)?;
+    write_schema::<ContinueRunResult>(schema_dir)?;
+    write_schema::<SwitchAccountAndResumeRequest>(schema_dir)?;
+    write_schema::<SwitchAccountAndResumeResult>(schema_dir)?;
+    write_schema::<SpawnRunRequest>(schema_dir)?;
+    write_schema::<SpawnRunResult>(schema_dir)?;
+    write_schema::<JoinRunRequest>(schema_dir)?;
+    write_schema::<JoinRunResult>(schema_dir)?;
     write_schema::<SubscribeRunEventsRequest>(schema_dir)?;
     write_schema::<RunEventDelta>(schema_dir)?;
     write_schema::<RunEventStreamError>(schema_dir)?;
@@ -285,6 +432,8 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<AgentRuntimeStrategyId>(schema_dir)?;
     write_schema::<AgentRuntimeModelId>(schema_dir)?;
     write_schema::<AgentRuntimeModelRef>(schema_dir)?;
+    write_schema::<AgentRuntimeMediaCapability>(schema_dir)?;
+    write_schema::<AgentRuntimeMediaCapabilities>(schema_dir)?;
     write_schema::<AgentRuntimeStrategyHealthStatus>(schema_dir)?;
     write_schema::<AgentRuntimeStrategyHealth>(schema_dir)?;
     write_schema::<AgentRuntimeStrategyInfo>(schema_dir)?;
@@ -294,6 +443,9 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<AuthProfileConnectionState>(schema_dir)?;
     write_schema::<AuthProfileLoginMethod>(schema_dir)?;
     write_schema::<AuthProfileRef>(schema_dir)?;
+    write_schema::<AuthProfilePreferences>(schema_dir)?;
+    write_schema::<AuthProfileUsage>(schema_dir)?;
+    write_schema::<AuthProfileUsageWindow>(schema_dir)?;
     write_schema::<AuthProfileState>(schema_dir)?;
     write_schema::<AuthProfileLoginChallenge>(schema_dir)?;
     write_schema::<AuthProfileLoginResult>(schema_dir)?;
@@ -309,6 +461,7 @@ fn write_agent_runtime_schemas(schema_dir: &Path) -> Result<(), ProtocolExportEr
     write_schema::<RuntimeExtensionState>(schema_dir)?;
     write_schema::<RuntimeProfileId>(schema_dir)?;
     write_schema::<RuntimePolicyMode>(schema_dir)?;
+    write_schema::<RuntimeProfileExecutionKind>(schema_dir)?;
     write_schema::<RuntimeProfileSummary>(schema_dir)?;
     write_schema::<RuntimeProfilePatch>(schema_dir)?;
     write_schema::<AgentRuntimeSelection>(schema_dir)?;
@@ -350,6 +503,7 @@ fn build_core_runtime_json_schemas()
         schema_pair::<PublicActivityPageItem>()?,
         schema_pair::<PublicActivityPageResult>()?,
         schema_pair::<AgentTurnsPageQuery>()?,
+        schema_pair::<AgentUserRow>()?,
         schema_pair::<AgentAssistantRow>()?,
         schema_pair::<AgentToolCallRow>()?,
         schema_pair::<AgentPendingStateRow>()?,
@@ -357,8 +511,13 @@ fn build_core_runtime_json_schemas()
         schema_pair::<AgentTurnsPageResult>()?,
         schema_pair::<ArtifactId>()?,
         schema_pair::<ArtifactKind>()?,
+        schema_pair::<ArtifactMetadata>()?,
+        schema_pair::<ImageMediaType>()?,
+        schema_pair::<ImageArtifactProvenance>()?,
+        schema_pair::<ImageArtifactMetadata>()?,
         schema_pair::<ArtifactEvent>()?,
         schema_pair::<ArtifactSummary>()?,
+        schema_pair::<ArtifactContentResult>()?,
         schema_pair::<DaemonClientCapabilities>()?,
         schema_pair::<DaemonEventCursor>()?,
         schema_pair::<ContextReceipt>()?,
@@ -369,6 +528,23 @@ fn build_core_runtime_json_schemas()
         schema_pair::<ReceiptProvenance>()?,
         schema_pair::<ReceiptState>()?,
         schema_pair::<RunFailureKind>()?,
+        schema_pair::<RunStatusReason>()?,
+        schema_pair::<RunStatusEvent>()?,
+        schema_pair::<ScheduledWorkId>()?,
+        schema_pair::<ScheduledWorkOccurrenceId>()?,
+        schema_pair::<ScheduledWorkExecutionRequest>()?,
+        schema_pair::<ScheduledWorkUnpublishedResource>()?,
+        schema_pair::<ScheduledWorkAttentionPolicy>()?,
+        schema_pair::<ScheduledWorkDefinition>()?,
+        schema_pair::<ScheduledWorkOccurrenceState>()?,
+        schema_pair::<ScheduledWorkPreparationTerminal>()?,
+        schema_pair::<ScheduledWorkOccurrence>()?,
+        schema_pair::<CreateScheduledWorkRequest>()?,
+        schema_pair::<CreateScheduledWorkResult>()?,
+        schema_pair::<ListScheduledWorkRequest>()?,
+        schema_pair::<ListScheduledWorkResult>()?,
+        schema_pair::<CancelScheduledWorkRequest>()?,
+        schema_pair::<RunEvent>()?,
         schema_pair::<RunReconciledOnStartupEvent>()?,
         schema_pair::<TokenUsageRecordedEvent>()?,
         schema_pair::<TokenUsageTotals>()?,
@@ -387,6 +563,97 @@ fn build_core_runtime_json_schemas()
         schema_pair::<DaemonWorkspaceListResult>()?,
         schema_pair::<DaemonWorkspaceGetParams>()?,
         schema_pair::<DaemonWorkspaceGetResult>()?,
+        schema_pair::<WorkspaceFileKind>()?,
+        schema_pair::<WorkspaceFileEntry>()?,
+        schema_pair::<WorkspaceFileAttachmentRequest>()?,
+        schema_pair::<WorkspaceFileAttachment>()?,
+        schema_pair::<NativeImagePreview>()?,
+        schema_pair::<WorkspaceFileTreeParams>()?,
+        schema_pair::<WorkspaceFileTreeResult>()?,
+        schema_pair::<WorkspaceFileReadParams>()?,
+        schema_pair::<BoundedFileContent>()?,
+        schema_pair::<WorkspaceFileReadResult>()?,
+        schema_pair::<WorkspaceFileWriteParams>()?,
+        schema_pair::<WorkspaceFileWriteResult>()?,
+        schema_pair::<WorkspaceFileOpenExternalParams>()?,
+        schema_pair::<WorkspaceFileOpenExternalResult>()?,
+        schema_pair::<GitChangeKind>()?,
+        schema_pair::<GitFileStatus>()?,
+        schema_pair::<GitWorktreeSummary>()?,
+        schema_pair::<GitRepositorySnapshot>()?,
+        schema_pair::<GitRepositorySnapshotParams>()?,
+        schema_pair::<GitRepositorySnapshotResult>()?,
+        schema_pair::<GitDiffScope>()?,
+        schema_pair::<GitDiffParams>()?,
+        schema_pair::<GitDiffResult>()?,
+        schema_pair::<GitPathsMutationParams>()?,
+        schema_pair::<GitCommitParams>()?,
+        schema_pair::<GitMutationResult>()?,
+        schema_pair::<GitCheckpointPhase>()?,
+        schema_pair::<GitCheckpointSummary>()?,
+        schema_pair::<GitCheckpointListParams>()?,
+        schema_pair::<GitCheckpointListResult>()?,
+        schema_pair::<GitCheckpointPrepareRevertParams>()?,
+        schema_pair::<GitCheckpointPrepareRevertResult>()?,
+        schema_pair::<GitCheckpointApplyRevertParams>()?,
+        schema_pair::<CodeHostAccountId>()?,
+        schema_pair::<CodeHostPullRequestId>()?,
+        schema_pair::<CodeHostProviderKind>()?,
+        schema_pair::<CodeHostAccount>()?,
+        schema_pair::<CodeHostAccountListParams>()?,
+        schema_pair::<CodeHostAccountListResult>()?,
+        schema_pair::<CodeHostAccountConnectParams>()?,
+        schema_pair::<CodeHostAccountConnectResult>()?,
+        schema_pair::<CodeHostAccountDisconnectParams>()?,
+        schema_pair::<CodeHostAccountDisconnectResult>()?,
+        schema_pair::<CodeHostRepositoryRef>()?,
+        schema_pair::<CodeHostRemote>()?,
+        schema_pair::<CodeHostRepositoryContextParams>()?,
+        schema_pair::<CodeHostRepositoryContextResult>()?,
+        schema_pair::<CodeHostCommitSummary>()?,
+        schema_pair::<CodeHostPushPrepareParams>()?,
+        schema_pair::<CodeHostPushPrepareResult>()?,
+        schema_pair::<CodeHostPushApplyParams>()?,
+        schema_pair::<CodeHostPushApplyResult>()?,
+        schema_pair::<CodeHostPullRequestState>()?,
+        schema_pair::<CodeHostPullRequestSummary>()?,
+        schema_pair::<CodeHostPullRequestDetail>()?,
+        schema_pair::<CodeHostPage>()?,
+        schema_pair::<CodeHostPullRequestListParams>()?,
+        schema_pair::<CodeHostPullRequestDetailParams>()?,
+        schema_pair::<CodeHostPullRequestEnsureParams>()?,
+        schema_pair::<CodeHostPullRequestEnsureResult>()?,
+        schema_pair::<CodeHostCheckStatus>()?,
+        schema_pair::<CodeHostCheck>()?,
+        schema_pair::<CodeHostPullRequestChecksResult>()?,
+        schema_pair::<CodeHostPullRequestChecksParams>()?,
+        schema_pair::<CodeHostCommentKind>()?,
+        schema_pair::<CodeHostComment>()?,
+        schema_pair::<CodeHostReview>()?,
+        schema_pair::<CodeHostTimelineItem>()?,
+        schema_pair::<CodeHostPullRequestActivityResult>()?,
+        schema_pair::<CodeHostPullRequestActivityParams>()?,
+        schema_pair::<CodeHostPullRequestCommentCreateParams>()?,
+        schema_pair::<CodeHostPullRequestCommentCreateResult>()?,
+        schema_pair::<TerminalSessionId>()?,
+        schema_pair::<TerminalSessionStatus>()?,
+        schema_pair::<TerminalSessionSummary>()?,
+        schema_pair::<TerminalSpawnParams>()?,
+        schema_pair::<TerminalSpawnResult>()?,
+        schema_pair::<TerminalListParams>()?,
+        schema_pair::<TerminalListResult>()?,
+        schema_pair::<TerminalAttachParams>()?,
+        schema_pair::<TerminalAttachResult>()?,
+        schema_pair::<TerminalInputParams>()?,
+        schema_pair::<TerminalInputResult>()?,
+        schema_pair::<TerminalResizeParams>()?,
+        schema_pair::<TerminalResizeResult>()?,
+        schema_pair::<TerminalDetachParams>()?,
+        schema_pair::<TerminalDetachResult>()?,
+        schema_pair::<TerminalCloseParams>()?,
+        schema_pair::<TerminalCloseResult>()?,
+        schema_pair::<TerminalStreamEvent>()?,
+        schema_pair::<TerminalEventParams>()?,
         schema_pair::<TrustState>()?,
         schema_pair::<ExecutionContext>()?,
         schema_pair::<WorkspaceScope>()?,
@@ -443,8 +710,8 @@ fn build_core_runtime_json_schemas()
         schema_pair::<DelegateRequest>()?,
         schema_pair::<ListApprovalsQuery>()?,
         schema_pair::<ApprovalSnapshotResult>()?,
-        schema_pair::<ta_work_source::WorkItemKey>()?,
-        schema_pair::<ta_work_source::WorkItem>()?,
+        schema_pair::<crate::wire::WorkItemKey>()?,
+        schema_pair::<crate::wire::WorkItem>()?,
         schema_pair::<WorkItemListResult>()?,
         schema_pair::<WorkItemRefreshParams>()?,
         schema_pair::<WorkItemDismissParams>()?,
@@ -472,6 +739,9 @@ fn build_core_runtime_json_schemas()
         schema_pair::<PlanResult>()?,
         schema_pair::<PlanStep>()?,
         schema_pair::<ValidationError>()?,
+        schema_pair::<VoicePermissionState>()?,
+        schema_pair::<VoicePhase>()?,
+        schema_pair::<VoiceEvent>()?,
         schema_pair::<CapsuleRecipe>()?,
         schema_pair::<ListRecipesParams>()?,
         schema_pair::<RecipeListResponse>()?,
@@ -482,6 +752,9 @@ fn build_core_runtime_json_schemas()
         schema_pair::<ListNativeRunsRequest>()?,
         schema_pair::<RunListEntry>()?,
         schema_pair::<ListNativeRunsResult>()?,
+        schema_pair::<RunLineageGraphRequest>()?,
+        schema_pair::<RunLineageGraphEdge>()?,
+        schema_pair::<RunLineageGraphResult>()?,
         schema_pair::<GetRunTimelineQuery>()?,
         schema_pair::<RunTimeline>()?,
         schema_pair::<RunTimelineRun>()?,
@@ -501,6 +774,14 @@ fn build_core_runtime_json_schemas()
         schema_pair::<ResumeRunState>()?,
         schema_pair::<ForkRunRequest>()?,
         schema_pair::<ForkRunResult>()?,
+        schema_pair::<ContinueRunRequest>()?,
+        schema_pair::<ContinueRunResult>()?,
+        schema_pair::<SwitchAccountAndResumeRequest>()?,
+        schema_pair::<SwitchAccountAndResumeResult>()?,
+        schema_pair::<SpawnRunRequest>()?,
+        schema_pair::<SpawnRunResult>()?,
+        schema_pair::<JoinRunRequest>()?,
+        schema_pair::<JoinRunResult>()?,
         schema_pair::<SubscribeRunEventsRequest>()?,
         schema_pair::<RunEventDelta>()?,
         schema_pair::<RunEventStreamError>()?,
@@ -548,6 +829,8 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<AgentRuntimeStrategyId>()?,
         schema_pair::<AgentRuntimeModelId>()?,
         schema_pair::<AgentRuntimeModelRef>()?,
+        schema_pair::<AgentRuntimeMediaCapability>()?,
+        schema_pair::<AgentRuntimeMediaCapabilities>()?,
         schema_pair::<AgentRuntimeStrategyHealthStatus>()?,
         schema_pair::<AgentRuntimeStrategyHealth>()?,
         schema_pair::<AgentRuntimeStrategyInfo>()?,
@@ -557,6 +840,9 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<AuthProfileConnectionState>()?,
         schema_pair::<AuthProfileLoginMethod>()?,
         schema_pair::<AuthProfileRef>()?,
+        schema_pair::<AuthProfilePreferences>()?,
+        schema_pair::<AuthProfileUsage>()?,
+        schema_pair::<AuthProfileUsageWindow>()?,
         schema_pair::<AuthProfileState>()?,
         schema_pair::<AuthProfileLoginChallenge>()?,
         schema_pair::<AuthProfileLoginResult>()?,
@@ -572,6 +858,7 @@ fn agent_runtime_runtime_schemas()
         schema_pair::<RuntimeExtensionState>()?,
         schema_pair::<RuntimeProfileId>()?,
         schema_pair::<RuntimePolicyMode>()?,
+        schema_pair::<RuntimeProfileExecutionKind>()?,
         schema_pair::<RuntimeProfileSummary>()?,
         schema_pair::<RuntimeProfilePatch>()?,
         schema_pair::<AgentRuntimeSelection>()?,

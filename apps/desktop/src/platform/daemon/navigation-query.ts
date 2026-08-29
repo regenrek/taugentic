@@ -1,15 +1,12 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query"
+import { queryOptions } from "@tanstack/react-query"
 
 import type { NavigationSnapshot } from "@taugentic/desktop-protocol"
 
 import type { DesktopRuntime } from "./desktop-runtime.js"
 import { decodeProtocolJson } from "./protocol-json.js"
+import { desktopQueryClient } from "./query-client.js"
 
 export const navigationQueryKey = ["daemon", "navigation"] as const
-
-export const navigationQueryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-})
 
 /** The only TypeScript cache for daemon-owned navigation rows. */
 export function navigationQuery(runtime: DesktopRuntime, search?: string) {
@@ -20,5 +17,10 @@ export function navigationQuery(runtime: DesktopRuntime, search?: string) {
 }
 
 export function invalidateNavigation(): Promise<void> {
-  return navigationQueryClient.invalidateQueries({ queryKey: navigationQueryKey })
+  return desktopQueryClient.invalidateQueries({ queryKey: navigationQueryKey })
+}
+
+/** Publish an authoritative daemon mutation result into the sole navigation projection. */
+export function updateNavigationSnapshot(snapshot: NavigationSnapshot): void {
+  desktopQueryClient.setQueryData(navigationQueryKey, snapshot)
 }

@@ -392,22 +392,55 @@
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -415,9 +448,18 @@
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -770,6 +812,63 @@
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -1296,49 +1395,24 @@
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunEventDelta": {
       "description": "One run event delta returned by replay or live splice.\n\nThe sequence is the persisted daemon-event sequence, so clients can dedupe\nreplay and live deliveries with one cursor.",
@@ -1401,6 +1475,63 @@
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [

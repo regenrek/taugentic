@@ -1,6 +1,54 @@
 use super::*;
 
 #[test]
+fn daemon_run_lineage_graph_invokes_the_attached_session_projection() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
+            &OpenSessionRequest {
+                title: "Lineage graph RPC".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let run = ensure_running_run(&state, &opened.id, "Project graph through RPC");
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &test_session(),
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(77),
+            method: crate::METHOD_DAEMON_RUN_LINEAGE_GRAPH.to_string(),
+            params: Some(
+                serde_json::to_value(crate::RunLineageGraphRequest {}).expect("graph params"),
+            ),
+        },
+    )
+    .expect("daemon.run.lineage_graph should succeed");
+    let graph: crate::RunLineageGraphResult =
+        serde_json::from_value(response).expect("graph response should deserialize");
+
+    assert_eq!(graph.total_count, 1);
+    assert_eq!(graph.nodes.len(), 1);
+    assert_eq!(graph.nodes[0].id, run.body.id);
+    assert!(graph.edges.is_empty());
+}
+
+#[test]
 fn daemon_run_start_requires_attached_session() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
@@ -8,7 +56,7 @@ fn daemon_run_start_requires_attached_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -16,7 +64,7 @@ fn daemon_run_start_requires_attached_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -47,6 +95,62 @@ fn daemon_run_start_requires_attached_session() {
 }
 
 #[test]
+fn daemon_run_switch_account_and_resume_forwards_the_complete_selection_without_mutation_on_invalid_parent()
+ {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
+            &OpenSessionRequest {
+                title: "Switch account RPC".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let parent = ensure_running_run(&state, &opened.id, "Do not create a child");
+    let selection = explicit_runtime_selection(&state);
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
+        attached_session_id: Some(opened.id.clone()),
+    }));
+    let before = state.app.list_runs(&opened.id).expect("runs should list");
+
+    let error = handle_request(
+        &state,
+        &shutdown_requested,
+        &test_session(),
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(351),
+            method: crate::METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME.to_string(),
+            params: Some(
+                serde_json::to_value(crate::SwitchAccountAndResumeRequest {
+                    session_id: opened.id.clone(),
+                    parent_run_id: parent.body.id,
+                    selection,
+                })
+                .expect("switch request serializes"),
+            ),
+        },
+    )
+    .expect_err("a non-terminal parent must reject through RPC");
+
+    assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+    assert!(error.message.contains("typed account exhaustion"));
+    assert_eq!(
+        state.app.list_runs(&opened.id).expect("runs should list"),
+        before
+    );
+}
+
+#[test]
 fn daemon_run_start_commits_follow_up_transition_before_response() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
@@ -54,7 +158,7 @@ fn daemon_run_start_commits_follow_up_transition_before_response() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -65,7 +169,7 @@ fn daemon_run_start_commits_follow_up_transition_before_response() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -112,15 +216,9 @@ fn daemon_run_start_commits_follow_up_transition_before_response() {
     assert_eq!(activity.items.len(), 1);
     assert!(matches!(
         &activity.items[0].event,
-        PublicDaemonEvent::Run(crate::RunEvent {
-            run_id,
-            status,
-            detail,
-            ..
-        })
-            if *run_id == run.id
-                && *status == RunStatus::WaitingForApproval
-                && detail == "Waiting for approval"
+        PublicDaemonEvent::Run(crate::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == RunStatus::WaitingForApproval
     ));
 }
 
@@ -132,7 +230,7 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -143,7 +241,7 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -210,15 +308,9 @@ fn daemon_run_start_queues_a_second_run_behind_the_active_one() {
     assert!(activity.items.iter().any(|item| {
         matches!(
             &item.event,
-            PublicDaemonEvent::Run(crate::RunEvent {
-                run_id,
-                status,
-                detail,
-                ..
-            })
-                if *run_id == queued.id
-                    && *status == RunStatus::Queued
-                    && detail.contains("Queued behind active run")
+            PublicDaemonEvent::Run(crate::RunEvent::Status(event))
+                if event.run_id() == &queued.id
+                    && event.status() == RunStatus::Queued
         )
     }));
 }
@@ -231,7 +323,7 @@ fn daemon_run_subscribe_events_streams_live_notifications_and_drops_on_disconnec
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -243,7 +335,7 @@ fn daemon_run_subscribe_events_streams_live_notifications_and_drops_on_disconnec
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let (connection_runtime, mut outbound_rx) =
@@ -281,14 +373,10 @@ fn daemon_run_subscribe_events_streams_live_notifications_and_drops_on_disconnec
         sequence: next_sequence,
         session_id: opened.id.clone(),
         occurred_at_ms: next_sequence * 10,
-        payload: crate::DaemonEvent::Run(crate::RunEvent {
-            run_id: run.body.id.clone(),
-            status: RunStatus::Running,
-            detail: "live after rpc subscribe".to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        }),
+        payload: crate::DaemonEvent::Run(
+            crate::RunEvent::active(run.body.id.clone(), RunStatus::Running, None, None, None)
+                .expect("active status"),
+        ),
     });
     let item = recv_run_event_stream_item(&mut outbound_rx);
     let RunEventStreamPayload::Delta {
@@ -302,10 +390,7 @@ fn daemon_run_subscribe_events_streams_live_notifications_and_drops_on_disconnec
     assert_eq!(seq, next_sequence);
     assert!(matches!(
         event,
-        PublicDaemonEvent::Run(crate::RunEvent {
-            status: RunStatus::Running,
-            ..
-        })
+        PublicDaemonEvent::Run(crate::RunEvent::Status(event)) if event.status() == RunStatus::Running
     ));
     session.close();
     wait_for_subscriber_count(&state, &opened.id, 0);
@@ -319,7 +404,7 @@ fn daemon_run_timeline_returns_root_run_events() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Timeline RPC".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -331,7 +416,7 @@ fn daemon_run_timeline_returns_root_run_events() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -377,7 +462,7 @@ fn daemon_run_cancel_requires_attached_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -385,7 +470,7 @@ fn daemon_run_cancel_requires_attached_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -470,7 +555,7 @@ fn daemon_run_cancel_redacts_actor_in_public_activity_page_and_marks_run_cancell
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -488,7 +573,7 @@ fn daemon_run_cancel_redacts_actor_in_public_activity_page_and_marks_run_cancell
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();

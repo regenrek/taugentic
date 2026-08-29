@@ -1,4 +1,7 @@
 use super::*;
+use ta_protocol::wire::{
+    AuthProfileExhaustion, RunEvent, RunStatusReason, RunTimelineEventPayload,
+};
 
 #[test]
 fn run_timeline_projects_lineage_and_typed_events_from_event_log() {
@@ -90,6 +93,71 @@ fn run_timeline_rejects_session_mismatch() {
     assert!(matches!(error, AppServiceError::RunSessionMismatch(_)));
 }
 
+#[test]
+fn run_timeline_projects_typed_selected_account_exhaustion_from_durable_status_history() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let session = service
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Exhausted timeline".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let run = native_run_projection(
+        "run-exhausted-timeline",
+        &session.id,
+        RunStatus::Failed,
+        100,
+    );
+    seed_run_projection(&service, run.clone());
+    service
+        .store
+        .lock()
+        .expect("app store should not be poisoned")
+        .append_event(EventRecord {
+            sequence: 2,
+            session_id: session.id.clone(),
+            occurred_at_ms: 100,
+            payload: DaemonEvent::Run(
+                RunEvent::terminal_with_auth_profile_exhaustion(
+                    run.id.clone(),
+                    RunStatusReason::new("The selected account is rate limited.")
+                        .expect("sanitized exhaustion reason"),
+                    AuthProfileExhaustion::RateLimited,
+                )
+                .expect("typed exhaustion status"),
+            ),
+        })
+        .expect("durable exhaustion event should append");
+
+    let timeline = service
+        .run_timeline(
+            &session.id,
+            &GetRunTimelineQuery {
+                session_id: session.id.clone(),
+                root_run_id: run.id,
+                after_seq: None,
+                limit: None,
+            },
+        )
+        .expect("timeline should project");
+
+    assert!(matches!(
+        timeline.events.as_slice(),
+        [event]
+            if matches!(
+                &event.payload,
+                RunTimelineEventPayload::Run {
+                    auth_profile_exhaustion: Some(AuthProfileExhaustion::RateLimited),
+                    ..
+                }
+            )
+    ));
+}
+
 fn child_run_projection(
     run_id: &str,
     session_id: &SessionId,
@@ -159,14 +227,10 @@ fn run_event(sequence: u64, session_id: &SessionId, run_id: &RunId, detail: &str
         sequence,
         session_id: session_id.clone(),
         occurred_at_ms: sequence * 10,
-        payload: DaemonEvent::Run(crate::RunEvent {
-            run_id: run_id.clone(),
-            status: RunStatus::Running,
-            detail: detail.to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        }),
+        payload: DaemonEvent::Run(
+            crate::RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                .expect("active status"),
+        ),
     }
 }
 

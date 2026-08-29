@@ -8,6 +8,8 @@ pub enum ExecError {
     Spawn(#[source] std::io::Error),
     #[error("failed to wait for process: {0}")]
     Wait(#[source] std::io::Error),
+    #[error("PTY operation failed: {0}")]
+    Pty(String),
     #[error("failed to signal process: {0}")]
     Signal(String),
     #[error("process group policy {0:?} is unsupported on this platform")]

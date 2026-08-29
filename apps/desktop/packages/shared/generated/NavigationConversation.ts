@@ -2,8 +2,14 @@
 import type { ConversationPlacement } from "./ConversationPlacement.js";
 import type { SessionId } from "./SessionId.js";
 import type { SessionStatus } from "./SessionStatus.js";
+import type { WorkspaceId } from "./WorkspaceId.js";
 
 export type NavigationConversation = { sessionId: SessionId,
+/**
+ * Derived from the canonical session projection when the snapshot is
+ * read. Navigation persistence deliberately does not retain this value.
+ */
+workspaceId: WorkspaceId,
 /**
  * Derived from the canonical session projection when the snapshot is read.
  * Navigation persistence deliberately does not retain this value.

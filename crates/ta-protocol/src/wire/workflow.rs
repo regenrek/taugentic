@@ -4,7 +4,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::wire::{AgentRuntimeModelId, AgentRuntimeStrategyId, u64_string};
+use crate::wire::{AgentRuntimeModelId, AgentRuntimeStrategyId, CodeHostAccountId, u64_string};
 
 pub const WORKFLOW_KIND_V1: &str = "taugentic.workflow/v1";
 
@@ -31,6 +31,8 @@ pub struct WorkflowSourceBinding {
     pub project: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repo: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code_host_account_id: Option<CodeHostAccountId>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub paths: Vec<String>,
     pub active_states: Vec<String>,

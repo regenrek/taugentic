@@ -15,6 +15,13 @@ pub fn taugentic_workflow_file_path() -> Option<PathBuf> {
     normalized_home_dir().map(|home| home.join(".taugentic").join("workflow.yaml"))
 }
 
+/// The one device-local document used by the native desktop for presentation
+/// preferences. The document's schema belongs to the desktop, not this path
+/// helper or the native bridge.
+pub fn taugentic_desktop_settings_file_path() -> Option<PathBuf> {
+    normalized_home_dir().map(|home| home.join(".taugentic").join("desktop-settings.json"))
+}
+
 fn normalized_home_dir() -> Option<PathBuf> {
     normalize_env_path(std::env::var_os("HOME"))
         .or_else(|| normalize_env_path(std::env::var_os("USERPROFILE")))
@@ -49,6 +56,20 @@ mod tests {
         assert_eq!(
             path,
             Some(PathBuf::from("/Users/alice/.taugentic/workflow.yaml"))
+        );
+    }
+
+    #[test]
+    fn normalizes_home_desktop_settings_file_path() {
+        let path = normalize_env_path(Some(" /Users/alice ".into()))
+            .map(PathBuf::from)
+            .map(|home| home.join(".taugentic").join("desktop-settings.json"));
+
+        assert_eq!(
+            path,
+            Some(PathBuf::from(
+                "/Users/alice/.taugentic/desktop-settings.json"
+            ))
         );
     }
 

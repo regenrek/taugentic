@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Closed capabilities for the selected runtime model.",
+  "enum": [
+    "unsupported",
+    "supported"
+  ],
+  "title": "AgentRuntimeMediaCapability",
+  "type": "string"
+}

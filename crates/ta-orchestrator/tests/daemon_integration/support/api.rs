@@ -98,6 +98,7 @@ pub fn start_run(
                         ),
                         model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
                     },
+                    attachments: Vec::new(),
                     recipe_id: None,
                 })
                 .expect("run start params should serialize"),
@@ -416,15 +417,13 @@ pub fn force_run_running_in_existing_root_store(
                 status: RunStatus::Running,
                 ..run.clone()
             },
-            events: vec![DaemonEvent::Run(ta_protocol::wire::RunEvent {
-                run_id: run.id,
-                status: RunStatus::Running,
-                detail: "Seeded durable running run for integration proof".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            })],
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(
+                ta_protocol::wire::RunEvent::active(run.id, RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            )],
             occurred_at_ms: 50,
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("run should persist in durable root");
 }
@@ -460,7 +459,7 @@ pub fn get_artifact(
     request_id: RequestId,
     _session_id: SessionId,
     artifact_id: ta_protocol::wire::ArtifactId,
-) -> Option<ArtifactSummary> {
+) -> Option<ArtifactContentResult> {
     let codec = JsonLineCodec;
     write_request(
         &codec,
@@ -469,8 +468,11 @@ pub fn get_artifact(
             request_id.clone(),
             METHOD_DAEMON_ARTIFACT_GET,
             Some(
-                serde_json::to_value(GetArtifactQuery { artifact_id })
-                    .expect("artifact get params should serialize"),
+                serde_json::to_value(GetArtifactQuery {
+                    artifact_id,
+                    pdf_page_index: None,
+                })
+                .expect("artifact get params should serialize"),
             ),
         ),
     );

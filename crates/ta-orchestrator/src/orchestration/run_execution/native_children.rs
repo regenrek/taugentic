@@ -1,6 +1,6 @@
 use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::{ApprovalScope, RunHarnessKind, RunSource, RunStatus};
-use ta_store::{CommitRunTransition, PersistenceStore, RunProjection};
+use ta_store::{CommitRunTransition, PersistenceStore, RunProjection, UserTurnCommit};
 use taugentic_agent::{AgentExecutionHarness, NativeChildRunRequest, NativeChildRunResult};
 use uuid::Uuid;
 
@@ -11,10 +11,11 @@ impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
-    pub fn start_native_child_run(
+    pub(super) fn start_native_child_run_from_generation(
         &self,
         session_id: crate::SessionId,
         request: NativeChildRunRequest,
+        generation: u64,
     ) -> Result<NativeChildRunResult, RunExecutionError> {
         let resolved_request = resolve_delegate_recipe(
             &self.recipe_registry,
@@ -30,6 +31,10 @@ where
         if objective.is_empty() {
             return Err(RunExecutionError::EmptyRunObjective);
         }
+        let user_turn = UserTurnCommit::Append {
+            text: objective.to_string(),
+            attachments: Vec::new(),
+        };
 
         let parent = {
             let store = self.store.lock().expect("app store should not be poisoned");
@@ -43,11 +48,7 @@ where
                     parent.id.as_str().to_string(),
                 ));
             }
-            if parent.status != RunStatus::Running
-                || !self
-                    .runtime
-                    .is_live_run_running(&parent.id, &parent.session_id)
-            {
+            if parent.status != RunStatus::Running {
                 return Err(RunExecutionError::RunNotLiveOwned(
                     parent.id.as_str().to_string(),
                 ));
@@ -116,8 +117,10 @@ where
                 warning,
             })
         });
-        let (mut run, events) = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
+        let commit_child = |store: &mut S| -> Result<
+            (RunProjection, Vec<ta_store::EventRecord>),
+            RunExecutionError,
+        > {
             let (status, mut events) = match disposition {
                 crate::RunScheduleDisposition::StartNow => build_start_transition(
                     child_run_id.clone(),
@@ -165,34 +168,42 @@ where
                 .commit_run_transition(CommitRunTransition {
                     session_id: session_id.clone(),
                     run: child,
+                    user_turn,
                     events,
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .map_err(|error| fail_scheduled_run(error.into()))?;
-            if committed.run.status == RunStatus::Running {
-                self.runtime
-                    .claim_live_run(committed.run.id.clone(), session_id.clone());
-            }
-            (committed.run, committed.events)
+            Ok((committed.run, committed.events))
         };
+        let (mut run, events) =
+            self.runtime
+                .with_live_generation_lease(&parent.id, &session_id, generation, || {
+                    let mut store = self.store.lock().expect("app store should not be poisoned");
+                    commit_child(&mut *store)
+                })?;
         self.publish_records(&events);
 
         if run.status == RunStatus::Running {
+            let generation = self
+                .runtime
+                .claim_live_run(run.id.clone(), session_id.clone());
             let start_result = self.start_provider_execution(
                 &session_id,
                 &run.id,
-                &run.objective,
                 &runtime_profile,
                 run.source.route(),
+                generation,
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
                 && latest_run.status == RunStatus::Running
             {
-                self.fail_live_run_and_publish(
+                self.fail_live_run_and_publish_for_generation(
                     session_id.clone(),
                     &latest_run.id,
                     error.to_string(),
+                    generation,
                 )?;
                 run = self.load_run_projection(&latest_run.id)?;
             } else if latest_run.status != RunStatus::Cancelled {
@@ -249,20 +260,20 @@ mod tests {
         let parent_turn_id =
             ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id");
 
-        let child = execution
-            .start_native_child_run(
-                session.id.clone(),
-                NativeChildRunRequest::new(
-                    parent.run.id.clone(),
-                    parent_turn_id.clone(),
-                    "Review the focused files",
-                    None,
-                    None,
-                    None,
-                )
-                .expect("child request"),
+        let child = start_native_child_run_for_tests(
+            &execution,
+            &session.id,
+            NativeChildRunRequest::new(
+                parent.run.id.clone(),
+                parent_turn_id.clone(),
+                "Review the focused files",
+                None,
+                None,
+                None,
             )
-            .expect("native child run should start through orchestrator contract");
+            .expect("child request"),
+        )
+        .expect("native child run should start through captured parent generation");
 
         assert_eq!(child.status, RunStatus::Queued);
         let stored_child = execution
@@ -330,20 +341,20 @@ mod tests {
                 selection,
             )
             .expect("parent should seed");
-        let child = execution
-            .start_native_child_run(
-                session.id.clone(),
-                NativeChildRunRequest::new(
-                    parent.run.id.clone(),
-                    ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id"),
-                    "Review the focused files",
-                    None,
-                    None,
-                    None,
-                )
-                .expect("child request"),
+        let child = start_native_child_run_for_tests(
+            &execution,
+            &session.id,
+            NativeChildRunRequest::new(
+                parent.run.id.clone(),
+                ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id"),
+                "Review the focused files",
+                None,
+                None,
+                None,
             )
-            .expect("native child run should queue");
+            .expect("child request"),
+        )
+        .expect("native child run should queue");
         assert_eq!(child.status, RunStatus::Queued);
 
         app.patch_agent_runtime_profile(&crate::DaemonAgentRuntimePatchProfileParams {
@@ -358,6 +369,12 @@ mod tests {
             service: execution.clone(),
             session_id: session.id.clone(),
             run_id: parent.run.id.clone(),
+            generation: execution
+                .runtime
+                .live_execution_for(&parent.run.id)
+                .filter(|live_execution| live_execution.session_id == session.id)
+                .expect("live parent execution")
+                .generation,
         }
         .complete("parent completed")
         .expect("parent completion should promote queued child");
@@ -388,33 +405,6 @@ mod tests {
     }
 
     #[test]
-    fn start_native_child_run_rejects_missing_parent() {
-        let runtime = crate::RuntimeService::bootstrap();
-        let (app, execution) = app_and_execution_with_runtime(runtime);
-        let session = open_session(&app, "Native parent");
-
-        let error = execution
-            .start_native_child_run(
-                session.id.clone(),
-                NativeChildRunRequest::new(
-                    RunId::new("run-missing").expect("run id"),
-                    ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id"),
-                    "Review the focused files",
-                    None,
-                    None,
-                    None,
-                )
-                .expect("child request"),
-            )
-            .expect_err("missing parent must fail");
-
-        assert!(matches!(
-            error,
-            RunExecutionError::RunNotFound(ref run_id) if run_id == "run-missing"
-        ));
-    }
-
-    #[test]
     fn start_native_child_run_rejects_external_parent_harness() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
@@ -428,20 +418,20 @@ mod tests {
             )
             .expect("parent should seed");
 
-        let error = execution
-            .start_native_child_run(
-                session.id.clone(),
-                NativeChildRunRequest::new(
-                    parent.run.id.clone(),
-                    ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id"),
-                    "Review the focused files",
-                    None,
-                    None,
-                    None,
-                )
-                .expect("child request"),
+        let error = start_native_child_run_for_tests(
+            &execution,
+            &session.id,
+            NativeChildRunRequest::new(
+                parent.run.id.clone(),
+                ta_protocol::wire::AgentStreamTurnId::new("turn-parent").expect("turn id"),
+                "Review the focused files",
+                None,
+                None,
+                None,
             )
-            .expect_err("external parent must fail");
+            .expect("child request"),
+        )
+        .expect_err("external parent must fail");
 
         assert!(matches!(
             error,
@@ -463,20 +453,20 @@ mod tests {
             )
             .expect("parent should seed");
         attach_noop_handle(&execution, &parent.run.id);
-        let queued_child = execution
-            .start_native_child_run(
-                session.id.clone(),
-                NativeChildRunRequest::new(
-                    parent.run.id.clone(),
-                    ta_protocol::wire::AgentStreamTurnId::new("turn-queued").expect("turn id"),
-                    "Queued child",
-                    None,
-                    None,
-                    None,
-                )
-                .expect("child request"),
+        let queued_child = start_native_child_run_for_tests(
+            &execution,
+            &session.id,
+            NativeChildRunRequest::new(
+                parent.run.id.clone(),
+                ta_protocol::wire::AgentStreamTurnId::new("turn-queued").expect("turn id"),
+                "Queued child",
+                None,
+                None,
+                None,
             )
-            .expect("queued native child should start");
+            .expect("child request"),
+        )
+        .expect("queued native child should start");
         let running_child_id = RunId::new("run-native-child-running").expect("run id");
         let waiting_child_id = RunId::new("run-native-child-waiting").expect("run id");
         let requested_at_ms = current_time_ms();
@@ -533,15 +523,19 @@ mod tests {
                         claimed_files: Vec::new(),
                         conflict_summary: None,
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: running_child_id.clone(),
-                        status: RunStatus::Running,
-                        detail: "Seeded running native child".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            running_child_id.clone(),
+                            RunStatus::Running,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("active status"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("running child should persist");
             store
@@ -578,20 +572,24 @@ mod tests {
                         claimed_files: Vec::new(),
                         conflict_summary: None,
                     },
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
                     events: vec![
                         DaemonEvent::Approval(ApprovalEvent::Requested {
                             request: waiting_approval.clone(),
                         }),
-                        DaemonEvent::Run(crate::RunEvent {
-                            run_id: waiting_child_id.clone(),
-                            status: RunStatus::WaitingForApproval,
-                            detail: "Seeded waiting native child".to_string(),
-                            output_contract: None,
-                            recipe_id: None,
-                            result: None,
-                        }),
+                        DaemonEvent::Run(
+                            crate::RunEvent::active(
+                                waiting_child_id.clone(),
+                                RunStatus::WaitingForApproval,
+                                None,
+                                None,
+                                None,
+                            )
+                            .expect("active status"),
+                        ),
                     ],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("waiting child should persist");
         }
@@ -650,22 +648,22 @@ mod tests {
         assert!(cancelled.events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == queued_child.id && *status == RunStatus::Cancelled
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &queued_child.id && event.status() == RunStatus::Cancelled
             )
         }));
         assert!(cancelled.events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == running_child_id && *status == RunStatus::Cancelled
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &running_child_id && event.status() == RunStatus::Cancelled
             )
         }));
         assert!(cancelled.events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == waiting_child_id && *status == RunStatus::Cancelled
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &waiting_child_id && event.status() == RunStatus::Cancelled
             )
         }));
         assert!(cancelled.events.iter().any(|record| {

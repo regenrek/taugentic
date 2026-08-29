@@ -8,33 +8,99 @@ use ta_jsonrpc::{
     ClientConfig, JsonRpcClientError, JsonRpcNotificationSubscription, PersistentJsonRpcClient,
 };
 use ta_protocol::wire::{
-    AgentRuntimeSnapshot, ApprovalSnapshotResult, ArtifactSnapshotResult, AuthProfileLoginResult,
-    AuthProfileLogoutResult, DAEMON_PROTOCOL_VERSION, DaemonAgentRuntimeAuthLoginCompleteParams,
+    ActivityPageQuery, AgentRuntimeSnapshot, AgentTurnsPageQuery, AgentTurnsPageResult,
+    ApprovalSnapshotResult, ArtifactContentResult, ArtifactSnapshotResult, AuthProfileLoginResult,
+    AuthProfileLogoutResult, CancelScheduledWorkRequest, CodeHostAccountConnectParams,
+    CodeHostAccountConnectResult, CodeHostAccountDisconnectParams, CodeHostAccountDisconnectResult,
+    CodeHostAccountListParams, CodeHostAccountListResult, CodeHostPage,
+    CodeHostPullRequestActivityParams, CodeHostPullRequestActivityResult,
+    CodeHostPullRequestChecksParams, CodeHostPullRequestChecksResult,
+    CodeHostPullRequestCommentCreateParams, CodeHostPullRequestCommentCreateResult,
+    CodeHostPullRequestDetail, CodeHostPullRequestDetailParams, CodeHostPullRequestEnsureParams,
+    CodeHostPullRequestEnsureResult, CodeHostPullRequestListParams, CodeHostPushApplyParams,
+    CodeHostPushApplyResult, CodeHostPushPrepareParams, CodeHostPushPrepareResult,
+    CodeHostRepositoryContextParams, CodeHostRepositoryContextResult, ContinueRunRequest,
+    ContinueRunResult, CreateScheduledWorkRequest, CreateScheduledWorkResult,
+    DAEMON_PROTOCOL_VERSION, DaemonAgentRuntimeAuthLoginCompleteParams,
     DaemonAgentRuntimeAuthLoginParams, DaemonAgentRuntimeAuthLogoutParams,
-    DaemonAgentRuntimePatchProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    DaemonApprovalDecideParams, DaemonApprovalDecideResult, DaemonClientCapabilities,
-    DaemonInitializeParams, DaemonInitializeResult, DaemonNavigationIntent,
-    DaemonNavigationIntentParams, DaemonNavigationIntentResult, DaemonNavigationInvalidatedParams,
-    DaemonNavigationSnapshotParams, DaemonNavigationSnapshotResult,
-    DaemonNavigationSubscribeParams, DaemonNavigationSubscribeResult, DaemonProjectOpenParams,
-    DaemonProjectOpenResult, DaemonSessionAttachParams, DaemonSessionAttachResult,
-    DaemonSessionOpenParams, DaemonSessionOpenResult, DaemonWorkspaceGetParams,
+    DaemonAgentRuntimeAuthProfilePreferencesSetParams, DaemonAgentRuntimePatchProfileParams,
+    DaemonAgentRuntimeSetExtensionEnabledParams, DaemonApprovalDecideParams,
+    DaemonApprovalDecideResult, DaemonClientCapabilities, DaemonDiagnostics,
+    DaemonDiagnosticsParams, DaemonInitializeParams, DaemonInitializeResult,
+    DaemonNavigationIntent, DaemonNavigationIntentParams, DaemonNavigationIntentResult,
+    DaemonNavigationInvalidatedParams, DaemonNavigationSnapshotParams,
+    DaemonNavigationSnapshotResult, DaemonNavigationSubscribeParams,
+    DaemonNavigationSubscribeResult, DaemonProjectOpenParams, DaemonProjectOpenResult,
+    DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
+    DaemonSessionOpenResult, DaemonSessionSetNextRunSelectionParams, DaemonWorkspaceGetParams,
     DaemonWorkspaceGetResult, DaemonWorkspaceListParams, DaemonWorkspaceListResult,
-    DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult, GetAgentRuntimeQuery, ListApprovalsQuery,
-    ListArtifactsQuery, ListRunsQuery, ListSessionsQuery, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
+    DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult, ForkRunRequest, ForkRunResult,
+    GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery, GetRunTimelineQuery,
+    GitCheckpointApplyRevertParams, GitCheckpointListParams, GitCheckpointListResult,
+    GitCheckpointPrepareRevertParams, GitCheckpointPrepareRevertResult, GitCommitParams,
+    GitDiffParams, GitDiffResult, GitMutationResult, GitPathsMutationParams,
+    GitRepositorySnapshotParams, GitRepositorySnapshotResult, InspectPluginPackageRequest,
+    InstallPluginPackageRequest, InstallPluginPackageResult, JoinRunRequest, JoinRunResult,
+    ListApprovalsQuery, ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
+    ListPluginInstallationsRequest, ListPluginInstallationsResult, ListRecipesParams,
+    ListRunsQuery, ListScheduledWorkRequest, ListScheduledWorkResult, ListSessionsQuery,
+    METHOD_DAEMON_ACTIVITY_PAGE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
-    METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_INITIALIZE,
+    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_AGENT_TURNS_PAGE,
+    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET,
+    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT,
+    METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT, METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST, METHOD_DAEMON_CODE_HOST_PUSH_APPLY,
+    METHOD_DAEMON_CODE_HOST_PUSH_PREPARE, METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT,
+    METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT,
+    METHOD_DAEMON_GIT_CHECKPOINT_LIST, METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT,
+    METHOD_DAEMON_GIT_COMMIT, METHOD_DAEMON_GIT_DIFF, METHOD_DAEMON_GIT_SNAPSHOT,
+    METHOD_DAEMON_GIT_STAGE, METHOD_DAEMON_GIT_UNSTAGE, METHOD_DAEMON_INITIALIZE,
     METHOD_DAEMON_NAVIGATION_INTENT, METHOD_DAEMON_NAVIGATION_INVALIDATED,
     METHOD_DAEMON_NAVIGATION_SNAPSHOT, METHOD_DAEMON_NAVIGATION_SUBSCRIBE,
-    METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START,
-    METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST,
-    METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW, METHOD_DAEMON_WORKSPACE_GET,
-    METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN, RunEventStreamItem,
-    RunEventStreamPayload, RunSummary, SessionOverviewQuery, SessionOverviewResult, SessionSummary,
-    StartRunCommand, SubscribeRunEventsRequest, SubscribeRunEventsResult, Workspace, WorkspaceId,
-    WorkspacePath,
+    METHOD_DAEMON_PLUGIN_INSPECT, METHOD_DAEMON_PLUGIN_INSTALL, METHOD_DAEMON_PLUGIN_LIST,
+    METHOD_DAEMON_PLUGIN_UNINSTALL, METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RECIPES_LIST,
+    METHOD_DAEMON_RUN_CONTINUE, METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_GET,
+    METHOD_DAEMON_RUN_JOIN, METHOD_DAEMON_RUN_LINEAGE_GRAPH, METHOD_DAEMON_RUN_LIST,
+    METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SPAWN,
+    METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
+    METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
+    METHOD_DAEMON_SCHEDULED_WORK_CANCEL, METHOD_DAEMON_SCHEDULED_WORK_CREATE,
+    METHOD_DAEMON_SCHEDULED_WORK_LIST, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST,
+    METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
+    METHOD_DAEMON_SESSION_SET_NEXT_RUN_SELECTION, METHOD_DAEMON_TERMINAL_ATTACH,
+    METHOD_DAEMON_TERMINAL_CLOSE, METHOD_DAEMON_TERMINAL_DETACH, METHOD_DAEMON_TERMINAL_EVENT,
+    METHOD_DAEMON_TERMINAL_INPUT, METHOD_DAEMON_TERMINAL_LIST, METHOD_DAEMON_TERMINAL_RESIZE,
+    METHOD_DAEMON_TERMINAL_SPAWN, METHOD_DAEMON_THREAD_WORKSPACE_GET,
+    METHOD_DAEMON_THREAD_WORKSPACE_UPDATE, METHOD_DAEMON_VOICE_END, METHOD_DAEMON_VOICE_EXCHANGE,
+    METHOD_DAEMON_VOICE_OPEN, METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST,
+    METHOD_DAEMON_WORK_ITEM_REFRESH, METHOD_DAEMON_WORK_ITEM_TRIGGER,
+    METHOD_DAEMON_WORKSPACE_FILE_OPEN_EXTERNAL, METHOD_DAEMON_WORKSPACE_FILE_READ,
+    METHOD_DAEMON_WORKSPACE_FILE_TREE, METHOD_DAEMON_WORKSPACE_FILE_WRITE,
+    METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN,
+    PluginInspection, PublicActivityPageResult, RecipeListResponse, RunDetail, RunEventStreamItem,
+    RunEventStreamPayload, RunLineageGraphRequest, RunLineageGraphResult, RunSummary, RunTimeline,
+    SessionOverviewQuery, SessionOverviewResult, SessionSummary, SpawnRunRequest, SpawnRunResult,
+    StartRunCommand, SubscribeRunEventsRequest, SubscribeRunEventsResult,
+    SwitchAccountAndResumeRequest, SwitchAccountAndResumeResult, TerminalAttachParams,
+    TerminalAttachResult, TerminalCloseParams, TerminalCloseResult, TerminalDetachParams,
+    TerminalDetachResult, TerminalEventParams, TerminalInputParams, TerminalInputResult,
+    TerminalListParams, TerminalListResult, TerminalResizeParams, TerminalResizeResult,
+    TerminalSessionId, TerminalSpawnParams, TerminalSpawnResult, TerminalStreamEvent,
+    ThreadWorkspaceQuery, ThreadWorkspaceResult, ThreadWorkspaceUpdateCommand,
+    UninstallPluginRequest, VOICE_FRAME_BYTES, VoiceEvent, VoiceStreamEndParams,
+    VoiceStreamEndReason, VoiceStreamEndResult, VoiceStreamExchangeParams,
+    VoiceStreamExchangeResult, VoiceStreamOpenParams, VoiceStreamOpenResult, WorkItemDismissParams,
+    WorkItemDismissResult, WorkItemListQuery, WorkItemListResult, WorkItemRefreshParams,
+    WorkItemTriggerParams, WorkItemTriggerResult, Workspace, WorkspaceFileOpenExternalParams,
+    WorkspaceFileOpenExternalResult, WorkspaceFileReadParams, WorkspaceFileReadResult,
+    WorkspaceFileTreeParams, WorkspaceFileTreeResult, WorkspaceFileWriteParams,
+    WorkspaceFileWriteResult, WorkspaceId, WorkspacePath, decode_voice_audio, encode_voice_audio,
 };
 
 use crate::credential_store::remove_session_authority;
@@ -103,6 +169,127 @@ pub struct RunEventSubscription {
     cursor: Mutex<Option<u64>>,
     notifications: Mutex<JsonRpcNotificationSubscription>,
     replay: SubscribeRunEventsResult,
+}
+
+pub struct TerminalEventSubscription {
+    client: PersistentDaemonClient,
+    terminal_id: TerminalSessionId,
+    cursor: Mutex<u64>,
+    notifications: Mutex<JsonRpcNotificationSubscription>,
+    initial: TerminalAttachResult,
+}
+
+/// One Rust-only audio stream on the existing persistent daemon connection.
+/// Audio packets never enter a public client or generated binding.
+#[derive(Clone)]
+pub struct VoiceStream {
+    client: PersistentDaemonClient,
+    run_id: ta_protocol::wire::RunId,
+}
+
+pub struct VoiceStreamExchange {
+    pub output: Option<[u8; VOICE_FRAME_BYTES]>,
+    pub state: Option<VoiceEvent>,
+    pub playback_interrupted: bool,
+}
+
+impl VoiceStream {
+    pub fn exchange(
+        &self,
+        input: [u8; VOICE_FRAME_BYTES],
+        playback_completed_frames: u64,
+    ) -> Result<VoiceStreamExchange, JsonRpcClientError> {
+        let result: VoiceStreamExchangeResult = self.client.call(
+            METHOD_DAEMON_VOICE_EXCHANGE,
+            &VoiceStreamExchangeParams {
+                run_id: self.run_id.clone(),
+                audio_base64: encode_voice_audio(&input),
+                playback_completed_frames,
+            },
+        )?;
+        let output = result
+            .audio_base64
+            .as_deref()
+            .map(|value| {
+                decode_voice_audio(value).ok_or_else(|| {
+                    JsonRpcClientError::Deserialize(serde_json::Error::io(io::Error::other(
+                        "daemon returned an invalid voice audio packet",
+                    )))
+                })
+            })
+            .transpose()?;
+        Ok(VoiceStreamExchange {
+            output,
+            state: result.state,
+            playback_interrupted: result.playback_interrupted,
+        })
+    }
+
+    pub fn end(&self, reason: VoiceStreamEndReason) -> Result<(), JsonRpcClientError> {
+        let _: VoiceStreamEndResult = self.client.call(
+            METHOD_DAEMON_VOICE_END,
+            &VoiceStreamEndParams {
+                run_id: self.run_id.clone(),
+                reason,
+            },
+        )?;
+        Ok(())
+    }
+
+    pub fn run_id(&self) -> &ta_protocol::wire::RunId {
+        &self.run_id
+    }
+}
+
+impl TerminalEventSubscription {
+    pub fn initial(&self) -> &TerminalAttachResult {
+        &self.initial
+    }
+
+    pub fn recv(&self) -> Result<TerminalEventParams, JsonRpcClientError> {
+        loop {
+            let notification = self
+                .notifications
+                .lock()
+                .expect("terminal notification lock poisoned")
+                .recv()
+                .map_err(notification_error)?;
+            if notification.method != METHOD_DAEMON_TERMINAL_EVENT {
+                continue;
+            }
+            let params = notification.params.ok_or_else(|| {
+                JsonRpcClientError::Deserialize(serde_json::Error::io(io::Error::other(
+                    "daemon terminal event notification omitted params",
+                )))
+            })?;
+            let event: TerminalEventParams =
+                serde_json::from_value(params).map_err(JsonRpcClientError::Deserialize)?;
+            if event.terminal_id != self.terminal_id {
+                continue;
+            }
+            if let TerminalStreamEvent::Output { sequence, .. } = &event.event {
+                let mut cursor = self.cursor.lock().expect("terminal cursor lock poisoned");
+                if *sequence <= *cursor {
+                    continue;
+                }
+                *cursor = *sequence;
+            }
+            return Ok(event);
+        }
+    }
+
+    pub fn detach(&self) -> Result<TerminalDetachResult, JsonRpcClientError> {
+        self.client.call(
+            METHOD_DAEMON_TERMINAL_DETACH,
+            &TerminalDetachParams {
+                terminal_id: self.terminal_id.clone(),
+            },
+        )
+    }
+
+    pub fn close_connection(&self) {
+        self.client.close();
+    }
 }
 
 impl RunEventSubscription {
@@ -195,6 +382,33 @@ impl PersistentDaemonClient {
     {
         self.call(method, params)
     }
+
+    pub fn open_voice_stream(
+        &self,
+        run_id: ta_protocol::wire::RunId,
+    ) -> Result<Option<(VoiceStream, VoiceEvent)>, JsonRpcClientError> {
+        let result: VoiceStreamOpenResult = self.call(
+            METHOD_DAEMON_VOICE_OPEN,
+            &VoiceStreamOpenParams {
+                run_id: run_id.clone(),
+            },
+        )?;
+        if !result.accepted {
+            return Ok(None);
+        }
+        let state = result.state.ok_or_else(|| {
+            JsonRpcClientError::Deserialize(serde_json::Error::io(io::Error::other(
+                "daemon accepted a voice stream without public state",
+            )))
+        })?;
+        Ok(Some((
+            VoiceStream {
+                client: self.clone(),
+                run_id,
+            },
+            state,
+        )))
+    }
     pub fn connect(config: ClientConfig, client_name: String) -> Result<Self, JsonRpcClientError> {
         Ok(Self {
             client_name,
@@ -280,6 +494,222 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_PROJECT_OPEN, &params)
     }
 
+    pub fn workspace_file_tree(
+        &mut self,
+        params: WorkspaceFileTreeParams,
+    ) -> Result<WorkspaceFileTreeResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORKSPACE_FILE_TREE, &params)
+    }
+
+    pub fn read_workspace_file(
+        &mut self,
+        params: WorkspaceFileReadParams,
+    ) -> Result<WorkspaceFileReadResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORKSPACE_FILE_READ, &params)
+    }
+
+    pub fn write_workspace_file(
+        &mut self,
+        params: WorkspaceFileWriteParams,
+    ) -> Result<WorkspaceFileWriteResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORKSPACE_FILE_WRITE, &params)
+    }
+
+    pub fn workspace_file_open_external(
+        &mut self,
+        params: WorkspaceFileOpenExternalParams,
+    ) -> Result<WorkspaceFileOpenExternalResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORKSPACE_FILE_OPEN_EXTERNAL, &params)
+    }
+
+    pub fn code_host_accounts(&mut self) -> Result<CodeHostAccountListResult, JsonRpcClientError> {
+        self.call(
+            METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST,
+            &CodeHostAccountListParams {},
+        )
+    }
+
+    pub fn connect_code_host_account(
+        &mut self,
+        params: CodeHostAccountConnectParams,
+    ) -> Result<CodeHostAccountConnectResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT, &params)
+    }
+
+    pub fn disconnect_code_host_account(
+        &mut self,
+        params: CodeHostAccountDisconnectParams,
+    ) -> Result<CodeHostAccountDisconnectResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT, &params)
+    }
+
+    pub fn code_host_repository_context(
+        &mut self,
+        params: CodeHostRepositoryContextParams,
+    ) -> Result<CodeHostRepositoryContextResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT, &params)
+    }
+
+    pub fn prepare_code_host_push(
+        &mut self,
+        params: CodeHostPushPrepareParams,
+    ) -> Result<CodeHostPushPrepareResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PUSH_PREPARE, &params)
+    }
+
+    pub fn apply_code_host_push(
+        &mut self,
+        params: CodeHostPushApplyParams,
+    ) -> Result<CodeHostPushApplyResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PUSH_APPLY, &params)
+    }
+
+    pub fn code_host_pull_requests(
+        &mut self,
+        params: CodeHostPullRequestListParams,
+    ) -> Result<CodeHostPage, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST, &params)
+    }
+
+    pub fn code_host_pull_request_detail(
+        &mut self,
+        params: CodeHostPullRequestDetailParams,
+    ) -> Result<CodeHostPullRequestDetail, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL, &params)
+    }
+
+    pub fn ensure_code_host_pull_request(
+        &mut self,
+        params: CodeHostPullRequestEnsureParams,
+    ) -> Result<CodeHostPullRequestEnsureResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE, &params)
+    }
+
+    pub fn code_host_pull_request_checks(
+        &mut self,
+        params: CodeHostPullRequestChecksParams,
+    ) -> Result<CodeHostPullRequestChecksResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS, &params)
+    }
+
+    pub fn code_host_pull_request_activity(
+        &mut self,
+        params: CodeHostPullRequestActivityParams,
+    ) -> Result<CodeHostPullRequestActivityResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY, &params)
+    }
+
+    pub fn create_code_host_pull_request_comment(
+        &mut self,
+        params: CodeHostPullRequestCommentCreateParams,
+    ) -> Result<CodeHostPullRequestCommentCreateResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE, &params)
+    }
+
+    pub fn git_snapshot(
+        &mut self,
+        params: GitRepositorySnapshotParams,
+    ) -> Result<GitRepositorySnapshotResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_SNAPSHOT, &params)
+    }
+
+    pub fn git_diff(&mut self, params: GitDiffParams) -> Result<GitDiffResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_DIFF, &params)
+    }
+
+    pub fn git_stage(
+        &mut self,
+        params: GitPathsMutationParams,
+    ) -> Result<GitMutationResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_STAGE, &params)
+    }
+
+    pub fn git_unstage(
+        &mut self,
+        params: GitPathsMutationParams,
+    ) -> Result<GitMutationResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_UNSTAGE, &params)
+    }
+
+    pub fn git_commit(
+        &mut self,
+        params: GitCommitParams,
+    ) -> Result<GitMutationResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_COMMIT, &params)
+    }
+
+    pub fn git_checkpoint_list(
+        &mut self,
+        params: GitCheckpointListParams,
+    ) -> Result<GitCheckpointListResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_CHECKPOINT_LIST, &params)
+    }
+
+    pub fn git_checkpoint_prepare_revert(
+        &mut self,
+        params: GitCheckpointPrepareRevertParams,
+    ) -> Result<GitCheckpointPrepareRevertResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT, &params)
+    }
+
+    pub fn git_checkpoint_apply_revert(
+        &mut self,
+        params: GitCheckpointApplyRevertParams,
+    ) -> Result<GitMutationResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT, &params)
+    }
+
+    pub fn spawn_terminal(
+        &mut self,
+        params: TerminalSpawnParams,
+    ) -> Result<TerminalSpawnResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_TERMINAL_SPAWN, &params)
+    }
+
+    pub fn list_terminals(
+        &mut self,
+        params: TerminalListParams,
+    ) -> Result<TerminalListResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_TERMINAL_LIST, &params)
+    }
+
+    pub fn terminal_input(
+        &mut self,
+        params: TerminalInputParams,
+    ) -> Result<TerminalInputResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_TERMINAL_INPUT, &params)
+    }
+
+    pub fn resize_terminal(
+        &mut self,
+        params: TerminalResizeParams,
+    ) -> Result<TerminalResizeResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_TERMINAL_RESIZE, &params)
+    }
+
+    pub fn close_terminal(
+        &mut self,
+        params: TerminalCloseParams,
+    ) -> Result<TerminalCloseResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_TERMINAL_CLOSE, &params)
+    }
+
+    pub fn subscribe_terminal(
+        &self,
+        params: TerminalAttachParams,
+    ) -> Result<TerminalEventSubscription, JsonRpcClientError> {
+        let (notifications, initial): (JsonRpcNotificationSubscription, TerminalAttachResult) =
+            self.transport
+                .subscribe_then_call(METHOD_DAEMON_TERMINAL_ATTACH, &params, 256)?;
+        Ok(TerminalEventSubscription {
+            client: self.clone(),
+            terminal_id: params.terminal_id,
+            cursor: Mutex::new(initial.latest_sequence),
+            notifications: Mutex::new(notifications),
+            initial,
+        })
+    }
+
     pub fn attach_session(
         &mut self,
         session_id: ta_protocol::wire::SessionId,
@@ -322,6 +752,13 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_SESSION_LIST, &ListSessionsQuery {})
     }
 
+    pub fn set_session_next_run_selection(
+        &mut self,
+        params: DaemonSessionSetNextRunSelectionParams,
+    ) -> Result<SessionSummary, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_SESSION_SET_NEXT_RUN_SELECTION, &params)
+    }
+
     pub fn session_overview(
         &mut self,
         query: SessionOverviewQuery,
@@ -356,11 +793,157 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_RUN_LIST, &query)
     }
 
+    pub fn list_native_runs(
+        &mut self,
+        request: ListNativeRunsRequest,
+    ) -> Result<ListNativeRunsResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_LIST_NATIVE, &request)
+    }
+    pub fn run_lineage_graph(
+        &mut self,
+        request: RunLineageGraphRequest,
+    ) -> Result<RunLineageGraphResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_LINEAGE_GRAPH, &request)
+    }
+
+    pub fn get_run(&mut self, query: GetRunQuery) -> Result<Option<RunDetail>, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_GET, &query)
+    }
+
+    pub fn run_timeline(
+        &mut self,
+        query: GetRunTimelineQuery,
+    ) -> Result<RunTimeline, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_TIMELINE, &query)
+    }
+
+    pub fn activity_page(
+        &mut self,
+        query: ActivityPageQuery,
+    ) -> Result<PublicActivityPageResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_ACTIVITY_PAGE, &query)
+    }
+
+    pub fn replay_run_events(
+        &mut self,
+        query: SubscribeRunEventsRequest,
+    ) -> Result<SubscribeRunEventsResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_REPLAY_EVENTS, &query)
+    }
+
+    pub fn agent_turns_page(
+        &mut self,
+        query: AgentTurnsPageQuery,
+    ) -> Result<AgentTurnsPageResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_AGENT_TURNS_PAGE, &query)
+    }
+
+    pub fn thread_workspace(&mut self) -> Result<ThreadWorkspaceResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_THREAD_WORKSPACE_GET, &ThreadWorkspaceQuery {})
+    }
+
+    pub fn update_thread_workspace(
+        &mut self,
+        command: ThreadWorkspaceUpdateCommand,
+    ) -> Result<ThreadWorkspaceResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_THREAD_WORKSPACE_UPDATE, &command)
+    }
+
     pub fn list_approvals(
         &mut self,
         query: ListApprovalsQuery,
     ) -> Result<ApprovalSnapshotResult, JsonRpcClientError> {
         self.call(METHOD_DAEMON_APPROVAL_LIST, &query)
+    }
+
+    pub fn diagnostics_snapshot(&mut self) -> Result<DaemonDiagnostics, JsonRpcClientError> {
+        self.call(
+            METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT,
+            &DaemonDiagnosticsParams {},
+        )
+    }
+
+    pub fn list_recipes(&mut self) -> Result<RecipeListResponse, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RECIPES_LIST, &ListRecipesParams {})
+    }
+
+    pub fn list_work_items(
+        &mut self,
+        query: WorkItemListQuery,
+    ) -> Result<WorkItemListResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORK_ITEM_LIST, &query)
+    }
+
+    pub fn refresh_work_items(
+        &mut self,
+        params: WorkItemRefreshParams,
+    ) -> Result<WorkItemListResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORK_ITEM_REFRESH, &params)
+    }
+
+    pub fn dismiss_work_item(
+        &mut self,
+        params: WorkItemDismissParams,
+    ) -> Result<WorkItemDismissResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORK_ITEM_DISMISS, &params)
+    }
+
+    pub fn trigger_work_item(
+        &mut self,
+        params: WorkItemTriggerParams,
+    ) -> Result<WorkItemTriggerResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_WORK_ITEM_TRIGGER, &params)
+    }
+
+    pub fn create_scheduled_work(
+        &mut self,
+        request: CreateScheduledWorkRequest,
+    ) -> Result<CreateScheduledWorkResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_SCHEDULED_WORK_CREATE, &request)
+    }
+
+    pub fn list_scheduled_work(&mut self) -> Result<ListScheduledWorkResult, JsonRpcClientError> {
+        self.call(
+            METHOD_DAEMON_SCHEDULED_WORK_LIST,
+            &ListScheduledWorkRequest {},
+        )
+    }
+
+    pub fn cancel_scheduled_work(
+        &mut self,
+        request: CancelScheduledWorkRequest,
+    ) -> Result<(), JsonRpcClientError> {
+        self.call(METHOD_DAEMON_SCHEDULED_WORK_CANCEL, &request)
+    }
+
+    pub fn inspect_plugin_package(
+        &mut self,
+        request: InspectPluginPackageRequest,
+    ) -> Result<PluginInspection, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_PLUGIN_INSPECT, &request)
+    }
+
+    pub fn install_plugin_package(
+        &mut self,
+        request: InstallPluginPackageRequest,
+    ) -> Result<InstallPluginPackageResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_PLUGIN_INSTALL, &request)
+    }
+
+    pub fn list_plugin_installations(
+        &mut self,
+    ) -> Result<ListPluginInstallationsResult, JsonRpcClientError> {
+        self.call(
+            METHOD_DAEMON_PLUGIN_LIST,
+            &ListPluginInstallationsRequest {},
+        )
+    }
+
+    pub fn uninstall_plugin(
+        &mut self,
+        request: UninstallPluginRequest,
+    ) -> Result<(), JsonRpcClientError> {
+        self.call(METHOD_DAEMON_PLUGIN_UNINSTALL, &request)
     }
 
     pub fn list_artifacts(
@@ -370,11 +953,53 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_ARTIFACT_LIST, &query)
     }
 
+    pub fn get_artifact(
+        &mut self,
+        query: GetArtifactQuery,
+    ) -> Result<Option<ArtifactContentResult>, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_ARTIFACT_GET, &query)
+    }
+
     pub fn start_run(
         &mut self,
         command: StartRunCommand,
     ) -> Result<RunSummary, JsonRpcClientError> {
         self.call(METHOD_DAEMON_RUN_START, &command)
+    }
+
+    pub fn fork_run(
+        &mut self,
+        request: ForkRunRequest,
+    ) -> Result<ForkRunResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_FORK, &request)
+    }
+
+    pub fn continue_run(
+        &mut self,
+        request: ContinueRunRequest,
+    ) -> Result<ContinueRunResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_CONTINUE, &request)
+    }
+
+    pub fn switch_account_and_resume(
+        &mut self,
+        request: SwitchAccountAndResumeRequest,
+    ) -> Result<SwitchAccountAndResumeResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, &request)
+    }
+
+    pub fn spawn_run(
+        &mut self,
+        request: SpawnRunRequest,
+    ) -> Result<SpawnRunResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_SPAWN, &request)
+    }
+
+    pub fn join_run(
+        &mut self,
+        request: JoinRunRequest,
+    ) -> Result<JoinRunResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_JOIN, &request)
     }
 
     pub fn subscribe_run_events(
@@ -476,6 +1101,16 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT, &params)
     }
 
+    pub fn replace_agent_runtime_auth_profile_preferences(
+        &mut self,
+        params: DaemonAgentRuntimeAuthProfilePreferencesSetParams,
+    ) -> Result<AgentRuntimeSnapshot, JsonRpcClientError> {
+        self.call(
+            METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET,
+            &params,
+        )
+    }
+
     pub fn set_agent_runtime_extension_enabled(
         &mut self,
         params: DaemonAgentRuntimeSetExtensionEnabledParams,
@@ -535,22 +1170,40 @@ mod tests {
         JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, bind_listener,
     };
     use ta_protocol::wire::{
-        AgentRuntimeModelId, AgentRuntimeModelRef, AgentRuntimeSnapshot,
+        AgentRuntimeModelId, AgentRuntimeModelRef, AgentRuntimeSelection, AgentRuntimeSnapshot,
         AgentRuntimeStrategyHealth, AgentRuntimeStrategyHealthStatus, AgentRuntimeStrategyId,
         AgentRuntimeStrategyInfo, ApprovalAttentionState, AuthMethodId, AuthMethodRef,
         AuthProfileConnectionState, AuthProfileId, AuthProfileLoginResult, AuthProfileLogoutResult,
         AuthProfileRef, AuthProfileState, DaemonAgentRuntimeAuthLoginParams,
         DaemonAgentRuntimeAuthLogoutParams, DaemonAgentRuntimePatchProfileParams,
-        DaemonAgentRuntimeSetExtensionEnabledParams, PublicDaemonEvent, RunEvent, RunEventDelta,
-        RunEventStreamItem, RunEventStreamPayload, RunId, RunStatus, RuntimeExtensionAvailability,
-        RuntimeExtensionDescriptor, RuntimeExtensionId, RuntimeExtensionState, RuntimePolicyMode,
-        RuntimeProfileId, RuntimeProfilePatch, RuntimeProfileSummary, SessionId, SessionOverview,
-        SessionOverviewLaneStatus, SessionOverviewQuery, SessionOverviewResult, SessionStatus,
-        WorkspaceId,
+        DaemonAgentRuntimeSetExtensionEnabledParams, METHOD_DAEMON_THREAD_WORKSPACE_GET,
+        METHOD_DAEMON_THREAD_WORKSPACE_UPDATE, PublicDaemonEvent, RunEvent, RunEventDelta,
+        RunEventStreamItem, RunEventStreamPayload, RunId, RunStatus, RunSummary,
+        RuntimeExtensionAvailability, RuntimeExtensionDescriptor, RuntimeExtensionId,
+        RuntimeExtensionState, RuntimePolicyMode, RuntimeProfileId, RuntimeProfilePatch,
+        RuntimeProfileSummary, SessionId, SessionOverview, SessionOverviewLaneStatus,
+        SessionOverviewQuery, SessionOverviewResult, SessionStatus, ThreadWorkspaceMutation,
+        ThreadWorkspaceResult, ThreadWorkspaceUpdateCommand, WorkspaceId,
     };
 
     use super::*;
     use crate::credential_store::{load_session_authority, store_session_authority};
+
+    #[test]
+    fn scheduled_work_transport_uses_canonical_rpc_methods() {
+        assert_eq!(
+            ta_protocol::wire::METHOD_DAEMON_SCHEDULED_WORK_CREATE,
+            "daemon.scheduled_work.create"
+        );
+        assert_eq!(
+            ta_protocol::wire::METHOD_DAEMON_SCHEDULED_WORK_LIST,
+            "daemon.scheduled_work.list"
+        );
+        assert_eq!(
+            ta_protocol::wire::METHOD_DAEMON_SCHEDULED_WORK_CANCEL,
+            "daemon.scheduled_work.cancel"
+        );
+    }
 
     #[test]
     fn session_open_persists_authority_while_public_summary_stays_redacted() {
@@ -586,6 +1239,7 @@ mod tests {
                         id: session_id_server,
                         title: "Native session".to_string(),
                         status: SessionStatus::Idle,
+                        next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
                     },
                     latest_cursor: None,
                     session_authority: authority_server,
@@ -606,6 +1260,59 @@ mod tests {
         assert!(!public_summary.contains("session-authority"));
         client.close();
         server.join().expect("server join");
+        cleanup_socket_address(&config.socket_address);
+    }
+
+    #[test]
+    fn thread_workspace_client_uses_canonical_methods_and_typed_results() {
+        let socket_name = format!("ta-daemon-client-thread-workspace-{}", unique_id_suffix());
+        let config = ClientConfig::local_default("ta-daemon-test", &socket_name);
+        let listener = bind_listener(&config.socket_address).expect("listener should bind");
+        let session_id = SessionId::new("session-thread-workspace").expect("session id");
+        let result = ThreadWorkspaceResult {
+            session_id: session_id.clone(),
+            goal: "goal".to_string(),
+            plan: String::new(),
+            notes: String::new(),
+            recap: String::new(),
+            pins: Vec::new(),
+            work_log: Vec::new(),
+        };
+        let server_result = result.clone();
+        let server = thread::spawn(move || {
+            let mut stream = listener.accept().expect("connection");
+            let get = read_request(&mut stream);
+            assert_eq!(get.method, METHOD_DAEMON_THREAD_WORKSPACE_GET);
+            assert_eq!(get.params, Some(serde_json::json!({})));
+            write_response(&mut stream, get.id, server_result.clone());
+            let update = read_request(&mut stream);
+            assert_eq!(update.method, METHOD_DAEMON_THREAD_WORKSPACE_UPDATE);
+            let command: ThreadWorkspaceUpdateCommand =
+                serde_json::from_value(update.params.expect("update params"))
+                    .expect("typed update params");
+            assert_eq!(
+                command.mutation,
+                ThreadWorkspaceMutation::GoalSet {
+                    value: "next".to_string()
+                }
+            );
+            write_response(&mut stream, update.id, server_result);
+        });
+        let mut client =
+            PersistentDaemonClient::connect(config.clone(), "ta-cli".to_string()).expect("connect");
+        assert_eq!(client.thread_workspace().expect("get result"), result);
+        assert_eq!(
+            client
+                .update_thread_workspace(ThreadWorkspaceUpdateCommand {
+                    mutation: ThreadWorkspaceMutation::GoalSet {
+                        value: "next".to_string()
+                    }
+                })
+                .expect("update result"),
+            result
+        );
+        client.close();
+        server.join().expect("server should complete");
         cleanup_socket_address(&config.socket_address);
     }
 
@@ -736,6 +1443,8 @@ mod tests {
                                 id: server_session_id.clone(),
                                 title: "Build daemon app server".to_string(),
                                 status: SessionStatus::Running,
+                                next_run_selection:
+                                    ta_protocol::wire::SessionNextRunSelection::Unselected,
                             },
                             latest_cursor: Some(ta_protocol::wire::DaemonEventCursor {
                                 daemon_instance_id: "daemon-1".to_string(),
@@ -812,6 +1521,8 @@ mod tests {
                             id: expected_session.clone(),
                             title: "test".into(),
                             status: ta_protocol::wire::SessionStatus::Idle,
+                            next_run_selection:
+                                ta_protocol::wire::SessionNextRunSelection::Unselected,
                         },
                         session_authority: next,
                         latest_cursor: None,
@@ -885,6 +1596,7 @@ mod tests {
                         id: server_session_id,
                         title: "Stream session".to_string(),
                         status: SessionStatus::Running,
+                        next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
                     },
                     session_authority: server_a2,
                     latest_cursor: None,
@@ -947,6 +1659,8 @@ mod tests {
                                 id: session_id_server,
                                 title: "Build daemon app server".to_string(),
                                 status: SessionStatus::Running,
+                                next_run_selection:
+                                    ta_protocol::wire::SessionNextRunSelection::Unselected,
                             },
                             latest_run: Some(RunSummary {
                                 id: ta_protocol::wire::RunId::new("run-1").expect("run id"),
@@ -1021,7 +1735,14 @@ mod tests {
                         reasoning: true,
                         tool_call: true,
                         structured_output: false,
-                        input_modalities: Vec::new(),
+                        media_capabilities: ta_protocol::wire::AgentRuntimeMediaCapabilities {
+                            image_input: ta_protocol::wire::AgentRuntimeMediaCapability::Supported,
+                            image_output: ta_protocol::wire::AgentRuntimeMediaCapability::Supported,
+                            voice_input:
+                                ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+                            voice_output:
+                                ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+                        },
                     }],
                     model_capability: ta_protocol::wire::AgentRuntimeModelCapability {
                         availability: ta_protocol::wire::AgentRuntimeModelAvailability::Enumerated,
@@ -1050,6 +1771,13 @@ mod tests {
                         account_hint: None,
                         plan_tier: None,
                     },
+                    preferences: ta_protocol::wire::AuthProfilePreferences {
+                        label: "Codex ChatGPT".to_string(),
+                        order: 0,
+                        is_default: true,
+                    },
+                    usage: ta_protocol::wire::AuthProfileUsage::Unavailable,
+                    exhaustion: None,
                     connection_state: AuthProfileConnectionState::Connected,
                     last_error: None,
                     management_mode: ta_protocol::wire::AuthProfileManagementMode::Interactive,
@@ -1070,6 +1798,7 @@ mod tests {
                     provider_id: AgentRuntimeStrategyId::new("codex").expect("provider id"),
                     auth_method_id: Some(AuthMethodId::new("method-test").expect("auth method id")),
                     policy_mode: RuntimePolicyMode::RequireApproval,
+                    execution_kind: ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun,
                 }],
                 runtime_extensions: vec![RuntimeExtensionState {
                     descriptor: RuntimeExtensionDescriptor {
@@ -1094,6 +1823,13 @@ mod tests {
                         account_hint: None,
                         plan_tier: None,
                     },
+                    preferences: ta_protocol::wire::AuthProfilePreferences {
+                        label: "Codex ChatGPT".to_string(),
+                        order: 0,
+                        is_default: true,
+                    },
+                    usage: ta_protocol::wire::AuthProfileUsage::Unavailable,
+                    exhaustion: None,
                     connection_state: AuthProfileConnectionState::Connected,
                     last_error: None,
                     management_mode: ta_protocol::wire::AuthProfileManagementMode::Interactive,
@@ -1619,14 +2355,10 @@ mod tests {
     fn run_event_delta(run_id: &RunId, sequence: u64) -> RunEventDelta {
         RunEventDelta {
             seq: sequence,
-            event: PublicDaemonEvent::Run(RunEvent {
-                run_id: run_id.clone(),
-                status: RunStatus::Running,
-                detail: format!("event-{sequence}"),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            event: PublicDaemonEvent::Run(
+                RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            ),
         }
     }
 

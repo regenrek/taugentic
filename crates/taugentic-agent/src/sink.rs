@@ -1,5 +1,6 @@
 use ta_protocol::wire::{
-    ApprovalRequest, ApprovalResolution, ArtifactKind, CapsuleResult, StreamEmission,
+    AgentStreamItemId, AgentStreamTurnId, ApprovalRequest, ApprovalResolution, ArtifactKind,
+    CapsuleResult, StreamEmission,
 };
 use ta_provider_llm::client::LlmTokenUsage;
 
@@ -14,6 +15,12 @@ pub trait ExecutionSink: Send + Sync {
     fn resolve_approval(&self, resolution: ApprovalResolution) -> Result<(), ExecutionError>;
     fn record_artifact(&self, kind: ArtifactKind, storage_path: &str)
     -> Result<(), ExecutionError>;
+    fn record_image_artifact(
+        &self,
+        turn_id: AgentStreamTurnId,
+        item_id: AgentStreamItemId,
+        data_base64: &str,
+    ) -> Result<(), ExecutionError>;
     fn start_native_child_run(
         &self,
         _request: NativeChildRunRequest,

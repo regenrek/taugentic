@@ -18,6 +18,7 @@ fn commit_checkpoint_persist_persists_checkpoint_under_canonical_commit_boundary
             title: "Persisted".to_string(),
             status: SessionStatus::Running,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store
@@ -44,11 +45,7 @@ fn commit_checkpoint_persist_persists_checkpoint_under_canonical_commit_boundary
 
     let committed = store
         .commit_checkpoint_persist(CommitCheckpointPersist {
-            checkpoint: CheckpointRecord {
-                run_id: run_id.clone(),
-                revision: 1,
-                artifact_path: "checkpoints/run-1/rev-1.json".to_string(),
-            },
+            checkpoint: crate::test_checkpoint_record(run_id.clone(), 1),
             occurred_at_ms: 20,
         })
         .expect("checkpoint should commit");
@@ -58,11 +55,7 @@ fn commit_checkpoint_persist_persists_checkpoint_under_canonical_commit_boundary
     assert_eq!(committed.commit.last_sequence, 0);
     assert_eq!(
         ok(store.checkpoints_for_run(&run_id)),
-        vec![CheckpointRecord {
-            run_id,
-            revision: 1,
-            artifact_path: "checkpoints/run-1/rev-1.json".to_string(),
-        }]
+        vec![crate::test_checkpoint_record(run_id, 1)]
     );
 
     let _ = std::fs::remove_file(path);
@@ -87,6 +80,7 @@ fn checkpoints_for_run_returns_decode_record_for_corrupt_data_json() {
                 title: "Persisted".to_string(),
                 status: SessionStatus::Running,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             })
             .expect("session");
         store
@@ -112,11 +106,7 @@ fn checkpoints_for_run_returns_decode_record_for_corrupt_data_json() {
             .expect("run");
         store
             .commit_checkpoint_persist(CommitCheckpointPersist {
-                checkpoint: CheckpointRecord {
-                    run_id: run_id.clone(),
-                    revision: 1,
-                    artifact_path: "checkpoints/run-1/rev-1.json".to_string(),
-                },
+                checkpoint: crate::test_checkpoint_record(run_id.clone(), 1),
                 occurred_at_ms: 20,
             })
             .expect("checkpoint");

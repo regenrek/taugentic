@@ -76,7 +76,7 @@ pub struct RunEventRange {
 
 pub fn event_run_id(event: &DaemonEvent) -> Option<&RunId> {
     match event {
-        DaemonEvent::Run(event) => Some(&event.run_id),
+        DaemonEvent::Run(event) => Some(event.run_id()),
         DaemonEvent::RunReconciledOnStartup(event) => Some(&event.run_id),
         DaemonEvent::Approval(approval) => match approval {
             ta_protocol::wire::ApprovalEvent::Requested { request } => Some(&request.run_id),
@@ -253,14 +253,10 @@ mod tests {
             sequence,
             session_id: session_id.clone(),
             occurred_at_ms: sequence * 10,
-            payload: DaemonEvent::Run(RunEvent {
-                run_id: run_id.clone(),
-                status: RunStatus::Running,
-                detail: format!("event {sequence}"),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            ),
         };
 
         let range = run_event_range_from_records(

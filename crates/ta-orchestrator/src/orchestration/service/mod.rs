@@ -18,6 +18,7 @@ use crate::host::event_hub::{
 use crate::orchestration::agent_runtime::{
     StrategyRegistry, built_in_agent_runtime_strategies, built_in_runtime_profiles,
 };
+use crate::workspace::terminal::TerminalRuntime;
 use crate::{
     AgentRuntimeRuntime, DaemonEventCursor, DaemonEventEnvelope, DaemonEventKind, LaneCapabilities,
     SessionId,
@@ -26,7 +27,7 @@ use crate::{
 pub use run_execution::RuntimeExecutionPaths;
 #[allow(unused_imports)]
 pub use run_execution::execute_run;
-pub(crate) use run_execution::{ProviderRunStart, RunExecutionRuntime};
+pub(crate) use run_execution::{ProviderRunStart, RunExecutionDispatcher, RunExecutionRuntime};
 
 #[derive(Debug, Clone)]
 pub struct RuntimeService {
@@ -37,6 +38,7 @@ pub struct RuntimeService {
     agent_runtime: AgentRuntimeRuntime,
     agent_runtime_strategy_registry: StrategyRegistry,
     run_execution: RunExecutionRuntime,
+    pub(crate) terminals: TerminalRuntime,
 }
 
 impl RuntimeService {
@@ -60,6 +62,18 @@ impl RuntimeService {
         host_platform: HostPlatform,
         execution_paths: RuntimeExecutionPaths,
     ) -> Self {
+        Self::from_host_platform_with_paths_and_dispatcher(
+            host_platform,
+            execution_paths,
+            run_execution::production_dispatcher(),
+        )
+    }
+
+    pub(crate) fn from_host_platform_with_paths_and_dispatcher(
+        host_platform: HostPlatform,
+        execution_paths: RuntimeExecutionPaths,
+        dispatcher: std::sync::Arc<dyn RunExecutionDispatcher>,
+    ) -> Self {
         let capabilities = LaneCapabilities::from_host_platform(&host_platform);
         let event_hub = RuntimeEventHub::new();
         let daemon_instance_id = Uuid::new_v4().to_string();
@@ -76,13 +90,15 @@ impl RuntimeService {
             event_hub,
             agent_runtime: agent_runtime.clone(),
             agent_runtime_strategy_registry: agent_runtime_strategy_registry.clone(),
-            run_execution: RunExecutionRuntime::new(
+            run_execution: RunExecutionRuntime::with_dispatcher(
                 capabilities,
                 agent_runtime,
                 agent_runtime_strategy_registry,
                 event_publisher,
                 execution_paths,
+                dispatcher,
             ),
+            terminals: TerminalRuntime::default(),
         }
     }
 

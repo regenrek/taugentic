@@ -2,11 +2,13 @@
 members = [
   "crates/ta-daemon-client",
   "crates/ta-desktop-native",
+  "crates/ta-macos-avfoundation",
   "crates/ta-auth-openai",
   "crates/ta-exec",
   "crates/ta-host-platform",
   "crates/ta-jsonrpc",
   "crates/ta-cli",
+  "crates/ta-code-host",
   "crates/ta-observability",
   "crates/ta-orchestrator",
   "crates/ta-policy",
@@ -14,6 +16,7 @@ members = [
   "crates/ta-provider-llm",
   "crates/ta-linux-sandbox",
   "crates/ta-model-catalog",
+  "crates/ta-plugin",
   "crates/ta-windows-sandbox",
   "crates/ta-sandbox",
   "crates/ta-protocol",
@@ -41,10 +44,12 @@ proptest = "1.9.0"
 rand = "0.9"
 serde = { version = "1.0.228", features = ["derive"] }
 schemars = "1.2.1"
+semver = "1.0.27"
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
 secret-service = { version = "5.1.0", features = ["rt-tokio-crypto-rust"] }
 parking_lot = "0.12"
+portable-pty = "0.9.0"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 toml = "1.1.2"
@@ -55,6 +60,7 @@ interprocess = { version = "2.4.0", features = ["tokio"] }
 tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
 futures-util = "0.3.31"
 futures-executor = "0.3.31"
+hayro = { version = "=0.5.0", default-features = true }
 include_dir = "0.7.4"
 landlock = "0.4.4"
 libc = "0.2.177"
@@ -71,7 +77,7 @@ uuid = { version = "1.18.1", features = ["v4"] }
 sha2 = "0.10.9"
 url = "2"
 windows-sys = "0.52"
-napi = { version = "3.7.0", default-features = false, features = ["napi4"] }
+napi = { version = "3.7.0", default-features = false, features = ["napi4", "dyn-symbols"] }
 napi-derive = "3.4.0"
 napi-build = "2.2.4"
 

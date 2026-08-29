@@ -1,0 +1,161 @@
+{
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    },
+    "GitFileStatus": {
+      "properties": {
+        "originalPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "staged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unstaged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "GitRepositorySnapshot": {
+      "properties": {
+        "ahead": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "behind": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/GitFileStatus"
+          },
+          "type": "array"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "upstream": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktrees": {
+          "items": {
+            "$ref": "#/$defs/GitWorktreeSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ahead",
+        "behind",
+        "files",
+        "worktrees",
+        "truncated",
+        "fingerprint"
+      ],
+      "type": "object"
+    },
+    "GitWorktreeSummary": {
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "current",
+        "locked"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "snapshot": {
+      "$ref": "#/$defs/GitRepositorySnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "GitMutationResult",
+  "type": "object"
+}

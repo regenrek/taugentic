@@ -68,6 +68,23 @@ impl SqliteStore {
                 );
                 CREATE INDEX IF NOT EXISTS idx_auth_profiles_method_order
                     ON auth_profiles (provider_id, auth_method_id, sort_order, id);
+                CREATE TABLE IF NOT EXISTS code_host_accounts (
+                    id TEXT PRIMARY KEY,
+                    owner_principal_id TEXT NOT NULL REFERENCES principals(id),
+                    provider TEXT NOT NULL,
+                    display_name TEXT NOT NULL,
+                    data_json TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS plugin_installations (
+                    owner_principal_id TEXT NOT NULL REFERENCES principals(id),
+                    plugin_id TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    digest_sha256 TEXT NOT NULL,
+                    data_json TEXT NOT NULL,
+                    PRIMARY KEY (owner_principal_id, plugin_id, version, digest_sha256)
+                );
+                CREATE INDEX IF NOT EXISTS idx_code_host_accounts_owner_provider_name
+                    ON code_host_accounts (owner_principal_id, provider, display_name, id);
                 CREATE INDEX IF NOT EXISTS idx_workspaces_root_realpath
                     ON workspaces (root_realpath);
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -104,6 +121,20 @@ impl SqliteStore {
                 );
                 CREATE INDEX IF NOT EXISTS idx_runs_session_id
                     ON runs (session_id);
+                CREATE TABLE IF NOT EXISTS scheduled_work_definitions (
+                    id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL REFERENCES sessions(id),
+                    data_json TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS scheduled_work_occurrences (
+                    id TEXT PRIMARY KEY,
+                    scheduled_work_id TEXT NOT NULL REFERENCES scheduled_work_definitions(id),
+                    run_id TEXT REFERENCES runs(id),
+                    state TEXT NOT NULL,
+                    data_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_scheduled_work_occurrences_work_state
+                    ON scheduled_work_occurrences (scheduled_work_id, state);
                 CREATE INDEX IF NOT EXISTS idx_run_projections_session_started_at
                     ON runs (
                         session_id,
@@ -130,6 +161,17 @@ impl SqliteStore {
                 );
                 CREATE INDEX IF NOT EXISTS idx_agent_turn_rows_session_sequence
                     ON agent_turn_rows (session_id, sequence);
+                CREATE TABLE IF NOT EXISTS thread_workspace_events (
+                    session_id TEXT NOT NULL REFERENCES sessions(id),
+                    sequence INTEGER NOT NULL,
+                    occurred_at_ms INTEGER NOT NULL,
+                    data_json TEXT NOT NULL,
+                    PRIMARY KEY (session_id, sequence)
+                );
+                CREATE TABLE IF NOT EXISTS thread_workspaces (
+                    session_id TEXT PRIMARY KEY REFERENCES sessions(id),
+                    projection_json TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS checkpoints (
                     run_id TEXT NOT NULL REFERENCES runs(id),
                     revision INTEGER NOT NULL,
@@ -219,19 +261,27 @@ impl SqliteStore {
             ("table", "workspaces"),
             ("table", "navigation_states"),
             ("table", "auth_profiles"),
+            ("table", "code_host_accounts"),
+            ("table", "plugin_installations"),
             ("table", "runs"),
+            ("table", "scheduled_work_definitions"),
+            ("table", "scheduled_work_occurrences"),
             ("table", "checkpoints"),
             ("table", "artifacts"),
             ("table", "context_receipts"),
             ("table", "commits"),
             ("table", "agent_turn_rows"),
+            ("table", "thread_workspace_events"),
+            ("table", "thread_workspaces"),
             ("index", "idx_events_session_sequence"),
             ("index", "idx_agent_turn_rows_session_sequence"),
             ("index", "idx_principals_credential_hash"),
             ("index", "idx_workspaces_root_realpath"),
             ("index", "idx_auth_profiles_method_order"),
+            ("index", "idx_code_host_accounts_owner_provider_name"),
             ("index", "idx_sessions_workspace_id"),
             ("index", "idx_runs_session_id"),
+            ("index", "idx_scheduled_work_occurrences_work_state"),
             ("index", "idx_run_projections_session_started_at"),
             ("index", "idx_events_session_run_seq"),
             ("index", "idx_artifacts_run_id"),
@@ -275,15 +325,48 @@ impl SqliteStore {
             ],
         )?;
         self.require_table_columns(
+            "code_host_accounts",
+            &[
+                "id",
+                "owner_principal_id",
+                "provider",
+                "display_name",
+                "data_json",
+            ],
+        )?;
+        self.require_table_columns(
+            "plugin_installations",
+            &[
+                "owner_principal_id",
+                "plugin_id",
+                "version",
+                "digest_sha256",
+                "data_json",
+            ],
+        )?;
+        self.require_table_columns(
             "sessions",
             &["id", "data_json", "workspace_id", "last_commit_id"],
         )?;
         self.require_table_columns("runs", &["id", "session_id", "data_json", "last_commit_id"])?;
         self.require_table_columns(
+            "scheduled_work_definitions",
+            &["id", "session_id", "data_json"],
+        )?;
+        self.require_table_columns(
+            "scheduled_work_occurrences",
+            &["id", "scheduled_work_id", "run_id", "state", "data_json"],
+        )?;
+        self.require_table_columns(
             "events",
             &["sequence", "session_id", "occurred_at_ms", "payload_json"],
         )?;
         self.require_table_columns("agent_turn_rows", &["sequence", "session_id", "data_json"])?;
+        self.require_table_columns(
+            "thread_workspace_events",
+            &["session_id", "sequence", "occurred_at_ms", "data_json"],
+        )?;
+        self.require_table_columns("thread_workspaces", &["session_id", "projection_json"])?;
         self.require_table_columns(
             "checkpoints",
             &["run_id", "revision", "data_json", "commit_id"],
@@ -342,6 +425,11 @@ impl SqliteStore {
         self.require_foreign_keys("events", &[("session_id", "sessions", "id")])?;
         self.require_foreign_keys("agent_turn_rows", &[("session_id", "sessions", "id")])?;
         self.require_foreign_keys(
+            "thread_workspace_events",
+            &[("session_id", "sessions", "id")],
+        )?;
+        self.require_foreign_keys("thread_workspaces", &[("session_id", "sessions", "id")])?;
+        self.require_foreign_keys(
             "checkpoints",
             &[("commit_id", "commits", "id"), ("run_id", "runs", "id")],
         )?;
@@ -354,6 +442,14 @@ impl SqliteStore {
             ],
         )?;
         self.require_foreign_keys("commits", &[("session_id", "sessions", "id")])?;
+        self.require_foreign_keys(
+            "code_host_accounts",
+            &[("owner_principal_id", "principals", "id")],
+        )?;
+        self.require_foreign_keys(
+            "plugin_installations",
+            &[("owner_principal_id", "principals", "id")],
+        )?;
         self.require_table_sql_contains("commits", "CHECK(first_sequence <= last_sequence)")?;
         Ok(())
     }

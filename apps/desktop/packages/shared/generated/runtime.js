@@ -1903,22 +1903,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -1926,9 +1959,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -2281,6 +2323,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -2807,49 +2906,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -2887,6 +2961,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -3477,22 +3608,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -3500,9 +3664,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -3855,6 +4028,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -4403,49 +4633,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -4483,6 +4688,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -4714,6 +4976,95 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "limit"
   ],
   "title": "AgentTurnsPageQuery",
+  "type": "object"
+},
+  AgentUserRow: {
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileAttachment"
+      },
+      "type": "array"
+    },
+    "cursor": {
+      "$ref": "#/$defs/ActivityCursor"
+    },
+    "occurredAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cursor",
+    "sessionId",
+    "runId",
+    "occurredAtMs",
+    "text",
+    "attachments"
+  ],
+  "title": "AgentUserRow",
   "type": "object"
 },
   AgentAssistantRow: {
@@ -5080,6 +5431,42 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "AgentUserRow": {
+      "properties": {
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/WorkspaceFileAttachment"
+          },
+          "type": "array"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "occurredAtMs",
+        "text",
+        "attachments"
+      ],
+      "type": "object"
+    },
     "RuntimeLanePendingState": {
       "enum": [
         "queued",
@@ -5087,10 +5474,58 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "waitingForInput"
       ],
       "type": "string"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "oneOf": [
+    {
+      "$ref": "#/$defs/AgentUserRow",
+      "properties": {
+        "kind": {
+          "const": "user",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
     {
       "$ref": "#/$defs/AgentAssistantRow",
       "properties": {
@@ -5295,6 +5730,19 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "AgentTurnRow": {
       "oneOf": [
         {
+          "$ref": "#/$defs/AgentUserRow",
+          "properties": {
+            "kind": {
+              "const": "user",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
           "$ref": "#/$defs/AgentAssistantRow",
           "properties": {
             "kind": {
@@ -5335,6 +5783,42 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
+    "AgentUserRow": {
+      "properties": {
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/WorkspaceFileAttachment"
+          },
+          "type": "array"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "occurredAtMs",
+        "text",
+        "attachments"
+      ],
+      "type": "object"
+    },
     "DaemonEventCursor": {
       "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
       "properties": {
@@ -5362,6 +5846,41 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "queued",
         "waitingForApproval",
         "waitingForInput"
+      ],
+      "type": "string"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
       ],
       "type": "string"
     }
@@ -5409,10 +5928,198 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "Transcript",
     "Patch",
     "FileSnapshot",
-    "CommandLog"
+    "CommandLog",
+    "Image"
   ],
   "title": "ArtifactKind",
   "type": "string"
+},
+  ArtifactMetadata: {
+  "$defs": {
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "standard",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "#/$defs/ImageArtifactMetadata",
+      "properties": {
+        "kind": {
+          "const": "image",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ArtifactMetadata"
+},
+  ImageMediaType: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "png",
+    "jpeg",
+    "webp",
+    "gif"
+  ],
+  "title": "ImageMediaType",
+  "type": "string"
+},
+  ImageArtifactProvenance: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "itemId": {
+      "type": "string"
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "runtimeProfileId": {
+      "type": "string"
+    },
+    "turnId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runtimeProfileId",
+    "providerId",
+    "turnId",
+    "itemId"
+  ],
+  "title": "ImageArtifactProvenance",
+  "type": "object"
+},
+  ImageArtifactMetadata: {
+  "$defs": {
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "mediaType": {
+      "$ref": "#/$defs/ImageMediaType"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ImageArtifactProvenance"
+    },
+    "sha256": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "mediaType",
+    "sha256",
+    "byteLen",
+    "provenance"
+  ],
+  "title": "ImageArtifactMetadata",
+  "type": "object"
 },
   ArtifactEvent: {
   "$defs": {
@@ -5421,22 +6128,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -5444,9 +6184,67 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5468,23 +6266,113 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "displayName": {
+      "type": "string"
+    },
     "id": {
       "type": "string"
     },
     "kind": {
       "$ref": "#/$defs/ArtifactKind"
     },
-    "runId": {
-      "type": "string"
+    "metadata": {
+      "$ref": "#/$defs/ArtifactMetadata"
     },
-    "storagePath": {
+    "runId": {
       "type": "string"
     }
   },
@@ -5492,9 +6380,288 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "id",
     "runId",
     "kind",
-    "storagePath"
+    "metadata",
+    "displayName"
   ],
   "title": "ArtifactSummary",
+  "type": "object"
+},
+  ArtifactContentResult: {
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "metadata",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "BoundedFileContent": {
+      "oneOf": [
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "text",
+              "type": "string"
+            },
+            "language": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataUri": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "image",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataUri",
+            "mediaType",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "pdf",
+              "type": "string"
+            },
+            "pageCount": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pageIndex": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previewDataUri": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "previewDataUri",
+            "pageIndex",
+            "pageCount",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataBase64": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "binary",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataBase64",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifact": {
+      "$ref": "#/$defs/ArtifactSummary"
+    },
+    "content": {
+      "$ref": "#/$defs/BoundedFileContent"
+    }
+  },
+  "required": [
+    "artifact",
+    "content"
+  ],
+  "title": "ArtifactContentResult",
   "type": "object"
 },
   DaemonClientCapabilities: {
@@ -6178,6 +7345,3478 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "RunFailureKind",
   "type": "string"
 },
+  RunStatusReason: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  RunStatusEvent: {
+  "$defs": {
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authProfileExhaustion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthProfileExhaustion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "outputContract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recipeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CapsuleResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "runId": {
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/RunStatus"
+    }
+  },
+  "required": [
+    "runId",
+    "status"
+  ],
+  "title": "RunStatusEvent",
+  "type": "object"
+},
+  ScheduledWorkId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  ScheduledWorkOccurrenceId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  ScheduledWorkExecutionRequest: {
+  "$defs": {
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The durable, non-secret execution policy frozen for scheduled work. It is\ndeliberately not an [`ExecutionContext`].  It is the complete non-secret\ninput to the sole run-specific preparer; it contains no credential bytes\nand does not permit dispatch-time policy compilation or defaulting.",
+  "properties": {
+    "artifactRoot": {
+      "type": "string"
+    },
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy"
+    },
+    "envPolicy": {
+      "$ref": "#/$defs/EnvPolicy"
+    },
+    "networkPolicy": {
+      "$ref": "#/$defs/NetworkPolicy"
+    },
+    "permissionPolicy": {
+      "$ref": "#/$defs/PermissionPolicy"
+    },
+    "plannedWriteFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "repoRoot": {
+      "type": "string"
+    },
+    "sandboxProfile": {
+      "$ref": "#/$defs/SandboxProfile"
+    },
+    "workspaceId": {
+      "type": "string"
+    },
+    "workspaceMode": {
+      "$ref": "#/$defs/WorkspaceMode"
+    },
+    "workspaceRoot": {
+      "type": "string"
+    },
+    "workspaceScope": {
+      "$ref": "#/$defs/WorkspaceScope"
+    }
+  },
+  "required": [
+    "workspaceId",
+    "workspaceRoot",
+    "repoRoot",
+    "artifactRoot",
+    "workspaceMode",
+    "cleanupPolicy",
+    "plannedWriteFiles",
+    "workspaceScope",
+    "sandboxProfile",
+    "permissionPolicy",
+    "networkPolicy",
+    "envPolicy"
+  ],
+  "title": "ScheduledWorkExecutionRequest",
+  "type": "object"
+},
+  ScheduledWorkUnpublishedResource: {
+  "$defs": {
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+  "properties": {
+    "branch": {
+      "type": "string"
+    },
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy"
+    },
+    "parentRepo": {
+      "type": "string"
+    },
+    "worktreePath": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parentRepo",
+    "worktreePath",
+    "branch",
+    "cleanupPolicy"
+  ],
+  "title": "ScheduledWorkUnpublishedResource",
+  "type": "object"
+},
+  ScheduledWorkAttentionPolicy: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "attentionOnly"
+  ],
+  "title": "ScheduledWorkAttentionPolicy",
+  "type": "string"
+},
+  ScheduledWorkDefinition: {
+  "$defs": {
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkAttentionPolicy": {
+      "enum": [
+        "attentionOnly"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkExecutionRequest": {
+      "additionalProperties": false,
+      "description": "The durable, non-secret execution policy frozen for scheduled work. It is\ndeliberately not an [`ExecutionContext`].  It is the complete non-secret\ninput to the sole run-specific preparer; it contains no credential bytes\nand does not permit dispatch-time policy compilation or defaulting.",
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "plannedWriteFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repoRoot": {
+          "type": "string"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceMode": {
+          "$ref": "#/$defs/WorkspaceMode"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "repoRoot",
+        "artifactRoot",
+        "workspaceMode",
+        "cleanupPolicy",
+        "plannedWriteFiles",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The only durable scheduled-work product shape in the first vertical. It is\ndeliberately a one-shot, existing-conversation request: no cron, editing,\nprovider inference, or credential bytes can enter this record.",
+  "properties": {
+    "attentionPolicy": {
+      "$ref": "#/$defs/ScheduledWorkAttentionPolicy"
+    },
+    "dueAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "executionRequest": {
+      "$ref": "#/$defs/ScheduledWorkExecutionRequest"
+    },
+    "id": {
+      "type": "string"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "route": {
+      "$ref": "#/$defs/RunExecutionRoute"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "sessionId",
+    "objective",
+    "route",
+    "executionRequest",
+    "dueAtMs",
+    "attentionPolicy"
+  ],
+  "title": "ScheduledWorkDefinition",
+  "type": "object"
+},
+  ScheduledWorkOccurrenceState: {
+  "$defs": {
+    "ScheduledWorkPreparationTerminal": {
+      "enum": [
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkUnpublishedResource": {
+      "additionalProperties": false,
+      "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "parentRepo": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRepo",
+        "worktreePath",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "pending",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "preparing",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "preparationCancellationRequested",
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id",
+        "resource"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "claimed",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "completed",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "failed",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "budgetExceeded",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "cancelled",
+          "type": "string"
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "preparationFailed",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id",
+        "detail"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "preparationCancelled",
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "cleanup_detail": {
+          "type": "string"
+        },
+        "intended_terminal": {
+          "$ref": "#/$defs/ScheduledWorkPreparationTerminal"
+        },
+        "kind": {
+          "const": "cleanupRequired",
+          "type": "string"
+        },
+        "preparation_detail": {
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "run_id",
+        "resource",
+        "intended_terminal",
+        "preparation_detail",
+        "cleanup_detail"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ScheduledWorkOccurrenceState"
+},
+  ScheduledWorkPreparationTerminal: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "failed",
+    "cancelled"
+  ],
+  "title": "ScheduledWorkPreparationTerminal",
+  "type": "string"
+},
+  ScheduledWorkOccurrence: {
+  "$defs": {
+    "ScheduledWorkOccurrenceState": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "pending",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparing",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancellationRequested",
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "completed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "failed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "budgetExceeded",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "preparationFailed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "detail"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanup_detail": {
+              "type": "string"
+            },
+            "intended_terminal": {
+              "$ref": "#/$defs/ScheduledWorkPreparationTerminal"
+            },
+            "kind": {
+              "const": "cleanupRequired",
+              "type": "string"
+            },
+            "preparation_detail": {
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource",
+            "intended_terminal",
+            "preparation_detail",
+            "cleanup_detail"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ScheduledWorkPreparationTerminal": {
+      "enum": [
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkUnpublishedResource": {
+      "additionalProperties": false,
+      "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "parentRepo": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRepo",
+        "worktreePath",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dueAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "scheduledWorkId": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/ScheduledWorkOccurrenceState"
+    }
+  },
+  "required": [
+    "id",
+    "scheduledWorkId",
+    "dueAtMs",
+    "state"
+  ],
+  "title": "ScheduledWorkOccurrence",
+  "type": "object"
+},
+  CreateScheduledWorkRequest: {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A one-shot request whose session is supplied by the authenticated RPC\nattachment. The caller supplies one explicit runtime selection; the daemon\nvalidates it and freezes the route plus complete non-secret execution\nrequest before the durable definition is created.",
+  "properties": {
+    "dueAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    }
+  },
+  "required": [
+    "objective",
+    "selection",
+    "dueAtMs"
+  ],
+  "title": "CreateScheduledWorkRequest",
+  "type": "object"
+},
+  CreateScheduledWorkResult: {
+  "$defs": {
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkAttentionPolicy": {
+      "enum": [
+        "attentionOnly"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkDefinition": {
+      "additionalProperties": false,
+      "description": "The only durable scheduled-work product shape in the first vertical. It is\ndeliberately a one-shot, existing-conversation request: no cron, editing,\nprovider inference, or credential bytes can enter this record.",
+      "properties": {
+        "attentionPolicy": {
+          "$ref": "#/$defs/ScheduledWorkAttentionPolicy"
+        },
+        "dueAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "executionRequest": {
+          "$ref": "#/$defs/ScheduledWorkExecutionRequest"
+        },
+        "id": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "route": {
+          "$ref": "#/$defs/RunExecutionRoute"
+        },
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "objective",
+        "route",
+        "executionRequest",
+        "dueAtMs",
+        "attentionPolicy"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkExecutionRequest": {
+      "additionalProperties": false,
+      "description": "The durable, non-secret execution policy frozen for scheduled work. It is\ndeliberately not an [`ExecutionContext`].  It is the complete non-secret\ninput to the sole run-specific preparer; it contains no credential bytes\nand does not permit dispatch-time policy compilation or defaulting.",
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "plannedWriteFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repoRoot": {
+          "type": "string"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceMode": {
+          "$ref": "#/$defs/WorkspaceMode"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "repoRoot",
+        "artifactRoot",
+        "workspaceMode",
+        "cleanupPolicy",
+        "plannedWriteFiles",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkOccurrence": {
+      "additionalProperties": false,
+      "properties": {
+        "dueAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "scheduledWorkId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ScheduledWorkOccurrenceState"
+        }
+      },
+      "required": [
+        "id",
+        "scheduledWorkId",
+        "dueAtMs",
+        "state"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkOccurrenceState": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "pending",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparing",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancellationRequested",
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "completed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "failed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "budgetExceeded",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "preparationFailed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "detail"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanup_detail": {
+              "type": "string"
+            },
+            "intended_terminal": {
+              "$ref": "#/$defs/ScheduledWorkPreparationTerminal"
+            },
+            "kind": {
+              "const": "cleanupRequired",
+              "type": "string"
+            },
+            "preparation_detail": {
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource",
+            "intended_terminal",
+            "preparation_detail",
+            "cleanup_detail"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ScheduledWorkPreparationTerminal": {
+      "enum": [
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkUnpublishedResource": {
+      "additionalProperties": false,
+      "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "parentRepo": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRepo",
+        "worktreePath",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "definition": {
+      "$ref": "#/$defs/ScheduledWorkDefinition"
+    },
+    "occurrence": {
+      "$ref": "#/$defs/ScheduledWorkOccurrence"
+    }
+  },
+  "required": [
+    "definition",
+    "occurrence"
+  ],
+  "title": "CreateScheduledWorkResult",
+  "type": "object"
+},
+  ListScheduledWorkRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "ListScheduledWorkRequest",
+  "type": "object"
+},
+  ListScheduledWorkResult: {
+  "$defs": {
+    "ScheduledWorkOccurrence": {
+      "additionalProperties": false,
+      "properties": {
+        "dueAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "scheduledWorkId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ScheduledWorkOccurrenceState"
+        }
+      },
+      "required": [
+        "id",
+        "scheduledWorkId",
+        "dueAtMs",
+        "state"
+      ],
+      "type": "object"
+    },
+    "ScheduledWorkOccurrenceState": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "pending",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparing",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancellationRequested",
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "completed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "failed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "budgetExceeded",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "preparationFailed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "detail"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanup_detail": {
+              "type": "string"
+            },
+            "intended_terminal": {
+              "$ref": "#/$defs/ScheduledWorkPreparationTerminal"
+            },
+            "kind": {
+              "const": "cleanupRequired",
+              "type": "string"
+            },
+            "preparation_detail": {
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource",
+            "intended_terminal",
+            "preparation_detail",
+            "cleanup_detail"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ScheduledWorkPreparationTerminal": {
+      "enum": [
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkUnpublishedResource": {
+      "additionalProperties": false,
+      "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "parentRepo": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRepo",
+        "worktreePath",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "occurrences": {
+      "items": {
+        "$ref": "#/$defs/ScheduledWorkOccurrence"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "occurrences"
+  ],
+  "title": "ListScheduledWorkResult",
+  "type": "object"
+},
+  CancelScheduledWorkRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "occurrenceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "occurrenceId"
+  ],
+  "title": "CancelScheduledWorkRequest",
+  "type": "object"
+},
+  RunEvent: {
+  "$defs": {
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "status",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/RunStatusEvent"
+        }
+      },
+      "required": [
+        "kind",
+        "payload"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "RunEvent"
+},
   RunReconciledOnStartupEvent: {
   "$defs": {
     "RunFailureKind": {
@@ -6715,22 +11354,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -6738,9 +11410,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -7093,6 +11774,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -7495,49 +12233,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -7575,6 +12288,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -8253,22 +13023,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -8276,9 +13079,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -8631,6 +13443,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -9157,49 +14026,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -9237,6 +14081,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -9811,10 +14712,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "title": {
           "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
           "type": "string"
+        },
+        "workspaceId": {
+          "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+          "type": "string"
         }
       },
       "required": [
         "sessionId",
+        "workspaceId",
         "title",
         "status",
         "placement",
@@ -10132,6 +15038,4220 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "workspace"
   ],
   "title": "DaemonWorkspaceGetResult",
+  "type": "object"
+},
+  WorkspaceFileKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "directory",
+    "text",
+    "image",
+    "pdf",
+    "binary"
+  ],
+  "title": "WorkspaceFileKind",
+  "type": "string"
+},
+  WorkspaceFileEntry: {
+  "$defs": {
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "isSymlink": {
+      "type": "boolean"
+    },
+    "kind": {
+      "$ref": "#/$defs/WorkspaceFileKind"
+    },
+    "name": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "name",
+    "kind",
+    "isSymlink",
+    "byteLen"
+  ],
+  "title": "WorkspaceFileEntry",
+  "type": "object"
+},
+  WorkspaceFileAttachmentRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "expectedRevision": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "expectedRevision"
+  ],
+  "title": "WorkspaceFileAttachmentRequest",
+  "type": "object"
+},
+  WorkspaceFileAttachment: {
+  "$defs": {
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/WorkspaceFileKind"
+    },
+    "path": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "revision",
+    "kind",
+    "byteLen"
+  ],
+  "title": "WorkspaceFileAttachment",
+  "type": "object"
+},
+  NativeImagePreview: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An ephemeral native-renderer source materialized from a daemon-validated\nimage query. The source is owned and cleaned up by the desktop bridge.",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "mediaType": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "mediaType",
+    "revision",
+    "byteLen"
+  ],
+  "title": "NativeImagePreview",
+  "type": "object"
+},
+  WorkspaceFileTreeParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId"
+  ],
+  "title": "WorkspaceFileTreeParams",
+  "type": "object"
+},
+  WorkspaceFileTreeResult: {
+  "$defs": {
+    "WorkspaceFileEntry": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "isSymlink": {
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "name",
+        "kind",
+        "isSymlink",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileEntry"
+      },
+      "type": "array"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "entries",
+    "truncated"
+  ],
+  "title": "WorkspaceFileTreeResult",
+  "type": "object"
+},
+  WorkspaceFileReadParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "pdfPageIndex": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "path"
+  ],
+  "title": "WorkspaceFileReadParams",
+  "type": "object"
+},
+  BoundedFileContent: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "text",
+          "type": "string"
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "dataUri": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "image",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dataUri",
+        "mediaType",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "pdf",
+          "type": "string"
+        },
+        "pageCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "previewDataUri": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "previewDataUri",
+        "pageIndex",
+        "pageCount",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "dataBase64": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "binary",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dataBase64",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "BoundedFileContent"
+},
+  WorkspaceFileReadResult: {
+  "$defs": {
+    "BoundedFileContent": {
+      "oneOf": [
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "text",
+              "type": "string"
+            },
+            "language": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataUri": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "image",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataUri",
+            "mediaType",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "pdf",
+              "type": "string"
+            },
+            "pageCount": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pageIndex": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previewDataUri": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "previewDataUri",
+            "pageIndex",
+            "pageCount",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataBase64": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "binary",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataBase64",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "content": {
+      "$ref": "#/$defs/BoundedFileContent"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "content"
+  ],
+  "title": "WorkspaceFileReadResult",
+  "type": "object"
+},
+  WorkspaceFileWriteParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "expectedRevision": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "userApproved": {
+      "type": "boolean"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "path",
+    "expectedRevision",
+    "text",
+    "userApproved"
+  ],
+  "title": "WorkspaceFileWriteParams",
+  "type": "object"
+},
+  WorkspaceFileWriteResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "revision",
+    "byteLen"
+  ],
+  "title": "WorkspaceFileWriteResult",
+  "type": "object"
+},
+  WorkspaceFileOpenExternalParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "path"
+  ],
+  "title": "WorkspaceFileOpenExternalParams",
+  "type": "object"
+},
+  WorkspaceFileOpenExternalResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "title": "WorkspaceFileOpenExternalResult",
+  "type": "object"
+},
+  GitChangeKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "added",
+    "modified",
+    "deleted",
+    "renamed",
+    "copied",
+    "typeChanged",
+    "unmerged",
+    "untracked"
+  ],
+  "title": "GitChangeKind",
+  "type": "string"
+},
+  GitFileStatus: {
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "originalPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "path": {
+      "type": "string"
+    },
+    "staged": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GitChangeKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unstaged": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GitChangeKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "title": "GitFileStatus",
+  "type": "object"
+},
+  GitWorktreeSummary: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "current": {
+      "type": "boolean"
+    },
+    "head": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "locked": {
+      "type": "boolean"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "current",
+    "locked"
+  ],
+  "title": "GitWorktreeSummary",
+  "type": "object"
+},
+  GitRepositorySnapshot: {
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    },
+    "GitFileStatus": {
+      "properties": {
+        "originalPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "staged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unstaged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "GitWorktreeSummary": {
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "current",
+        "locked"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "ahead": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "behind": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/GitFileStatus"
+      },
+      "type": "array"
+    },
+    "fingerprint": {
+      "type": "string"
+    },
+    "head": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "upstream": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "worktrees": {
+      "items": {
+        "$ref": "#/$defs/GitWorktreeSummary"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "ahead",
+    "behind",
+    "files",
+    "worktrees",
+    "truncated",
+    "fingerprint"
+  ],
+  "title": "GitRepositorySnapshot",
+  "type": "object"
+},
+  GitRepositorySnapshotParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId"
+  ],
+  "title": "GitRepositorySnapshotParams",
+  "type": "object"
+},
+  GitRepositorySnapshotResult: {
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    },
+    "GitFileStatus": {
+      "properties": {
+        "originalPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "staged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unstaged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "GitRepositorySnapshot": {
+      "properties": {
+        "ahead": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "behind": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/GitFileStatus"
+          },
+          "type": "array"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "upstream": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktrees": {
+          "items": {
+            "$ref": "#/$defs/GitWorktreeSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ahead",
+        "behind",
+        "files",
+        "worktrees",
+        "truncated",
+        "fingerprint"
+      ],
+      "type": "object"
+    },
+    "GitWorktreeSummary": {
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "current",
+        "locked"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "snapshot": {
+      "$ref": "#/$defs/GitRepositorySnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "GitRepositorySnapshotResult",
+  "type": "object"
+},
+  GitDiffScope: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "staged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "unstaged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "lastTurn",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "checkpointId": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "checkpoint",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "checkpointId"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "GitDiffScope"
+},
+  GitDiffParams: {
+  "$defs": {
+    "GitDiffScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "staged",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "unstaged",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "lastTurn",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "checkpointId": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "checkpoint",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "checkpointId"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/GitDiffScope"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "scope"
+  ],
+  "title": "GitDiffParams",
+  "type": "object"
+},
+  GitDiffResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "fingerprint": {
+      "type": "string"
+    },
+    "patch": {
+      "type": "string"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "patch",
+    "truncated",
+    "fingerprint"
+  ],
+  "title": "GitDiffResult",
+  "type": "object"
+},
+  GitPathsMutationParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "paths": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "paths"
+  ],
+  "title": "GitPathsMutationParams",
+  "type": "object"
+},
+  GitCommitParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "message"
+  ],
+  "title": "GitCommitParams",
+  "type": "object"
+},
+  GitMutationResult: {
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    },
+    "GitFileStatus": {
+      "properties": {
+        "originalPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "staged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unstaged": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GitChangeKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "GitRepositorySnapshot": {
+      "properties": {
+        "ahead": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "behind": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/GitFileStatus"
+          },
+          "type": "array"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "upstream": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktrees": {
+          "items": {
+            "$ref": "#/$defs/GitWorktreeSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ahead",
+        "behind",
+        "files",
+        "worktrees",
+        "truncated",
+        "fingerprint"
+      ],
+      "type": "object"
+    },
+    "GitWorktreeSummary": {
+      "properties": {
+        "branch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "current",
+        "locked"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "snapshot": {
+      "$ref": "#/$defs/GitRepositorySnapshot"
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "title": "GitMutationResult",
+  "type": "object"
+},
+  GitCheckpointPhase: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "beforeTurn",
+    "afterTurn"
+  ],
+  "title": "GitCheckpointPhase",
+  "type": "string"
+},
+  GitCheckpointSummary: {
+  "$defs": {
+    "GitCheckpointPhase": {
+      "enum": [
+        "beforeTurn",
+        "afterTurn"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checkpointId": {
+      "type": "string"
+    },
+    "createdAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "phase": {
+      "$ref": "#/$defs/GitCheckpointPhase"
+    },
+    "revision": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "checkpointId",
+    "workspaceId",
+    "runId",
+    "revision",
+    "phase",
+    "createdAtMs"
+  ],
+  "title": "GitCheckpointSummary",
+  "type": "object"
+},
+  GitCheckpointListParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId"
+  ],
+  "title": "GitCheckpointListParams",
+  "type": "object"
+},
+  GitCheckpointListResult: {
+  "$defs": {
+    "GitCheckpointPhase": {
+      "enum": [
+        "beforeTurn",
+        "afterTurn"
+      ],
+      "type": "string"
+    },
+    "GitCheckpointSummary": {
+      "properties": {
+        "checkpointId": {
+          "type": "string"
+        },
+        "createdAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/GitCheckpointPhase"
+        },
+        "revision": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "checkpointId",
+        "workspaceId",
+        "runId",
+        "revision",
+        "phase",
+        "createdAtMs"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checkpoints": {
+      "items": {
+        "$ref": "#/$defs/GitCheckpointSummary"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "checkpoints"
+  ],
+  "title": "GitCheckpointListResult",
+  "type": "object"
+},
+  GitCheckpointPrepareRevertParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "checkpointId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "checkpointId"
+  ],
+  "title": "GitCheckpointPrepareRevertParams",
+  "type": "object"
+},
+  GitCheckpointPrepareRevertResult: {
+  "$defs": {
+    "GitCheckpointPhase": {
+      "enum": [
+        "beforeTurn",
+        "afterTurn"
+      ],
+      "type": "string"
+    },
+    "GitCheckpointSummary": {
+      "properties": {
+        "checkpointId": {
+          "type": "string"
+        },
+        "createdAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/GitCheckpointPhase"
+        },
+        "revision": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "checkpointId",
+        "workspaceId",
+        "runId",
+        "revision",
+        "phase",
+        "createdAtMs"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checkpoint": {
+      "$ref": "#/$defs/GitCheckpointSummary"
+    },
+    "currentFingerprint": {
+      "type": "string"
+    },
+    "patch": {
+      "type": "string"
+    },
+    "token": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "token",
+    "patch",
+    "checkpoint",
+    "currentFingerprint"
+  ],
+  "title": "GitCheckpointPrepareRevertResult",
+  "type": "object"
+},
+  GitCheckpointApplyRevertParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "token": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "title": "GitCheckpointApplyRevertParams",
+  "type": "object"
+},
+  CodeHostAccountId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  CodeHostPullRequestId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  CodeHostProviderKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "gitHub"
+  ],
+  "title": "CodeHostProviderKind",
+  "type": "string"
+},
+  CodeHostAccount: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accountLogin": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "host": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/CodeHostProviderKind"
+    }
+  },
+  "required": [
+    "id",
+    "provider",
+    "displayName",
+    "accountLogin",
+    "host"
+  ],
+  "title": "CodeHostAccount",
+  "type": "object"
+},
+  CodeHostAccountListParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "CodeHostAccountListParams",
+  "type": "object"
+},
+  CodeHostAccountListResult: {
+  "$defs": {
+    "CodeHostAccount": {
+      "properties": {
+        "accountLogin": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "displayName",
+        "accountLogin",
+        "host"
+      ],
+      "type": "object"
+    },
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accounts": {
+      "items": {
+        "$ref": "#/$defs/CodeHostAccount"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "accounts"
+  ],
+  "title": "CodeHostAccountListResult",
+  "type": "object"
+},
+  CodeHostAccountConnectParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accessToken": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "host": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/CodeHostProviderKind"
+    }
+  },
+  "required": [
+    "provider",
+    "displayName",
+    "host",
+    "accessToken"
+  ],
+  "title": "CodeHostAccountConnectParams",
+  "type": "object"
+},
+  CodeHostAccountConnectResult: {
+  "$defs": {
+    "CodeHostAccount": {
+      "properties": {
+        "accountLogin": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "displayName",
+        "accountLogin",
+        "host"
+      ],
+      "type": "object"
+    },
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "account": {
+      "$ref": "#/$defs/CodeHostAccount"
+    }
+  },
+  "required": [
+    "account"
+  ],
+  "title": "CodeHostAccountConnectResult",
+  "type": "object"
+},
+  CodeHostAccountDisconnectParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "accountId"
+  ],
+  "title": "CodeHostAccountDisconnectParams",
+  "type": "object"
+},
+  CodeHostAccountDisconnectResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "disconnected": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "disconnected"
+  ],
+  "title": "CodeHostAccountDisconnectResult",
+  "type": "object"
+},
+  CodeHostRepositoryRef: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "host": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/CodeHostProviderKind"
+    }
+  },
+  "required": [
+    "provider",
+    "host",
+    "owner",
+    "name"
+  ],
+  "title": "CodeHostRepositoryRef",
+  "type": "object"
+},
+  CodeHostRemote: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "remoteName": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    }
+  },
+  "required": [
+    "remoteName",
+    "repository"
+  ],
+  "title": "CodeHostRemote",
+  "type": "object"
+},
+  CodeHostRepositoryContextParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId"
+  ],
+  "title": "CodeHostRepositoryContextParams",
+  "type": "object"
+},
+  CodeHostRepositoryContextResult: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRemote": {
+      "properties": {
+        "remoteName": {
+          "type": "string"
+        },
+        "repository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        }
+      },
+      "required": [
+        "remoteName",
+        "repository"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "remotes": {
+      "items": {
+        "$ref": "#/$defs/CodeHostRemote"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "remotes"
+  ],
+  "title": "CodeHostRepositoryContextResult",
+  "type": "object"
+},
+  CodeHostCommitSummary: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "subject"
+  ],
+  "title": "CodeHostCommitSummary",
+  "type": "object"
+},
+  CodeHostPushPrepareParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "destinationBranch": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "remoteName": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "remoteName",
+    "destinationBranch"
+  ],
+  "title": "CodeHostPushPrepareParams",
+  "type": "object"
+},
+  CodeHostPushPrepareResult: {
+  "$defs": {
+    "CodeHostCommitSummary": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "subject"
+      ],
+      "type": "object"
+    },
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRemote": {
+      "properties": {
+        "remoteName": {
+          "type": "string"
+        },
+        "repository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        }
+      },
+      "required": [
+        "remoteName",
+        "repository"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commits": {
+      "items": {
+        "$ref": "#/$defs/CodeHostCommitSummary"
+      },
+      "type": "array"
+    },
+    "destinationBranch": {
+      "type": "string"
+    },
+    "remote": {
+      "$ref": "#/$defs/CodeHostRemote"
+    },
+    "remoteHead": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceHead": {
+      "type": "string"
+    },
+    "token": {
+      "type": "string"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "token",
+    "remote",
+    "sourceHead",
+    "destinationBranch",
+    "commits",
+    "truncated"
+  ],
+  "title": "CodeHostPushPrepareResult",
+  "type": "object"
+},
+  CodeHostPushApplyParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "token": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "title": "CodeHostPushApplyParams",
+  "type": "object"
+},
+  CodeHostPushApplyResult: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRemote": {
+      "properties": {
+        "remoteName": {
+          "type": "string"
+        },
+        "repository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        }
+      },
+      "required": [
+        "remoteName",
+        "repository"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "destinationBranch": {
+      "type": "string"
+    },
+    "remote": {
+      "$ref": "#/$defs/CodeHostRemote"
+    },
+    "sourceHead": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "remote",
+    "sourceHead",
+    "destinationBranch"
+  ],
+  "title": "CodeHostPushApplyResult",
+  "type": "object"
+},
+  CodeHostPullRequestState: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "open",
+    "closed",
+    "merged"
+  ],
+  "title": "CodeHostPullRequestState",
+  "type": "string"
+},
+  CodeHostPullRequestSummary: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestState": {
+      "enum": [
+        "open",
+        "closed",
+        "merged"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "baseBranch": {
+      "type": "string"
+    },
+    "baseRepository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "headBranch": {
+      "type": "string"
+    },
+    "headRepository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "headSha": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "number": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/CodeHostPullRequestState"
+    },
+    "title": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "number",
+    "title",
+    "state",
+    "draft",
+    "authorLogin",
+    "headRepository",
+    "headBranch",
+    "headSha",
+    "baseRepository",
+    "baseBranch",
+    "webUrl",
+    "updatedAt"
+  ],
+  "title": "CodeHostPullRequestSummary",
+  "type": "object"
+},
+  CodeHostPullRequestDetail: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestState": {
+      "enum": [
+        "open",
+        "closed",
+        "merged"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestSummary": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        },
+        "baseRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "headBranch": {
+          "type": "string"
+        },
+        "headRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/CodeHostPullRequestState"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "state",
+        "draft",
+        "authorLogin",
+        "headRepository",
+        "headBranch",
+        "headSha",
+        "baseRepository",
+        "baseBranch",
+        "webUrl",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "additions": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "body": {
+      "type": "string"
+    },
+    "changedFiles": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "deletions": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "mergeable": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "summary": {
+      "$ref": "#/$defs/CodeHostPullRequestSummary"
+    }
+  },
+  "required": [
+    "summary",
+    "body",
+    "additions",
+    "deletions",
+    "changedFiles"
+  ],
+  "title": "CodeHostPullRequestDetail",
+  "type": "object"
+},
+  CodeHostPage: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestState": {
+      "enum": [
+        "open",
+        "closed",
+        "merged"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestSummary": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        },
+        "baseRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "headBranch": {
+          "type": "string"
+        },
+        "headRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/CodeHostPullRequestState"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "state",
+        "draft",
+        "authorLogin",
+        "headRepository",
+        "headBranch",
+        "headSha",
+        "baseRepository",
+        "baseBranch",
+        "webUrl",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/CodeHostPullRequestSummary"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "CodeHostPage",
+  "type": "object"
+},
+  CodeHostPullRequestListParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository"
+  ],
+  "title": "CodeHostPullRequestListParams",
+  "type": "object"
+},
+  CodeHostPullRequestDetailParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "number": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository",
+    "number"
+  ],
+  "title": "CodeHostPullRequestDetailParams",
+  "type": "object"
+},
+  CodeHostPullRequestEnsureParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "baseBranch": {
+      "type": "string"
+    },
+    "baseRemoteName": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "headBranch": {
+      "type": "string"
+    },
+    "headRemoteName": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "headRemoteName",
+    "headBranch",
+    "baseRemoteName",
+    "baseBranch",
+    "title",
+    "body",
+    "draft"
+  ],
+  "title": "CodeHostPullRequestEnsureParams",
+  "type": "object"
+},
+  CodeHostPullRequestEnsureResult: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestState": {
+      "enum": [
+        "open",
+        "closed",
+        "merged"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestSummary": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "baseBranch": {
+          "type": "string"
+        },
+        "baseRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "headBranch": {
+          "type": "string"
+        },
+        "headRepository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/CodeHostPullRequestState"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "state",
+        "draft",
+        "authorLogin",
+        "headRepository",
+        "headBranch",
+        "headSha",
+        "baseRepository",
+        "baseBranch",
+        "webUrl",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "created": {
+      "type": "boolean"
+    },
+    "pullRequest": {
+      "$ref": "#/$defs/CodeHostPullRequestSummary"
+    }
+  },
+  "required": [
+    "pullRequest",
+    "created"
+  ],
+  "title": "CodeHostPullRequestEnsureResult",
+  "type": "object"
+},
+  CodeHostCheckStatus: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "queued",
+    "inProgress",
+    "completed",
+    "unknown"
+  ],
+  "title": "CodeHostCheckStatus",
+  "type": "string"
+},
+  CodeHostCheck: {
+  "$defs": {
+    "CodeHostCheckStatus": {
+      "enum": [
+        "queued",
+        "inProgress",
+        "completed",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "conclusion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "detailsUrl": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/CodeHostCheckStatus"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "status"
+  ],
+  "title": "CodeHostCheck",
+  "type": "object"
+},
+  CodeHostPullRequestChecksResult: {
+  "$defs": {
+    "CodeHostCheck": {
+      "properties": {
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detailsUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CodeHostCheckStatus"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status"
+      ],
+      "type": "object"
+    },
+    "CodeHostCheckStatus": {
+      "enum": [
+        "queued",
+        "inProgress",
+        "completed",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CodeHostCheck"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "checks"
+  ],
+  "title": "CodeHostPullRequestChecksResult",
+  "type": "object"
+},
+  CodeHostPullRequestChecksParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "headSha": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository",
+    "headSha"
+  ],
+  "title": "CodeHostPullRequestChecksParams",
+  "type": "object"
+},
+  CodeHostCommentKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "conversation",
+    "review"
+  ],
+  "title": "CodeHostCommentKind",
+  "type": "string"
+},
+  CodeHostComment: {
+  "$defs": {
+    "CodeHostCommentKind": {
+      "enum": [
+        "conversation",
+        "review"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/CodeHostCommentKind"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "authorLogin",
+    "body",
+    "webUrl",
+    "createdAt"
+  ],
+  "title": "CodeHostComment",
+  "type": "object"
+},
+  CodeHostReview: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "submittedAt": {
+      "type": "string"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "authorLogin",
+    "state",
+    "body",
+    "webUrl",
+    "submittedAt"
+  ],
+  "title": "CodeHostReview",
+  "type": "object"
+},
+  CodeHostTimelineItem: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actorLogin": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "actorLogin",
+    "summary",
+    "createdAt"
+  ],
+  "title": "CodeHostTimelineItem",
+  "type": "object"
+},
+  CodeHostPullRequestActivityResult: {
+  "$defs": {
+    "CodeHostComment": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CodeHostCommentKind"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "authorLogin",
+        "body",
+        "webUrl",
+        "createdAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostCommentKind": {
+      "enum": [
+        "conversation",
+        "review"
+      ],
+      "type": "string"
+    },
+    "CodeHostReview": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "submittedAt": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "authorLogin",
+        "state",
+        "body",
+        "webUrl",
+        "submittedAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostTimelineItem": {
+      "properties": {
+        "actorLogin": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "actorLogin",
+        "summary",
+        "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "comments": {
+      "items": {
+        "$ref": "#/$defs/CodeHostComment"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviews": {
+      "items": {
+        "$ref": "#/$defs/CodeHostReview"
+      },
+      "type": "array"
+    },
+    "timeline": {
+      "items": {
+        "$ref": "#/$defs/CodeHostTimelineItem"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "comments",
+    "reviews",
+    "timeline"
+  ],
+  "title": "CodeHostPullRequestActivityResult",
+  "type": "object"
+},
+  CodeHostPullRequestActivityParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "number": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository",
+    "number"
+  ],
+  "title": "CodeHostPullRequestActivityParams",
+  "type": "object"
+},
+  CodeHostPullRequestCommentCreateParams: {
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "number": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository",
+    "number",
+    "body"
+  ],
+  "title": "CodeHostPullRequestCommentCreateParams",
+  "type": "object"
+},
+  CodeHostPullRequestCommentCreateResult: {
+  "$defs": {
+    "CodeHostComment": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CodeHostCommentKind"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "authorLogin",
+        "body",
+        "webUrl",
+        "createdAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostCommentKind": {
+      "enum": [
+        "conversation",
+        "review"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "comment": {
+      "$ref": "#/$defs/CodeHostComment"
+    }
+  },
+  "required": [
+    "comment"
+  ],
+  "title": "CodeHostPullRequestCommentCreateResult",
+  "type": "object"
+},
+  TerminalSessionId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  TerminalSessionStatus: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "running",
+    "exited"
+  ],
+  "title": "TerminalSessionStatus",
+  "type": "string"
+},
+  TerminalSessionSummary: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cols": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "id": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "rows": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "status": {
+      "$ref": "#/$defs/TerminalSessionStatus"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "projectId",
+    "workspaceId",
+    "status",
+    "rows",
+    "cols"
+  ],
+  "title": "TerminalSessionSummary",
+  "type": "object"
+},
+  TerminalSpawnParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cols": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "rows": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "userApproved": {
+      "type": "boolean"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "rows",
+    "cols",
+    "userApproved"
+  ],
+  "title": "TerminalSpawnParams",
+  "type": "object"
+},
+  TerminalSpawnResult: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminal": {
+      "$ref": "#/$defs/TerminalSessionSummary"
+    }
+  },
+  "required": [
+    "terminal"
+  ],
+  "title": "TerminalSpawnResult",
+  "type": "object"
+},
+  TerminalListParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId"
+  ],
+  "title": "TerminalListParams",
+  "type": "object"
+},
+  TerminalListResult: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminals": {
+      "items": {
+        "$ref": "#/$defs/TerminalSessionSummary"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "terminals"
+  ],
+  "title": "TerminalListResult",
+  "type": "object"
+},
+  TerminalAttachParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId"
+  ],
+  "title": "TerminalAttachParams",
+  "type": "object"
+},
+  TerminalAttachResult: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "latestSequence": {
+      "type": "string"
+    },
+    "snapshotBase64": {
+      "type": "string"
+    },
+    "snapshotTruncated": {
+      "type": "boolean"
+    },
+    "terminal": {
+      "$ref": "#/$defs/TerminalSessionSummary"
+    }
+  },
+  "required": [
+    "terminal",
+    "snapshotBase64",
+    "snapshotTruncated",
+    "latestSequence"
+  ],
+  "title": "TerminalAttachResult",
+  "type": "object"
+},
+  TerminalInputParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dataBase64": {
+      "type": "string"
+    },
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId",
+    "dataBase64"
+  ],
+  "title": "TerminalInputParams",
+  "type": "object"
+},
+  TerminalInputResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptedBytes": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "acceptedBytes"
+  ],
+  "title": "TerminalInputResult",
+  "type": "object"
+},
+  TerminalResizeParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cols": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "rows": {
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId",
+    "rows",
+    "cols"
+  ],
+  "title": "TerminalResizeParams",
+  "type": "object"
+},
+  TerminalResizeResult: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminal": {
+      "$ref": "#/$defs/TerminalSessionSummary"
+    }
+  },
+  "required": [
+    "terminal"
+  ],
+  "title": "TerminalResizeResult",
+  "type": "object"
+},
+  TerminalDetachParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId"
+  ],
+  "title": "TerminalDetachParams",
+  "type": "object"
+},
+  TerminalDetachResult: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "detached": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "detached"
+  ],
+  "title": "TerminalDetachResult",
+  "type": "object"
+},
+  TerminalCloseParams: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId"
+  ],
+  "title": "TerminalCloseParams",
+  "type": "object"
+},
+  TerminalCloseResult: {
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminal": {
+      "$ref": "#/$defs/TerminalSessionSummary"
+    }
+  },
+  "required": [
+    "terminal"
+  ],
+  "title": "TerminalCloseResult",
+  "type": "object"
+},
+  TerminalStreamEvent: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "dataBase64": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "output",
+          "type": "string"
+        },
+        "sequence": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "sequence",
+        "dataBase64"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "exited",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "TerminalStreamEvent"
+},
+  TerminalEventParams: {
+  "$defs": {
+    "TerminalStreamEvent": {
+      "oneOf": [
+        {
+          "properties": {
+            "dataBase64": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "output",
+              "type": "string"
+            },
+            "sequence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sequence",
+            "dataBase64"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "exited",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "event": {
+      "$ref": "#/$defs/TerminalStreamEvent"
+    },
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId",
+    "event"
+  ],
+  "title": "TerminalEventParams",
   "type": "object"
 },
   TrustState: {
@@ -10918,6 +20038,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   SessionOverviewResult: {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
@@ -11317,22 +20460,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -11340,9 +20516,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -11695,6 +20880,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -12253,49 +21495,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -12333,6 +21550,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RunSummary": {
       "properties": {
@@ -12379,6 +21653,39 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "status"
       ],
       "type": "object"
+    },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "SessionOverview": {
       "properties": {
@@ -12477,6 +21784,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
+        "nextRunSelection": {
+          "$ref": "#/$defs/SessionNextRunSelection"
+        },
         "status": {
           "$ref": "#/$defs/SessionStatus"
         },
@@ -12487,7 +21797,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "required": [
         "id",
         "title",
-        "status"
+        "status",
+        "nextRunSelection"
       ],
       "type": "object"
     },
@@ -12830,10 +22141,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "title": {
       "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
       "type": "string"
+    },
+    "workspaceId": {
+      "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+      "type": "string"
     }
   },
   "required": [
     "sessionId",
+    "workspaceId",
     "title",
     "status",
     "placement",
@@ -12958,10 +22274,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "title": {
           "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
           "type": "string"
+        },
+        "workspaceId": {
+          "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+          "type": "string"
         }
       },
       "required": [
         "sessionId",
+        "workspaceId",
         "title",
         "status",
         "placement",
@@ -13156,10 +22477,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "title": {
           "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
           "type": "string"
+        },
+        "workspaceId": {
+          "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+          "type": "string"
         }
       },
       "required": [
         "sessionId",
+        "workspaceId",
         "title",
         "status",
         "placement",
@@ -13382,6 +22708,28 @@ export const PROTOCOL_JSON_SCHEMAS = {
     {
       "properties": {
         "kind": {
+          "const": "setProjectSpace",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "projectId"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
           "const": "placeConversation",
           "type": "string"
         },
@@ -13577,6 +22925,28 @@ export const PROTOCOL_JSON_SCHEMAS = {
         {
           "properties": {
             "kind": {
+              "const": "setProjectSpace",
+              "type": "string"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "spaceId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "projectId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
               "const": "placeConversation",
               "type": "string"
             },
@@ -13755,10 +23125,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "title": {
           "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
           "type": "string"
+        },
+        "workspaceId": {
+          "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+          "type": "string"
         }
       },
       "required": [
         "sessionId",
+        "workspaceId",
         "title",
         "status",
         "placement",
@@ -14084,6 +23459,23 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "workspaceId"
       ],
       "type": "object"
+    },
+    {
+      "description": "Opens a disposable conversation in an existing workspace. The\nplacement is chosen by the daemon as part of the same session-open\ncommit; clients cannot create it as standalone and move it later.",
+      "properties": {
+        "kind": {
+          "const": "byTemporary",
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "workspaceId"
+      ],
+      "type": "object"
     }
   ],
   "title": "WorkspaceSelector"
@@ -14147,6 +23539,23 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "workspaceId"
           ],
           "type": "object"
+        },
+        {
+          "description": "Opens a disposable conversation in an existing workspace. The\nplacement is chosen by the daemon as part of the same session-open\ncommit; clients cannot create it as standalone and move it later.",
+          "properties": {
+            "kind": {
+              "const": "byTemporary",
+              "type": "string"
+            },
+            "workspaceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "workspaceId"
+          ],
+          "type": "object"
         }
       ]
     }
@@ -14169,6 +23578,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   DaemonSessionOpenResult: {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
     "DaemonEventCursor": {
       "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
       "properties": {
@@ -14191,6 +23623,39 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -14206,6 +23671,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
+        "nextRunSelection": {
+          "$ref": "#/$defs/SessionNextRunSelection"
+        },
         "status": {
           "$ref": "#/$defs/SessionStatus"
         },
@@ -14216,7 +23684,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "required": [
         "id",
         "title",
-        "status"
+        "status",
+        "nextRunSelection"
       ],
       "type": "object"
     }
@@ -14266,6 +23735,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   DaemonSessionAttachResult: {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
     "DaemonEventCursor": {
       "description": "Resume cursor for `daemon.subscribe` and the `latestCursor` returned from\n`daemon.session.open` / `daemon.session.attach`.\n\nThis cursor is daemon-epoch-aware and scoped to one attached session.",
       "properties": {
@@ -14288,6 +23780,39 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -14303,6 +23828,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
+        "nextRunSelection": {
+          "$ref": "#/$defs/SessionNextRunSelection"
+        },
         "status": {
           "$ref": "#/$defs/SessionStatus"
         },
@@ -14313,7 +23841,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "required": [
         "id",
         "title",
-        "status"
+        "status",
+        "nextRunSelection"
       ],
       "type": "object"
     }
@@ -16092,6 +25621,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "properties": {
     "artifactId": {
       "type": "string"
+    },
+    "pdfPageIndex": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
     }
   },
   "required": [
@@ -16144,22 +25681,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -16167,7 +25737,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
     },
@@ -16192,6 +25763,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "sequence"
       ],
       "type": "object"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -17476,6 +27104,54 @@ export const PROTOCOL_JSON_SCHEMAS = {
   ],
   "title": "ValidationError"
 },
+  VoicePermissionState: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "notDetermined",
+    "denied",
+    "restricted",
+    "authorized"
+  ],
+  "title": "VoicePermissionState",
+  "type": "string"
+},
+  VoicePhase: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "connecting",
+    "listening",
+    "speaking"
+  ],
+  "title": "VoicePhase",
+  "type": "string"
+},
+  VoiceEvent: {
+  "$defs": {
+    "VoicePhase": {
+      "enum": [
+        "connecting",
+        "listening",
+        "speaking"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "phase": {
+      "$ref": "#/$defs/VoicePhase"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "phase"
+  ],
+  "title": "VoiceEvent",
+  "type": "object"
+},
   CapsuleRecipe: {
   "$defs": {
     "OutputContractKind": {
@@ -17744,7 +27420,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -17798,7 +27475,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -17896,6 +27574,99 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NativeRunRelationship": {
+      "description": "Daemon-owned native run lineage for workspace presentation.\n\nThis is deliberately a required discriminated projection: desktop surfaces\nrender relationship semantics from the daemon rather than deriving a branch\nkind from nullable parent or fork fields.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -17912,7 +27683,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -18021,17 +27793,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
-    "parentRunId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "recipeId": {
       "type": [
         "string",
         "null"
       ]
+    },
+    "relationship": {
+      "$ref": "#/$defs/NativeRunRelationship"
     },
     "startedAtMs": {
       "anyOf": [
@@ -18061,6 +27830,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "required": [
     "id",
+    "relationship",
     "harness",
     "status"
   ],
@@ -18089,6 +27859,99 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "NativeRunRelationship": {
+      "description": "Daemon-owned native run lineage for workspace presentation.\n\nThis is deliberately a required discriminated projection: desktop surfaces\nrender relationship semantics from the daemon rather than deriving a branch\nkind from nullable parent or fork fields.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -18105,7 +27968,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -18173,17 +28037,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             }
           ]
         },
-        "parentRunId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "recipeId": {
           "type": [
             "string",
             "null"
           ]
+        },
+        "relationship": {
+          "$ref": "#/$defs/NativeRunRelationship"
         },
         "startedAtMs": {
           "anyOf": [
@@ -18213,6 +28074,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
       },
       "required": [
         "id",
+        "relationship",
         "harness",
         "status"
       ],
@@ -18278,6 +28140,376 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "runs"
   ],
   "title": "ListNativeRunsResult",
+  "type": "object"
+},
+  RunLineageGraphRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RunLineageGraphRequest",
+  "type": "object"
+},
+  RunLineageGraphEdge: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "childRunId": {
+      "type": "string"
+    },
+    "parentRunId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parentRunId",
+    "childRunId"
+  ],
+  "title": "RunLineageGraphEdge",
+  "type": "object"
+},
+  RunLineageGraphResult: {
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "NativeRunRelationship": {
+      "description": "Daemon-owned native run lineage for workspace presentation.\n\nThis is deliberately a required discriminated projection: desktop surfaces\nrender relationship semantics from the daemon rather than deriving a branch\nkind from nullable parent or fork fields.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunLineageGraphEdge": {
+      "properties": {
+        "childRunId": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRunId",
+        "childRunId"
+      ],
+      "type": "object"
+    },
+    "RunListEntry": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objectivePreview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "relationship": {
+          "$ref": "#/$defs/NativeRunRelationship"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "relationship",
+        "harness",
+        "status"
+      ],
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cycleBroken": {
+      "type": "boolean"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/RunLineageGraphEdge"
+      },
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/RunListEntry"
+      },
+      "type": "array"
+    },
+    "omittedCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "orphanRunIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "totalCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "nodes",
+    "edges",
+    "orphanRunIds",
+    "totalCount",
+    "omittedCount",
+    "truncated",
+    "cycleBroken"
+  ],
+  "title": "RunLineageGraphResult",
   "type": "object"
 },
   GetRunTimelineQuery: {
@@ -18347,7 +28579,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
       ],
       "type": "string"
     },
@@ -18528,6 +28769,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "oneOf": [
         {
           "properties": {
+            "auth_profile_exhaustion": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AuthProfileExhaustion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "detail": {
               "type": "string"
             },
@@ -19142,7 +29393,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
       ],
       "type": "string"
     },
@@ -19267,6 +29527,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "oneOf": [
         {
           "properties": {
+            "auth_profile_exhaustion": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AuthProfileExhaustion"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "detail": {
               "type": "string"
             },
@@ -19619,7 +29889,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
       ],
       "type": "string"
     },
@@ -19785,6 +30064,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "oneOf": [
     {
       "properties": {
+        "auth_profile_exhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "detail": {
           "type": "string"
         },
@@ -20001,7 +30290,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   ProtocolVersion: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "const": "2026-04-stage3",
+  "const": "2026-08-stage5",
   "title": "ProtocolVersion",
   "type": "string"
 },
@@ -20016,13 +30305,22 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "unknown",
     "native",
     "acp",
-    "codexAppServer"
+    "codexAppServer",
+    "realtimeVoice"
   ],
   "title": "RunHarnessKind",
   "type": "string"
 },
   RunDetail: {
   "$defs": {
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "CapsuleResult": {
       "oneOf": [
         {
@@ -21189,6 +31487,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "authProfileExhaustion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthProfileExhaustion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "claimedFiles": {
       "items": {
         "type": "string"
@@ -21554,14 +31862,46 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
     "RunSource": {
       "oneOf": [
         {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
           "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
             "kind": {
               "const": "user",
               "type": "string"
@@ -21594,7 +31934,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
-            "route"
+            "route",
+            "attachments"
           ],
           "type": "object"
         },
@@ -21659,9 +32000,93 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "kind": {
               "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -21729,6 +32154,41 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "processExec"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     },
     "WorkspaceMode": {
       "enum": [
@@ -22323,7 +32783,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -22437,7 +32898,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "RunSource": {
       "oneOf": [
         {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
           "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
             "kind": {
               "const": "user",
               "type": "string"
@@ -22470,7 +32962,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
-            "route"
+            "route",
+            "attachments"
           ],
           "type": "object"
         },
@@ -22535,9 +33028,93 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "kind": {
               "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -22605,6 +33182,41 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "processExec"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     },
     "WorkspaceMode": {
       "enum": [
@@ -23084,7 +33696,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -23198,7 +33811,38 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "RunSource": {
       "oneOf": [
         {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
           "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
             "kind": {
               "const": "user",
               "type": "string"
@@ -23231,7 +33875,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "required": [
             "kind",
-            "route"
+            "route",
+            "attachments"
           ],
           "type": "object"
         },
@@ -23296,9 +33941,93 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "kind": {
               "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -23366,6 +34095,41 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "processExec"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     },
     "WorkspaceMode": {
       "enum": [
@@ -23526,6 +34290,4299 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "run"
   ],
   "title": "ForkRunResult",
+  "type": "object"
+},
+  ContinueRunRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Adds one user message to an existing terminal native fork and starts that\nsame run again. This is deliberately distinct from `ResumeRunRequest`:\nresume observes/re-attaches lifecycle state, while continuation creates the\nnext durable user turn for an already terminal branch.",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "runId",
+    "message"
+  ],
+  "title": "ContinueRunRequest",
+  "type": "object"
+},
+  ContinueRunResult: {
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunRecord": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RunSource"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runtimeProfileId",
+        "objective",
+        "status",
+        "harness",
+        "source",
+        "executionContext"
+      ],
+      "type": "object"
+    },
+    "RunSource": {
+      "oneOf": [
+        {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
+          "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "user",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "attachments"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "parentTurnId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentTurnId"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "run": {
+      "$ref": "#/$defs/RunRecord"
+    }
+  },
+  "required": [
+    "run"
+  ],
+  "title": "ContinueRunResult",
+  "type": "object"
+},
+  SwitchAccountAndResumeRequest: {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Creates a new native continuation from a failed, account-exhausted parent.\nThe replacement account is mandatory and is validated against the exact\nparent runtime/provider/harness/model route before any state is written.",
+  "properties": {
+    "parentRunId": {
+      "type": "string"
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "selection"
+  ],
+  "title": "SwitchAccountAndResumeRequest",
+  "type": "object"
+},
+  SwitchAccountAndResumeResult: {
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunRecord": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RunSource"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runtimeProfileId",
+        "objective",
+        "status",
+        "harness",
+        "source",
+        "executionContext"
+      ],
+      "type": "object"
+    },
+    "RunSource": {
+      "oneOf": [
+        {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
+          "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "user",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "attachments"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "parentTurnId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentTurnId"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "run": {
+      "$ref": "#/$defs/RunRecord"
+    }
+  },
+  "required": [
+    "run"
+  ],
+  "title": "SwitchAccountAndResumeResult",
+  "type": "object"
+},
+  SpawnRunRequest: {
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Creates an independent child with durable parent lineage and a fresh\nconversation history. Runtime selection is explicit and provider-neutral.",
+  "properties": {
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy",
+      "default": "deleteOnSuccess"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "outputContract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parentRunId": {
+      "type": "string"
+    },
+    "plannedWriteFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "recipeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "workspaceScope": {
+      "$ref": "#/$defs/WorkspaceMode",
+      "default": "worktreeWrite"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "objective",
+    "selection"
+  ],
+  "title": "SpawnRunRequest",
+  "type": "object"
+},
+  SpawnRunResult: {
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunRecord": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RunSource"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runtimeProfileId",
+        "objective",
+        "status",
+        "harness",
+        "source",
+        "executionContext"
+      ],
+      "type": "object"
+    },
+    "RunSource": {
+      "oneOf": [
+        {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
+          "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "user",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "attachments"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "parentTurnId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentTurnId"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "run": {
+      "$ref": "#/$defs/RunRecord"
+    }
+  },
+  "required": [
+    "run"
+  ],
+  "title": "SpawnRunResult",
+  "type": "object"
+},
+  JoinRunRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Reads a directly-related Fresh Spawn child. The response is idempotent for\nqueued, running, and terminal children because all fields are projections of\nexisting daemon/store records.",
+  "properties": {
+    "childRunId": {
+      "type": "string"
+    },
+    "parentRunId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "childRunId"
+  ],
+  "title": "JoinRunRequest",
+  "type": "object"
+},
+  JoinRunResult: {
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "metadata",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "ContextReceipt": {
+      "properties": {
+        "createdAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReceiptKind"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "promotedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/ReceiptProvenance"
+        },
+        "quarantinedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ReceiptState"
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runId",
+        "kind",
+        "provenance",
+        "state",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptProvenance": {
+      "description": "Provenance shape rules:\n- artifact-derived: only `artifact_id` is set; identity = (session, run, kind, artifact_id).\n- event-derived: both `event_seq` and `agent_turn_id` are set; identity = (session, run, kind, event_seq, agent_turn_id).\n- free-form: all identifying fields are None.\n\n`stream_cursor` is descriptive metadata (e.g. for UI navigation) and may be\npresent in any shape. It is never part of the unique identity.",
+      "properties": {
+        "agentTurnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifactId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "streamCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunRecord": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RunSource"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runtimeProfileId",
+        "objective",
+        "status",
+        "harness",
+        "source",
+        "executionContext"
+      ],
+      "type": "object"
+    },
+    "RunSource": {
+      "oneOf": [
+        {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
+          "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "user",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "attachments"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "parentTurnId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentTurnId"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactSummary"
+      },
+      "type": "array"
+    },
+    "receipts": {
+      "items": {
+        "$ref": "#/$defs/ContextReceipt"
+      },
+      "type": "array"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CapsuleResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run": {
+      "$ref": "#/$defs/RunRecord"
+    }
+  },
+  "required": [
+    "run"
+  ],
+  "title": "JoinRunResult",
   "type": "object"
 },
   SubscribeRunEventsRequest: {
@@ -23952,22 +39009,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -23975,9 +39065,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -24330,6 +39429,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -24856,49 +40012,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -24936,6 +40067,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -25517,22 +40705,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -25540,9 +40761,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -25895,6 +41125,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -26421,49 +41708,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunEventDelta": {
       "description": "One run event delta returned by replay or live splice.\n\nThe sequence is the persisted daemon-event sequence, so clients can dedupe\nreplay and live deliveries with one cursor.",
@@ -26526,6 +41788,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -27116,22 +42435,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -27139,9 +42491,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -27494,6 +42855,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -28020,49 +43438,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunEventDelta": {
       "description": "One run event delta returned by replay or live splice.\n\nThe sequence is the persisted daemon-event sequence, so clients can dedupe\nreplay and live deliveries with one cursor.",
@@ -28161,6 +43554,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -28730,22 +44180,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -28753,9 +44236,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -29108,6 +44600,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -29634,49 +45183,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunEventDelta": {
       "description": "One run event delta returned by replay or live splice.\n\nThe sequence is the persisted daemon-event sequence, so clients can dedupe\nreplay and live deliveries with one cursor.",
@@ -29732,6 +45256,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RuntimeLanePendingState": {
       "enum": [
@@ -29931,6 +45512,29 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   SessionOverview: {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
@@ -30330,22 +45934,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -30353,9 +45990,18 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -30708,6 +46354,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -31266,49 +46969,24 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -31346,6 +47024,63 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RunSummary": {
       "properties": {
@@ -31393,6 +47128,39 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionOverviewLaneStatus": {
       "enum": [
         "idle",
@@ -31419,6 +47187,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id": {
           "type": "string"
         },
+        "nextRunSelection": {
+          "$ref": "#/$defs/SessionNextRunSelection"
+        },
         "status": {
           "$ref": "#/$defs/SessionStatus"
         },
@@ -31429,7 +47200,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
       "required": [
         "id",
         "title",
-        "status"
+        "status",
+        "nextRunSelection"
       ],
       "type": "object"
     },
@@ -31644,6 +47416,62 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   SessionSummary: {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -31660,6 +47488,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "id": {
       "type": "string"
     },
+    "nextRunSelection": {
+      "$ref": "#/$defs/SessionNextRunSelection"
+    },
     "status": {
       "$ref": "#/$defs/SessionStatus"
     },
@@ -31670,7 +47501,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "required": [
     "id",
     "title",
-    "status"
+    "status",
+    "nextRunSelection"
   ],
   "title": "SessionSummary",
   "type": "object"
@@ -31699,10 +47531,32 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "runtimeProfileId"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachmentRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "expectedRevision"
+      ],
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileAttachmentRequest"
+      },
+      "type": "array"
+    },
     "objective": {
       "type": "string"
     },
@@ -31718,7 +47572,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
   },
   "required": [
     "objective",
-    "selection"
+    "selection",
+    "attachments"
   ],
   "title": "StartRunCommand",
   "type": "object"
@@ -32350,6 +48205,12 @@ export const PROTOCOL_JSON_SCHEMAS = {
           },
           "type": "array"
         },
+        "code_host_account_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "kind": {
           "$ref": "#/$defs/WorkflowSourceKind"
         },
@@ -32463,6 +48324,12 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "type": "string"
       },
       "type": "array"
+    },
+    "code_host_account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "kind": {
       "$ref": "#/$defs/WorkflowSourceKind"
@@ -33280,6 +49147,39 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "type": "string"
 },
   AgentRuntimeModelRef: {
+  "$defs": {
+    "AgentRuntimeMediaCapabilities": {
+      "properties": {
+        "imageInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "imageOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        }
+      },
+      "required": [
+        "imageInput",
+        "imageOutput",
+        "voiceInput",
+        "voiceOutput"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "contextLimit": {
@@ -33312,11 +49212,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         }
       ]
     },
-    "inputModalities": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
+    "mediaCapabilities": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapabilities"
     },
     "outputCostPerMillionMicros": {
       "anyOf": [
@@ -33345,9 +49242,55 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "displayName",
     "reasoning",
     "toolCall",
-    "structuredOutput"
+    "structuredOutput",
+    "mediaCapabilities"
   ],
   "title": "AgentRuntimeModelRef",
+  "type": "object"
+},
+  AgentRuntimeMediaCapability: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Closed capabilities for the selected runtime model.",
+  "enum": [
+    "unsupported",
+    "supported"
+  ],
+  "title": "AgentRuntimeMediaCapability",
+  "type": "string"
+},
+  AgentRuntimeMediaCapabilities: {
+  "$defs": {
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "imageInput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "imageOutput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "voiceInput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "voiceOutput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    }
+  },
+  "required": [
+    "imageInput",
+    "imageOutput",
+    "voiceInput",
+    "voiceOutput"
+  ],
+  "title": "AgentRuntimeMediaCapabilities",
   "type": "object"
 },
   AgentRuntimeStrategyHealthStatus: {
@@ -33393,6 +49336,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   AgentRuntimeStrategyInfo: {
   "$defs": {
+    "AgentRuntimeMediaCapabilities": {
+      "properties": {
+        "imageInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "imageOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        }
+      },
+      "required": [
+        "imageInput",
+        "imageOutput",
+        "voiceInput",
+        "voiceOutput"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    },
     "AgentRuntimeModelAvailability": {
       "enum": [
         "enumerated",
@@ -33462,11 +49436,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
             }
           ]
         },
-        "inputModalities": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+        "mediaCapabilities": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapabilities"
         },
         "outputCostPerMillionMicros": {
           "anyOf": [
@@ -33495,7 +49466,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "displayName",
         "reasoning",
         "toolCall",
-        "structuredOutput"
+        "structuredOutput",
+        "mediaCapabilities"
       ],
       "type": "object"
     },
@@ -33667,6 +49639,136 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "AuthProfileRef",
   "type": "object"
 },
+  AuthProfilePreferences: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+  "properties": {
+    "isDefault": {
+      "type": "boolean"
+    },
+    "label": {
+      "type": "string"
+    },
+    "order": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "label",
+    "order",
+    "isDefault"
+  ],
+  "title": "AuthProfilePreferences",
+  "type": "object"
+},
+  AuthProfileUsage: {
+  "$defs": {
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "unavailable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "observed",
+          "type": "string"
+        },
+        "observedAtMs": {
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/AuthProfileUsageWindow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "observedAtMs",
+        "windows"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "AuthProfileUsage"
+},
+  AuthProfileUsageWindow: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A usage window reported directly by the authenticated provider account.",
+  "properties": {
+    "label": {
+      "type": "string"
+    },
+    "limit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "remaining": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resetsAtMs": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "label"
+  ],
+  "title": "AuthProfileUsageWindow",
+  "type": "object"
+},
   AuthProfileState: {
   "$defs": {
     "AuthProfileActionHint": {
@@ -33702,6 +49804,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "AuthProfileManagementMode": {
       "enum": [
         "interactive",
@@ -33729,6 +49839,28 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "displayName",
         "managementMode"
+      ],
+      "type": "object"
+    },
+    "AuthProfilePreferences": {
+      "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+      "properties": {
+        "isDefault": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "order",
+        "isDefault"
       ],
       "type": "object"
     },
@@ -33766,6 +49898,76 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileUsage": {
+      "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "observed",
+              "type": "string"
+            },
+            "observedAtMs": {
+              "type": "string"
+            },
+            "windows": {
+              "items": {
+                "$ref": "#/$defs/AuthProfileUsageWindow"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAtMs",
+            "windows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -33789,6 +49991,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "connectionState": {
       "$ref": "#/$defs/AuthProfileConnectionState"
     },
+    "exhaustion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthProfileExhaustion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "lastError": {
       "type": [
         "string",
@@ -33810,6 +50022,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "null"
       ]
     },
+    "preferences": {
+      "$ref": "#/$defs/AuthProfilePreferences"
+    },
     "profile": {
       "$ref": "#/$defs/AuthProfileRef"
     },
@@ -33818,10 +50033,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "type": "string"
       },
       "type": "array"
+    },
+    "usage": {
+      "$ref": "#/$defs/AuthProfileUsage"
     }
   },
   "required": [
     "profile",
+    "preferences",
+    "usage",
     "connectionState",
     "managementMode",
     "canLogin",
@@ -33910,6 +50130,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "AuthProfileLoginChallenge": {
       "properties": {
         "authProfileId": {
@@ -33981,6 +50209,28 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "object"
     },
+    "AuthProfilePreferences": {
+      "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+      "properties": {
+        "isDefault": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "order",
+        "isDefault"
+      ],
+      "type": "object"
+    },
     "AuthProfileRef": {
       "properties": {
         "accountHint": {
@@ -34037,6 +50287,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "connectionState": {
           "$ref": "#/$defs/AuthProfileConnectionState"
         },
+        "exhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "lastError": {
           "type": [
             "string",
@@ -34058,6 +50318,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "null"
           ]
         },
+        "preferences": {
+          "$ref": "#/$defs/AuthProfilePreferences"
+        },
         "profile": {
           "$ref": "#/$defs/AuthProfileRef"
         },
@@ -34066,14 +50329,89 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "type": "string"
           },
           "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/AuthProfileUsage"
         }
       },
       "required": [
         "profile",
+        "preferences",
+        "usage",
         "connectionState",
         "managementMode",
         "canLogin",
         "canLogout"
+      ],
+      "type": "object"
+    },
+    "AuthProfileUsage": {
+      "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "observed",
+              "type": "string"
+            },
+            "observedAtMs": {
+              "type": "string"
+            },
+            "windows": {
+              "items": {
+                "$ref": "#/$defs/AuthProfileUsageWindow"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAtMs",
+            "windows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
       ],
       "type": "object"
     }
@@ -34566,6 +50904,15 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "RuntimePolicyMode",
   "type": "string"
 },
+  RuntimeProfileExecutionKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "agentRun",
+    "realtimeVoice"
+  ],
+  "title": "RuntimeProfileExecutionKind",
+  "type": "string"
+},
   RuntimeProfileSummary: {
   "$defs": {
     "RuntimePolicyMode": {
@@ -34573,6 +50920,13 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "requireApproval",
         "allow",
         "deny"
+      ],
+      "type": "string"
+    },
+    "RuntimeProfileExecutionKind": {
+      "enum": [
+        "agentRun",
+        "realtimeVoice"
       ],
       "type": "string"
     }
@@ -34588,6 +50942,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "displayName": {
       "type": "string"
     },
+    "executionKind": {
+      "$ref": "#/$defs/RuntimeProfileExecutionKind"
+    },
     "id": {
       "type": "string"
     },
@@ -34602,7 +50959,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "id",
     "displayName",
     "providerId",
-    "policyMode"
+    "policyMode",
+    "executionKind"
   ],
   "title": "RuntimeProfileSummary",
   "type": "object"
@@ -34667,6 +51025,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
 },
   AgentRuntimeSnapshot: {
   "$defs": {
+    "AgentRuntimeMediaCapabilities": {
+      "properties": {
+        "imageInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "imageOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceInput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        },
+        "voiceOutput": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapability"
+        }
+      },
+      "required": [
+        "imageInput",
+        "imageOutput",
+        "voiceInput",
+        "voiceOutput"
+      ],
+      "type": "object"
+    },
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    },
     "AgentRuntimeModelAvailability": {
       "enum": [
         "enumerated",
@@ -34736,11 +51125,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
             }
           ]
         },
-        "inputModalities": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
+        "mediaCapabilities": {
+          "$ref": "#/$defs/AgentRuntimeMediaCapabilities"
         },
         "outputCostPerMillionMicros": {
           "anyOf": [
@@ -34769,7 +51155,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "displayName",
         "reasoning",
         "toolCall",
-        "structuredOutput"
+        "structuredOutput",
+        "mediaCapabilities"
       ],
       "type": "object"
     },
@@ -34888,6 +51275,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "AuthProfileManagementMode": {
       "enum": [
         "interactive",
@@ -34915,6 +51310,28 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "displayName",
         "managementMode"
+      ],
+      "type": "object"
+    },
+    "AuthProfilePreferences": {
+      "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+      "properties": {
+        "isDefault": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "order",
+        "isDefault"
       ],
       "type": "object"
     },
@@ -34974,6 +51391,16 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "connectionState": {
           "$ref": "#/$defs/AuthProfileConnectionState"
         },
+        "exhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "lastError": {
           "type": [
             "string",
@@ -34995,6 +51422,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "null"
           ]
         },
+        "preferences": {
+          "$ref": "#/$defs/AuthProfilePreferences"
+        },
         "profile": {
           "$ref": "#/$defs/AuthProfileRef"
         },
@@ -35003,14 +51433,89 @@ export const PROTOCOL_JSON_SCHEMAS = {
             "type": "string"
           },
           "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/AuthProfileUsage"
         }
       },
       "required": [
         "profile",
+        "preferences",
+        "usage",
         "connectionState",
         "managementMode",
         "canLogin",
         "canLogout"
+      ],
+      "type": "object"
+    },
+    "AuthProfileUsage": {
+      "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "observed",
+              "type": "string"
+            },
+            "observedAtMs": {
+              "type": "string"
+            },
+            "windows": {
+              "items": {
+                "$ref": "#/$defs/AuthProfileUsageWindow"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAtMs",
+            "windows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
       ],
       "type": "object"
     },
@@ -35185,6 +51690,13 @@ export const PROTOCOL_JSON_SCHEMAS = {
       ],
       "type": "string"
     },
+    "RuntimeProfileExecutionKind": {
+      "enum": [
+        "agentRun",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
     "RuntimeProfileSummary": {
       "properties": {
         "authMethodId": {
@@ -35195,6 +51707,9 @@ export const PROTOCOL_JSON_SCHEMAS = {
         },
         "displayName": {
           "type": "string"
+        },
+        "executionKind": {
+          "$ref": "#/$defs/RuntimeProfileExecutionKind"
         },
         "id": {
           "type": "string"
@@ -35210,7 +51725,8 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "id",
         "displayName",
         "providerId",
-        "policyMode"
+        "policyMode",
+        "executionKind"
       ],
       "type": "object"
     }

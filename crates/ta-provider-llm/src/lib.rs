@@ -5,5 +5,6 @@ pub mod error;
 pub mod families;
 pub mod formats;
 pub mod http;
+pub mod realtime;
 pub mod retry;
 pub mod stream_model;

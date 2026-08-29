@@ -88,10 +88,15 @@
         "title": {
           "description": "Derived from the canonical session projection when the snapshot is read.\nNavigation persistence deliberately does not retain this value.",
           "type": "string"
+        },
+        "workspaceId": {
+          "description": "Derived from the canonical session projection when the snapshot is\nread. Navigation persistence deliberately does not retain this value.",
+          "type": "string"
         }
       },
       "required": [
         "sessionId",
+        "workspaceId",
         "title",
         "status",
         "placement",

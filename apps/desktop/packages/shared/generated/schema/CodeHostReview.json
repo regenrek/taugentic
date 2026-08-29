@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "submittedAt": {
+      "type": "string"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "authorLogin",
+    "state",
+    "body",
+    "webUrl",
+    "submittedAt"
+  ],
+  "title": "CodeHostReview",
+  "type": "object"
+}

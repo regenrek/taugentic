@@ -1,4 +1,4 @@
-import { launch, type App as AutomationApp } from "@gpuix/react/automation"
+import { launch, type App as AutomationApp } from "@regenrek/gpuix-react/automation"
 import { execFileSync } from "node:child_process"
 import { mkdtemp, rm } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
@@ -32,6 +32,7 @@ export async function launchM1Desktop(): Promise<{ app: AutomationApp; close(): 
       TAUGENTIC_LOG_STDERR: "0",
       TAUGENTIC_WORKSPACE_PATH: desktopRoot,
       TAUGENTIC_DAEMON_BINARY: daemonBinary(),
+      ...(process.env.PATH === undefined ? {} : { PATH: process.env.PATH }),
     },
   })
 

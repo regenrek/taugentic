@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "unavailable",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
+          "const": "observed",
+          "type": "string"
+        },
+        "observedAtMs": {
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/AuthProfileUsageWindow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "observedAtMs",
+        "windows"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "AuthProfileUsage"
+}

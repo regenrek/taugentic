@@ -4,7 +4,7 @@ use ts_rs::TS;
 
 use crate::wire::{
     ActivityCursor, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome, DaemonEventCursor,
-    RunId, RuntimeLanePendingState, SessionId, u64_string,
+    RunId, RuntimeLanePendingState, SessionId, WorkspaceFileAttachment, u64_string,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -14,6 +14,21 @@ pub struct AgentTurnsPageQuery {
     pub limit: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub before: Option<ActivityCursor>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AgentUserRow {
+    pub cursor: ActivityCursor,
+    pub session_id: SessionId,
+    pub run_id: RunId,
+    #[serde(with = "u64_string")]
+    #[schemars(schema_with = "u64_string::json_schema")]
+    #[ts(type = "string")]
+    pub occurred_at_ms: u64,
+    pub text: String,
+    pub attachments: Vec<WorkspaceFileAttachment>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -81,6 +96,7 @@ pub struct AgentPendingStateRow {
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
 pub enum AgentTurnRow {
+    User(AgentUserRow),
     Assistant(AgentAssistantRow),
     ToolCall(AgentToolCallRow),
     PendingState(AgentPendingStateRow),

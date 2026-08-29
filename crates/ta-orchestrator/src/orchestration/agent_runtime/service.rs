@@ -3,11 +3,13 @@ use std::sync::{Arc, Mutex};
 #[cfg(test)]
 use ta_protocol::wire::RuntimePolicyMode;
 use ta_protocol::wire::{
-    AgentRuntimeSelection, AgentRuntimeSnapshot, AuthProfileConnectionState,
-    AuthProfileLoginResult, AuthProfileRef, DaemonAgentRuntimeAuthLoginCompleteParams,
+    AgentRuntimeMediaCapabilities, AgentRuntimeSelection, AgentRuntimeSnapshot,
+    AuthProfileConnectionState, AuthProfileId, AuthProfileLoginResult, AuthProfilePreferences,
+    AuthProfileRef, AuthProfileState, DaemonAgentRuntimeAuthLoginCompleteParams,
     DaemonAgentRuntimeAuthLoginParams, DaemonAgentRuntimeAuthLogoutParams,
-    DaemonAgentRuntimePatchProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    GetAgentRuntimeQuery, RuntimeExtensionState, RuntimeProfileId, RuntimeProfileSummary,
+    DaemonAgentRuntimeAuthProfilePreferencesSetParams, DaemonAgentRuntimePatchProfileParams,
+    DaemonAgentRuntimeSetExtensionEnabledParams, GetAgentRuntimeQuery, RuntimeExtensionState,
+    RuntimeProfileExecutionKind, RuntimeProfileId, RuntimeProfileSummary,
 };
 use ta_store::{AuthProfileProjection, PersistenceStore};
 use taugentic_agent::AgentExecutionHarness;
@@ -97,6 +99,7 @@ pub(crate) struct ValidatedRunSelection {
     runtime_profile: RuntimeProfileSummary,
     route: ta_protocol::wire::RunExecutionRoute,
     execution_harness: AgentExecutionHarness,
+    media_capabilities: AgentRuntimeMediaCapabilities,
 }
 
 impl ValidatedRunSelection {
@@ -110,6 +113,10 @@ impl ValidatedRunSelection {
 
     pub(crate) fn execution_harness(&self) -> &AgentExecutionHarness {
         &self.execution_harness
+    }
+
+    pub(crate) fn media_capabilities(&self) -> AgentRuntimeMediaCapabilities {
+        self.media_capabilities.clone()
     }
 }
 
@@ -177,6 +184,14 @@ where
         self.build_snapshot(&state)
     }
 
+    #[cfg(test)]
+    pub(crate) fn replace_model_catalog_for_tests(
+        &self,
+        catalog: ta_model_catalog::ModelCatalog,
+    ) -> Result<(), AgentRuntimeServiceError> {
+        self.registry.replace_catalog(catalog)
+    }
+
     pub(crate) fn validate_run_selection(
         &self,
         selection: &AgentRuntimeSelection,
@@ -199,10 +214,37 @@ where
         let execution_harness = self
             .registry
             .execution_harness_for_runtime_profile(&runtime_profile)?;
+        let model = self
+            .registry
+            .runtime_snapshot()?
+            .providers
+            .into_iter()
+            .find(|provider| provider.id == runtime_profile.provider_id)
+            .and_then(|provider| {
+                provider
+                    .models
+                    .into_iter()
+                    .find(|model| Some(&model.id) == selection.model_id.as_ref())
+            })
+            .ok_or_else(|| AgentRuntimeServiceError::UnknownModel {
+                provider_id: runtime_profile.provider_id.as_str().to_string(),
+                model_id: selection
+                    .model_id
+                    .as_ref()
+                    .map_or_else(String::new, |value| value.as_str().to_string()),
+            })?;
+        let media_capabilities = model.media_capabilities;
         let route = ta_protocol::wire::RunExecutionRoute {
             runtime_profile_id: runtime_profile.id.clone(),
             provider_id: runtime_profile.provider_id.clone(),
-            harness: crate::orchestration::run_harness_kind(&execution_harness),
+            harness: match runtime_profile.execution_kind {
+                RuntimeProfileExecutionKind::AgentRun => {
+                    crate::orchestration::run_harness_kind(&execution_harness)
+                }
+                RuntimeProfileExecutionKind::RealtimeVoice => {
+                    ta_protocol::wire::RunHarnessKind::RealtimeVoice
+                }
+            },
             model_id: selection.model_id.clone(),
             auth_profile_id: selection.auth_profile_id.clone(),
         };
@@ -210,7 +252,49 @@ where
             runtime_profile,
             route,
             execution_harness,
+            media_capabilities,
         })
+    }
+
+    /// Normal agent-run admission deliberately excludes the realtime lane
+    /// before an agent `ExecutionRequest` can be constructed.
+    pub(crate) fn validate_agent_run_selection(
+        &self,
+        selection: &AgentRuntimeSelection,
+    ) -> Result<ValidatedRunSelection, AgentRuntimeServiceError> {
+        let validated = self.validate_run_selection(selection)?;
+        if validated.runtime_profile.execution_kind != RuntimeProfileExecutionKind::AgentRun {
+            return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "realtime voice profiles require the voice execution route".to_string(),
+            ));
+        }
+        Ok(validated)
+    }
+
+    pub(crate) fn media_capabilities_for_route(
+        &self,
+        route: &ta_protocol::wire::RunExecutionRoute,
+    ) -> Result<AgentRuntimeMediaCapabilities, AgentRuntimeServiceError> {
+        let model_id = route
+            .model_id
+            .as_ref()
+            .ok_or(AgentRuntimeServiceError::MissingModel)?;
+        self.registry
+            .runtime_snapshot()?
+            .providers
+            .into_iter()
+            .find(|provider| provider.id == route.provider_id)
+            .and_then(|provider| {
+                provider
+                    .models
+                    .into_iter()
+                    .find(|model| model.id == *model_id)
+            })
+            .map(|model| model.media_capabilities)
+            .ok_or_else(|| AgentRuntimeServiceError::UnknownModel {
+                provider_id: route.provider_id.as_str().to_string(),
+                model_id: model_id.as_str().to_string(),
+            })
     }
 
     pub(crate) fn patch_profile(
@@ -245,7 +329,7 @@ where
         let auth_profile_id =
             ta_protocol::wire::AuthProfileId::new(format!("profile-{}", Uuid::new_v4().simple()))
                 .expect("generated auth profile id");
-        let result =
+        let mut result =
             login_auth_profile(&self.registry, &params.auth_method_id, &auth_profile_id).await?;
         if result.auth_profile.profile.auth_method_id != method.id
             || result.auth_profile.profile.provider_id != method.provider_id
@@ -259,14 +343,45 @@ where
                 "auth profile store should not be poisoned".to_string(),
             )
         })?;
-        let order = store.auth_profiles()?.len() as u32;
+        let group_len = store
+            .auth_profiles()?
+            .into_iter()
+            .filter(|profile| {
+                profile.profile.profile.provider_id == method.provider_id
+                    && profile.profile.profile.auth_method_id == method.id
+            })
+            .count();
+        let order = group_len as u32;
+        let is_default = group_len == 0;
+        result.auth_profile.preferences = ta_protocol::wire::AuthProfilePreferences {
+            label: result.auth_profile.profile.display_name.clone(),
+            order,
+            is_default,
+        };
         store.save_auth_profile(AuthProfileProjection {
             profile: result.auth_profile.clone(),
             external_account_id: None,
-            order,
-            is_default: false,
         })?;
         Ok(result)
+    }
+
+    pub(crate) fn replace_auth_profile_preferences(
+        &self,
+        params: &DaemonAgentRuntimeAuthProfilePreferencesSetParams,
+    ) -> Result<AgentRuntimeSnapshot, AgentRuntimeServiceError> {
+        validate_auth_profile_preferences(&params.preferences)?;
+        let state = self.state.lock()?.clone();
+        let mut store = self.store.lock().map_err(|_| {
+            AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "auth profile store should not be poisoned".to_string(),
+            )
+        })?;
+        store.replace_auth_profile_preferences(
+            &params.auth_profile_id,
+            params.preferences.clone(),
+        )?;
+        drop(store);
+        self.build_snapshot(&state)
     }
 
     pub(crate) async fn logout_auth_profile(
@@ -391,7 +506,7 @@ where
             .iter()
             .map(|profile| validate_runtime_profile(profile, &self.registry))
             .collect::<Result<Vec<_>, _>>()?;
-        let auth_profiles = self
+        let mut auth_profiles: Vec<_> = self
             .store
             .lock()
             .map_err(|_| {
@@ -403,6 +518,16 @@ where
             .into_iter()
             .map(|profile| profile.profile)
             .collect();
+        if snapshot_state.runtime_profiles.iter().any(|profile| {
+            profile.execution_kind == RuntimeProfileExecutionKind::RealtimeVoice
+                && profile.provider_id.as_str() == "openai"
+                && profile
+                    .auth_method_id
+                    .as_ref()
+                    .is_some_and(|method| method.as_str() == "openai-api-key")
+        }) {
+            auth_profiles.push(realtime_environment_auth_profile());
+        }
         build_snapshot(
             &snapshot_state,
             runtime.providers,
@@ -444,6 +569,23 @@ where
                 "runtime profile does not accept an auth profile".to_string(),
             )),
             (Some(auth_method_id), Some(auth_profile_id)) => {
+                if runtime_profile.execution_kind == RuntimeProfileExecutionKind::RealtimeVoice
+                    && *auth_profile_id == realtime_environment_auth_profile_id()
+                {
+                    if auth_method_id.as_str() != "openai-api-key" {
+                        return Err(AgentRuntimeServiceError::UnknownAuthProfile {
+                            provider_id: runtime_profile.provider_id.as_str().to_string(),
+                            auth_profile_id: auth_profile_id.as_str().to_string(),
+                        });
+                    }
+                    return if ta_provider_llm::realtime::credentials_available() {
+                        Ok(())
+                    } else {
+                        Err(AgentRuntimeServiceError::AuthProfileNotConnected(
+                            auth_profile_id.as_str().to_string(),
+                        ))
+                    };
+                }
                 let profile = self
                     .store
                     .lock()
@@ -477,10 +619,70 @@ where
     }
 }
 
+fn realtime_environment_auth_profile_id() -> AuthProfileId {
+    AuthProfileId::new("profile-openai-api-key-environment").expect("environment profile id")
+}
+
+fn realtime_environment_auth_profile() -> AuthProfileState {
+    let connected = ta_provider_llm::realtime::credentials_available();
+    AuthProfileState {
+        profile: AuthProfileRef {
+            id: realtime_environment_auth_profile_id(),
+            auth_method_id: ta_protocol::wire::AuthMethodId::new("openai-api-key")
+                .expect("auth method id"),
+            provider_id: ta_protocol::wire::AgentRuntimeStrategyId::new("openai")
+                .expect("provider id"),
+            display_name: "OpenAI API Key".to_string(),
+            account_hint: None,
+            plan_tier: None,
+        },
+        preferences: AuthProfilePreferences {
+            label: "OpenAI API Key".to_string(),
+            order: 0,
+            is_default: true,
+        },
+        usage: ta_protocol::wire::AuthProfileUsage::Unavailable,
+        connection_state: if connected {
+            AuthProfileConnectionState::Connected
+        } else {
+            AuthProfileConnectionState::LoggedOut
+        },
+        exhaustion: None,
+        last_error: None,
+        management_mode: ta_protocol::wire::AuthProfileManagementMode::Environment,
+        can_login: false,
+        can_logout: false,
+        platform_org_linked: None,
+        setup_steps: if connected {
+            Vec::new()
+        } else {
+            vec!["Set the OpenAI API key in the daemon environment.".to_string()]
+        },
+        action: None,
+        methods: Vec::new(),
+    }
+}
+
 fn same_auth_profile_identity(left: &AuthProfileRef, right: &AuthProfileRef) -> bool {
     left.id == right.id
         && left.auth_method_id == right.auth_method_id
         && left.provider_id == right.provider_id
+}
+
+fn validate_auth_profile_preferences(
+    preferences: &AuthProfilePreferences,
+) -> Result<(), AgentRuntimeServiceError> {
+    let label = preferences.label.as_str();
+    if label.is_empty()
+        || label.trim() != label
+        || label.chars().any(char::is_control)
+        || label.chars().count() > 80
+    {
+        return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+            "auth profile label is invalid".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 impl SharedAgentRuntimeState {

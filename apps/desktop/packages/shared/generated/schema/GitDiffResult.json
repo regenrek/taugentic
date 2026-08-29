@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "fingerprint": {
+      "type": "string"
+    },
+    "patch": {
+      "type": "string"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "patch",
+    "truncated",
+    "fingerprint"
+  ],
+  "title": "GitDiffResult",
+  "type": "object"
+}

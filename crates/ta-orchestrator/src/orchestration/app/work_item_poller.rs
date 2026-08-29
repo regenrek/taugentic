@@ -1,12 +1,13 @@
-use std::sync::{Arc, atomic::Ordering};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use ta_protocol::wire::{WorkflowDefinition, WorkflowSourceKind};
-use ta_store::PersistenceStore;
-use ta_work_source::{
-    FetchOutcome, GitHubCredentialProvider, GitHubIssueProvider, GitHubProviderConfig,
-    SourceCursor, WorkItemKey, WorkSource, WorkSourceError, WorkSourceLabelFilter,
+use ta_code_host::{CodeHostAccessToken, CodeHostCredentialStore, GitHubClient};
+use ta_protocol::wire::{
+    CodeHostAccountId, CodeHostProviderKind, SourceCursor, WorkItemKey, WorkSource,
+    WorkSourceLabelFilter, WorkflowDefinition, WorkflowSourceKind,
 };
+use ta_store::PersistenceStore;
+use ta_work_source::{FetchOutcome, GitHubIssueProvider, GitHubProviderConfig, WorkSourceError};
 use tokio_util::sync::CancellationToken;
 
 use super::AppService;
@@ -20,20 +21,14 @@ where
     pub fn spawn_work_source_poller(
         &self,
         cancellation: CancellationToken,
-        github_credentials: Arc<dyn GitHubCredentialProvider>,
     ) -> tokio::task::JoinHandle<()> {
         let app = self.clone();
         tokio::spawn(async move {
-            app.run_work_source_poller(cancellation, github_credentials)
-                .await;
+            app.run_work_source_poller(cancellation).await;
         })
     }
 
-    async fn run_work_source_poller(
-        self,
-        cancellation: CancellationToken,
-        github_credentials: Arc<dyn GitHubCredentialProvider>,
-    ) {
+    async fn run_work_source_poller(self, cancellation: CancellationToken) {
         let mut delay = IDLE_WORKFLOW_CHECK_INTERVAL;
         loop {
             if cancellation.is_cancelled() {
@@ -59,23 +54,18 @@ where
                 }
                 continue;
             };
-            delay = match self
-                .poll_github_once(&config, github_credentials.as_ref(), cancellation.clone())
-                .await
-            {
+            delay = match self.poll_github_once(&config, cancellation.clone()).await {
                 Ok(()) => jittered(
                     retry_initial_delay(&workflow),
                     self.daemon_instance_id.as_bytes(),
                 ),
                 Err(WorkSourceError::Cancelled) => return,
-                Err(WorkSourceError::HttpStatus {
-                    backoff: Some(backoff),
-                    ..
-                }) => {
-                    let retry_after = backoff.retry_after.min(retry_max_delay(&workflow));
+                Err(WorkSourceError::RateLimited { retry_after }) => {
+                    let retry_after = retry_after
+                        .unwrap_or_else(|| retry_initial_delay(&workflow))
+                        .min(retry_max_delay(&workflow));
                     tracing::warn!(
                         retry_after_ms = retry_after.as_millis() as u64,
-                        reason = ?backoff.reason,
                         "work source poller rate limited"
                     );
                     retry_after
@@ -123,26 +113,49 @@ where
     async fn poll_github_once(
         &self,
         config: &GitHubPollConfig,
-        github_credentials: &dyn GitHubCredentialProvider,
         cancellation: CancellationToken,
     ) -> Result<(), WorkSourceError> {
-        let token = github_credentials.token()?;
+        let account = self
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
+            .code_host_account(&config.account_id)
+            .map_err(store_error)?
+            .ok_or(WorkSourceError::CredentialsMissing)?;
+        if account.account.provider != CodeHostProviderKind::GitHub
+            || !account.account.host.eq_ignore_ascii_case("github.com")
+        {
+            return Err(WorkSourceError::InvalidConfig(
+                "workflow account is not a GitHub.com account".to_string(),
+            ));
+        }
+        let token = CodeHostCredentialStore::from_default_store()
+            .and_then(|credentials| credentials.load(account.account.provider, &account.account.id))
+            .map_err(map_code_host_credentials)?;
+        let client = GitHubClient::github_dot_com().map_err(map_code_host_credentials)?;
+        self.poll_github_with(config, client, &token, cancellation)
+            .await
+    }
+
+    async fn poll_github_with(
+        &self,
+        config: &GitHubPollConfig,
+        client: GitHubClient,
+        token: &CodeHostAccessToken,
+        cancellation: CancellationToken,
+    ) -> Result<(), WorkSourceError> {
         let source_key = config.source_key();
-        let cursor = {
-            let store = self.store.lock().expect("app store should not be poisoned");
-            store
-                .work_source_cursor(&source_key)
-                .map_err(|error| WorkSourceError::InvalidResponse(error.to_string()))?
-                .unwrap_or_else(SourceCursor::empty)
-        };
-        tracing::info!(
-            repo = %config.repo,
-            backend = ?ta_host_platform::secrets_backend_capability(),
-            "work source GitHub poll started"
-        );
-        let provider = GitHubIssueProvider::new(config.provider_config()?);
+        let cursor = self
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
+            .work_source_cursor(&source_key)
+            .map_err(store_error)?
+            .unwrap_or_else(SourceCursor::empty);
+        tracing::info!(repo = %config.repo, "work source GitHub poll started");
+        let provider = GitHubIssueProvider::new(client, config.provider_config()?);
         match provider
-            .fetch(&token, cursor, current_time_ms(), cancellation)
+            .fetch(token, cursor, current_time_ms(), cancellation)
             .await?
         {
             FetchOutcome::Items { items, cursor } => {
@@ -152,22 +165,21 @@ where
                     .collect::<Vec<WorkItemKey>>();
                 let source = config.source()?;
                 let mut store = self.store.lock().expect("app store should not be poisoned");
-                store
-                    .upsert_work_items(&items)
-                    .map_err(|error| WorkSourceError::InvalidResponse(error.to_string()))?;
+                store.upsert_work_items(&items).map_err(store_error)?;
                 store
                     .mark_missing_work_items_stale(&source, &active_keys)
-                    .map_err(|error| WorkSourceError::InvalidResponse(error.to_string()))?;
+                    .map_err(store_error)?;
                 store
                     .save_work_source_cursor(&source_key, &cursor)
-                    .map_err(|error| WorkSourceError::InvalidResponse(error.to_string()))?;
+                    .map_err(store_error)?;
                 tracing::info!(repo = %config.repo, item_count = items.len(), "work source poll stored items");
             }
             FetchOutcome::NotModified { cursor } => {
-                let mut store = self.store.lock().expect("app store should not be poisoned");
-                store
+                self.store
+                    .lock()
+                    .expect("app store should not be poisoned")
                     .save_work_source_cursor(&source_key, &cursor)
-                    .map_err(|error| WorkSourceError::InvalidResponse(error.to_string()))?;
+                    .map_err(store_error)?;
                 tracing::debug!(repo = %config.repo, "work source poll not modified");
             }
         }
@@ -176,9 +188,9 @@ where
 }
 
 struct GitHubPollConfig {
+    account_id: CodeHostAccountId,
     repo: String,
     labels: Vec<String>,
-    api_base_url: Option<String>,
 }
 
 impl GitHubPollConfig {
@@ -191,19 +203,15 @@ impl GitHubPollConfig {
             return None;
         }
         Some(Self {
+            account_id: workflow.source.code_host_account_id.clone()?,
             repo,
             labels: workflow.source.active_states.clone(),
-            api_base_url: None,
         })
     }
 
     fn provider_config(&self) -> Result<GitHubProviderConfig, WorkSourceError> {
         let (owner, name) = self.repo_parts()?;
-        let config = GitHubProviderConfig::new(owner, name, self.label_filter())?;
-        match &self.api_base_url {
-            Some(api_base_url) => config.with_base_url(api_base_url),
-            None => Ok(config),
-        }
+        GitHubProviderConfig::github_dot_com(owner, name, self.label_filter())
     }
 
     fn source(&self) -> Result<WorkSource, WorkSourceError> {
@@ -215,7 +223,7 @@ impl GitHubPollConfig {
     }
 
     fn source_key(&self) -> String {
-        format!("github:{}", self.repo)
+        format!("github:{}:{}", self.account_id.as_str(), self.repo)
     }
 
     fn repo_parts(&self) -> Result<(&str, &str), WorkSourceError> {
@@ -224,7 +232,7 @@ impl GitHubPollConfig {
                 "workflow source.repo must be owner/name for github_issues".to_string(),
             ));
         };
-        if owner.trim().is_empty() || name.trim().is_empty() {
+        if owner.trim().is_empty() || name.trim().is_empty() || name.contains('/') {
             return Err(WorkSourceError::InvalidConfig(
                 "workflow source.repo must be owner/name for github_issues".to_string(),
             ));
@@ -241,6 +249,22 @@ impl GitHubPollConfig {
     }
 }
 
+fn store_error(error: ta_store::StoreError) -> WorkSourceError {
+    WorkSourceError::InvalidResponse(error.to_string())
+}
+
+fn map_code_host_credentials(error: ta_code_host::CodeHostError) -> WorkSourceError {
+    match error {
+        ta_code_host::CodeHostError::CredentialsMissing
+        | ta_code_host::CodeHostError::CredentialsBackend => WorkSourceError::CredentialsMissing,
+        ta_code_host::CodeHostError::Cancelled => WorkSourceError::Cancelled,
+        ta_code_host::CodeHostError::InvalidConfig | ta_code_host::CodeHostError::InvalidInput => {
+            WorkSourceError::InvalidConfig(error.to_string())
+        }
+        _ => WorkSourceError::Unavailable,
+    }
+}
+
 fn jittered(base: Duration, seed: &[u8]) -> Duration {
     let jitter_ms = seed.iter().fold(0u64, |acc, byte| {
         acc.wrapping_mul(31).wrapping_add(u64::from(*byte))
@@ -251,7 +275,7 @@ fn jittered(base: Duration, seed: &[u8]) -> Duration {
 fn current_time_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as u64)
+        .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
         .unwrap_or(0)
 }
 
@@ -269,19 +293,19 @@ mod tests {
 
     use serde_json::json;
     use ta_store::WorkItemRepository;
-    use ta_work_source::GitHubToken;
     use wiremock::matchers::{header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
 
     #[tokio::test]
-    async fn poll_github_once_uses_injected_host_secret_provider() -> Result<(), Box<dyn Error>> {
+    async fn poller_consumes_code_host_client_and_token_without_owning_credentials()
+    -> Result<(), Box<dyn Error>> {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/repos/regenrek/taugentic/issues"))
             .and(query_param("page", "1"))
-            .and(header("authorization", "Bearer ghp_ssot"))
+            .and(header("authorization", "Bearer test-token"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!([{
                 "number": 7,
                 "title": "Ship SSOT",
@@ -294,15 +318,15 @@ mod tests {
             .await;
         let service = AppService::bootstrap()?;
         let config = GitHubPollConfig {
+            account_id: CodeHostAccountId::new("code-host-account-test")?,
             repo: "regenrek/taugentic".to_string(),
             labels: vec!["ready".to_string()],
-            api_base_url: Some(server.uri()),
         };
-
         service
-            .poll_github_once(
+            .poll_github_with(
                 &config,
-                &StaticGitHubCredentialProvider,
+                GitHubClient::with_endpoints(&server.uri(), "https://github.com")?,
+                &CodeHostAccessToken::new("test-token")?,
                 CancellationToken::new(),
             )
             .await?;
@@ -315,13 +339,5 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].key.as_str(), "github:regenrek/taugentic#7");
         Ok(())
-    }
-
-    struct StaticGitHubCredentialProvider;
-
-    impl GitHubCredentialProvider for StaticGitHubCredentialProvider {
-        fn token(&self) -> Result<GitHubToken, WorkSourceError> {
-            GitHubToken::new("ghp_ssot")
-        }
     }
 }

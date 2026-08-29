@@ -21,16 +21,18 @@ where
         &self,
         session_id: &crate::SessionId,
         run_id: &RunId,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        self.enforce_budget(session_id, run_id, current_time_ms(), false)
+        self.enforce_budget(session_id, run_id, current_time_ms(), generation)
     }
 
     pub(super) fn enforce_budget_after_stream(
         &self,
         session_id: &crate::SessionId,
         run_id: &RunId,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        self.enforce_budget(session_id, run_id, current_time_ms(), true)
+        self.enforce_budget(session_id, run_id, current_time_ms(), generation)
     }
 
     fn enforce_budget(
@@ -38,7 +40,7 @@ where
         session_id: &crate::SessionId,
         run_id: &RunId,
         now_ms: u64,
-        cancel_live_provider: bool,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
         let policy = self.runtime.budget_policy();
         let projection = self.budget_projection(session_id, run_id, now_ms)?;
@@ -52,14 +54,7 @@ where
             return Ok(());
         };
 
-        self.fail_run_for_budget(
-            session_id,
-            run_id,
-            projection,
-            exceeded,
-            now_ms,
-            cancel_live_provider,
-        )?;
+        self.fail_run_for_budget(session_id, run_id, projection, exceeded, now_ms, generation)?;
         Err(RunExecutionError::BudgetExceeded(
             exceeded.redacted_reason().to_string(),
         ))
@@ -72,76 +67,94 @@ where
         projection: BudgetProjection,
         exceeded: PolicyBudgetExceeded,
         now_ms: u64,
-        cancel_live_provider: bool,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        if cancel_live_provider && self.runtime.is_live_run_running(run_id, session_id) {
-            self.runtime
-                .cancel_live_run(run_id, session_id)
-                .map_err(map_agent_runtime_error)?;
-        }
+        let commit =
+            |store: &mut S| -> Result<(RunProjection, Vec<EventRecord>), RunExecutionError> {
+                let Some(existing_run) = store.run(run_id)? else {
+                    return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+                };
+                if existing_run.session_id != *session_id {
+                    return Err(RunExecutionError::RunSessionMismatch(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                if existing_run.status != RunStatus::Running {
+                    return Err(RunExecutionError::RunNotLiveOwned(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
 
-        let (run, events) = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
-            let Some(existing_run) = store.run(run_id)? else {
-                return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
-            };
-            if existing_run.session_id != *session_id {
-                return Err(RunExecutionError::RunSessionMismatch(
-                    existing_run.id.as_str().to_string(),
+                let mut events = Vec::new();
+                events.push(DaemonEvent::Budget(BudgetEvent::Exceeded {
+                    event: budget_exceeded_event(&projection, exceeded),
+                }));
+                events.extend(
+                    store
+                        .approvals_for_session(&SessionApprovalQuery {
+                            session_id: session_id.clone(),
+                            run_id: Some(existing_run.id.clone()),
+                            approval_id: None,
+                        })?
+                        .into_iter()
+                        .map(|approval| {
+                            let mut resolution = ApprovalResolution::new(
+                                approval.id,
+                                approval.run_id,
+                                ApprovalDecision::Rejected,
+                                ApprovalResolutionReason::BudgetExceeded,
+                                daemon_budget_actor(),
+                                Some("budget_exceeded".to_string()),
+                            );
+                            if let Some(tool_call_id) = approval.tool_call_id {
+                                resolution = resolution.with_tool_call_id(tool_call_id);
+                            }
+                            DaemonEvent::Approval(ApprovalEvent::Resolved { resolution })
+                        }),
+                );
+
+                let run = RunProjection {
+                    status: RunStatus::BudgetExceeded,
+                    ..existing_run
+                };
+                events.push(DaemonEvent::Run(
+                    crate::RunEvent::terminal(
+                        run.id.clone(),
+                        RunStatus::BudgetExceeded,
+                        crate::RunStatusReason::new(exceeded.redacted_reason())
+                            .expect("budget reason"),
+                        None,
+                        recipe_id_for_run(&run),
+                        None,
+                    )
+                    .expect("budget exceeded is terminal"),
                 ));
-            }
-            if existing_run.status != RunStatus::Running {
-                return Ok(());
-            }
-
-            let mut events = Vec::new();
-            events.push(DaemonEvent::Budget(BudgetEvent::Exceeded {
-                event: budget_exceeded_event(&projection, exceeded),
-            }));
-            events.extend(
-                store
-                    .approvals_for_session(&SessionApprovalQuery {
-                        session_id: session_id.clone(),
-                        run_id: Some(existing_run.id.clone()),
-                        approval_id: None,
-                    })?
-                    .into_iter()
-                    .map(|approval| {
-                        let mut resolution = ApprovalResolution::new(
-                            approval.id,
-                            approval.run_id,
-                            ApprovalDecision::Rejected,
-                            ApprovalResolutionReason::BudgetExceeded,
-                            daemon_budget_actor(),
-                            Some("budget_exceeded".to_string()),
-                        );
-                        if let Some(tool_call_id) = approval.tool_call_id {
-                            resolution = resolution.with_tool_call_id(tool_call_id);
-                        }
-                        DaemonEvent::Approval(ApprovalEvent::Resolved { resolution })
-                    }),
-            );
-
-            let run = RunProjection {
-                status: RunStatus::BudgetExceeded,
-                ..existing_run
+                let committed = store.commit_run_transition(CommitRunTransition {
+                    session_id: session_id.clone(),
+                    run: run.clone(),
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events,
+                    occurred_at_ms: now_ms,
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+                })?;
+                Ok((committed.run, committed.events))
             };
-            events.push(DaemonEvent::Run(crate::RunEvent {
-                run_id: run.id.clone(),
-                status: RunStatus::BudgetExceeded,
-                detail: exceeded.redacted_reason().to_string(),
-                output_contract: None,
-                recipe_id: recipe_id_for_run(&run),
-                result: None,
-            }));
-            let committed = store.commit_run_transition(CommitRunTransition {
-                session_id: session_id.clone(),
-                run: run.clone(),
-                events,
-                occurred_at_ms: now_ms,
-            })?;
-            (committed.run, committed.events)
-        };
+        let ((run, events), cancelled_handle) = self
+            .runtime
+            .with_terminal_live_generation_lease_and_take_handle(
+                run_id,
+                session_id,
+                generation,
+                || {
+                    let mut store = self.store.lock().expect("app store should not be poisoned");
+                    commit(&mut *store)
+                },
+            )?;
+        if let Some(handle) = cancelled_handle {
+            handle
+                .cancel()
+                .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+        }
 
         let mut records = events;
         records.extend(self.advance_ready_queue(session_id, &run.id, RunStatus::BudgetExceeded)?);
@@ -276,8 +289,13 @@ fn root_run_id(run: &RunProjection, runs: &BTreeMap<RunId, RunProjection>) -> Ru
 fn parent_run_id(run: &RunProjection) -> Option<RunId> {
     match &run.source {
         RunSource::NativeSubagent { parent_run_id, .. }
-        | RunSource::Forked { parent_run_id, .. } => Some(parent_run_id.clone()),
-        RunSource::User { .. } => None,
+        | RunSource::Forked { parent_run_id, .. }
+        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
+            Some(parent_run_id.clone())
+        }
+        RunSource::ScheduledWork { .. } | RunSource::User { .. } | RunSource::FreshSpawn { .. } => {
+            None
+        }
     }
 }
 

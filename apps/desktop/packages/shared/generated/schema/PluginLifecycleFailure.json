@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Stable public vocabulary for the future out-of-process host. Installation\ncreates only `Disabled`; this foundation never launches package code.",
+  "enum": [
+    "staleActivation",
+    "bootInterrupted",
+    "hostLaunch",
+    "hostExit",
+    "hostProtocol",
+    "hostDisposal"
+  ],
+  "title": "PluginLifecycleFailure",
+  "type": "string"
+}

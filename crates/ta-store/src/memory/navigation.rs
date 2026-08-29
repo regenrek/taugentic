@@ -127,6 +127,7 @@ mod tests {
                 title: "Temporary".to_string(),
                 status: SessionStatus::Idle,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             },
         );
         store.runs.insert(
@@ -194,11 +195,7 @@ mod tests {
             run_id.clone(),
             std::collections::BTreeMap::from([(
                 1,
-                CheckpointRecord {
-                    run_id: run_id.clone(),
-                    revision: 1,
-                    artifact_path: "checkpoints/run-temporary.json".to_string(),
-                },
+                crate::test_checkpoint_record(run_id.clone(), 1),
             )]),
         );
         store.artifacts.insert(
@@ -208,6 +205,7 @@ mod tests {
                 session_id: session_id.clone(),
                 run_id: run_id.clone(),
                 kind: ArtifactKind::Patch,
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
                 storage_path: "artifacts/temporary.patch".to_string(),
             },
         );

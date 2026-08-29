@@ -60,9 +60,11 @@ fn delegate_request_roundtrip_with_recipe_id() {
 #[test]
 fn lineage_event_roundtrip_without_recipe_id() {
     let json = serde_json::json!({
-        "runId": "run-1",
-        "status": "running",
-        "detail": "Execution started"
+        "kind": "status",
+        "payload": {
+            "runId": "run-1",
+            "status": "running"
+        }
     });
 
     let decoded: RunEvent = serde_json::from_value(json.clone()).expect("run event deserialize");
@@ -70,34 +72,34 @@ fn lineage_event_roundtrip_without_recipe_id() {
 
     assert_eq!(
         decoded,
-        RunEvent {
-            run_id: RunId::new("run-1").expect("run id"),
-            status: RunStatus::Running,
-            detail: "Execution started".to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        }
+        RunEvent::active(
+            RunId::new("run-1").expect("run id"),
+            RunStatus::Running,
+            None,
+            None,
+            None
+        )
+        .expect("active status")
     );
     assert_eq!(encoded, json);
 }
 
 #[test]
 fn lineage_event_roundtrip_with_recipe_id() {
-    let event = RunEvent {
-        run_id: RunId::new("run-1").expect("run id"),
-        status: RunStatus::Running,
-        detail: "Execution started".to_string(),
-        output_contract: None,
-        recipe_id: Some("review-agent".to_string()),
-        result: None,
-    };
+    let event = RunEvent::active(
+        RunId::new("run-1").expect("run id"),
+        RunStatus::Running,
+        None,
+        Some("review-agent".to_string()),
+        None,
+    )
+    .expect("active status");
 
     let json = serde_json::to_value(&event).expect("run event should serialize");
     let decoded: RunEvent = serde_json::from_value(json.clone()).expect("run event roundtrip");
 
     assert_eq!(decoded, event);
-    assert_eq!(json["recipeId"], "review-agent");
+    assert_eq!(json["payload"]["recipeId"], "review-agent");
 }
 
 #[test]

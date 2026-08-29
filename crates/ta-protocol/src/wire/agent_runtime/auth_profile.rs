@@ -84,12 +84,71 @@ pub struct AuthProfileMethodInfo {
     pub management_mode: AuthProfileManagementMode,
 }
 
+/// Daemon-owned presentation preferences for one concrete external account.
+/// The credential backend never receives these fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AuthProfilePreferences {
+    pub label: String,
+    pub order: u32,
+    pub is_default: bool,
+}
+
+/// Sanitized account-availability fact recorded when a selected provider
+/// account cannot continue a run. It deliberately excludes provider payloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum AuthProfileExhaustion {
+    RateLimited,
+    CreditsExhausted,
+}
+
+/// Account-scoped provider usage. Providers that do not expose a supported
+/// account-usage contract are explicitly unavailable rather than reported as
+/// zero or inferred from local run history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum AuthProfileUsage {
+    Unavailable,
+    Observed {
+        #[serde(rename = "observedAtMs")]
+        #[ts(rename = "observedAtMs")]
+        observed_at_ms: String,
+        windows: Vec<AuthProfileUsageWindow>,
+    },
+}
+
+/// A usage window reported directly by the authenticated provider account.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub struct AuthProfileUsageWindow {
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remaining: Option<String>,
+    #[serde(
+        rename = "resetsAtMs",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[ts(rename = "resetsAtMs")]
+    pub resets_at_ms: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
 pub struct AuthProfileState {
     pub profile: AuthProfileRef,
+    pub preferences: AuthProfilePreferences,
+    pub usage: AuthProfileUsage,
     pub connection_state: AuthProfileConnectionState,
+    pub exhaustion: Option<AuthProfileExhaustion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_error: Option<String>,
     pub management_mode: AuthProfileManagementMode,

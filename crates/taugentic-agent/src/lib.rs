@@ -19,7 +19,8 @@ use std::sync::Arc;
 pub use error::ExecutionError;
 pub use request::{
     AgentExecutionHarness, AgentExecutionHarnessOwnership, ExecutionHandle, ExecutionRequest,
-    ForkInitialState, NativeChildRunRequest, NativeChildRunResult,
+    NativeChildRunRequest, NativeChildRunResult, NativeHistoryInitialState,
+    NativeHistoryObjectivePolicy,
 };
 pub use sink::ExecutionSink;
 pub use ta_protocol::wire::StreamEmission;

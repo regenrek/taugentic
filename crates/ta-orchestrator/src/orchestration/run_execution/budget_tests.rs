@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use std::sync::Arc;
 use ta_policy::{BudgetLimits, BudgetPolicy};
 use ta_protocol::wire::{
     AgentStreamFrame, BudgetEvent, BudgetMetric, BudgetScope, DaemonEvent, RunStatus,
@@ -171,21 +172,21 @@ fn parent_aggregate_budget_prevents_child_dispatch() {
         },
     );
 
-    let child = execution
-        .start_native_child_run(
-            session.id.clone(),
-            NativeChildRunRequest::new(
-                parent.id.clone(),
-                ta_protocol::wire::AgentStreamTurnId::new("turn-budget-parent").expect("turn id"),
-                "Child inherits parent budget",
-                None,
-                None,
-                None,
-            )
-            .expect("child request")
-            .with_workspace_scope(crate::WorkspaceMode::WorktreeWrite),
+    let child = start_native_child_run_for_tests(
+        &execution,
+        &session.id,
+        NativeChildRunRequest::new(
+            parent.id.clone(),
+            ta_protocol::wire::AgentStreamTurnId::new("turn-budget-parent").expect("turn id"),
+            "Child inherits parent budget",
+            None,
+            None,
+            None,
         )
-        .expect("child dispatch should fail through a typed terminal status");
+        .expect("child request")
+        .with_workspace_scope(crate::WorkspaceMode::WorktreeWrite),
+    )
+    .expect("child dispatch should fail through a typed terminal status");
 
     assert_eq!(child.status, RunStatus::BudgetExceeded);
     assert_budget_exceeded(

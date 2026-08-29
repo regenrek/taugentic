@@ -118,6 +118,28 @@
     {
       "properties": {
         "kind": {
+          "const": "setProjectSpace",
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "spaceId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "projectId"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "kind": {
           "const": "placeConversation",
           "type": "string"
         },

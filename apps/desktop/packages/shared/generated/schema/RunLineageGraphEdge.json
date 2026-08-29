@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "childRunId": {
+      "type": "string"
+    },
+    "parentRunId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parentRunId",
+    "childRunId"
+  ],
+  "title": "RunLineageGraphEdge",
+  "type": "object"
+}

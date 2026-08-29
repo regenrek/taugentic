@@ -353,7 +353,7 @@ fn daemon_session_open_creates_idle_session_summary() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -476,7 +476,7 @@ fn daemon_session_open_rejects_blank_title() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -510,12 +510,13 @@ fn daemon_session_open_rejects_blank_title() {
 #[test]
 fn daemon_session_attach_returns_session_summary_and_records_binding() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -524,7 +525,7 @@ fn daemon_session_attach_returns_session_summary_and_records_binding() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -646,12 +647,13 @@ fn daemon_session_attach_returns_session_summary_and_records_binding() {
 #[test]
 fn daemon_session_attach_returns_latest_runtime_cursor_when_available() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -659,7 +661,7 @@ fn daemon_session_attach_returns_latest_runtime_cursor_when_available() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -711,7 +713,7 @@ fn daemon_session_attach_rejects_foreign_owned_session() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(OTHER_TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(OTHER_TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, "other-client")),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -719,7 +721,7 @@ fn daemon_session_attach_rejects_foreign_owned_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),

@@ -18,7 +18,7 @@ const DEFAULT_CLIENT_NAME: &str = "ta-cli";
 
 pub use persistent::{
     DaemonLifecycleSubscription, DaemonLifecycleSubscriptionState, DaemonLifecycleUpdate,
-    PersistentDaemonClient, RunEventSubscription,
+    PersistentDaemonClient, RunEventSubscription, TerminalEventSubscription, VoiceStream,
 };
 
 #[derive(Debug, Clone)]

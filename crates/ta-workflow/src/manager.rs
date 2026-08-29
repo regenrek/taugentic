@@ -162,6 +162,7 @@ name: {name}
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-test
   active_states: ["ready"]
   terminal_states: ["done"]
 orchestrator:

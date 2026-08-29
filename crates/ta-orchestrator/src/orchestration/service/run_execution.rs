@@ -2,14 +2,37 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use ta_protocol::wire::WorkspaceFileAttachment;
 use ta_store::EventRecord;
 use taugentic_agent::{
     AgentExecutionHarness, ExecutionError, ExecutionHandle, ExecutionRequest, ExecutionSink,
-    ForkInitialState,
+    NativeHistoryInitialState,
 };
 
-#[cfg(test)]
-use super::active_execution::ActiveExecution;
+pub(crate) trait RunExecutionDispatcher: Send + Sync {
+    fn dispatch(
+        &self,
+        request: ExecutionRequest,
+        sink: Arc<dyn ExecutionSink>,
+    ) -> Result<Arc<dyn ExecutionHandle>, AgentRuntimeServiceError>;
+}
+
+struct ProductionRunExecutionDispatcher;
+
+pub(crate) fn production_dispatcher() -> Arc<dyn RunExecutionDispatcher> {
+    Arc::new(ProductionRunExecutionDispatcher)
+}
+
+impl RunExecutionDispatcher for ProductionRunExecutionDispatcher {
+    fn dispatch(
+        &self,
+        request: ExecutionRequest,
+        sink: Arc<dyn ExecutionSink>,
+    ) -> Result<Arc<dyn ExecutionHandle>, AgentRuntimeServiceError> {
+        execute_run_sync(request, sink)
+    }
+}
+
 use super::active_execution::{ActiveExecutionOwner, AttachHandleDisposition};
 use crate::host::event_hub::RuntimeEventPublisher;
 use crate::orchestration::agent_runtime::{StrategyRegistry, validate_runtime_profile};
@@ -37,6 +60,14 @@ pub(crate) struct RunExecutionRuntime {
     claim_registry: ClaimRegistry,
     workspace_runs: WorkspaceRunRegistry,
     budget_policy: Arc<Mutex<ta_policy::BudgetPolicy>>,
+    dispatcher: Arc<dyn RunExecutionDispatcher>,
+}
+
+#[cfg(test)]
+#[derive(Clone)]
+pub(crate) struct LiveExecutionFixture {
+    pub(crate) session_id: SessionId,
+    pub(crate) generation: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -69,9 +100,11 @@ pub(crate) struct ProviderRunStart<'a> {
     pub run_id: &'a RunId,
     pub objective: &'a str,
     pub execution_context: Arc<ta_protocol::wire::ExecutionContext>,
-    pub fork_initial_state: Option<ForkInitialState>,
+    pub native_history: Option<NativeHistoryInitialState>,
     pub output_contract: Option<ta_protocol::wire::OutputContractKind>,
     pub subagent_recipes: Vec<ta_protocol::wire::CapsuleRecipe>,
+    pub attachments: Vec<WorkspaceFileAttachment>,
+    pub generation: u64,
 }
 
 pub async fn execute_run(
@@ -152,6 +185,24 @@ impl RunExecutionRuntime {
         event_publisher: RuntimeEventPublisher,
         execution_paths: RuntimeExecutionPaths,
     ) -> Self {
+        Self::with_dispatcher(
+            capabilities,
+            policy,
+            strategy_registry,
+            event_publisher,
+            execution_paths,
+            Arc::new(ProductionRunExecutionDispatcher),
+        )
+    }
+
+    pub(crate) fn with_dispatcher(
+        capabilities: LaneCapabilities,
+        policy: AgentRuntimeRuntime,
+        strategy_registry: StrategyRegistry,
+        event_publisher: RuntimeEventPublisher,
+        execution_paths: RuntimeExecutionPaths,
+        dispatcher: Arc<dyn RunExecutionDispatcher>,
+    ) -> Self {
         Self {
             capabilities,
             policy,
@@ -164,6 +215,7 @@ impl RunExecutionRuntime {
             claim_registry: ClaimRegistry::new(),
             workspace_runs: WorkspaceRunRegistry::new(),
             budget_policy: Arc::new(Mutex::new(ta_policy::BudgetPolicy::default())),
+            dispatcher,
         }
     }
 
@@ -201,9 +253,11 @@ impl RunExecutionRuntime {
             run_id,
             objective,
             execution_context,
-            fork_initial_state,
+            native_history,
             output_contract,
             subagent_recipes,
+            attachments,
+            generation: _,
         } = start;
         let runtime_profile = validate_runtime_profile(runtime_profile, &self.strategy_registry)?;
         let execution_harness = self
@@ -232,9 +286,10 @@ impl RunExecutionRuntime {
             resume_provider_session_id: None,
             runtime_extensions: self.policy.runtime_extensions(),
             execution_context,
-            fork_initial_state,
+            native_history,
             output_contract,
             subagent_recipes,
+            attachments,
         })
     }
 
@@ -244,10 +299,11 @@ impl RunExecutionRuntime {
         sink: Arc<dyn ExecutionSink>,
     ) -> Result<(), crate::orchestration::AgentRuntimeServiceError> {
         let run_id = start.run_id;
+        let generation = start.generation;
         let request = self.build_execution_request(start)?;
-        let handle = execute_run_sync(request, sink)?;
+        let handle = self.dispatcher.dispatch(request, sink)?;
         self.active_executions
-            .attach_handle(run_id, handle)
+            .attach_handle(run_id, generation, handle)
             .map_err(|error| {
                 crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(error)
             })
@@ -257,8 +313,43 @@ impl RunExecutionRuntime {
             })
     }
 
-    pub(crate) fn claim_live_run(&self, run_id: RunId, session_id: SessionId) {
-        self.active_executions.claim_run(run_id, session_id);
+    pub(crate) fn attach_voice_run(
+        &self,
+        run_id: &RunId,
+        generation: u64,
+        handle: Arc<dyn ExecutionHandle>,
+        voice: Arc<dyn crate::orchestration::voice::VoiceFrameExchange>,
+    ) -> Result<(), crate::orchestration::AgentRuntimeServiceError> {
+        self.active_executions
+            .attach_voice_handle(run_id, generation, handle, voice)
+            .map(|_| ())
+            .map_err(crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed)
+    }
+
+    pub(crate) fn is_voice_run(&self, run_id: &RunId) -> bool {
+        self.active_executions.is_voice_run(run_id)
+    }
+
+    pub(crate) fn exchange_voice_frame(
+        &self,
+        run_id: &RunId,
+        input: [u8; ta_protocol::wire::VOICE_FRAME_BYTES],
+        playback_completed_frames: u64,
+    ) -> Result<crate::orchestration::voice::VoiceExchange, String> {
+        self.active_executions
+            .exchange_voice_frame(run_id, input, playback_completed_frames)
+    }
+
+    pub(crate) fn end_voice(
+        &self,
+        run_id: &RunId,
+        reason: ta_protocol::wire::VoiceStreamEndReason,
+    ) -> Result<(), String> {
+        self.active_executions.end_voice(run_id, reason)
+    }
+
+    pub(crate) fn claim_live_run(&self, run_id: RunId, session_id: SessionId) -> u64 {
+        self.active_executions.claim_run(run_id, session_id)
     }
 
     pub(crate) fn active_run_count(&self) -> usize {
@@ -387,6 +478,169 @@ impl RunExecutionRuntime {
         })
     }
 
+    /// Drops resources created by an unpublished scheduled preparation. The
+    /// exact run identity is the sole selector; no broad orphan scan occurs.
+    pub(crate) fn discard_unpublished_scheduled_resources(
+        &self,
+        run_id: &RunId,
+        repo_root: &std::path::Path,
+    ) -> Result<(), crate::orchestration::AgentRuntimeServiceError> {
+        self.workspace_runs
+            .finish(run_id, ta_protocol::wire::RunStatus::Failed);
+        self.worktree_manager
+            .discard_unpublished(repo_root, run_id.as_str())
+            .map_err(|error| {
+                crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                    error.to_string(),
+                )
+            })
+    }
+
+    pub(crate) fn unpublished_scheduled_resource(
+        &self,
+        run_id: &RunId,
+        repo_root: &std::path::Path,
+        cleanup_policy: ta_protocol::wire::WorktreeCleanupPolicy,
+    ) -> Result<
+        ta_protocol::wire::ScheduledWorkUnpublishedResource,
+        crate::orchestration::AgentRuntimeServiceError,
+    > {
+        let policy = match cleanup_policy {
+            ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess => {
+                crate::workspace::CleanupPolicy::DeleteOnSuccess
+            }
+            ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnTerminal => {
+                crate::workspace::CleanupPolicy::DeleteOnTerminal
+            }
+            ta_protocol::wire::WorktreeCleanupPolicy::Keep => crate::workspace::CleanupPolicy::Keep,
+            ta_protocol::wire::WorktreeCleanupPolicy::Manual => {
+                crate::workspace::CleanupPolicy::Manual
+            }
+        };
+        let (parent_repo, worktree_path, branch, _) = self
+            .worktree_manager
+            .unpublished_identity(repo_root, run_id.as_str(), policy)
+            .map_err(|error| {
+                crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                    error.to_string(),
+                )
+            })?;
+        Ok(ta_protocol::wire::ScheduledWorkUnpublishedResource {
+            parent_repo: parent_repo.to_string_lossy().into_owned(),
+            worktree_path: worktree_path.to_string_lossy().into_owned(),
+            branch,
+            cleanup_policy,
+        })
+    }
+
+    pub(crate) fn rehydrate_published_scheduled_resources(
+        &self,
+        run: &ta_store::RunProjection,
+    ) -> Result<(), crate::orchestration::AgentRuntimeServiceError> {
+        // A published run has its exact resource identity in its immutable
+        // context. Worktree resources are already on disk and are owned by
+        // the persisted queued run; scheduler rehydration remains the sole
+        // promotion path. No provider work occurs here.
+        if let Some(info) = &run.workspace_info {
+            let root = std::path::Path::new(&info.path);
+            if !root.is_dir() {
+                return Err(
+                    crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                        format!(
+                            "published scheduled worktree is missing for run {}: {}",
+                            run.id.as_str(),
+                            root.display()
+                        ),
+                    ),
+                );
+            }
+            let ta_protocol::wire::WorkspaceScope::Worktree {
+                root: parent_repo, ..
+            } = &run.execution_context.workspace_scope
+            else {
+                return Err(
+                    crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                        format!(
+                            "scheduled worktree scope is missing for run {}",
+                            run.id.as_str()
+                        ),
+                    ),
+                );
+            };
+            let policy = match info.cleanup_policy {
+                ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess => {
+                    crate::workspace::CleanupPolicy::DeleteOnSuccess
+                }
+                ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnTerminal => {
+                    crate::workspace::CleanupPolicy::DeleteOnTerminal
+                }
+                ta_protocol::wire::WorktreeCleanupPolicy::Keep => {
+                    crate::workspace::CleanupPolicy::Keep
+                }
+                ta_protocol::wire::WorktreeCleanupPolicy::Manual => {
+                    crate::workspace::CleanupPolicy::Manual
+                }
+            };
+            let handle = self
+                .worktree_manager
+                .reattach(parent_repo.as_path(), root, &info.branch, policy)
+                .map_err(|error| {
+                    crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                        error.to_string(),
+                    )
+                })?;
+            let claim = if run.claimed_files.is_empty() {
+                None
+            } else {
+                let files = run
+                    .claimed_files
+                    .iter()
+                    .map(std::path::PathBuf::from)
+                    .collect();
+                Some(
+                    self.claim_registry
+                        .claim(run.id.clone(), files, None, ClaimKind::Write)
+                        .map_err(|error| {
+                            crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                                error.to_string(),
+                            )
+                        })?
+                        .0,
+                )
+            };
+            self.workspace_runs.insert(
+                run.id.clone(),
+                WorkspaceRunResources {
+                    worktree: Some(handle),
+                    claim,
+                },
+            );
+        } else if !run.claimed_files.is_empty() {
+            let files = run
+                .claimed_files
+                .iter()
+                .map(std::path::PathBuf::from)
+                .collect();
+            let claim = self
+                .claim_registry
+                .claim(run.id.clone(), files, None, ClaimKind::Write)
+                .map_err(|error| {
+                    crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed(
+                        error.to_string(),
+                    )
+                })?
+                .0;
+            self.workspace_runs.insert(
+                run.id.clone(),
+                WorkspaceRunResources {
+                    worktree: None,
+                    claim: Some(claim),
+                },
+            );
+        }
+        Ok(())
+    }
+
     pub(crate) fn artifact_root(&self) -> &std::path::Path {
         &self.artifact_root
     }
@@ -400,14 +654,56 @@ impl RunExecutionRuntime {
             .is_running_owned_by(run_id, session_id)
     }
 
-    pub(crate) fn cancel_live_run(
+    pub(crate) fn with_live_generation_lease<T>(
         &self,
         run_id: &RunId,
         session_id: &SessionId,
-    ) -> Result<(), crate::orchestration::AgentRuntimeServiceError> {
+        generation: u64,
+        action: impl FnOnce() -> Result<T, crate::RunExecutionError>,
+    ) -> Result<T, crate::RunExecutionError> {
         self.active_executions
-            .cancel_run(run_id, session_id)
-            .map_err(crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed)
+            .with_generation_lease(run_id, session_id, generation, action)
+            .map_err(crate::RunExecutionError::ProviderExecutionFailed)?
+    }
+
+    pub(crate) fn with_current_terminal_live_generation_lease_and_take_handle<T>(
+        &self,
+        run_id: &RunId,
+        session_id: &SessionId,
+        action: impl FnOnce(u64) -> Result<T, crate::RunExecutionError>,
+    ) -> Result<(T, Option<Arc<dyn ExecutionHandle>>), crate::RunExecutionError> {
+        let (result, handle) = self
+            .active_executions
+            .with_current_terminal_generation_lease_and_take_handle(run_id, session_id, action)
+            .map_err(crate::RunExecutionError::ProviderExecutionFailed)?;
+        Ok((result?, handle))
+    }
+
+    pub(crate) fn with_terminal_live_generation_lease_and_take_handle<T>(
+        &self,
+        run_id: &RunId,
+        session_id: &SessionId,
+        generation: u64,
+        action: impl FnOnce() -> Result<T, crate::RunExecutionError>,
+    ) -> Result<(T, Option<Arc<dyn ExecutionHandle>>), crate::RunExecutionError> {
+        let (result, handle) = self
+            .active_executions
+            .with_terminal_generation_lease_and_take_handle(run_id, session_id, generation, action)
+            .map_err(crate::RunExecutionError::ProviderExecutionFailed)?;
+        Ok((result?, handle))
+    }
+
+    pub(crate) fn replace_live_run_with_generation_lease<T>(
+        &self,
+        run_id: &RunId,
+        session_id: &SessionId,
+        action: impl FnOnce(u64) -> Result<T, crate::RunExecutionError>,
+    ) -> Result<(T, u64, Option<Arc<dyn ExecutionHandle>>), crate::RunExecutionError> {
+        let (result, generation, old_handle) = self
+            .active_executions
+            .replace_run_with_generation_lease(run_id, session_id, action)
+            .map_err(crate::RunExecutionError::ProviderExecutionFailed)?;
+        Ok((result?, generation, old_handle))
     }
 
     pub(crate) fn resolve_live_approval(
@@ -421,19 +717,18 @@ impl RunExecutionRuntime {
             .map_err(crate::orchestration::AgentRuntimeServiceError::ProviderExecutionFailed)
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub(crate) fn release_live_run(&self, run_id: &RunId) -> bool {
-        self.active_executions.release_run(run_id)
-    }
-
     #[cfg(test)]
     pub(crate) fn attach_live_run_handle_for_tests(
         &self,
         run_id: &RunId,
         handle: Arc<dyn ExecutionHandle>,
     ) -> Result<(), String> {
+        let execution = self
+            .active_executions
+            .execution_for(run_id)
+            .expect("claimed run");
         self.active_executions
-            .attach_handle(run_id, handle)
+            .attach_handle(run_id, execution.generation, handle)
             .map(|_| ())
     }
 
@@ -443,7 +738,6 @@ impl RunExecutionRuntime {
         run_id: &RunId,
         status: ta_protocol::wire::RunStatus,
     ) -> Option<RunId> {
-        self.active_executions.release_run(run_id);
         self.workspace_runs.finish(run_id, status);
         self.scheduler.finish_run(session_id, run_id)
     }
@@ -459,8 +753,13 @@ impl RunExecutionRuntime {
     }
 
     #[cfg(test)]
-    pub(super) fn live_execution_for(&self, run_id: &RunId) -> Option<ActiveExecution> {
-        self.active_executions.execution_for(run_id)
+    pub(crate) fn live_execution_for(&self, run_id: &RunId) -> Option<LiveExecutionFixture> {
+        self.active_executions
+            .execution_for(run_id)
+            .map(|execution| LiveExecutionFixture {
+                session_id: execution.session_id,
+                generation: execution.generation,
+            })
     }
 
     pub(crate) fn publish_record(&self, record: &EventRecord) -> DaemonEventEnvelope {

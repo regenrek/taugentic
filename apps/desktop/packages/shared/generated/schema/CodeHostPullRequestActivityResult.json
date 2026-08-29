@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "CodeHostComment": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/CodeHostCommentKind"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "authorLogin",
+        "body",
+        "webUrl",
+        "createdAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostCommentKind": {
+      "enum": [
+        "conversation",
+        "review"
+      ],
+      "type": "string"
+    },
+    "CodeHostReview": {
+      "properties": {
+        "authorLogin": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "submittedAt": {
+          "type": "string"
+        },
+        "webUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "authorLogin",
+        "state",
+        "body",
+        "webUrl",
+        "submittedAt"
+      ],
+      "type": "object"
+    },
+    "CodeHostTimelineItem": {
+      "properties": {
+        "actorLogin": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "actorLogin",
+        "summary",
+        "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "comments": {
+      "items": {
+        "$ref": "#/$defs/CodeHostComment"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviews": {
+      "items": {
+        "$ref": "#/$defs/CodeHostReview"
+      },
+      "type": "array"
+    },
+    "timeline": {
+      "items": {
+        "$ref": "#/$defs/CodeHostTimelineItem"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "comments",
+    "reviews",
+    "timeline"
+  ],
+  "title": "CodeHostPullRequestActivityResult",
+  "type": "object"
+}

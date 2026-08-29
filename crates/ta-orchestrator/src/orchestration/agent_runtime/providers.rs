@@ -1,6 +1,6 @@
 use ta_protocol::wire::{
     AgentRuntimeStrategyId, AuthMethodId, AuthMethodRef, AuthProfileManagementMode,
-    RuntimePolicyMode, RuntimeProfileId, RuntimeProfileSummary,
+    RuntimePolicyMode, RuntimeProfileExecutionKind, RuntimeProfileId, RuntimeProfileSummary,
 };
 use ta_provider_acp::descriptor::{AcpProviderRegistry, AcpProviderSpec};
 
@@ -48,18 +48,45 @@ fn openai_strategy() -> RegisteredStrategy {
 
     let provider_id = strategy_id(OPENAI_PROVIDER_ID);
     let method_id = auth_method_id("openai-chatgpt");
+    let api_key_method_id = auth_method_id("openai-api-key");
     registered_strategy(
         strategy_descriptor(
             provider_id.clone(),
             "OpenAI",
-            vec![auth_method(
-                method_id.clone(),
-                &provider_id,
-                "OpenAI ChatGPT",
-                AuthProfileManagementMode::Interactive,
-                true,
-            )],
-            default_runtime_profiles(&provider_id, Some(method_id), "runtime-openai", "OpenAI"),
+            vec![
+                auth_method(
+                    method_id.clone(),
+                    &provider_id,
+                    "OpenAI ChatGPT",
+                    AuthProfileManagementMode::Interactive,
+                    true,
+                ),
+                auth_method(
+                    api_key_method_id.clone(),
+                    &provider_id,
+                    "OpenAI API Key",
+                    AuthProfileManagementMode::Environment,
+                    false,
+                ),
+            ],
+            {
+                let mut profiles = default_runtime_profiles(
+                    &provider_id,
+                    Some(method_id),
+                    "runtime-openai",
+                    "OpenAI",
+                );
+                profiles.push(RuntimeProfileSummary {
+                    id: RuntimeProfileId::new("runtime-openai-realtime")
+                        .expect("runtime profile id"),
+                    display_name: "OpenAI Realtime".to_string(),
+                    provider_id: provider_id.clone(),
+                    auth_method_id: Some(api_key_method_id),
+                    policy_mode: RuntimePolicyMode::Deny,
+                    execution_kind: RuntimeProfileExecutionKind::RealtimeVoice,
+                });
+                profiles
+            },
         ),
         StrategyKind::OpenAiNative,
     )
@@ -136,6 +163,7 @@ fn acp_strategy(provider: AcpProviderSpec) -> RegisteredStrategy {
                 provider_id: provider_id.clone(),
                 auth_method_id: None,
                 policy_mode,
+                execution_kind: RuntimeProfileExecutionKind::AgentRun,
             })
             .collect(),
     );
@@ -180,6 +208,7 @@ fn default_runtime_profiles(
         provider_id: provider_id.clone(),
         auth_method_id: auth_method_id.clone(),
         policy_mode,
+        execution_kind: RuntimeProfileExecutionKind::AgentRun,
     })
     .collect()
 }

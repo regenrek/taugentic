@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentToolCallOutcome, ApprovalDecision, ApprovalId, ApprovalScope, ArtifactKind, BudgetMetric,
-    BudgetScope, ConflictWarning, OutputContractKind, ReceiptId, ReceiptKind, ReceiptState, RunId,
-    RunStatus, SessionId, TokenUsageRecordedEvent, WorktreeInfo, u64_string,
+    AgentToolCallOutcome, ApprovalDecision, ApprovalId, ApprovalScope, ArtifactKind,
+    AuthProfileExhaustion, BudgetMetric, BudgetScope, ConflictWarning, OutputContractKind,
+    ReceiptId, ReceiptKind, ReceiptState, RunId, RunStatus, SessionId, TokenUsageRecordedEvent,
+    WorktreeInfo, u64_string,
 };
 
 pub const RUN_TIMELINE_EVENT_DEFAULT_LIMIT: u32 = 500;
@@ -112,6 +113,8 @@ pub struct RunTimelineEvent {
 pub enum RunTimelineEventPayload {
     Run {
         detail: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        auth_profile_exhaustion: Option<AuthProfileExhaustion>,
     },
     ApprovalRequested {
         #[serde(rename = "approvalId")]

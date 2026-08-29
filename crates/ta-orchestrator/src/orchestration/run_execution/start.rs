@@ -1,8 +1,9 @@
 use ta_policy::{Operation, evaluate_execution_context};
-use ta_protocol::wire::StartRunCommand;
-use ta_store::CommitRunTransition;
+use ta_protocol::wire::{AgentRuntimeMediaCapability, StartRunCommand, WorkspaceFileKind};
+use ta_store::{CommitRunTransition, UserTurnCommit};
 use uuid::Uuid;
 
+use super::provider_sink::RunCompletionProjection;
 use super::*;
 use crate::{
     DelegateRecipeResolutionRequest, ResolvedDelegateRecipeRequest, resolve_delegate_recipe,
@@ -18,24 +19,85 @@ where
         session_id: crate::SessionId,
         command: StartRunCommand,
     ) -> Result<RunMutationResult, RunExecutionError> {
+        if !command.attachments.is_empty() {
+            return Err(RunExecutionError::UnvalidatedWorkspaceFileAttachments);
+        }
+        self.start_run_with_validated_attachments(session_id, command, Vec::new())
+    }
+
+    pub(crate) fn start_run_with_validated_attachments(
+        &self,
+        session_id: crate::SessionId,
+        command: StartRunCommand,
+        attachments: Vec<ta_protocol::wire::WorkspaceFileAttachment>,
+    ) -> Result<RunMutationResult, RunExecutionError> {
+        if command.attachments.len() != attachments.len()
+            || command
+                .attachments
+                .iter()
+                .zip(&attachments)
+                .any(|(request, attachment)| {
+                    request.path != attachment.path
+                        || request.expected_revision != attachment.revision
+                })
+        {
+            return Err(RunExecutionError::UnvalidatedWorkspaceFileAttachments);
+        }
         let selection = command.selection.clone();
         let resolved_command = self.resolve_start_run_command(command)?;
         let objective = resolved_command.objective.trim();
         if objective.is_empty() {
             return Err(RunExecutionError::EmptyRunObjective);
         }
-        {
+        let user_turn = UserTurnCommit::Append {
+            text: objective.to_string(),
+            attachments: attachments.clone(),
+        };
+        let persist_initial_selection = {
             let store = self.store.lock().expect("app store should not be poisoned");
-            if store.session(&session_id)?.is_none() {
+            let Some(session) = store.session(&session_id)? else {
                 return Err(RunExecutionError::SessionNotFound(
                     session_id.as_str().to_string(),
                 ));
+            };
+            match session.next_run_selection {
+                ta_protocol::wire::SessionNextRunSelection::Unselected => true,
+                ta_protocol::wire::SessionNextRunSelection::Selected {
+                    selection: persisted,
+                } if persisted == selection => false,
+                ta_protocol::wire::SessionNextRunSelection::Selected { .. } => {
+                    return Err(RunExecutionError::ProviderExecutionFailed(
+                        "run selection does not agree with the session's next-run selection"
+                            .to_string(),
+                    ));
+                }
             }
-        }
+        };
         let validated_selection = self
             .agent_runtime
             .validate_run_selection(&selection)
             .map_err(map_agent_runtime_error)?;
+        if persist_initial_selection {
+            self.store
+                .lock()
+                .expect("app store should not be poisoned")
+                .commit_session_next_run_selection(ta_store::CommitSessionNextRunSelection {
+                    session_id: session_id.clone(),
+                    selection: ta_protocol::wire::SessionNextRunSelection::Selected {
+                        selection: selection.clone(),
+                    },
+                })?;
+        }
+        if attachments
+            .iter()
+            .any(|attachment| attachment.kind == WorkspaceFileKind::Image)
+            && validated_selection.media_capabilities().image_input
+                == AgentRuntimeMediaCapability::Unsupported
+        {
+            return Err(RunExecutionError::ProviderExecutionFailed(
+                "the selected runtime does not support image input".to_string(),
+            ));
+        }
         let runtime_profile = validated_selection.runtime_profile().clone();
         let route = validated_selection.route().clone();
 
@@ -62,10 +124,15 @@ where
                 ExecutionContextRequest::workspace_write(),
             )
             .map_err(fail_scheduled_run)?;
-        let decision = evaluate_execution_context(
-            &prepared_context.execution_context,
-            &Operation::new(ApprovalScope::ProcessExec, "execute run"),
-        );
+        let decision = match runtime_profile.execution_kind {
+            ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun => evaluate_execution_context(
+                &prepared_context.execution_context,
+                &Operation::new(ApprovalScope::ProcessExec, "execute run"),
+            ),
+            ta_protocol::wire::RuntimeProfileExecutionKind::RealtimeVoice => {
+                ta_policy::PolicyDecision::Allow
+            }
+        };
         let harness = validated_selection.execution_harness();
 
         let (mut run, mut events) = {
@@ -88,12 +155,20 @@ where
                 runtime_profile_id: runtime_profile.id.clone(),
                 objective: objective.to_string(),
                 status,
-                harness: run_harness_kind(&harness),
+                harness: match runtime_profile.execution_kind {
+                    ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun => {
+                        run_harness_kind(harness)
+                    }
+                    ta_protocol::wire::RuntimeProfileExecutionKind::RealtimeVoice => {
+                        RunHarnessKind::RealtimeVoice
+                    }
+                },
                 source: RunSource::User {
                     route: route.clone(),
                     output_contract: resolved_command.output_contract,
                     model_id: resolved_command.model_id.clone(),
                     recipe_id: resolved_command.recipe_id.clone(),
+                    attachments,
                 },
                 execution_context: prepared_context.execution_context,
                 result: None,
@@ -109,35 +184,38 @@ where
                 .commit_run_transition(CommitRunTransition {
                     session_id: session_id.clone(),
                     run: run.clone(),
+                    user_turn,
                     events,
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .map_err(|error| fail_scheduled_run(error.into()))?;
-            if committed.run.status == RunStatus::Running {
-                self.runtime
-                    .claim_live_run(committed.run.id.clone(), session_id.clone());
-            }
             (committed.run, committed.events)
         };
         if run.status == RunStatus::Running {
+            let generation = self
+                .runtime
+                .claim_live_run(run.id.clone(), session_id.clone());
             let start_result = self.start_provider_execution(
                 &session_id,
                 &run.id,
-                &run.objective,
                 &runtime_profile,
                 run.source.route(),
+                generation,
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
                 && latest_run.status == RunStatus::Running
             {
-                let (failed_run, failed_events) = self.fail_live_run_without_publish(
+                let failed = self.commit_failed_live_run_for_generation(
                     session_id.clone(),
                     &latest_run.id,
                     error.to_string(),
+                    RunCompletionProjection::default(),
+                    generation,
                 )?;
-                run = failed_run;
-                events.extend(failed_events);
+                run = self.load_run_projection(&latest_run.id)?;
+                events.extend(failed.events);
             } else if latest_run.status != RunStatus::Cancelled {
                 run = latest_run;
             }
@@ -170,13 +248,118 @@ where
         &self,
         session_id: &crate::SessionId,
         run_id: &RunId,
-        objective: &str,
         runtime_profile: &crate::RuntimeProfileSummary,
         route: &ta_protocol::wire::RunExecutionRoute,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        self.enforce_budget_before_dispatch(session_id, run_id)?;
-        let fork_initial_state = self.fork_initial_state_for_run(session_id, run_id)?;
+        self.start_provider_execution_for_generation(
+            session_id,
+            run_id,
+            runtime_profile,
+            route,
+            generation,
+        )
+    }
+
+    pub(super) fn start_provider_execution_for_generation(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+        runtime_profile: &crate::RuntimeProfileSummary,
+        route: &ta_protocol::wire::RunExecutionRoute,
+        generation: u64,
+    ) -> Result<(), RunExecutionError> {
+        if runtime_profile.execution_kind
+            == ta_protocol::wire::RuntimeProfileExecutionKind::RealtimeVoice
+        {
+            let run = self.load_run_projection(run_id)?;
+            let handle = crate::orchestration::voice::start_realtime_execution(
+                self.clone(),
+                session_id.clone(),
+                run_id.clone(),
+                generation,
+                runtime_profile,
+                route,
+                run.objective,
+            )?;
+            return self
+                .runtime
+                .attach_voice_run(
+                    run_id,
+                    generation,
+                    handle.clone() as Arc<dyn taugentic_agent::ExecutionHandle>,
+                    handle as Arc<dyn crate::orchestration::voice::VoiceFrameExchange>,
+                )
+                .map_err(map_agent_runtime_error);
+        }
+        self.enforce_budget_before_dispatch(session_id, run_id, generation)?;
+        self.capture_before_user_turn(run_id)?;
+        let native_history = self.native_history_initial_state_for_run(session_id, run_id)?;
+        self.start_provider_execution_with_optional_initial_state(
+            session_id,
+            run_id,
+            runtime_profile,
+            route,
+            generation,
+            native_history,
+        )
+    }
+
+    fn start_provider_execution_with_optional_initial_state(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+        runtime_profile: &crate::RuntimeProfileSummary,
+        route: &ta_protocol::wire::RunExecutionRoute,
+        generation: u64,
+        native_history: Option<taugentic_agent::NativeHistoryInitialState>,
+    ) -> Result<(), RunExecutionError> {
         let run = self.load_run_projection(run_id)?;
+        let (objective, attachments) = match &run.source {
+            RunSource::User { attachments, .. } => (
+                user_message_with_attachments(&run.objective, attachments),
+                attachments.clone(),
+            ),
+            RunSource::ScheduledWork { .. }
+            | RunSource::NativeSubagent { .. }
+            | RunSource::FreshSpawn { .. }
+            | RunSource::Forked { .. }
+            | RunSource::AccountSwitchedContinuation { .. } => (run.objective.clone(), Vec::new()),
+        };
+        let image_attachments = attachments
+            .iter()
+            .filter(|attachment| attachment.kind == ta_protocol::wire::WorkspaceFileKind::Image)
+            .collect::<Vec<_>>();
+        if image_attachments.len() > ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_COUNT {
+            return Err(RunExecutionError::ProviderExecutionFailed(
+                "image attachment count exceeds the runtime limit".to_string(),
+            ));
+        }
+        let mut image_total = 0u64;
+        for attachment in image_attachments {
+            let request = ta_protocol::wire::WorkspaceFileAttachmentRequest {
+                path: attachment.path.clone(),
+                expected_revision: attachment.revision.clone(),
+            };
+            let checked = crate::workspace::files::validate_workspace_file_attachment(
+                run.execution_context.effective_cwd.as_path(),
+                &request,
+            )
+            .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+            if checked.kind != ta_protocol::wire::WorkspaceFileKind::Image
+                || checked.byte_len > ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_BYTES
+            {
+                return Err(RunExecutionError::ProviderExecutionFailed(
+                    "image attachment failed runtime preflight".to_string(),
+                ));
+            }
+            image_total = image_total.saturating_add(checked.byte_len);
+        }
+        if image_total > ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_TOTAL_BYTES {
+            return Err(RunExecutionError::ProviderExecutionFailed(
+                "image attachment total exceeds the runtime limit".to_string(),
+            ));
+        }
         let output_contract = output_contract_for_run(&run);
         self.runtime
             .start_provider_run(
@@ -185,9 +368,9 @@ where
                     route,
                     session_id,
                     run_id,
-                    objective,
+                    objective: &objective,
                     execution_context: Arc::new(run.execution_context),
-                    fork_initial_state,
+                    native_history,
                     output_contract,
                     subagent_recipes: self
                         .recipe_registry
@@ -195,11 +378,14 @@ where
                         .into_iter()
                         .cloned()
                         .collect(),
+                    attachments,
+                    generation,
                 },
                 Arc::new(ProviderRunExecutionSink {
                     service: self.clone(),
                     session_id: session_id.clone(),
                     run_id: run_id.clone(),
+                    generation,
                 }),
             )
             .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))
@@ -211,7 +397,49 @@ mod tests {
     use super::*;
     use crate::SessionId;
     use crate::orchestration::run_execution::test_support::*;
-    use ta_protocol::wire::{OutputContractKind, RunSource, RunStatus};
+    use sha2::{Digest, Sha256};
+    use ta_protocol::wire::{
+        OutputContractKind, RunSource, RunStatus, WORKSPACE_IMAGE_ATTACHMENT_MAX_BYTES,
+        WORKSPACE_IMAGE_ATTACHMENT_MAX_COUNT, WORKSPACE_IMAGE_ATTACHMENT_MAX_TOTAL_BYTES,
+        WorkspaceFileAttachment, WorkspaceFileAttachmentRequest, WorkspaceFileKind,
+    };
+    use ta_store::{ProjectionRepository, StoreSeedRepository};
+
+    fn revision(bytes: &[u8]) -> String {
+        format!("{:x}", Sha256::digest(bytes))
+    }
+
+    fn image_attachment(path: &str, bytes: &[u8]) -> WorkspaceFileAttachment {
+        WorkspaceFileAttachment {
+            path: path.to_string(),
+            revision: revision(bytes),
+            kind: WorkspaceFileKind::Image,
+            byte_len: bytes.len() as u64,
+        }
+    }
+
+    fn replace_run_attachments(
+        execution: &RunExecutionService<ta_store::InMemoryStore>,
+        run_id: &RunId,
+        attachments: Vec<WorkspaceFileAttachment>,
+    ) {
+        let mut store = execution
+            .store
+            .lock()
+            .expect("test store should not be poisoned");
+        let mut run = store.run(run_id).expect("run query").expect("seeded run");
+        if let RunSource::User {
+            attachments: current,
+            ..
+        } = &mut run.source
+        {
+            current.clear();
+            current.extend(attachments);
+        } else {
+            panic!("fixture must seed a user run");
+        }
+        store.save_run(run).expect("updated fixture run");
+    }
 
     #[test]
     fn start_run_rejects_blank_objective() {
@@ -257,6 +485,180 @@ mod tests {
     }
 
     #[test]
+    fn run_execution_rejects_workspace_attachments_not_validated_by_the_app_boundary() {
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        let session = open_session(&app, "Attachment validation owner");
+        let mut command = start_run_command(&app, "Use attached context", "runtime-openai-safe");
+        command.attachments = vec![WorkspaceFileAttachmentRequest {
+            path: "context.md".to_string(),
+            expected_revision: "revision-1".to_string(),
+        }];
+
+        let error = execution
+            .start_run(session.id, command)
+            .expect_err("unvalidated attachment must fail closed");
+
+        assert!(matches!(
+            error,
+            RunExecutionError::UnvalidatedWorkspaceFileAttachments
+        ));
+    }
+
+    #[test]
+    fn provider_user_message_contains_one_structured_attachment_manifest() {
+        let message = user_message_with_attachments(
+            "Inspect this file",
+            &[
+                WorkspaceFileAttachment {
+                    path: "src/main.rs".to_string(),
+                    revision: "sha256:abc".to_string(),
+                    kind: WorkspaceFileKind::Text,
+                    byte_len: 42,
+                },
+                image_attachment("diagram.png", b"\x89PNG\r\n\x1a\n"),
+            ],
+        );
+
+        assert_eq!(
+            message,
+            "Inspect this file\n\n<taugentic_workspace_attachments>\n[{\"byteLength\":\"42\",\"kind\":\"text\",\"path\":\"src/main.rs\",\"revision\":\"sha256:abc\"}]\n</taugentic_workspace_attachments>"
+        );
+        assert!(!message.contains("diagram.png"));
+    }
+
+    #[test]
+    fn unsupported_image_input_rejects_before_run_persistence() {
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        let session = open_session(&app, "Unsupported image runtime");
+        let bytes = b"\x89PNG\r\n\x1a\n";
+        let attachment = image_attachment("diagram.png", bytes);
+        let mut command = start_run_command(&app, "Inspect the image", "runtime-deepseek-safe");
+        command.selection.model_id = Some(
+            ta_protocol::wire::AgentRuntimeModelId::new("deepseek-v4-pro")
+                .expect("known text-only model"),
+        );
+        command.attachments = vec![WorkspaceFileAttachmentRequest {
+            path: attachment.path.clone(),
+            expected_revision: attachment.revision.clone(),
+        }];
+
+        let error = execution
+            .start_run_with_validated_attachments(session.id.clone(), command, vec![attachment])
+            .expect_err("unsupported image input must reject before a run is stored");
+        assert!(matches!(
+            error,
+            RunExecutionError::ProviderExecutionFailed(message)
+                if message.contains("does not support image input")
+        ));
+        assert!(
+            app.list_runs(&session.id)
+                .expect("runs should list")
+                .is_empty(),
+            "unsupported media must not persist a run"
+        );
+        assert!(
+            app.agent_turns_page(
+                &session.id,
+                &crate::AgentTurnsPageQuery {
+                    limit: 10,
+                    before: None
+                },
+            )
+            .expect("turns should list")
+            .items
+            .is_empty(),
+            "unsupported media must not persist a user turn"
+        );
+    }
+
+    #[test]
+    fn image_attachments_are_revalidated_immediately_before_provider_dispatch() {
+        let repository = init_dispatch_repo();
+        let (runtime, dispatcher) = runtime_with_dispatch_plans([]);
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        set_default_test_workspace_root(&app, repository.path());
+        let selection = validated_runtime_selection(&app, "runtime-codex-allow");
+
+        let stale_path = repository.path().join("stale.png");
+        let stale_before = b"\x89PNG\r\n\x1a\nbefore";
+        std::fs::write(&stale_path, stale_before).expect("stale fixture should write");
+        let stale = image_attachment("stale.png", stale_before);
+        std::fs::write(&stale_path, b"\x89PNG\r\n\x1a\nafter")
+            .expect("stale fixture should change");
+
+        let invalid_path = repository.path().join("invalid.png");
+        let invalid_bytes = b"not-an-image";
+        std::fs::write(&invalid_path, invalid_bytes).expect("invalid fixture should write");
+        let invalid = image_attachment("invalid.png", invalid_bytes);
+
+        let oversize_path = repository.path().join("oversize.png");
+        let mut oversize = b"\x89PNG\r\n\x1a\n".to_vec();
+        oversize.resize(WORKSPACE_IMAGE_ATTACHMENT_MAX_BYTES as usize + 1, 0);
+        std::fs::write(&oversize_path, &oversize).expect("oversize fixture should write");
+        let oversize_attachment = image_attachment("oversize.png", &oversize);
+
+        let total_each = WORKSPACE_IMAGE_ATTACHMENT_MAX_TOTAL_BYTES / 3 + 1;
+        let mut aggregate = b"\x89PNG\r\n\x1a\n".to_vec();
+        aggregate.resize(total_each as usize, 0);
+        for index in 0..3 {
+            std::fs::write(
+                repository.path().join(format!("aggregate-{index}.png")),
+                &aggregate,
+            )
+            .expect("aggregate fixture should write");
+        }
+        let aggregate_attachments = (0..3)
+            .map(|index| image_attachment(&format!("aggregate-{index}.png"), &aggregate))
+            .collect::<Vec<_>>();
+        let count_attachments =
+            std::iter::repeat_with(|| image_attachment("stale.png", stale_before))
+                .take(WORKSPACE_IMAGE_ATTACHMENT_MAX_COUNT as usize + 1)
+                .collect::<Vec<_>>();
+
+        for attachments in [
+            vec![stale],
+            vec![invalid],
+            vec![oversize_attachment],
+            count_attachments,
+            aggregate_attachments,
+        ] {
+            let session = open_session(&app, "Image dispatch preflight");
+            let run = ensure_running_run_with_profile(
+                &app,
+                &execution,
+                &session.id,
+                "Revalidate image before dispatch",
+                "runtime-codex-allow",
+            );
+            replace_run_attachments(&execution, &run.id, attachments);
+            let generation = execution
+                .runtime
+                .live_execution_for(&run.id)
+                .expect("live execution")
+                .generation;
+            let error = execution
+                .start_provider_execution(
+                    &session.id,
+                    &run.id,
+                    selection.runtime_profile(),
+                    selection.route(),
+                    generation,
+                )
+                .expect_err("changed image input must reject before provider dispatch");
+            assert!(matches!(
+                error,
+                RunExecutionError::ProviderExecutionFailed(_)
+            ));
+        }
+        assert!(
+            dispatcher.requests().is_empty(),
+            "failed immediate revalidation must not dispatch to the provider"
+        );
+    }
+
+    #[test]
     fn start_run_with_require_approval_mode_waits_for_approval() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
@@ -288,6 +690,25 @@ mod tests {
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = open_session(&app, "Cross-harness context");
 
+        let mut catalog = ta_model_catalog::ModelCatalog::embedded().expect("embedded catalog");
+        let acp_model = catalog
+            .providers
+            .get("openai")
+            .and_then(|provider| provider.models.get("gpt-5.6-sol"))
+            .cloned()
+            .expect("known ACP fixture model");
+        catalog.providers.insert(
+            "codex-acp".to_string(),
+            ta_model_catalog::CatalogProvider {
+                id: "codex-acp".to_string(),
+                name: "Codex ACP".to_string(),
+                models: [(acp_model.id.clone(), acp_model)].into_iter().collect(),
+            },
+        );
+        app.agent_runtime
+            .replace_model_catalog_for_tests(catalog)
+            .expect("ACP fixture catalog should install");
+
         let native = execution
             .start_run(
                 session.id.clone(),
@@ -295,10 +716,27 @@ mod tests {
             )
             .expect("native run should persist before approval");
 
+        let acp_selection = ta_protocol::wire::AgentRuntimeSelection {
+            runtime_profile_id: ta_protocol::wire::RuntimeProfileId::new("runtime-codex-acp-safe")
+                .expect("runtime profile id"),
+            auth_profile_id: None,
+            model_id: Some(
+                ta_protocol::wire::AgentRuntimeModelId::new("gpt-5.6-sol")
+                    .expect("known ACP fixture model"),
+            ),
+        };
+        app.set_session_next_run_selection(
+            &session.id,
+            ta_protocol::wire::SessionNextRunSelection::Selected {
+                selection: acp_selection.clone(),
+            },
+        )
+        .expect("ACP selection should persist before its run starts");
+
         let acp = execution
             .start_run(
                 session.id.clone(),
-                start_run_command(&app, "ACP context proof", "runtime-codex-acp-safe"),
+                StartRunCommand::new("ACP context proof", acp_selection),
             )
             .expect("ACP run should queue and persist");
 

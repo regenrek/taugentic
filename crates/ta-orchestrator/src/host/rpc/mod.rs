@@ -11,7 +11,8 @@ use crate::{
     DaemonEventEnvelope, DaemonNavigationInvalidatedParams, DaemonStatusResult,
     JsonRpcHandlerFuture, JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession,
     METHOD_DAEMON_EVENT, METHOD_DAEMON_NAVIGATION_INVALIDATED, METHOD_DAEMON_RUN_EVENT,
-    PublicDaemonEventEnvelope, RunEventStreamItem, RunEventStreamPayload, RunId, connect_socket,
+    METHOD_DAEMON_TERMINAL_EVENT, PublicDaemonEventEnvelope, RunEventStreamItem,
+    RunEventStreamPayload, RunId, TerminalSessionId, connect_socket,
     host::bootstrap::BootstrapState, internal_error,
 };
 
@@ -185,6 +186,57 @@ fn spawn_run_event_forwarder(
             taugentic.connection_id = connection_id as u64,
             error = %error,
             "failed to spawn daemon run event forwarder thread",
+        );
+    }
+}
+
+fn spawn_terminal_event_forwarder(
+    session: JsonRpcServerSession,
+    terminal_id: TerminalSessionId,
+    subscription: crate::workspace::terminal::TerminalRuntimeSubscription,
+) {
+    let connection_id = session.connection_id();
+    let thread_name = format!("daemon-terminal-forwarder-{connection_id}");
+    let spawn_result = thread::Builder::new().name(thread_name).spawn(move || {
+        let subscription = subscription;
+        loop {
+            if !session.is_open() {
+                return;
+            }
+            match subscription
+                .receiver
+                .recv_timeout(SESSION_FORWARDER_POLL_INTERVAL)
+            {
+                Ok(event) => {
+                    let terminal = matches!(
+                        event,
+                        crate::workspace::terminal::TerminalRuntimeEvent::Exited
+                    );
+                    let params =
+                        crate::workspace::terminal::protocol_event(terminal_id.clone(), event);
+                    let Ok(params) = serde_json::to_value(params) else {
+                        return;
+                    };
+                    if session
+                        .send_notification(METHOD_DAEMON_TERMINAL_EVENT, Some(params))
+                        .is_err()
+                    {
+                        return;
+                    }
+                    if terminal {
+                        return;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            }
+        }
+    });
+    if let Err(error) = spawn_result {
+        tracing::error!(
+            taugentic.connection_id = connection_id as u64,
+            error = %error,
+            "failed to spawn daemon terminal forwarder thread",
         );
     }
 }

@@ -1,6 +1,448 @@
 use super::*;
+use crate::AppService;
 use crate::orchestration::run_execution::test_support::*;
-use ta_store::{CommitRepository, CommitRunTransition, EventLogRepository, ProjectionRepository};
+use ta_store::{
+    CommitRepository, CommitRunTransition, EventLogRepository, ProjectionRepository,
+    ScheduledWorkRepository, StoreSeedRepository,
+};
+
+fn scheduled_work_from_prepared_context(
+    app: &AppService,
+    execution: &RunExecutionService,
+    session_id: &crate::SessionId,
+    scheduled_work_id: &str,
+    occurrence_id: &str,
+    run_id: &RunId,
+) -> (
+    ta_protocol::wire::ScheduledWorkDefinition,
+    ta_protocol::wire::ScheduledWorkOccurrence,
+) {
+    let selection = crate::orchestration::test_runtime_selection(app, "runtime-openai-safe");
+    let route = app
+        .agent_runtime
+        .validate_agent_run_selection(&selection)
+        .expect("scheduled route should validate")
+        .route()
+        .clone();
+    let prepared = execution
+        .prepare_execution_context(
+            session_id,
+            run_id,
+            execution
+                .agent_runtime
+                .validate_agent_run_selection(&selection)
+                .expect("scheduled profile should validate")
+                .runtime_profile(),
+            ExecutionContextRequest::workspace_write(),
+        )
+        .expect("template context should prepare");
+    let definition = ta_protocol::wire::ScheduledWorkDefinition {
+        id: ta_protocol::wire::ScheduledWorkId::new(scheduled_work_id).expect("scheduled work id"),
+        session_id: session_id.clone(),
+        objective: "Scheduled boundary test".to_string(),
+        route,
+        execution_request: ta_protocol::wire::ScheduledWorkExecutionRequest {
+            workspace_id: prepared.execution_context.workspace_id.clone(),
+            workspace_root: prepared.execution_context.workspace_root.clone(),
+            repo_root: prepared.execution_context.workspace_root.clone(),
+            artifact_root: prepared.execution_context.artifact_root.clone(),
+            workspace_mode: ta_protocol::wire::WorkspaceMode::WorkspaceWrite,
+            cleanup_policy: ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess,
+            planned_write_files: Vec::new(),
+            workspace_scope: prepared.execution_context.workspace_scope,
+            sandbox_profile: prepared.execution_context.sandbox_profile,
+            permission_policy: prepared.execution_context.permission_policy,
+            network_policy: prepared.execution_context.network_policy,
+            env_policy: prepared.execution_context.env_policy,
+        },
+        due_at_ms: 10,
+        attention_policy: ta_protocol::wire::ScheduledWorkAttentionPolicy::AttentionOnly,
+    };
+    let occurrence = ta_protocol::wire::ScheduledWorkOccurrence {
+        id: ta_protocol::wire::ScheduledWorkOccurrenceId::new(occurrence_id)
+            .expect("occurrence id"),
+        scheduled_work_id: definition.id.clone(),
+        due_at_ms: 10,
+        state: ta_protocol::wire::ScheduledWorkOccurrenceState::Pending,
+    };
+    (definition, occurrence)
+}
+
+#[test]
+fn scheduled_work_reserve_prepare_publish_creates_one_queued_run_without_dispatch() {
+    let repo = init_dispatch_repo();
+    let (runtime, dispatcher) = runtime_with_dispatch_plans([]);
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled publish");
+    let template_run_id = RunId::new("run-scheduled-template").expect("run id");
+    let run_id = RunId::new("run-scheduled-publish").expect("run id");
+    let (definition, occurrence) = scheduled_work_from_prepared_context(
+        &app,
+        &execution,
+        &session.id,
+        "schedule-publish",
+        "occurrence-publish",
+        &template_run_id,
+    );
+    execution
+        .runtime
+        .finish_scheduled_run(&session.id, &template_run_id, RunStatus::Cancelled);
+    execution
+        .store
+        .lock()
+        .expect("store")
+        .create_scheduled_work(definition.clone(), occurrence.clone())
+        .expect("scheduled work should persist");
+
+    let published = execution
+        .prepare_and_publish_scheduled_work(
+            definition.id.clone(),
+            occurrence.id.clone(),
+            run_id.clone(),
+        )
+        .expect("scheduled work should publish");
+
+    assert_eq!(published.id, run_id);
+    assert_eq!(published.status, RunStatus::Queued);
+    assert!(dispatcher.requests().is_empty());
+    let store = execution.store.lock().expect("store");
+    assert_eq!(
+        store
+            .runs()
+            .expect("runs")
+            .into_iter()
+            .filter(|run| run.id == run_id)
+            .count(),
+        1
+    );
+    assert!(matches!(
+        store
+            .scheduled_work_occurrence(&occurrence.id)
+            .expect("occurrence")
+            .expect("stored occurrence")
+            .state,
+        ta_protocol::wire::ScheduledWorkOccurrenceState::Claimed { run_id: claimed }
+            if claimed == run_id
+    ));
+}
+
+#[test]
+fn scheduled_preparation_cancellation_wins_publish_without_run() {
+    let repo = init_dispatch_repo();
+    let runtime = runtime_for_dispatch_repo(repo.path());
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled cancellation");
+    let template_run_id = RunId::new("run-scheduled-cancel-template").expect("run id");
+    let run_id = RunId::new("run-scheduled-cancel").expect("run id");
+    let (definition, occurrence) = scheduled_work_from_prepared_context(
+        &app,
+        &execution,
+        &session.id,
+        "schedule-cancel",
+        "occurrence-cancel",
+        &template_run_id,
+    );
+    execution
+        .runtime
+        .finish_scheduled_run(&session.id, &template_run_id, RunStatus::Cancelled);
+    let mut store = execution.store.lock().expect("store");
+    store
+        .create_scheduled_work(definition.clone(), occurrence.clone())
+        .expect("scheduled work");
+    store
+        .reserve_scheduled_work_occurrence(ta_store::ReserveScheduledWorkOccurrence {
+            scheduled_work_id: definition.id.clone(),
+            occurrence_id: occurrence.id.clone(),
+            run_id: run_id.clone(),
+        })
+        .expect("reserve");
+    let resource = execution
+        .unpublished_scheduled_resource(
+            &run_id,
+            repo.path(),
+            definition.execution_request.cleanup_policy,
+        )
+        .expect("resource identity");
+    store
+        .request_preparing_scheduled_work_cancellation(&occurrence.id, &run_id, resource)
+        .expect("cancel intent");
+    let run = ta_store::RunProjection {
+        id: run_id.clone(),
+        session_id: session.id.clone(),
+        runtime_profile_id: definition.route.runtime_profile_id.clone(),
+        objective: definition.objective.clone(),
+        status: RunStatus::Queued,
+        harness: definition.route.harness,
+        source: ta_protocol::wire::RunSource::ScheduledWork {
+            route: definition.route.clone(),
+            scheduled_work_id: definition.id.clone(),
+            occurrence_id: occurrence.id.clone(),
+        },
+        execution_context: ta_store::default_test_execution_context(),
+        result: None,
+        contract_violation: None,
+        started_at_ms: None,
+        ended_at_ms: None,
+        last_event_seq: None,
+        workspace_info: None,
+        claimed_files: Vec::new(),
+        conflict_summary: None,
+    };
+    assert!(
+        store
+            .publish_prepared_scheduled_work_occurrence(ta_store::ClaimScheduledWorkOccurrence {
+                scheduled_work_id: definition.id,
+                occurrence_id: occurrence.id,
+                run
+            })
+            .is_err()
+    );
+    assert!(store.run(&run_id).expect("run lookup").is_none());
+}
+
+#[test]
+fn scheduled_cleanup_required_retains_exact_resource_identity() {
+    let repo = init_dispatch_repo();
+    let runtime = runtime_for_dispatch_repo(repo.path());
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled cleanup");
+    let template_run_id = RunId::new("run-scheduled-cleanup-template").expect("run id");
+    let run_id = RunId::new("run-scheduled-cleanup").expect("run id");
+    let (definition, occurrence) = scheduled_work_from_prepared_context(
+        &app,
+        &execution,
+        &session.id,
+        "schedule-cleanup",
+        "occurrence-cleanup",
+        &template_run_id,
+    );
+    execution
+        .runtime
+        .finish_scheduled_run(&session.id, &template_run_id, RunStatus::Cancelled);
+    let resource = execution
+        .unpublished_scheduled_resource(
+            &run_id,
+            repo.path(),
+            definition.execution_request.cleanup_policy,
+        )
+        .expect("resource identity");
+    let mut store = execution.store.lock().expect("store");
+    store
+        .create_scheduled_work(definition.clone(), occurrence.clone())
+        .expect("scheduled work");
+    store
+        .reserve_scheduled_work_occurrence(ta_store::ReserveScheduledWorkOccurrence {
+            scheduled_work_id: definition.id,
+            occurrence_id: occurrence.id.clone(),
+            run_id: run_id.clone(),
+        })
+        .expect("reserve");
+    let stored = store
+        .finalize_preparing_scheduled_work_cleanup(
+            &occurrence.id,
+            &run_id,
+            ta_protocol::wire::ScheduledWorkPreparationTerminal::Failed,
+            resource.clone(),
+            "preparation failed".to_string(),
+            Err("exact cleanup failure".to_string()),
+        )
+        .expect("cleanup required should persist");
+    assert!(matches!(
+        stored.state,
+        ta_protocol::wire::ScheduledWorkOccurrenceState::CleanupRequired { resource: retained, .. }
+            if retained == resource
+    ));
+}
+
+#[test]
+fn scheduled_unavailable_frozen_repo_terminalizes_without_run_or_provider_dispatch() {
+    let repo = init_dispatch_repo();
+    let unavailable_repo = tempfile::tempdir().expect("unavailable repo root");
+    let (runtime, dispatcher) = runtime_with_dispatch_plans([]);
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled unavailable repo");
+    let template_run_id = RunId::new("run-scheduled-unavailable-template").expect("run id");
+    let run_id = RunId::new("run-scheduled-unavailable").expect("run id");
+    let (mut definition, occurrence) = scheduled_work_from_prepared_context(
+        &app,
+        &execution,
+        &session.id,
+        "schedule-unavailable",
+        "occurrence-unavailable",
+        &template_run_id,
+    );
+    execution
+        .runtime
+        .finish_scheduled_run(&session.id, &template_run_id, RunStatus::Cancelled);
+
+    set_default_test_workspace_root(&app, unavailable_repo.path());
+    let unavailable = ta_protocol::wire::WorkspacePath::new(unavailable_repo.path())
+        .expect("canonical unavailable root");
+    definition.execution_request.workspace_root = unavailable.clone();
+    definition.execution_request.repo_root = unavailable.clone();
+    definition.execution_request.workspace_mode = ta_protocol::wire::WorkspaceMode::WorktreeWrite;
+
+    execution
+        .store
+        .lock()
+        .expect("store")
+        .create_scheduled_work(definition.clone(), occurrence.clone())
+        .expect("scheduled work should persist");
+
+    assert!(
+        execution
+            .prepare_and_publish_scheduled_work(
+                definition.id.clone(),
+                occurrence.id.clone(),
+                run_id.clone(),
+            )
+            .is_err()
+    );
+    assert!(dispatcher.requests().is_empty());
+
+    let store = execution.store.lock().expect("store");
+    assert!(store.run(&run_id).expect("run lookup").is_none());
+    assert!(matches!(
+        store
+            .scheduled_work_occurrence(&occurrence.id)
+            .expect("occurrence")
+            .expect("stored occurrence")
+            .state,
+        ta_protocol::wire::ScheduledWorkOccurrenceState::CleanupRequired {
+            run_id: retained_run_id,
+            resource,
+            intended_terminal: ta_protocol::wire::ScheduledWorkPreparationTerminal::Failed,
+            ..
+        } if retained_run_id == run_id
+            && resource.parent_repo == unavailable.as_str()
+            && resource.worktree_path
+                == unavailable_repo
+                    .path()
+                    .join("target/taugentic-worktrees/run-scheduled-unavailable")
+                    .to_string_lossy()
+            && resource.branch == "ta/capsule-run-scheduled-unavailable"
+            && resource.cleanup_policy
+                == ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess
+    ));
+}
+
+#[test]
+fn scheduled_boot_reconciles_preparing_before_scheduler_rehydration() {
+    let repo = init_dispatch_repo();
+    let runtime = runtime_for_dispatch_repo(repo.path());
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled boot recovery");
+    let template_run_id = RunId::new("run-scheduled-boot-template").expect("run id");
+    let run_id = RunId::new("run-scheduled-boot").expect("run id");
+    let (definition, occurrence) = scheduled_work_from_prepared_context(
+        &app,
+        &execution,
+        &session.id,
+        "schedule-boot",
+        "occurrence-boot",
+        &template_run_id,
+    );
+    execution
+        .runtime
+        .finish_scheduled_run(&session.id, &template_run_id, RunStatus::Cancelled);
+    {
+        let mut store = execution.store.lock().expect("store");
+        store
+            .create_scheduled_work(definition, occurrence.clone())
+            .expect("scheduled work");
+        store
+            .reserve_scheduled_work_occurrence(ta_store::ReserveScheduledWorkOccurrence {
+                scheduled_work_id: occurrence.scheduled_work_id.clone(),
+                occurrence_id: occurrence.id.clone(),
+                run_id: run_id.clone(),
+            })
+            .expect("reserve");
+    }
+
+    app.recover_on_boot()
+        .expect("boot recovery should reconcile preparation");
+
+    let store = execution.store.lock().expect("store");
+    assert!(store.run(&run_id).expect("run lookup").is_none());
+    assert!(matches!(
+        store.scheduled_work_occurrence(&occurrence.id).expect("occurrence").expect("stored occurrence").state,
+        ta_protocol::wire::ScheduledWorkOccurrenceState::PreparationFailed { run_id: failed, .. }
+            if failed == run_id
+    ));
+}
+
+#[test]
+fn scheduled_resource_reattach_restores_worktree_and_file_claim_handles() {
+    let repo = init_dispatch_repo();
+    let runtime = runtime_for_dispatch_repo(repo.path());
+    let (app, execution) = app_and_execution_with_runtime(runtime);
+    set_default_test_workspace_root(&app, repo.path());
+    let session = open_session(&app, "Scheduled resource reattach");
+    let run_id = RunId::new("run-scheduled-reattach").expect("run id");
+    let selection = crate::orchestration::test_runtime_selection(&app, "runtime-openai-safe");
+    let validated = app
+        .agent_runtime
+        .validate_agent_run_selection(&selection)
+        .expect("route should validate");
+    let prepared = execution
+        .prepare_execution_context(
+            &session.id,
+            &run_id,
+            validated.runtime_profile(),
+            ExecutionContextRequest {
+                workspace_mode: crate::WorkspaceMode::WorktreeWrite,
+                cleanup_policy: crate::WorktreeCleanupPolicy::Keep,
+                planned_write_files: vec!["src/lib.rs".to_string()],
+            },
+        )
+        .expect("worktree should prepare");
+    let run = ta_store::RunProjection {
+        id: run_id.clone(),
+        session_id: session.id.clone(),
+        runtime_profile_id: validated.route().runtime_profile_id.clone(),
+        objective: "Scheduled resource reattach".to_string(),
+        status: RunStatus::Queued,
+        harness: validated.route().harness,
+        source: ta_protocol::wire::RunSource::ScheduledWork {
+            route: validated.route().clone(),
+            scheduled_work_id: ta_protocol::wire::ScheduledWorkId::new("schedule-reattach")
+                .expect("scheduled work id"),
+            occurrence_id: ta_protocol::wire::ScheduledWorkOccurrenceId::new("occurrence-reattach")
+                .expect("occurrence id"),
+        },
+        execution_context: prepared.execution_context,
+        result: None,
+        contract_violation: None,
+        started_at_ms: None,
+        ended_at_ms: None,
+        last_event_seq: None,
+        workspace_info: prepared.workspace_info,
+        claimed_files: prepared.claimed_files,
+        conflict_summary: prepared.conflict_summary,
+    };
+    let store = execution.store.clone();
+    store
+        .lock()
+        .expect("store")
+        .save_run(run.clone())
+        .expect("published run should persist");
+    drop(execution);
+    drop(app);
+
+    let rehydrated_runtime = runtime_for_dispatch_repo(repo.path());
+    let rehydrated = AppService::from_runtime(store, &rehydrated_runtime);
+    rehydrated
+        .run_execution
+        .rehydrate_published_scheduled_resources(&run)
+        .expect("resources should reattach");
+    assert_eq!(rehydrated.run_execution.workspace_run_count(), 1);
+    assert_eq!(rehydrated.run_execution.claim_count(), 1);
+}
 
 #[test]
 fn execution_context_preparation_rejects_unverified_workspace() {
@@ -173,14 +615,10 @@ fn seed_dispatch_child(
             },
         )
         .expect("execution context should prepare");
-    let mut events = vec![DaemonEvent::Run(crate::RunEvent {
-        run_id: run_id.clone(),
-        status: RunStatus::Running,
-        detail: "seed dispatch child".to_string(),
-        output_contract: None,
-        recipe_id: None,
-        result: None,
-    })];
+    let mut events = vec![DaemonEvent::Run(
+        crate::RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+            .expect("active status"),
+    )];
     if let Some(warning) = prepared_context.conflict_warning.clone() {
         events.push(DaemonEvent::Conflict(crate::ConflictEvent::Warning {
             run_id: run_id.clone(),
@@ -220,8 +658,10 @@ fn seed_dispatch_child(
                 claimed_files: prepared_context.claimed_files,
                 conflict_summary: prepared_context.conflict_summary,
             },
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
             events,
             occurred_at_ms: current_time_ms(),
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("run should seed");
     execution

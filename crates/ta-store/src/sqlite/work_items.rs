@@ -154,9 +154,9 @@ impl SqliteStore {
     }
 }
 
-fn source_kind_storage(kind: ta_work_source::WorkSourceKind) -> &'static str {
+fn source_kind_storage(kind: ta_protocol::wire::WorkSourceKind) -> &'static str {
     match kind {
-        ta_work_source::WorkSourceKind::GitHub => "github",
+        ta_protocol::wire::WorkSourceKind::GitHub => "github",
     }
 }
 

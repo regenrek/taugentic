@@ -58,6 +58,7 @@ fn commit_session_open_rejects_unknown_workspace() {
                 title: "Should fail".to_string(),
                 status: SessionStatus::Idle,
                 workspace_id: unknown_workspace,
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             },
             occurred_at_ms: 1,
         })

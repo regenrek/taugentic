@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::Arc;
 
 use ta_auth_openai::client::ReqwestOAuthHttpClient;
 use ta_protocol::wire::{
@@ -14,9 +13,6 @@ use crate::http::shared_client;
 const OPENAI_CHATGPT_AUTH_METHOD_ID: &str = "openai-chatgpt";
 pub(crate) const OPENAI_PLATFORM_RESPONSES_BASE_URL: &str = "https://api.openai.com/v1";
 pub(crate) const OPENAI_CHATGPT_RESPONSES_BASE_URL: &str = "https://chatgpt.com/backend-api/codex";
-
-static SUBSCRIPTION_AUTHS: OnceLock<Mutex<BTreeMap<AuthProfileId, OpenAiSubscriptionAuth>>> =
-    OnceLock::new();
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct OpenAiAuthRoute {
@@ -117,15 +113,6 @@ pub(crate) fn openai_api_key_profile_error(state: &str) -> String {
 fn subscription_auth(
     auth_profile_id: &AuthProfileId,
 ) -> Result<OpenAiSubscriptionAuth, LlmClientError> {
-    let registry = SUBSCRIPTION_AUTHS.get_or_init(|| Mutex::new(BTreeMap::new()));
-    if let Some(auth) = registry
-        .lock()
-        .expect("OpenAI auth registry should not be poisoned")
-        .get(auth_profile_id)
-        .cloned()
-    {
-        return Ok(auth);
-    }
     let runtime = Handle::try_current().map_err(|error| {
         LlmClientError::ProcessFailed(format!(
             "OpenAI subscription auth requires a Tokio runtime: {error}"
@@ -135,13 +122,7 @@ fn subscription_auth(
         ta_auth_openai::default_store().map_err(|error| LlmClientError::Auth(error.to_string()))?;
     let http: Arc<dyn ta_auth_openai::client::OAuthHttpClient> =
         Arc::new(ReqwestOAuthHttpClient::new(shared_client()));
-    let auth =
-        OpenAiSubscriptionAuth::default_with_store(runtime, store, http, auth_profile_id.clone())?;
-    registry
-        .lock()
-        .expect("OpenAI auth registry should not be poisoned")
-        .insert(auth_profile_id.clone(), auth.clone());
-    Ok(auth)
+    OpenAiSubscriptionAuth::default_with_store(runtime, store, http, auth_profile_id.clone())
 }
 
 fn validate_method(auth_method_id: &AuthMethodId) -> Result<(), LlmClientError> {

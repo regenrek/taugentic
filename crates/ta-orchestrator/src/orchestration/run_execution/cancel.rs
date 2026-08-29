@@ -84,14 +84,8 @@ where
             }
             run_was_running
         };
-        if run_was_running {
-            self.runtime
-                .cancel_live_run(run_id, &session_id)
-                .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
-        }
 
-        let (run, mut events) = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
+        let commit = |store: &mut S| -> Result<(RunProjection, Vec<ta_store::EventRecord>), RunExecutionError> {
             let Some(existing_run) = store.run(run_id)? else {
                 return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
             };
@@ -144,22 +138,47 @@ where
                 status: RunStatus::Cancelled,
                 ..existing_run
             };
-            events.push(DaemonEvent::Run(crate::RunEvent {
-                run_id: run.id.clone(),
-                status: RunStatus::Cancelled,
-                detail: detail.clone(),
-                output_contract: None,
-                recipe_id: recipe_id_for_run(&run),
-                result: None,
-            }));
+            events.push(DaemonEvent::Run(
+                crate::RunEvent::terminal(
+                    run.id.clone(),
+                    RunStatus::Cancelled,
+                    crate::RunStatusReason::new(detail.clone()).expect("cancellation reason"),
+                    None,
+                    recipe_id_for_run(&run),
+                    None,
+                )
+                .expect("cancelled is terminal"),
+            ));
             let committed = store.commit_run_transition(CommitRunTransition {
                 session_id: session_id.clone(),
                 run: run.clone(),
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
                 events,
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })?;
-            (committed.run, committed.events)
+            Ok((committed.run, committed.events))
         };
+        let ((run, mut events), cancelled_handle) = if run_was_running {
+            self.runtime
+                .with_current_terminal_live_generation_lease_and_take_handle(
+                    run_id,
+                    &session_id,
+                    |_generation| {
+                        let mut store =
+                            self.store.lock().expect("app store should not be poisoned");
+                        commit(&mut *store)
+                    },
+                )?
+        } else {
+            let mut store = self.store.lock().expect("app store should not be poisoned");
+            (commit(&mut *store)?, None)
+        };
+        if let Some(handle) = cancelled_handle {
+            handle
+                .cancel()
+                .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+        }
 
         let child_run_ids = self.cancellable_native_child_run_ids(&session_id, &run.id, visited)?;
         for child_run_id in child_run_ids {
@@ -216,6 +235,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, atomic::Ordering};
+
     use super::*;
     use crate::orchestration::run_execution::test_support::*;
     use crate::{DaemonApprovalDecideParams, ListApprovalsQuery};
@@ -223,6 +244,7 @@ mod tests {
         AgentStreamItemId, ApprovalDecision, ApprovalEvent, ApprovalId, ApprovalRequest,
         ApprovalScope, DaemonEvent, RunStatus,
     };
+    use taugentic_agent::ExecutionHandle;
     use taugentic_agent::ExecutionSink;
 
     #[test]
@@ -290,11 +312,20 @@ mod tests {
         let started = ensure_running_run(&app, &execution, &session.id, "Ship app server hard cut");
         let running_run_id = started.id.clone();
 
-        assert!(
-            runtime
-                .run_execution_runtime()
-                .release_live_run(&running_run_id)
-        );
+        let execution_runtime = runtime.run_execution_runtime();
+        let generation = execution_runtime
+            .live_execution_for(&running_run_id)
+            .filter(|live_execution| live_execution.session_id == session.id)
+            .expect("started run should have an execution")
+            .generation;
+        execution_runtime
+            .with_terminal_live_generation_lease_and_take_handle(
+                &running_run_id,
+                &session.id,
+                generation,
+                || Ok(()),
+            )
+            .expect("test terminal lease should retire the owner");
         let error = execution
             .cancel_run(
                 session.id.clone(),
@@ -357,9 +388,9 @@ mod tests {
         assert!(cancelled.events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == second.run.id
-                        && matches!(status, RunStatus::Running | RunStatus::WaitingForApproval)
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &second.run.id
+                        && matches!(event.status(), RunStatus::Running | RunStatus::WaitingForApproval)
             )
         }));
     }

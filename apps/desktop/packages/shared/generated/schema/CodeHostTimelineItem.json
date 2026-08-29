@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actorLogin": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "actorLogin",
+    "summary",
+    "createdAt"
+  ],
+  "title": "CodeHostTimelineItem",
+  "type": "object"
+}

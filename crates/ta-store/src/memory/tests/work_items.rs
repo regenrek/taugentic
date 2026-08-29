@@ -1,4 +1,4 @@
-use ta_work_source::{SourceCursor, WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
+use ta_protocol::wire::{SourceCursor, WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
 
 use super::*;
 use crate::WorkItemRepository;

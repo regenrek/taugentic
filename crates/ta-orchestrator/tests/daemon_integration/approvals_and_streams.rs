@@ -120,9 +120,9 @@ fn real_daemon_reattach_subscribe_from_activity_cursor_only_tails_newer_events()
     let terminal_envelope = read_terminal_run_event(&JsonLineCodec, &mut second_stream, &run.id);
     assert!(matches!(
         terminal_envelope.event,
-        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent { run_id, status, .. })
-            if run_id == run.id
-                && status == ta_protocol::wire::RunStatus::Failed
+        ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == ta_protocol::wire::RunStatus::Failed
     ));
 }
 
@@ -381,10 +381,8 @@ fn real_daemon_restart_reads_store_committed_artifact_list_and_get_for_session_r
                     read_terminal_run_event(&JsonLineCodec, &mut stream, &run.id);
                 assert!(matches!(
                     terminal_envelope.event,
-                    ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent {
-                        status: RunStatus::Failed,
-                        ..
-                    })
+                    ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+                        if event.status() == RunStatus::Failed
                 ));
             }
             status => panic!("unexpected start status for artifact recovery proof: {status:?}"),
@@ -400,6 +398,18 @@ fn real_daemon_restart_reads_store_committed_artifact_list_and_get_for_session_r
     };
 
     force_run_running_in_existing_root_store(&root_dir, &socket_name, &run_id);
+    let artifact_path = artifact_root_for_root(&root_dir, &socket_name)
+        .join("artifacts")
+        .join("run-1")
+        .join("patch.diff");
+    fs::create_dir_all(
+        artifact_path
+            .parent()
+            .expect("artifact fixture should have a parent"),
+    )
+    .expect("artifact fixture directory should create");
+    fs::write(&artifact_path, "diff --git a/file b/file\n+added\n")
+        .expect("artifact fixture should write");
     commit_artifact_in_existing_root_store(
         &root_dir,
         &socket_name,
@@ -408,6 +418,7 @@ fn real_daemon_restart_reads_store_committed_artifact_list_and_get_for_session_r
             session_id: session_id.clone(),
             run_id: run_id.clone(),
             kind: ta_protocol::wire::ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         },
     );
@@ -449,8 +460,14 @@ fn real_daemon_restart_reads_store_committed_artifact_list_and_get_for_session_r
         artifact_id.clone(),
     )
     .expect("artifact should recover after restart");
-    assert_eq!(artifact.id, artifact_id);
-    assert_eq!(artifact.run_id, run_id);
+    assert_eq!(artifact.artifact.id, artifact_id);
+    assert_eq!(artifact.artifact.run_id, run_id);
+    assert_eq!(artifact.artifact.display_name, "patch.diff");
+    assert!(matches!(
+        artifact.content,
+        ta_protocol::wire::BoundedFileContent::Text { text, .. }
+            if text == "diff --git a/file b/file\n+added\n"
+    ));
 
     let _ = fs::remove_dir_all(&root_dir);
 }
@@ -541,11 +558,7 @@ fn real_daemon_restart_fails_checkpointed_running_run() {
     commit_checkpoint_in_existing_root_store(
         &root_dir,
         &socket_name,
-        CheckpointRecord {
-            run_id: run_id.clone(),
-            revision: 1,
-            artifact_path: format!("checkpoints/{}/rev-1.json", run_id.as_str()),
-        },
+        ta_store::test_checkpoint_record(run_id.clone(), 1),
     );
 
     let mut daemon = ManagedDaemon::spawn_in_existing_root(&socket_name, root_dir.clone(), &[]);
@@ -591,10 +604,12 @@ fn real_daemon_restart_fails_checkpointed_running_run() {
     assert!(activity.items.iter().any(|item| {
         matches!(
             &item.event,
-            ta_protocol::wire::DaemonEvent::Run(run_event)
-                if run_event.run_id == run_id
-                    && run_event.status == RunStatus::Failed
-                    && run_event.detail == "daemon restarted while run was active"
+            ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(run_event))
+                if run_event.run_id() == &run_id
+                    && run_event.status() == RunStatus::Failed
+                    && run_event
+                        .reason()
+                        .is_some_and(|reason| reason.as_str() == "daemon restarted while run was active")
         )
     }));
 

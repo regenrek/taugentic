@@ -1,0 +1,26 @@
+[package]
+name = "ta-code-host"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64.workspace = true
+futures-util.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+serde.workspace = true
+serde_json.workspace = true
+ta-host-platform = { path = "../ta-host-platform" }
+ta-protocol = { path = "../ta-protocol" }
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+wiremock = "0.6"
+
+[lints]
+workspace = true

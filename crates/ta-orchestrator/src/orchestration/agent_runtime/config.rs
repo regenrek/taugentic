@@ -1,4 +1,6 @@
-use ta_protocol::wire::{RuntimeProfilePatch, RuntimeProfileSummary};
+use ta_protocol::wire::{
+    RuntimePolicyMode, RuntimeProfileExecutionKind, RuntimeProfilePatch, RuntimeProfileSummary,
+};
 
 use crate::orchestration::agent_runtime::{
     service::AgentRuntimeServiceError, strategy_registry::StrategyRegistry,
@@ -30,6 +32,13 @@ pub(crate) fn apply_runtime_profile_patch(
         updated.display_name = trimmed.to_string();
     }
     if let Some(policy_mode) = patch.policy_mode {
+        if updated.execution_kind == RuntimeProfileExecutionKind::RealtimeVoice
+            && policy_mode != RuntimePolicyMode::Deny
+        {
+            return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+                "realtime voice profiles must deny agent approval dispatch".to_string(),
+            ));
+        }
         updated.policy_mode = policy_mode;
     }
 
@@ -43,6 +52,13 @@ pub(crate) fn validate_runtime_profile(
     registry: &StrategyRegistry,
 ) -> Result<RuntimeProfileSummary, AgentRuntimeServiceError> {
     validate_provider_exists(registry, &profile.provider_id)?;
+    if profile.execution_kind == RuntimeProfileExecutionKind::RealtimeVoice
+        && profile.policy_mode != RuntimePolicyMode::Deny
+    {
+        return Err(AgentRuntimeServiceError::InvalidAgentRuntimeConfig(
+            "realtime voice profiles must deny agent approval dispatch".to_string(),
+        ));
+    }
     Ok(profile.clone())
 }
 

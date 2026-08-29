@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "GitCheckpointPhase": {
+      "enum": [
+        "beforeTurn",
+        "afterTurn"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checkpointId": {
+      "type": "string"
+    },
+    "createdAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "phase": {
+      "$ref": "#/$defs/GitCheckpointPhase"
+    },
+    "revision": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "checkpointId",
+    "workspaceId",
+    "runId",
+    "revision",
+    "phase",
+    "createdAtMs"
+  ],
+  "title": "GitCheckpointSummary",
+  "type": "object"
+}

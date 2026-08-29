@@ -11,10 +11,40 @@ use super::AppDeferredMutationResult;
 
 #[derive(Debug, Error)]
 pub enum AppServiceError {
+    #[error("system clock is before unix epoch")]
+    SystemClockBeforeUnixEpoch,
     #[error(transparent)]
     Store(#[from] StoreError),
+    #[error(transparent)]
+    CodeHost(#[from] ta_code_host::CodeHostError),
+    #[error("code host account does not exist")]
+    CodeHostAccountNotFound,
+    #[error("code host account belongs to another principal")]
+    CodeHostAccountForbidden,
+    #[error("code host account profile name is empty, duplicated, or too large")]
+    CodeHostAccountDisplayNameInvalid,
+    #[error("repository is not attached to the selected project workspace")]
+    CodeHostRepositoryNotInWorkspace,
+    #[error("code host remote does not exist in the selected project workspace")]
+    CodeHostRemoteNotFound,
+    #[error("code host mutation is rejected while this workspace has an active run")]
+    CodeHostWorkspaceRunActive,
+    #[error("code host push confirmation is invalid, expired, or already consumed")]
+    CodeHostPushTokenInvalid,
+    #[error("repository or remote changed after push confirmation")]
+    CodeHostPushStateChanged,
     #[error("session title must not be empty")]
     EmptySessionTitle,
+    #[error("plugin package is invalid")]
+    PluginPackageInvalid,
+    #[error("plugin package changed after inspection")]
+    PluginInspectionStale,
+    #[error("plugin capability grants are invalid")]
+    PluginCapabilityGrantInvalid,
+    #[error("plugin package staging failed")]
+    PluginStageFailed,
+    #[error("plugin installation does not exist")]
+    PluginInstallationNotFound,
     #[error("daemon.session.open requires a workspace selector; call daemon.workspace.open first")]
     #[allow(dead_code)]
     SessionWorkspaceMissing,
@@ -29,8 +59,75 @@ pub enum AppServiceError {
     #[error("workspace permission probe failed for {path}: {reason}")]
     WorkspacePermissionDenied { path: String, reason: String },
     #[error("workspace symlink escapes allowed root: {0}")]
-    #[allow(dead_code)]
     WorkspaceSymlinkEscape(String),
+    #[error("workspace file path is invalid: {path}")]
+    WorkspaceFileInvalidPath { path: String },
+    #[error("workspace file does not exist: {0}")]
+    WorkspaceFileNotFound(String),
+    #[error("workspace path is not a regular file: {0}")]
+    WorkspaceFileNotRegular(String),
+    #[error("workspace file access through a symlink is not allowed: {0}")]
+    WorkspaceFileSymlinkRejected(String),
+    #[error("workspace file exceeds the {max_bytes}-byte bound: {path}")]
+    WorkspaceFileTooLarge { path: String, max_bytes: u64 },
+    #[error("workspace file kind or encoding is unsupported: {0}")]
+    WorkspaceFileUnsupportedKind(String),
+    #[error("workspace PDF is invalid or cannot be rendered: {0}")]
+    WorkspaceFileInvalidPdf(String),
+    #[error("workspace PDF page {page_index} is outside the {page_count}-page document: {path}")]
+    WorkspaceFilePdfPageOutOfRange {
+        path: String,
+        page_index: u32,
+        page_count: u32,
+    },
+    #[error("workspace file changed since it was loaded: {0}")]
+    WorkspaceFileStale(String),
+    #[error("workspace file attachment count exceeds the {max}-file bound")]
+    WorkspaceFileAttachmentLimitExceeded { max: usize },
+    #[error("workspace file is attached more than once: {0}")]
+    WorkspaceFileAttachmentDuplicate(String),
+    #[error("workspace file save requires explicit user approval")]
+    WorkspaceFileWriteApprovalRequired,
+    #[error("workspace file {action} failed for {path}: {reason}")]
+    WorkspaceFileIo {
+        path: String,
+        action: String,
+        reason: String,
+    },
+    #[error("artifact content is unavailable: {reason}")]
+    ArtifactContentUnavailable { reason: String },
+    #[error("terminal spawn requires explicit user approval")]
+    TerminalApprovalRequired,
+    #[error("terminal size is invalid: {rows} rows by {cols} columns")]
+    TerminalInvalidSize { rows: u16, cols: u16 },
+    #[error("terminal input is invalid")]
+    TerminalInvalidInput,
+    #[error("terminal does not exist: {0}")]
+    TerminalNotFound(String),
+    #[error("terminal is not running: {0}")]
+    TerminalNotRunning(String),
+    #[error("terminal operation failed: {0}")]
+    TerminalOperationFailed(String),
+    #[error("workspace is not backed by a Git repository")]
+    GitRepositoryRequired,
+    #[error("git path is invalid: {0}")]
+    GitPathInvalid(String),
+    #[error("git output exceeded its production bound")]
+    GitOutputTooLarge,
+    #[error("git operation failed: {0}")]
+    GitOperationFailed(String),
+    #[error("git commit message is empty or too large")]
+    GitCommitMessageInvalid,
+    #[error("git checkpoint does not exist: {0}")]
+    GitCheckpointNotFound(String),
+    #[error("no complete last-turn checkpoint pair exists")]
+    GitLastTurnUnavailable,
+    #[error("git checkpoint revert token is invalid, expired, or already consumed")]
+    GitRevertTokenInvalid,
+    #[error("git repository changed after revert confirmation")]
+    GitRevertStateChanged,
+    #[error("git checkpoint revert is rejected while this workspace has an active run")]
+    GitWorkspaceRunActive,
     #[error("workspace is outside allowed roots: {0}")]
     #[allow(dead_code)]
     WorkspaceOutsideAllowedRoots(String),
@@ -55,6 +152,8 @@ pub enum AppServiceError {
     InvalidClientCredentialWhitespace,
     #[error("session does not exist: {0}")]
     SessionNotFound(String),
+    #[error("project does not exist: {0}")]
+    ProjectNotFound(String),
     #[error("session authority rejected: {0}")]
     SessionAuthorityRejected(String),
     #[error("activity page limit must be greater than zero")]
@@ -83,6 +182,10 @@ pub enum AppServiceError {
     RunNotNativeHarness(String),
     #[error("run is not resumable: {0}")]
     RunNotResumable(String),
+    #[error("run did not fail with typed account exhaustion: {0}")]
+    RunNotAccountExhausted(String),
+    #[error("replacement account must differ from the exhausted route account: {0}")]
+    ReplacementAuthProfileMustDiffer(String),
     #[error("run fork point does not exist: {0}")]
     RunForkPointNotFound(String),
     #[error("run fork point is not a completed turn boundary: {0}")]
@@ -117,6 +220,10 @@ pub enum AppServiceError {
     ReceiptSessionMismatch(String),
     #[error("work item does not exist: {0}")]
     WorkItemNotFound(String),
+    #[error("work item is no longer available: {0}")]
+    WorkItemNotAvailable(String),
+    #[error("work item trigger is already in progress: {0}")]
+    WorkItemTriggerInFlight(String),
     #[error("background workflow is not loaded; background orchestrator is idle")]
     WorkflowNotLoaded,
     #[error(transparent)]
@@ -177,6 +284,12 @@ pub(super) fn map_run_execution_error(error: RunExecutionError) -> AppServiceErr
             AppServiceError::RunNotNativeHarness(run_id)
         }
         RunExecutionError::RunNotResumable(run_id) => AppServiceError::RunNotResumable(run_id),
+        RunExecutionError::RunNotAccountExhausted(run_id) => {
+            AppServiceError::RunNotAccountExhausted(run_id)
+        }
+        RunExecutionError::ReplacementAuthProfileMustDiffer(profile_id) => {
+            AppServiceError::ReplacementAuthProfileMustDiffer(profile_id)
+        }
         RunExecutionError::RunForkPointNotFound(run_id) => {
             AppServiceError::RunForkPointNotFound(run_id)
         }
@@ -186,6 +299,12 @@ pub(super) fn map_run_execution_error(error: RunExecutionError) -> AppServiceErr
         RunExecutionError::RunNotQueued(run_id) => AppServiceError::RunNotQueued(run_id),
         RunExecutionError::RunNotCancellable(run_id) => AppServiceError::RunNotCancellable(run_id),
         RunExecutionError::RunQueueFull(session_id) => AppServiceError::RunQueueFull(session_id),
+        RunExecutionError::CheckpointFailed(detail) => AppServiceError::GitOperationFailed(detail),
+        RunExecutionError::UnvalidatedWorkspaceFileAttachments => {
+            AppServiceError::WorkspaceFileInvalidPath {
+                path: "unvalidated workspace file attachment".to_string(),
+            }
+        }
         RunExecutionError::OutputContractViolation(detail) => {
             AppServiceError::OutputContractViolation(detail)
         }

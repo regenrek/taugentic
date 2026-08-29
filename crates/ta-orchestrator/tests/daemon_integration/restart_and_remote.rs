@@ -1,11 +1,11 @@
 use crate::support::*;
 
 #[test]
-fn real_daemon_restart_allows_approval_decide_and_clears_pending_state() {
+fn real_daemon_restart_preserves_pending_approval_and_waiting_run() {
     let socket_name = unique_name("ta-daemon-it-restart-approval-decide");
     let root_dir = test_temp_dir("ta-daemon-it-restart-approval-root");
 
-    let (session_id, session_authority, client_credential, run_id) = {
+    let (session_id, session_authority, client_credential, run_id, approval_id) = {
         let mut daemon = ManagedDaemon::spawn_in_existing_root(&socket_name, root_dir.clone(), &[]);
         daemon
             .wait_for_status()
@@ -36,7 +36,7 @@ fn real_daemon_restart_allows_approval_decide_and_clears_pending_state() {
         let approval_envelope: DaemonEventEnvelope =
             serde_json::from_value(approval_event.params.expect("event params should exist"))
                 .expect("daemon event params should deserialize");
-        let _approval_id = match approval_envelope.event {
+        let approval_id = match approval_envelope.event {
             ta_protocol::wire::DaemonEvent::Approval(
                 ta_protocol::wire::ApprovalEvent::Requested { request },
             ) => request.id,
@@ -49,6 +49,7 @@ fn real_daemon_restart_allows_approval_decide_and_clears_pending_state() {
             opened.session_authority,
             initialized.client_credential,
             run.id,
+            approval_id,
         )
     };
 
@@ -89,7 +90,9 @@ fn real_daemon_restart_allows_approval_decide_and_clears_pending_state() {
         Some(run_id.clone()),
         None,
     );
-    assert!(approvals.items.is_empty());
+    assert_eq!(approvals.items.len(), 1);
+    assert_eq!(approvals.items[0].id, approval_id);
+    assert_eq!(approvals.items[0].run_id, run_id);
     assert!(approvals.latest_cursor.is_some());
 
     let run = get_run(
@@ -98,15 +101,15 @@ fn real_daemon_restart_allows_approval_decide_and_clears_pending_state() {
         session_id,
         run_id.clone(),
     )
-    .expect("run should recover after approval decide");
+    .expect("waiting run should recover after daemon restart");
     assert_eq!(run.summary.id, run_id);
-    assert_eq!(run.summary.status, RunStatus::Failed);
+    assert_eq!(run.summary.status, RunStatus::WaitingForApproval);
 
     let _ = fs::remove_dir_all(&root_dir);
 }
 
 #[test]
-fn real_daemon_restart_subscribe_from_persisted_activity_cursor_only_tails_newer_events() {
+fn real_daemon_restart_preserves_activity_cursor_and_rejects_old_daemon_cursor() {
     let socket_name = unique_name("ta-daemon-it-restart-subscribe-cursor");
     let root_dir = test_temp_dir("ta-daemon-it-restart-subscribe-root");
 
@@ -114,8 +117,8 @@ fn real_daemon_restart_subscribe_from_persisted_activity_cursor_only_tails_newer
         session_id,
         session_authority,
         client_credential,
-        _run_id,
-        _approval_id,
+        run_id,
+        approval_id,
         stale_cursor,
         stale_sequence,
     ) = {
@@ -218,11 +221,31 @@ fn real_daemon_restart_subscribe_from_persisted_activity_cursor_only_tails_newer
         latest_cursor.daemon_instance_id,
         stale_cursor.daemon_instance_id
     );
-    assert_eq!(latest_cursor.sequence, stale_sequence + 3);
+    assert_eq!(latest_cursor.sequence, stale_sequence);
+
+    let approvals = list_approvals(
+        &mut stream,
+        RequestId::Integer(8),
+        session_id.clone(),
+        Some(run_id.clone()),
+        None,
+    );
+    assert_eq!(approvals.items.len(), 1);
+    assert_eq!(approvals.items[0].id, approval_id);
+    assert_eq!(approvals.items[0].run_id, run_id);
+
+    let run = get_run(
+        &mut stream,
+        RequestId::Integer(9),
+        session_id.clone(),
+        run_id,
+    )
+    .expect("waiting run should survive daemon restart");
+    assert_eq!(run.summary.status, RunStatus::WaitingForApproval);
 
     let replay = subscribe_events_after_cursor(
         &mut stream,
-        RequestId::Integer(8),
+        RequestId::Integer(10),
         &[DaemonEventKind::Run, DaemonEventKind::Approval],
         Some(stale_cursor.clone()),
     );
@@ -237,7 +260,7 @@ fn real_daemon_restart_subscribe_from_persisted_activity_cursor_only_tails_newer
 }
 
 #[test]
-fn real_daemon_remote_websocket_restart_subscribe_from_persisted_cursor_only_tails_newer_events() {
+fn real_daemon_remote_restart_preserves_activity_cursor_and_rejects_old_daemon_cursor() {
     let socket_name = unique_name("ta-daemon-it-remote-ws-restart-subscribe");
     let root_dir = test_temp_dir("ta-daemon-it-remote-ws-restart-root");
     let remote_bind = reserve_tcp_address();
@@ -252,8 +275,8 @@ fn real_daemon_remote_websocket_restart_subscribe_from_persisted_cursor_only_tai
         session_id,
         session_authority,
         client_credential,
-        _run_id,
-        _approval_id,
+        run_id,
+        approval_id,
         stale_cursor,
         stale_sequence,
     ) = {
@@ -345,11 +368,54 @@ fn real_daemon_remote_websocket_restart_subscribe_from_persisted_cursor_only_tai
         latest_cursor.daemon_instance_id,
         stale_cursor.daemon_instance_id
     );
-    assert_eq!(latest_cursor.sequence, stale_sequence + 3);
+    assert_eq!(latest_cursor.sequence, stale_sequence);
+
+    write_remote_request(
+        &mut socket,
+        JsonRpcRequest::new(
+            RequestId::Integer(8),
+            METHOD_DAEMON_APPROVAL_LIST,
+            Some(
+                serde_json::to_value(ListApprovalsQuery {
+                    run_id: Some(run_id.clone()),
+                    approval_id: None,
+                })
+                .expect("remote approval list params should serialize"),
+            ),
+        ),
+    );
+    let approvals: ApprovalSnapshotResult =
+        serde_json::from_value(read_remote_response(&mut socket).result)
+            .expect("remote approval list result should deserialize");
+    assert_eq!(approvals.items.len(), 1);
+    assert_eq!(approvals.items[0].id, approval_id);
+    assert_eq!(approvals.items[0].run_id, run_id);
+
+    write_remote_request(
+        &mut socket,
+        JsonRpcRequest::new(
+            RequestId::Integer(9),
+            METHOD_DAEMON_RUN_GET,
+            Some(
+                serde_json::to_value(GetRunQuery {
+                    run_id: run_id.clone(),
+                })
+                .expect("remote run get params should serialize"),
+            ),
+        ),
+    );
+    let run: Option<RunDetail> = serde_json::from_value(read_remote_response(&mut socket).result)
+        .expect("remote run get result should deserialize");
+    assert_eq!(
+        run.expect("waiting run should survive remote daemon restart")
+            .summary
+            .status,
+        RunStatus::WaitingForApproval
+    );
 
     let replay = subscribe_remote_events_after_cursor(
         &mut socket,
-        8,
+        10,
         &[DaemonEventKind::Run, DaemonEventKind::Approval],
         Some(stale_cursor.clone()),
     );

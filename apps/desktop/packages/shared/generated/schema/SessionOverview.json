@@ -1,5 +1,28 @@
 {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
     "AgentStreamEvent": {
       "properties": {
         "fragmentSequence": {
@@ -399,22 +422,55 @@
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
       ],
       "type": "string"
     },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "ArtifactSummary": {
       "properties": {
+        "displayName": {
+          "type": "string"
+        },
         "id": {
           "type": "string"
         },
         "kind": {
           "$ref": "#/$defs/ArtifactKind"
         },
-        "runId": {
-          "type": "string"
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
         },
-        "storagePath": {
+        "runId": {
           "type": "string"
         }
       },
@@ -422,9 +478,18 @@
         "id",
         "runId",
         "kind",
-        "storagePath"
+        "metadata",
+        "displayName"
       ],
       "type": "object"
+    },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
     },
     "BudgetBreach": {
       "properties": {
@@ -777,6 +842,63 @@
         "medium",
         "high",
         "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     },
@@ -1335,49 +1457,24 @@
       "type": "string"
     },
     "RunEvent": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "outputContract": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/OutputContractKind"
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "status",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "payload": {
+              "$ref": "#/$defs/RunStatusEvent"
             }
-          ]
-        },
-        "recipeId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "result": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapsuleResult"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "runId": {
-          "type": "string"
-        },
-        "status": {
-          "$ref": "#/$defs/RunStatus"
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "runId",
-        "status",
-        "detail"
-      ],
-      "type": "object"
+      ]
     },
     "RunFailureKind": {
       "enum": [
@@ -1415,6 +1512,63 @@
         "cancelled"
       ],
       "type": "string"
+    },
+    "RunStatusEvent": {
+      "properties": {
+        "authProfileExhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapsuleResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        }
+      },
+      "required": [
+        "runId",
+        "status"
+      ],
+      "type": "object"
     },
     "RunSummary": {
       "properties": {
@@ -1462,6 +1616,39 @@
       ],
       "type": "object"
     },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionOverviewLaneStatus": {
       "enum": [
         "idle",
@@ -1488,6 +1675,9 @@
         "id": {
           "type": "string"
         },
+        "nextRunSelection": {
+          "$ref": "#/$defs/SessionNextRunSelection"
+        },
         "status": {
           "$ref": "#/$defs/SessionStatus"
         },
@@ -1498,7 +1688,8 @@
       "required": [
         "id",
         "title",
-        "status"
+        "status",
+        "nextRunSelection"
       ],
       "type": "object"
     },

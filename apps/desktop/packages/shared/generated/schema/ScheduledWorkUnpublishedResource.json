@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+  "properties": {
+    "branch": {
+      "type": "string"
+    },
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy"
+    },
+    "parentRepo": {
+      "type": "string"
+    },
+    "worktreePath": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parentRepo",
+    "worktreePath",
+    "branch",
+    "cleanupPolicy"
+  ],
+  "title": "ScheduledWorkUnpublishedResource",
+  "type": "object"
+}

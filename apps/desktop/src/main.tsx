@@ -1,13 +1,16 @@
-import { render } from "@gpuix/react"
+import { render } from "@regenrek/gpuix-react"
 import { QueryClientProvider } from "@tanstack/react-query"
 
 import { App } from "./app/App.js"
-import { startWorkspaceShell } from "./features/runtime/workspace-shell-machine.js"
-import { navigationQueryClient } from "./platform/daemon/navigation-query.js"
+import { desktopRuntime, startWorkspaceShell } from "./features/runtime/workspace-shell-machine.js"
+import { desktopQueryClient } from "./platform/daemon/query-client.js"
+import { desktopSettings } from "./platform/settings/desktop-settings.js"
+import { nativeDesktopSettingsPersistence } from "./platform/settings/native-desktop-settings.js"
 
 void startWorkspaceShell()
+void desktopSettings.initialize(nativeDesktopSettingsPersistence(desktopRuntime.bridge))
 
-render(<QueryClientProvider client={navigationQueryClient}><App /></QueryClientProvider>, {
+render(<QueryClientProvider client={desktopQueryClient}><App /></QueryClientProvider>, {
   title: "Taugentic",
   width: 1440,
   height: 900,

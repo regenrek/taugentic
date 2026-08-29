@@ -1,16 +1,15 @@
 import { assign, createActor, createMachine } from "xstate"
 
 import type {
-  ApprovalDecision,
-  ApprovalId,
-  ApprovalRequest,
-  ApprovalSnapshotResult,
-  DaemonApprovalDecideResult,
+  ContinueRunRequest,
+  JoinRunResult,
   DaemonProjectOpenResult,
   DaemonSessionOpenParams,
   DesktopDaemonLifecycleProjection,
   AgentRuntimeSelection,
   AgentRuntimeSnapshot,
+  DaemonNavigationIntent,
+  AuthProfilePreferences,
   AuthProfileLoginResult,
   ProjectId,
   RunEventDelta,
@@ -19,13 +18,25 @@ import type {
   SessionId,
   SessionSummary,
   StartRunCommand,
+  SpawnRunRequest,
   SubscribeRunEventsResult,
+  WorkspaceFileAttachmentRequest,
+  VoiceEvent,
+  VoicePermissionState,
+  WorkItemKey,
 } from "@taugentic/desktop-protocol"
 
-import { invalidateNavigation, navigationQuery, navigationQueryClient, navigationQueryKey } from "../../platform/daemon/navigation-query.js"
+import { invalidateNavigation, navigationQuery, navigationQueryKey, updateNavigationSnapshot } from "../../platform/daemon/navigation-query.js"
+import { desktopQueryClient } from "../../platform/daemon/query-client.js"
+import { invalidateTranscript, transcriptHasCommittedAssistant, transcriptQueryKey } from "../../platform/daemon/transcript-query.js"
+import { conversationBranchesQueryKey, invalidateConversationBranchesForLifecycleRecovery } from "../../platform/daemon/conversation-branches-query.js"
+import { runActivityQueryRoot } from "../../platform/daemon/run-activity-query.js"
+import { workItemsQueryKey } from "../../platform/daemon/work-items-query.js"
 import { createDesktopRuntime } from "../../platform/daemon/desktop-runtime.js"
+import { observeVoice, requestVoicePermission as requestNativeVoicePermission } from "../../platform/daemon/voice-query.js"
 import { compareProtocolU64, decodeProtocolJson } from "../../platform/daemon/protocol-json.js"
 import { sidebarReduce, type SidebarAction, type SidebarState } from "../sidebar/sidebar.js"
+import type { FocusablePanelId } from "../commands/registry.js"
 import type { AssistantMessage } from "../workspace-layout/panels.js"
 
 type ShellPhase = "connecting" | "ready" | "unavailable" | "closed"
@@ -38,16 +49,20 @@ type ShellContext = {
   sidebar: SidebarState
   selectedProjectId?: ProjectId
   objective: string
+  attachments: readonly WorkspaceFileAttachmentRequest[]
   messages: readonly AssistantMessage[]
-  approvals: readonly ApprovalRequest[]
   runDeltas: readonly RunEventDelta[]
   activeRun?: string
+  transcriptRunId?: string
   runStatus?: RunStatus
   agentRuntime?: AgentRuntimeSnapshot
-  runtimeDraft?: Partial<AgentRuntimeSelection>
+  pendingSelection?: Partial<AgentRuntimeSelection>
   pendingAuthMethodIds: readonly string[]
   error?: string
-  focusPanelId?: "conversation" | "activity"
+  focusPanelId?: FocusablePanelId
+  closedSideChatIds: readonly string[]
+  voicePermission: VoicePermissionState
+  voice?: VoiceEvent
 }
 
 type ShellEvent =
@@ -57,22 +72,28 @@ type ShellEvent =
   | { type: "NAVIGATION_ERROR" }
   | { type: "CLOSED" }
   | { type: "SET_OBJECTIVE"; objective: string }
+  | { type: "TOGGLE_ATTACHMENT"; attachment: WorkspaceFileAttachmentRequest }
+  | { type: "REMOVE_ATTACHMENT"; path: string }
   | { type: "SIDEBAR"; action: SidebarAction }
   | { type: "SELECTED"; sessionId: SessionId }
+  | { type: "CONVERSATION_ARCHIVED"; sessionId: SessionId }
   | { type: "PROJECT_SELECTED"; projectId: ProjectId }
   | { type: "RUN_STARTED"; runId: string }
-  | { type: "RUN_DELTAS"; deltas: readonly RunEventDelta[] }
-  | { type: "APPROVALS_READY"; approvals: readonly ApprovalRequest[] }
-  | { type: "APPROVAL_DECIDED"; approvalId: ApprovalId; runStatus: RunStatus }
+  | { type: "TRANSCRIPT_COMMITTED"; runId: string }
+  | { type: "RUN_DELTAS"; runId: string; deltas: readonly RunEventDelta[] }
   | { type: "AGENT_RUNTIME_READY"; snapshot: AgentRuntimeSnapshot }
   | { type: "RUNTIME_DRAFT"; draft: Partial<AgentRuntimeSelection> }
   | { type: "AUTH_LOGIN_STARTED"; authMethodId: string }
   | { type: "AUTH_LOGIN_FINISHED"; authMethodId: string }
   | { type: "AUTH_LOGIN_FAILED"; message: string }
-  | { type: "RUN_CANCELLED" }
-  | { type: "RUN_STREAM_ERROR"; message: string }
+  | { type: "RUN_CANCELLED"; runId: string }
+  | { type: "SIDE_CHAT_OPENED"; runId: string }
+  | { type: "SIDE_CHAT_CLOSED"; runId: string }
+  | { type: "RUN_STREAM_ERROR"; runId: string; message: string }
   | { type: "ERROR"; message: string }
-  | { type: "FOCUS_PANEL"; panelId: "conversation" | "activity" }
+  | { type: "FOCUS_PANEL"; panelId: FocusablePanelId }
+  | { type: "VOICE_PERMISSION"; permission: VoicePermissionState }
+  | { type: "VOICE_STATE"; voice: VoiceEvent }
 
 const initialSidebar: SidebarState = { view: "spaces", filter: "", expandedSpaceIds: [] }
 
@@ -89,7 +110,7 @@ function assistantMessages(deltas: readonly RunEventDelta[]): AssistantMessage[]
     if (!("agentStream" in event)) continue
     const stream = event.agentStream
     if (stream.frame.kind !== "assistantMessageDelta") continue
-    const id = String(stream.itemId ?? stream.turnId ?? stream.runId)
+    const id = String(stream.turnId ?? stream.itemId ?? stream.runId)
     const current = messages.get(id)
     messages.set(id, { id, text: `${current?.text ?? ""}${stream.frame.delta}` })
   }
@@ -99,7 +120,7 @@ function assistantMessages(deltas: readonly RunEventDelta[]): AssistantMessage[]
 function statusForDeltas(deltas: readonly RunEventDelta[]): RunStatus | undefined {
   for (let index = deltas.length - 1; index >= 0; index -= 1) {
     const event = deltas[index]?.event
-    if (event && "run" in event) return event.run.status
+    if (event && "run" in event && event.run.kind === "status") return event.run.payload.status
   }
   return undefined
 }
@@ -110,7 +131,7 @@ function isTerminalStatus(status: RunStatus | undefined): boolean {
 
 export const workspaceShellMachine = createMachine({
   types: {} as { context: ShellContext; events: ShellEvent },
-  context: { phase: "connecting", navigation: "idle", sidebar: initialSidebar, objective: "", messages: [], approvals: [], runDeltas: [], pendingAuthMethodIds: [] },
+  context: { phase: "connecting", navigation: "idle", sidebar: initialSidebar, objective: "", attachments: [], messages: [], runDeltas: [], pendingAuthMethodIds: [], closedSideChatIds: [], voicePermission: "notDetermined" },
   on: {
     LIFECYCLE: {
       guard: ({ context }) => context.phase !== "closed",
@@ -145,47 +166,57 @@ export const workspaceShellMachine = createMachine({
         navigationError: "Navigation could not be refreshed. Your connection is still available.",
       }),
     },
-    CLOSED: { actions: assign({ phase: "closed", activeRun: () => undefined, error: () => undefined, navigationError: () => undefined }) },
+    CLOSED: { actions: assign({ phase: "closed", activeRun: () => undefined, transcriptRunId: () => undefined, error: () => undefined, navigationError: () => undefined }) },
     SET_OBJECTIVE: { guard: ({ context }) => context.phase !== "closed", actions: assign({ objective: ({ event }) => event.objective }) },
+    TOGGLE_ATTACHMENT: {
+      guard: ({ context }) => context.phase === "ready" && !context.activeRun,
+      actions: assign({ attachments: ({ context, event }) => (
+        context.attachments.some((attachment) => attachment.path === event.attachment.path)
+          ? context.attachments.filter((attachment) => attachment.path !== event.attachment.path)
+          : [...context.attachments, event.attachment]
+      ) }),
+    },
+    REMOVE_ATTACHMENT: {
+      guard: ({ context }) => context.phase === "ready" && !context.activeRun,
+      actions: assign({ attachments: ({ context, event }) => context.attachments.filter((attachment) => attachment.path !== event.path) }),
+    },
     SIDEBAR: { guard: ({ context }) => context.phase !== "closed", actions: assign({ sidebar: ({ context, event }) => sidebarReduce(context.sidebar, event.action) }) },
-    SELECTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ sidebar: ({ context, event }) => ({ ...context.sidebar, selectedConversationId: event.sessionId }), messages: () => [], approvals: () => [], runDeltas: () => [], activeRun: () => undefined, runStatus: () => undefined, error: () => undefined, focusPanelId: () => "conversation" }) },
-    PROJECT_SELECTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ selectedProjectId: ({ event }) => event.projectId, sidebar: ({ context }) => ({ ...context.sidebar, selectedConversationId: undefined }), messages: () => [], approvals: () => [], runDeltas: () => [], activeRun: () => undefined, runStatus: () => undefined, error: () => undefined }) },
-    RUN_STARTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ activeRun: ({ event }) => event.runId, runStatus: () => "running", messages: () => [], approvals: () => [], runDeltas: () => [], error: () => undefined, objective: () => "" }) },
-    RUN_DELTAS: { guard: ({ context }) => context.phase !== "closed", actions: assign(({ context, event }) => {
+    SELECTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ sidebar: ({ context, event }) => ({ ...context.sidebar, selectedConversationId: event.sessionId }), attachments: () => [], messages: () => [], runDeltas: () => [], activeRun: () => undefined, transcriptRunId: () => undefined, runStatus: () => undefined, closedSideChatIds: () => [], error: () => undefined, focusPanelId: () => "conversation" }) },
+    CONVERSATION_ARCHIVED: {
+      guard: ({ context, event }) => context.phase === "ready" && context.sidebar.selectedConversationId === event.sessionId,
+      actions: assign({
+        sidebar: ({ context }) => ({ ...context.sidebar, selectedConversationId: undefined }),
+        attachments: () => [], messages: () => [], runDeltas: () => [], activeRun: () => undefined,
+        transcriptRunId: () => undefined, runStatus: () => undefined, closedSideChatIds: () => [],
+        error: () => undefined, focusPanelId: () => undefined,
+      }),
+    },
+    PROJECT_SELECTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ selectedProjectId: ({ event }) => event.projectId, sidebar: ({ context }) => ({ ...context.sidebar, selectedConversationId: undefined }), attachments: () => [], messages: () => [], runDeltas: () => [], activeRun: () => undefined, transcriptRunId: () => undefined, runStatus: () => undefined, closedSideChatIds: () => [], error: () => undefined }) },
+    RUN_STARTED: { guard: ({ context }) => context.phase === "ready", actions: assign({ activeRun: ({ event }) => event.runId, transcriptRunId: ({ event }) => event.runId, runStatus: () => "running", attachments: () => [], messages: () => [], runDeltas: () => [], error: () => undefined, objective: () => "" }) },
+    TRANSCRIPT_COMMITTED: {
+      guard: ({ context, event }) => context.transcriptRunId === event.runId && context.activeRun !== event.runId,
+      actions: assign({ transcriptRunId: () => undefined, messages: () => [], runDeltas: () => [] }),
+    },
+    RUN_DELTAS: { guard: ({ context, event }) => context.phase !== "closed" && context.transcriptRunId === event.runId, actions: assign(({ context, event }) => {
       const runDeltas = mergeRunDeltas(context.runDeltas, event.deltas)
       const runStatus = statusForDeltas(runDeltas) ?? context.runStatus
       return {
         runDeltas,
         runStatus,
         activeRun: isTerminalStatus(runStatus) ? undefined : context.activeRun,
-        approvals: isTerminalStatus(runStatus) ? [] : context.approvals,
         messages: assistantMessages(runDeltas),
       }
     }) },
-    APPROVALS_READY: {
-      guard: ({ context }) => context.phase !== "closed",
-      actions: assign({ approvals: ({ event }) => event.approvals }),
-    },
-    APPROVAL_DECIDED: {
-      guard: ({ context }) => context.phase !== "closed",
-      actions: assign(({ context, event }) => ({
-        approvals: isTerminalStatus(event.runStatus)
-          ? []
-          : context.approvals.filter((approval) => approval.id !== event.approvalId),
-        runStatus: event.runStatus,
-        activeRun: isTerminalStatus(event.runStatus) ? undefined : context.activeRun,
-      })),
-    },
     AGENT_RUNTIME_READY: { guard: ({ context }) => context.phase !== "closed", actions: assign({ agentRuntime: ({ event }) => event.snapshot }) },
     RUNTIME_DRAFT: {
       guard: ({ context }) => context.phase === "ready",
       actions: assign({
-        runtimeDraft: ({ context, event }) => {
+        pendingSelection: ({ context, event }) => {
           const selectedRuntimeProfileId = event.draft.runtimeProfileId
-          if (selectedRuntimeProfileId && selectedRuntimeProfileId !== context.runtimeDraft?.runtimeProfileId) {
+          if (selectedRuntimeProfileId && selectedRuntimeProfileId !== context.pendingSelection?.runtimeProfileId) {
             return { runtimeProfileId: selectedRuntimeProfileId }
           }
-          return { ...context.runtimeDraft, ...event.draft }
+          return { ...context.pendingSelection, ...event.draft }
         },
       }),
     },
@@ -195,10 +226,30 @@ export const workspaceShellMachine = createMachine({
       return index === -1 ? context.pendingAuthMethodIds : context.pendingAuthMethodIds.filter((_, candidateIndex) => candidateIndex !== index)
     } }) },
     AUTH_LOGIN_FAILED: { guard: ({ context }) => context.phase !== "closed", actions: assign({ error: ({ event }) => event.message }) },
-    RUN_CANCELLED: { guard: ({ context }) => context.phase !== "closed", actions: assign({ activeRun: () => undefined, runStatus: () => "cancelled" }) },
-    RUN_STREAM_ERROR: { guard: ({ context }) => context.phase !== "closed", actions: assign({ error: ({ event }) => event.message }) },
+    RUN_CANCELLED: {
+      guard: ({ context, event }) => context.phase !== "closed" && context.activeRun === event.runId,
+      actions: assign({
+        activeRun: () => undefined,
+        runStatus: () => "cancelled",
+        error: () => undefined,
+      }),
+    },
+    SIDE_CHAT_OPENED: {
+      guard: ({ context }) => context.phase === "ready",
+      actions: assign({ closedSideChatIds: ({ context, event }) => context.closedSideChatIds.filter((runId) => runId !== event.runId), error: () => undefined }),
+    },
+    SIDE_CHAT_CLOSED: {
+      guard: ({ context }) => context.phase !== "closed",
+      actions: assign({ closedSideChatIds: ({ context, event }) => context.closedSideChatIds.includes(event.runId) ? context.closedSideChatIds : [...context.closedSideChatIds, event.runId] }),
+    },
+    RUN_STREAM_ERROR: {
+      guard: ({ context, event }) => context.phase !== "closed" && context.activeRun === event.runId,
+      actions: assign({ error: ({ event }) => event.message }),
+    },
     ERROR: { guard: ({ context }) => context.phase !== "closed", actions: assign({ error: ({ event }) => event.message, activeRun: () => undefined }) },
     FOCUS_PANEL: { guard: ({ context }) => context.phase !== "closed", actions: assign({ focusPanelId: ({ event }) => event.panelId }) },
+    VOICE_PERMISSION: { guard: ({ context }) => context.phase !== "closed", actions: assign({ voicePermission: ({ event }) => event.permission }) },
+    VOICE_STATE: { guard: ({ context }) => context.phase !== "closed", actions: assign({ voice: ({ event }) => event.voice }) },
   },
 })
 
@@ -207,7 +258,11 @@ export const workspaceShell = createActor(workspaceShellMachine)
 let started = false
 let closing = false
 let navigationRequestId = 0
-let approvalRequestId = 0
+let workItemTriggerInFlight = false
+let organizationMutationInFlight = false
+let selectionRequestId = 0
+let startRequestId = 0
+let pendingSelection: { sessionId: SessionId; requestId: number } | undefined
 
 /** The sole lifecycle orchestrator; React only observes its XState snapshot. */
 export async function startWorkspaceShell(): Promise<void> {
@@ -220,6 +275,11 @@ export async function startWorkspaceShell(): Promise<void> {
     workspaceShell.send({ type: "NATIVE_START_REJECTED" })
     return
   }
+  observeVoice(
+    desktopRuntime,
+    (permission) => workspaceShell.send({ type: "VOICE_PERMISSION", permission }),
+    (voice) => workspaceShell.send({ type: "VOICE_STATE", voice }),
+  )
   try {
     await desktopRuntime.subscribeLifecycle((projection) => {
       void receiveLifecycle(projection)
@@ -242,6 +302,10 @@ async function receiveLifecycle(projection: DesktopDaemonLifecycleProjection): P
   } else if (previousNavigation === "idle") {
     await hydrateNavigation(false)
   }
+  const sessionId = workspaceShell.getSnapshot().context.sidebar.selectedConversationId
+  if (sessionId && (projection.invalidated || projection.status === "snapshotRehydrationRequired")) {
+    await invalidateConversationBranchesForLifecycleRecovery(desktopQueryClient, sessionId)
+  }
 }
 
 function isShellReady(): boolean {
@@ -253,7 +317,7 @@ async function hydrateNavigation(invalidate: boolean): Promise<void> {
   try {
     if (invalidate) await invalidateNavigation()
     if (!isShellReady() || requestId !== navigationRequestId) return
-    const navigation = await navigationQueryClient.fetchQuery(navigationQuery(desktopRuntime))
+    const navigation = await desktopQueryClient.fetchQuery(navigationQuery(desktopRuntime))
     if (!isShellReady() || requestId !== navigationRequestId) return
     await hydrateAgentRuntime()
     if (!isShellReady() || requestId !== navigationRequestId) return
@@ -268,9 +332,44 @@ async function hydrateAgentRuntime(): Promise<void> {
   if (isShellReady()) workspaceShell.send({ type: "AGENT_RUNTIME_READY", snapshot })
 }
 
-export function updateRuntimeDraft(draft: Partial<AgentRuntimeSelection>): void {
+export async function updateRuntimeDraft(draft: Partial<AgentRuntimeSelection>): Promise<void> {
   if (!isShellReady()) return
   workspaceShell.send({ type: "RUNTIME_DRAFT", draft })
+  const context = workspaceShell.getSnapshot().context
+  const sessionId = context.sidebar.selectedConversationId
+  const selection = selectedRuntimeSelection(context)
+  if (!sessionId || !selection) return
+  try {
+    const session = decodeProtocolJson<SessionSummary>(await desktopRuntime.bridge.setSessionNextRunSelection(JSON.stringify({
+      selection: { kind: "selected", selection },
+    })))
+    if (!isShellReady() || workspaceShell.getSnapshot().context.sidebar.selectedConversationId !== sessionId) return
+    if (session.nextRunSelection.kind === "selected") {
+      workspaceShell.send({ type: "RUNTIME_DRAFT", draft: session.nextRunSelection.selection })
+    }
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The run route could not be saved for this conversation." })
+  }
+}
+
+function selectedRuntimeSelection(context: ShellContext): AgentRuntimeSelection | undefined {
+  const draft = context.pendingSelection
+  if (!draft?.runtimeProfileId || !draft.authProfileId || !draft.modelId) return undefined
+  return {
+    runtimeProfileId: draft.runtimeProfileId,
+    authProfileId: draft.authProfileId,
+    modelId: draft.modelId,
+  }
+}
+
+export function toggleRunAttachment(attachment: WorkspaceFileAttachmentRequest): void {
+  if (!isShellReady()) return
+  workspaceShell.send({ type: "TOGGLE_ATTACHMENT", attachment })
+}
+
+export function removeRunAttachment(path: string): void {
+  if (!isShellReady()) return
+  workspaceShell.send({ type: "REMOVE_ATTACHMENT", path })
 }
 
 export async function loginAuthMethod(
@@ -328,43 +427,74 @@ export async function logoutAuthProfile(authProfileId: string): Promise<void> {
   }
 }
 
+export async function replaceAuthProfilePreferences(
+  authProfileId: string,
+  preferences: AuthProfilePreferences,
+): Promise<void> {
+  if (!isShellReady()) return
+  try {
+    const snapshot = decodeProtocolJson<AgentRuntimeSnapshot>(
+      await desktopRuntime.bridge.setAuthProfilePreferences(JSON.stringify({ authProfileId, preferences })),
+    )
+    if (isShellReady()) workspaceShell.send({ type: "AGENT_RUNTIME_READY", snapshot })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The account preferences could not be saved." })
+  }
+}
+
 export async function selectConversation(sessionId: SessionId): Promise<void> {
   if (!isShellReady()) return
-  approvalRequestId += 1
-  desktopRuntime.bridge.releaseRunEventSubscription()
+  const requestId = ++selectionRequestId
+  pendingSelection = { sessionId, requestId }
   try {
-    await desktopRuntime.bridge.attachSession(sessionId)
-    if (!isShellReady()) return
+    const session = decodeProtocolJson<SessionSummary>(await desktopRuntime.bridge.attachSession(sessionId))
+    if (!isShellReady() || pendingSelection?.requestId !== requestId || pendingSelection.sessionId !== sessionId) return
+    pendingSelection = undefined
+    desktopRuntime.bridge.releaseRunEventSubscription()
     workspaceShell.send({ type: "SELECTED", sessionId })
+    if (session.nextRunSelection.kind === "selected") {
+      workspaceShell.send({ type: "RUNTIME_DRAFT", draft: session.nextRunSelection.selection })
+    }
   } catch {
-    workspaceShell.send({ type: "ERROR", message: "This conversation could not be opened. Please choose another session." })
+    if (isShellReady() && requestId === selectionRequestId) {
+      pendingSelection = undefined
+      workspaceShell.send({ type: "ERROR", message: "This conversation could not be opened. Please choose another session." })
+    }
   }
 }
 
 export function selectProject(projectId: ProjectId): void {
   if (!isShellReady()) return
-  approvalRequestId += 1
+  selectionRequestId += 1
+  pendingSelection = undefined
   desktopRuntime.bridge.releaseRunEventSubscription()
   workspaceShell.send({ type: "PROJECT_SELECTED", projectId })
 }
 
 export async function openProject(path: string, trustAcknowledged: boolean): Promise<void> {
   if (!isShellReady() || !trustAcknowledged) return
-  approvalRequestId += 1
+  navigationRequestId += 1
+  const navigationEpoch = navigationRequestId
+  const requestId = ++selectionRequestId
+  pendingSelection = undefined
   desktopRuntime.bridge.releaseRunEventSubscription()
   try {
     const result = decodeProtocolJson<DaemonProjectOpenResult>(
       await desktopRuntime.bridge.openProject(path, true),
     )
-    navigationQueryClient.setQueryData(navigationQueryKey, result.snapshot)
+    if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return
+    updateNavigationSnapshot(result.snapshot)
+    if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return
     await invalidateNavigation()
-    if (!isShellReady()) return
+    if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return
     workspaceShell.send({ type: "PROJECT_SELECTED", projectId: result.projectId })
   } catch {
-    workspaceShell.send({
-      type: "ERROR",
-      message: "The project could not be opened. Choose another folder and try again.",
-    })
+    if (isShellReady() && requestId === selectionRequestId && navigationEpoch === navigationRequestId) {
+      workspaceShell.send({
+        type: "ERROR",
+        message: "The project could not be opened. Choose another folder and try again.",
+      })
+    }
   }
 }
 
@@ -373,115 +503,456 @@ export async function createProjectConversation(
   workspaceId: string,
   title: string,
 ): Promise<boolean> {
+  return createConversation(title, { kind: "byProject", projectId, workspaceId })
+}
+
+async function createConversation(
+  title: string,
+  workspace: DaemonSessionOpenParams["workspace"],
+): Promise<boolean> {
   const trimmedTitle = title.trim()
   if (!isShellReady() || !trimmedTitle) return false
+  navigationRequestId += 1
+  const navigationEpoch = navigationRequestId
+  const requestId = ++selectionRequestId
+  pendingSelection = undefined
   try {
-    const params: DaemonSessionOpenParams = {
-      title: trimmedTitle,
-      workspace: { kind: "byProject", projectId, workspaceId },
-    }
     const session = decodeProtocolJson<SessionSummary>(
-      await desktopRuntime.bridge.openSession(JSON.stringify(params)),
+      await desktopRuntime.bridge.openSession(JSON.stringify({ title: trimmedTitle, workspace } satisfies DaemonSessionOpenParams)),
     )
+    if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return false
     await invalidateNavigation()
-    if (!isShellReady()) return false
+    if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return false
     workspaceShell.send({ type: "SELECTED", sessionId: session.id })
     return true
   } catch {
-    workspaceShell.send({
-      type: "ERROR",
-      message: "The conversation could not be created. Choose the project and try again.",
-    })
+    if (isShellReady() && requestId === selectionRequestId && navigationEpoch === navigationRequestId) {
+      workspaceShell.send({ type: "ERROR", message: "The conversation could not be created. The daemon is still safe to use." })
+    }
     return false
   }
 }
 
-export async function startSelectedRun(): Promise<void> {
-  const { phase, sidebar, objective, runtimeDraft, activeRun } = workspaceShell.getSnapshot().context
+export async function createStandaloneConversation(workspaceId: string, title: string): Promise<boolean> {
+  return createConversation(title, { kind: "byId", id: workspaceId })
+}
+
+export async function createTemporaryConversation(workspaceId: string, title: string): Promise<boolean> {
+  return createConversation(title, { kind: "byTemporary", workspaceId })
+}
+
+export async function closeTemporaryConversation(sessionId: SessionId): Promise<void> {
+  await applyOrganizationNavigationIntent(
+    { kind: "closeTemporaryConversation", sessionId },
+    "The temporary conversation could not be closed.",
+    () => {
+      const selected = workspaceShell.getSnapshot().context.sidebar.selectedConversationId === sessionId
+      if (!selected) return
+      selectionRequestId += 1
+      pendingSelection = undefined
+      desktopRuntime.bridge.releaseRunEventSubscription()
+      workspaceShell.send({ type: "CONVERSATION_ARCHIVED", sessionId })
+    },
+  )
+}
+
+async function applyOrganizationNavigationIntent(
+  intent: DaemonNavigationIntent,
+  errorMessage: string,
+  onApplied?: () => void,
+): Promise<boolean> {
+  const context = workspaceShell.getSnapshot().context
+  if (!isShellReady() || context.activeRun || organizationMutationInFlight) return false
+  const lifecycleEpoch = navigationRequestId
+  organizationMutationInFlight = true
+  try {
+    const snapshot = await desktopRuntime.navigationIntent(intent)
+    if (!isShellReady() || lifecycleEpoch !== navigationRequestId) return false
+    updateNavigationSnapshot(snapshot)
+    onApplied?.()
+    return true
+  } catch {
+    if (isShellReady() && lifecycleEpoch === navigationRequestId) {
+      workspaceShell.send({ type: "ERROR", message: errorMessage })
+    }
+    return false
+  } finally {
+    organizationMutationInFlight = false
+  }
+}
+
+async function applyConversationNavigationIntent(
+  sessionId: SessionId,
+  intent: Extract<DaemonNavigationIntent["kind"], "setPinned" | "setArchived">,
+  value: boolean,
+): Promise<void> {
+  const action = intent === "setPinned" ? "pinned" : value ? "archived" : "restored"
+  await applyOrganizationNavigationIntent(
+    intent === "setPinned"
+      ? { kind: "setPinned", sessionId, pinned: value }
+      : { kind: "setArchived", sessionId, archived: value },
+    `The conversation could not be ${action}.`,
+    () => {
+      if (intent !== "setArchived" || !value) return
+      const selected = workspaceShell.getSnapshot().context.sidebar.selectedConversationId === sessionId
+      const pending = pendingSelection?.sessionId === sessionId
+      if (selected || pending) {
+        selectionRequestId += 1
+        pendingSelection = undefined
+      }
+      if (selected) {
+        desktopRuntime.bridge.releaseRunEventSubscription()
+        workspaceShell.send({ type: "CONVERSATION_ARCHIVED", sessionId })
+      }
+    },
+  )
+}
+
+export async function createSpace(title: string): Promise<boolean> {
+  const trimmedTitle = title.trim()
+  if (!trimmedTitle) return false
+  return applyOrganizationNavigationIntent(
+    { kind: "createSpace", title: trimmedTitle },
+    "The space could not be created.",
+  )
+}
+
+export async function setProjectSpace(projectId: ProjectId, spaceId?: string): Promise<boolean> {
+  return applyOrganizationNavigationIntent(
+    { kind: "setProjectSpace", projectId, spaceId },
+    "The project could not be moved.",
+  )
+}
+
+export async function setConversationPinned(sessionId: SessionId, pinned: boolean): Promise<void> {
+  await applyConversationNavigationIntent(sessionId, "setPinned", pinned)
+}
+
+export async function archiveConversation(sessionId: SessionId): Promise<void> {
+  await applyConversationNavigationIntent(sessionId, "setArchived", true)
+}
+
+export async function restoreConversation(sessionId: SessionId): Promise<void> {
+  await applyConversationNavigationIntent(sessionId, "setArchived", false)
+}
+
+async function executeStartRun(
+  runtime: typeof desktopRuntime,
+  shell: typeof workspaceShell,
+  recipeId?: string,
+): Promise<void> {
+  const { phase, sidebar, objective, attachments, activeRun } = shell.getSnapshot().context
   const trimmedObjective = objective.trim()
   const sessionId = sidebar.selectedConversationId
-  if (phase !== "ready" || !sessionId || !trimmedObjective || !runtimeDraft?.runtimeProfileId || !runtimeDraft.authProfileId || !runtimeDraft.modelId || activeRun) return
-  const selection: AgentRuntimeSelection = {
-    runtimeProfileId: runtimeDraft.runtimeProfileId,
-    authProfileId: runtimeDraft.authProfileId,
-    modelId: runtimeDraft.modelId,
-  }
+  const selection = selectedRuntimeSelection(shell.getSnapshot().context)
+  if (phase !== "ready" || !sessionId || !trimmedObjective || !selection || activeRun) return
+  const requestId = ++startRequestId
+  const selectionEpoch = selectionRequestId
   let run: { id: string }
   try {
-    run = decodeProtocolJson<{ id: string }>(await desktopRuntime.bridge.startRun(JSON.stringify({ objective: trimmedObjective, selection } satisfies StartRunCommand)))
+    run = decodeProtocolJson<{ id: string }>(await runtime.bridge.startRun(JSON.stringify({
+      objective: trimmedObjective,
+      selection,
+      attachments: [...attachments],
+      recipeId,
+    } satisfies StartRunCommand)))
   } catch {
-    workspaceShell.send({ type: "ERROR", message: "The run could not be started. The daemon is still safe to use." })
+    const current = shell.getSnapshot().context
+    if (isShellReady() && requestId === startRequestId && selectionRequestId === selectionEpoch && current.sidebar.selectedConversationId === sessionId) {
+      shell.send({ type: "ERROR", message: "The run could not be started. The daemon is still safe to use." })
+    }
     return
   }
-  workspaceShell.send({ type: "RUN_STARTED", runId: run.id })
-  approvalRequestId += 1
+  const current = shell.getSnapshot().context
+  if (!isShellReady() || requestId !== startRequestId || selectionRequestId !== selectionEpoch || current.sidebar.selectedConversationId !== sessionId) return
+  await attachStartedRun(runtime, shell, { requestId, selectionEpoch, sessionId, runId: run.id })
+}
+
+type StartedRunAttachment = {
+  requestId: number
+  selectionEpoch: number
+  sessionId: SessionId
+  runId: string
+}
+
+function isCurrentStartedRunAttachment(
+  shell: typeof workspaceShell,
+  attachment: StartedRunAttachment,
+): boolean {
+  const context = shell.getSnapshot().context
+  return !closing
+    && context.phase === "ready"
+    && startRequestId === attachment.requestId
+    && selectionRequestId === attachment.selectionEpoch
+    && context.sidebar.selectedConversationId === attachment.sessionId
+}
+
+async function invalidateStartedRunTranscript(
+  shell: typeof workspaceShell,
+  attachment: StartedRunAttachment,
+): Promise<void> {
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
+  await invalidateTranscript(attachment.sessionId)
+}
+
+async function settleStartedRunTranscript(
+  shell: typeof workspaceShell,
+  attachment: StartedRunAttachment,
+  status: RunStatus,
+): Promise<void> {
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
+  await invalidateTranscript(attachment.sessionId)
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
+  if (status === "completed" && !transcriptHasCommittedAssistant(
+    desktopQueryClient.getQueryData(transcriptQueryKey(attachment.sessionId)),
+    attachment.runId,
+  )) return
+  shell.send({ type: "TRANSCRIPT_COMMITTED", runId: attachment.runId })
+}
+
+/** The one shell-owned active-run and event-stream attachment lifecycle. */
+async function attachStartedRun(
+  runtime: typeof desktopRuntime,
+  shell: typeof workspaceShell,
+  attachment: StartedRunAttachment,
+): Promise<void> {
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
+  shell.send({ type: "RUN_STARTED", runId: attachment.runId })
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
+  await invalidateStartedRunTranscript(shell, attachment)
+  if (!isCurrentStartedRunAttachment(shell, attachment)) return
   try {
-    const replay = decodeProtocolJson<SubscribeRunEventsResult>(await desktopRuntime.bridge.subscribeRunEvents(sessionId, run.id, (eventJson) => {
+    const replay = decodeProtocolJson<SubscribeRunEventsResult>(await runtime.bridge.subscribeRunEvents(attachment.sessionId, attachment.runId, (eventJson) => {
+      if (!isCurrentStartedRunAttachment(shell, attachment)) return
       try {
         const item = decodeProtocolJson<RunEventStreamItem>(eventJson)
+        if (!isCurrentStartedRunAttachment(shell, attachment)) return
         if (item.payload.kind !== "delta") return
         const delta = item.payload.delta
-        workspaceShell.send({ type: "RUN_DELTAS", deltas: [delta] })
-        if ("run" in delta.event && delta.event.run.status === "waitingForApproval") {
-          void hydrateApprovals(run.id)
-        } else if ("approval" in delta.event) {
-          void hydrateApprovals(run.id)
+        shell.send({ type: "RUN_DELTAS", runId: attachment.runId, deltas: [delta] })
+        if (!isCurrentStartedRunAttachment(shell, attachment)) return
+        if ("agentStream" in delta.event && (
+          delta.event.agentStream.frame.kind === "assistantTurnCompleted"
+          || delta.event.agentStream.frame.kind === "toolCallCompleted"
+          || delta.event.agentStream.frame.kind === "pendingStateChanged"
+        )) {
+          void invalidateStartedRunTranscript(shell, attachment)
+        }
+        if ("run" in delta.event && delta.event.run.kind === "status" && isTerminalStatus(delta.event.run.payload.status)) {
+          void settleStartedRunTranscript(shell, attachment, delta.event.run.payload.status)
         }
       } catch {
-        workspaceShell.send({ type: "ERROR", message: "The run event stream ended unexpectedly." })
+        if (isCurrentStartedRunAttachment(shell, attachment)) {
+          shell.send({ type: "RUN_STREAM_ERROR", runId: attachment.runId, message: "The run event stream ended unexpectedly." })
+        }
       }
     }))
+    if (!isCurrentStartedRunAttachment(shell, attachment)) return
     if (replay.events.length) {
-      workspaceShell.send({ type: "RUN_DELTAS", deltas: replay.events })
-      if (statusForDeltas(replay.events) === "waitingForApproval" || replay.events.some((delta) => "approval" in delta.event)) {
-        void hydrateApprovals(run.id)
+      shell.send({ type: "RUN_DELTAS", runId: attachment.runId, deltas: replay.events })
+      if (!isCurrentStartedRunAttachment(shell, attachment)) return
+      await invalidateStartedRunTranscript(shell, attachment)
+      if (!isCurrentStartedRunAttachment(shell, attachment)) return
+      const replayStatus = statusForDeltas(replay.events)
+      if (replayStatus !== undefined && isTerminalStatus(replayStatus)) {
+        await settleStartedRunTranscript(shell, attachment, replayStatus)
       }
     }
   } catch {
-    workspaceShell.send({ type: "RUN_STREAM_ERROR", message: "The run started, but its event stream could not be opened." })
-  }
-}
-
-async function hydrateApprovals(runId: string): Promise<void> {
-  const requestId = ++approvalRequestId
-  try {
-    const snapshot = decodeProtocolJson<ApprovalSnapshotResult>(
-      await desktopRuntime.bridge.listApprovals(JSON.stringify({ runId })),
-    )
-    const context = workspaceShell.getSnapshot().context
-    if (!isShellReady() || requestId !== approvalRequestId || context.activeRun !== runId) return
-    workspaceShell.send({ type: "APPROVALS_READY", approvals: snapshot.items })
-  } catch {
-    const context = workspaceShell.getSnapshot().context
-    if (isShellReady() && requestId === approvalRequestId && context.activeRun === runId) {
-      workspaceShell.send({ type: "ERROR", message: "The pending approval could not be loaded." })
+    if (isCurrentStartedRunAttachment(shell, attachment)) {
+      shell.send({ type: "RUN_STREAM_ERROR", runId: attachment.runId, message: "The run started, but its event stream could not be opened." })
     }
   }
 }
 
-export async function decideApproval(approvalId: ApprovalId, decision: ApprovalDecision): Promise<void> {
-  const { activeRun } = workspaceShell.getSnapshot().context
-  if (!isShellReady() || !activeRun) return
-  try {
-    const result = decodeProtocolJson<DaemonApprovalDecideResult>(
-      await desktopRuntime.bridge.decideApproval(JSON.stringify({ approvalId, decision })),
-    )
-    if (!isShellReady() || workspaceShell.getSnapshot().context.activeRun !== activeRun) return
-    workspaceShell.send({ type: "APPROVAL_DECIDED", approvalId, runStatus: result.run.status })
-  } catch {
-    workspaceShell.send({ type: "ERROR", message: "The approval decision could not be applied." })
+export async function startSelectedRun(
+  runtime = desktopRuntime,
+  shell = workspaceShell,
+  recipeId?: string,
+): Promise<void> {
+  const context = shell.getSnapshot().context
+  const profile = context.agentRuntime?.runtimeProfiles?.find(
+    (candidate) => candidate.id === context.pendingSelection?.runtimeProfileId,
+  )
+  if (profile?.executionKind === "realtimeVoice") {
+    switch (context.voicePermission) {
+      case "authorized":
+        break
+      case "notDetermined":
+        requestVoicePermissionFor(runtime, shell)
+        return
+      case "denied":
+      case "restricted":
+        shell.send({
+          type: "ERROR",
+          message: "Microphone access is required. Grant access in System Settings before starting a voice run.",
+        })
+        return
+    }
   }
+  await executeStartRun(runtime, shell, recipeId)
+}
+
+/** WorkItem triggering remains a daemon command; the shell only attaches its returned run. */
+export async function triggerWorkItem(key: WorkItemKey): Promise<void> {
+  if (workItemTriggerInFlight) return
+  const context = workspaceShell.getSnapshot().context
+  const sessionId = context.sidebar.selectedConversationId
+  const selection = selectedRuntimeSelection(context)
+  if (!isShellReady() || !sessionId || !selection || context.activeRun) return
+  const requestId = ++startRequestId
+  const selectionEpoch = selectionRequestId
+  workItemTriggerInFlight = true
+  let result: Awaited<ReturnType<typeof desktopRuntime.triggerWorkItem>>
+  try {
+    result = await desktopRuntime.triggerWorkItem(sessionId, { key, selection })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The work item could not be started. The daemon is still safe to use." })
+    return
+  } finally {
+    workItemTriggerInFlight = false
+  }
+  const current = workspaceShell.getSnapshot().context
+  if (!isShellReady() || requestId !== startRequestId || selectionEpoch !== selectionRequestId || current.sidebar.selectedConversationId !== sessionId || current.activeRun) return
+  const attachment = { requestId, selectionEpoch, sessionId, runId: result.run.id }
+  await attachStartedRun(desktopRuntime, workspaceShell, attachment)
+  if (!isCurrentStartedRunAttachment(workspaceShell, attachment)) return
+  await Promise.all([
+    invalidateNavigation(),
+    desktopQueryClient.invalidateQueries({ queryKey: runActivityQueryRoot }),
+    desktopQueryClient.invalidateQueries({ queryKey: transcriptQueryKey(sessionId) }),
+    desktopQueryClient.invalidateQueries({ queryKey: conversationBranchesQueryKey(sessionId) }),
+    desktopQueryClient.invalidateQueries({ queryKey: workItemsQueryKey }),
+  ])
+}
+
+export function requestVoicePermission(): void {
+  requestVoicePermissionFor(desktopRuntime, workspaceShell)
+}
+
+function requestVoicePermissionFor(
+  runtime: typeof desktopRuntime,
+  shell: typeof workspaceShell,
+): void {
+  if (shell.getSnapshot().context.phase !== "ready") return
+  requestNativeVoicePermission(runtime, (permission) => {
+    shell.send({ type: "VOICE_PERMISSION", permission })
+  })
+}
+
+/** Fresh children are daemon-owned runs; desktop retains only the interaction draft. */
+export async function spawnFreshRun(parentRunId: string, objective: string): Promise<void> {
+  const context = workspaceShell.getSnapshot().context
+  const sessionId = context.sidebar.selectedConversationId
+  const selection = selectedRuntimeSelection(context)
+  const trimmed = objective.trim()
+  if (!isShellReady() || !sessionId || !selection || !trimmed) return
+  try {
+    await desktopRuntime.spawnRun({
+      sessionId,
+      parentRunId,
+      objective: trimmed,
+      selection,
+      workspaceScope: "workspaceWrite",
+      cleanupPolicy: "deleteOnSuccess",
+      plannedWriteFiles: [],
+    } satisfies SpawnRunRequest)
+    await desktopQueryClient.invalidateQueries({ queryKey: conversationBranchesQueryKey(sessionId) })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The fresh child could not be started. The daemon is still safe to use." })
+  }
+}
+
+/** Join reads only daemon/store projections and leaves no desktop result cache. */
+export async function joinFreshRun(parentRunId: string, childRunId: string): Promise<JoinRunResult | undefined> {
+  const context = workspaceShell.getSnapshot().context
+  const sessionId = context.sidebar.selectedConversationId
+  if (!isShellReady() || !sessionId) return undefined
+  try {
+    return await desktopRuntime.joinRun({ sessionId, parentRunId, childRunId })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The fresh child could not be joined." })
+    return undefined
+  }
+}
+
+async function settleTranscript(sessionId: SessionId, runId: string, status: RunStatus): Promise<void> {
+  await invalidateTranscript(sessionId)
+  const context = workspaceShell.getSnapshot().context
+  if (!isShellReady() || context.sidebar.selectedConversationId !== sessionId) return
+  if (status === "completed" && !transcriptHasCommittedAssistant(
+    desktopQueryClient.getQueryData(transcriptQueryKey(sessionId)),
+    runId,
+  )) return
+  workspaceShell.send({ type: "TRANSCRIPT_COMMITTED", runId })
 }
 
 export async function cancelSelectedRun(): Promise<void> {
-  const activeRun = workspaceShell.getSnapshot().context.activeRun
-  if (!activeRun) return
+  const { activeRun, sidebar } = workspaceShell.getSnapshot().context
+  const sessionId = sidebar.selectedConversationId
+  if (!activeRun || !sessionId) return
   try {
     await desktopRuntime.bridge.cancelRun(activeRun)
-    workspaceShell.send({ type: "RUN_CANCELLED" })
+    workspaceShell.send({ type: "RUN_CANCELLED", runId: activeRun })
+    await settleTranscript(sessionId, activeRun, "cancelled")
   } catch {
     workspaceShell.send({ type: "ERROR", message: "The run could not be cancelled. Check its status before continuing." })
   }
+}
+
+export async function openSideChat(parentRunId: string, parentEventSeq: string): Promise<void> {
+  const { phase, sidebar } = workspaceShell.getSnapshot().context
+  const sessionId = sidebar.selectedConversationId
+  if (phase !== "ready" || !sessionId) return
+  try {
+    const result = await desktopRuntime.forkRun({ sessionId, parentRunId, parentEventSeq })
+    const current = workspaceShell.getSnapshot().context
+    if (!isShellReady() || current.sidebar.selectedConversationId !== sessionId) return
+    workspaceShell.send({ type: "SIDE_CHAT_OPENED", runId: result.run.id })
+    await invalidateTranscript(sessionId)
+    await desktopQueryClient.invalidateQueries({ queryKey: conversationBranchesQueryKey(sessionId) })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The side chat could not be opened at that durable turn." })
+  }
+}
+
+/** Desktop owns only this call and cache invalidation; branch history and the
+ * next user turn remain daemon-owned. */
+export async function continueSideChat(runId: string, message: string): Promise<void> {
+  const sessionId = workspaceShell.getSnapshot().context.sidebar.selectedConversationId
+  const trimmed = message.trim()
+  if (!sessionId || !trimmed) return
+  try {
+    await desktopRuntime.continueRun({ sessionId, runId, message: trimmed } satisfies ContinueRunRequest)
+    await Promise.all([
+      desktopQueryClient.invalidateQueries({ queryKey: transcriptQueryKey(sessionId) }),
+      desktopQueryClient.invalidateQueries({ queryKey: conversationBranchesQueryKey(sessionId) }),
+    ])
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The side chat could not continue." })
+  }
+}
+
+export async function cancelSideChat(runId: string): Promise<void> {
+  const { sidebar } = workspaceShell.getSnapshot().context
+  const sessionId = sidebar.selectedConversationId
+  if (!isShellReady() || !sessionId) return
+  try {
+    await desktopRuntime.bridge.cancelRun(runId)
+    await invalidateTranscript(sessionId)
+    await desktopQueryClient.invalidateQueries({ queryKey: conversationBranchesQueryKey(sessionId) })
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The side chat could not be cancelled." })
+  }
+}
+
+export function closeSideChat(runId: string): void {
+  workspaceShell.send({ type: "SIDE_CHAT_CLOSED", runId })
+}
+
+/** Panel visibility is presentation-only; run identity and lineage stay in Query. */
+export function openSideChatPanel(runId: string): void {
+  workspaceShell.send({ type: "SIDE_CHAT_OPENED", runId })
 }
 
 export async function closeWorkspaceShell(): Promise<void> {

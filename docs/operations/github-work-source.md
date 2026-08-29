@@ -10,6 +10,7 @@ Current implementation supports one GitHub repository per loaded workflow:
 source:
   kind: github_issues
   repo: owner/name
+  code_host_account_id: code-host-account-example
   active_states: ["ready-for-agent", "bug"]
   terminal_states: ["done", "cancelled"]
 ```
@@ -20,17 +21,17 @@ Without a loaded valid workflow, the poller is idle and logs:
 background orchestrator idle; no workflow loaded
 ```
 
-## Provide The PAT
+## Connect The Account
 
-`crates/ta-work-source` owns the GitHub PAT identifier. `crates/ta-host-platform`
-owns the OS credential-store operations.
+`ta-code-host` owns code-host accounts, credential resolution, and GitHub HTTP
+policy. `ta-work-source` receives an already resolved GitHub client and token; it
+does not define or discover credentials.
 
-Canonical key:
-
-```text
-service: taugentic.host.secrets
-account: taugentic.host.secrets/work_source.github/github_pat
-```
+Connect a named GitHub account through the desktop **Pull requests > Accounts**
+surface. The access token crosses the local typed bridge once, is validated
+against GitHub, and is then stored only by the operating-system credential
+store. Project and workflow data contain redacted account metadata and an opaque
+account ID, never the token. Use that exact ID as `source.code_host_account_id`.
 
 Backend selection:
 
@@ -38,9 +39,8 @@ Backend selection:
 - Linux: Secret Service. Daemon startup fails if Secret Service is unavailable.
 - Windows: Credential Manager.
 
-The daemon does not read `GH_TOKEN` or `GITHUB_TOKEN`. Provision the canonical
-entry through the OS credential store before you start GitHub polling. The
-current desktop does not have a GitHub PAT management control.
+The daemon does not read `GH_TOKEN`, `GITHUB_TOKEN`, or the retired fixed
+work-source credential key. It never infers a default account.
 
 ## Required PAT Scopes
 
@@ -59,7 +59,7 @@ The poller calls:
 ```text
 GET /repos/{owner}/{repo}/issues?state=open&per_page=100&page=N
 Accept: application/vnd.github+json
-X-GitHub-Api-Version: 2022-11-28
+X-GitHub-Api-Version: 2026-03-10
 If-None-Match: <etag>
 ```
 
@@ -99,7 +99,8 @@ just ta daemon logs --tail 300
 
 Common messages:
 
-- `work source poller disabled`: `TAUGENTIC_WORK_SOURCE_GITHUB_REPO` is unset or empty.
+- `workflow not loaded; background orchestrator is idle`: load a valid workflow.
+- `GitHub source account is missing`: connect the exact account named by `code_host_account_id` or update the workflow.
 - `host secret backend unavailable`: start the required OS credential service.
 - `work source poller rate limited`: wait for the logged retry delay.
 - `work source poll failed`: inspect the redacted error, repository name, and PAT scope.

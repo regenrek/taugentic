@@ -24,6 +24,10 @@ pub enum RunExecutionError {
     RunNotNativeHarness(String),
     #[error("run is not resumable: {0}")]
     RunNotResumable(String),
+    #[error("run did not fail with typed account exhaustion: {0}")]
+    RunNotAccountExhausted(String),
+    #[error("replacement account must differ from the exhausted route account: {0}")]
+    ReplacementAuthProfileMustDiffer(String),
     #[error("run fork point does not exist: {0}")]
     RunForkPointNotFound(String),
     #[error("run fork point is not a completed turn boundary: {0}")]
@@ -35,6 +39,8 @@ pub enum RunExecutionError {
     RunNotCancellable(String),
     #[error("run queue is full for session: {0}")]
     RunQueueFull(String),
+    #[error("workspace file attachments must be validated by the application boundary")]
+    UnvalidatedWorkspaceFileAttachments,
     #[error("session workspace does not exist: {0}")]
     SessionWorkspaceNotFound(String),
     #[error("workspace trust confirmation is required: {0}")]
@@ -63,6 +69,8 @@ pub enum RunExecutionError {
     ApprovalNotFound(String),
     #[error("approval is already resolved: {0}")]
     ApprovalAlreadyResolved(String),
+    #[error("workspace checkpoint failed: {0}")]
+    CheckpointFailed(String),
     #[error("{0}")]
     ProviderExecutionFailed(String),
 }

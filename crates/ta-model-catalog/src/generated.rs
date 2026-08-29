@@ -52,6 +52,8 @@ struct UpstreamCost {
 struct UpstreamModalities {
     #[serde(default)]
     input: Vec<String>,
+    #[serde(default)]
+    output: Vec<String>,
 }
 
 pub(crate) fn normalize(value: serde_json::Value) -> Result<ModelCatalog, ModelCatalogError> {
@@ -84,7 +86,12 @@ pub(crate) fn normalize(value: serde_json::Value) -> Result<ModelCatalog, ModelC
                         structured_output: model.structured_output,
                         input_modalities: model
                             .modalities
-                            .map(|modalities| modalities.input)
+                            .as_ref()
+                            .map(|modalities| modalities.input.clone())
+                            .unwrap_or_default(),
+                        output_modalities: model
+                            .modalities
+                            .map(|modalities| modalities.output)
                             .unwrap_or_default(),
                     };
                     (model_id, value)

@@ -1,0 +1,1512 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "metadata",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "CapsuleResult": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "debug",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DebugResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "patch",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PatchResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "review",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ReviewResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "test",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/TestResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "plan",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/PlanResult"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom",
+              "type": "string"
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "ContextReceipt": {
+      "properties": {
+        "createdAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ReceiptKind"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "promotedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/ReceiptProvenance"
+        },
+        "quarantinedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/ReceiptState"
+        },
+        "summary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runId",
+        "kind",
+        "provenance",
+        "state",
+        "createdAtMs"
+      ],
+      "type": "object"
+    },
+    "DebugResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidenceReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "patchReceiptId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reproduced": {
+          "type": "boolean"
+        },
+        "rootCause": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "reproduced",
+        "evidenceReceiptIds",
+        "confidence",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "EnvPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            },
+            "vars": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "vars"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "all",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExecutionContext": {
+      "properties": {
+        "artifactRoot": {
+          "type": "string"
+        },
+        "effectiveCwd": {
+          "type": "string"
+        },
+        "envPolicy": {
+          "$ref": "#/$defs/EnvPolicy"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/NetworkPolicy"
+        },
+        "permissionPolicy": {
+          "$ref": "#/$defs/PermissionPolicy"
+        },
+        "sandboxProfile": {
+          "$ref": "#/$defs/SandboxProfile"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "workspaceScope": {
+          "$ref": "#/$defs/WorkspaceScope"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "workspaceRoot",
+        "effectiveCwd",
+        "artifactRoot",
+        "workspaceScope",
+        "sandboxProfile",
+        "permissionPolicy",
+        "networkPolicy",
+        "envPolicy"
+      ],
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "type": "string"
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    },
+    "NetworkPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "loopback",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "domains": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "domains"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "open",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "PatchResult": {
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passing": {
+          "type": "boolean"
+        },
+        "patchReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "testsRunReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "patchReceiptIds",
+        "touchedFiles",
+        "testsRunReceiptIds",
+        "passing",
+        "blockers"
+      ],
+      "type": "object"
+    },
+    "PermissionPolicy": {
+      "enum": [
+        "readOnly",
+        "workspaceWrite",
+        "workspaceWriteWithApproval",
+        "repoWriteWithApproval",
+        "unrestricted"
+      ],
+      "type": "string"
+    },
+    "PlanResult": {
+      "properties": {
+        "estimatedTotalMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps",
+        "risks"
+      ],
+      "type": "object"
+    },
+    "PlanStep": {
+      "properties": {
+        "dependsOn": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimatedMinutes": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "dependsOn"
+      ],
+      "type": "object"
+    },
+    "ProcessExecPolicy": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "denied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "binaries": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "allowlist",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "binaries"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "allowAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ReceiptKind": {
+      "enum": [
+        "evidence",
+        "patch",
+        "testOutput",
+        "reviewFinding",
+        "artifact",
+        "risk",
+        "blocker",
+        "summary"
+      ],
+      "type": "string"
+    },
+    "ReceiptProvenance": {
+      "description": "Provenance shape rules:\n- artifact-derived: only `artifact_id` is set; identity = (session, run, kind, artifact_id).\n- event-derived: both `event_seq` and `agent_turn_id` are set; identity = (session, run, kind, event_seq, agent_turn_id).\n- free-form: all identifying fields are None.\n\n`stream_cursor` is descriptive metadata (e.g. for UI navigation) and may be\npresent in any shape. It is never part of the unique identity.",
+      "properties": {
+        "agentTurnId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifactId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "eventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "streamCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ReceiptState": {
+      "enum": [
+        "returned",
+        "promoted",
+        "quarantined"
+      ],
+      "type": "string"
+    },
+    "ReviewFinding": {
+      "properties": {
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "suggestion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
+    "ReviewResult": {
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "touchedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/ReviewVerdict"
+        }
+      },
+      "required": [
+        "verdict",
+        "findings",
+        "risks",
+        "touchedFiles"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "enum": [
+        "approve",
+        "requestChanges",
+        "needsHuman"
+      ],
+      "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunRecord": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "executionContext": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RunSource"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "runtimeProfileId",
+        "objective",
+        "status",
+        "harness",
+        "source",
+        "executionContext"
+      ],
+      "type": "object"
+    },
+    "RunSource": {
+      "oneOf": [
+        {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
+          "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "const": "user",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "attachments"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "parentTurnId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentTurnId"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "SandboxProfile": {
+      "properties": {
+        "deniedRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "processExec": {
+          "$ref": "#/$defs/ProcessExecPolicy"
+        },
+        "readRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "writeRoots": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "readRoots",
+        "writeRoots",
+        "deniedRoots",
+        "processExec"
+      ],
+      "type": "object"
+    },
+    "TestResult": {
+      "properties": {
+        "failed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedTestNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "logReceiptIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "passed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "failedTestNames",
+        "logReceiptIds"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorkspaceScope": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "local",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "worktree",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            },
+            "worktree": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root",
+            "worktree",
+            "branch"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "readonly",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "remote",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "container",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ephemeral",
+              "type": "string"
+            },
+            "root": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "root"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/ArtifactSummary"
+      },
+      "type": "array"
+    },
+    "receipts": {
+      "items": {
+        "$ref": "#/$defs/ContextReceipt"
+      },
+      "type": "array"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CapsuleResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run": {
+      "$ref": "#/$defs/RunRecord"
+    }
+  },
+  "required": [
+    "run"
+  ],
+  "title": "JoinRunResult",
+  "type": "object"
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "current": {
+      "type": "boolean"
+    },
+    "head": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "locked": {
+      "type": "boolean"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "current",
+    "locked"
+  ],
+  "title": "GitWorktreeSummary",
+  "type": "object"
+}

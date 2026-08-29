@@ -188,19 +188,15 @@ impl StrategyRegistry {
         provider_id: &AgentRuntimeStrategyId,
         model_id: &AgentRuntimeModelId,
     ) -> bool {
+        let catalog = self.catalog.snapshot();
         self.by_id
             .get(provider_id)
             .is_some_and(|strategy| match &strategy.kind {
-                StrategyKind::CodexAppServer => {
-                    ta_provider_llm::families::codex_app_server::model_catalog().is_ok_and(
-                        |catalog| catalog.models.iter().any(|model| model.id == *model_id),
-                    )
-                }
+                StrategyKind::CodexAppServer => codex_models(&catalog)
+                    .iter()
+                    .any(|model| model.id == *model_id),
                 StrategyKind::AcpChildProcess { .. } => true,
-                _ => self
-                    .catalog
-                    .snapshot()
-                    .contains_model(provider_id, model_id),
+                _ => catalog.contains_model(provider_id, model_id),
             })
     }
 
@@ -405,9 +401,7 @@ fn observe_strategy(
                 status: AgentRuntimeStrategyHealthStatus::Ready,
                 message: None,
             },
-            ta_provider_llm::families::codex_app_server::model_catalog()
-                .map(|catalog| catalog.models)
-                .unwrap_or_default(),
+            codex_models(catalog),
         ),
         StrategyKind::OpenAiNative => ready_strategy(strategy, catalog),
         StrategyKind::AnthropicApiKey { .. } | StrategyKind::OpenAiCompatible { .. } => {
@@ -423,7 +417,7 @@ fn observe_strategy(
                     status: AgentRuntimeStrategyHealthStatus::Ready,
                     message: None,
                 },
-                Vec::new(),
+                catalog.models(strategy.descriptor.id.as_str()),
             ),
             Err(_) => observed_with_health(
                 strategy,
@@ -431,10 +425,30 @@ fn observe_strategy(
                     status: AgentRuntimeStrategyHealthStatus::Unavailable,
                     message: Some("Provider integration is unavailable".to_string()),
                 },
-                Vec::new(),
+                catalog.models(strategy.descriptor.id.as_str()),
             ),
         },
     }
+}
+
+#[cfg(test)]
+fn codex_models(catalog: &ModelCatalog) -> Vec<AgentRuntimeModelRef> {
+    let mut models = catalog.models("openai");
+    if let Some(model) = models
+        .iter_mut()
+        .find(|model| model.id.as_str() == "gpt-5.6-sol")
+    {
+        model.media_capabilities.image_output =
+            ta_protocol::wire::AgentRuntimeMediaCapability::Supported;
+    }
+    models
+}
+
+#[cfg(not(test))]
+fn codex_models(_catalog: &ModelCatalog) -> Vec<AgentRuntimeModelRef> {
+    ta_provider_llm::families::codex_app_server::model_catalog()
+        .map(|catalog| catalog.models)
+        .unwrap_or_default()
 }
 
 impl StrategyKind {
@@ -458,7 +472,19 @@ fn ready_strategy(strategy: &RegisteredStrategy, catalog: &ModelCatalog) -> Stra
             status: AgentRuntimeStrategyHealthStatus::Ready,
             message: None,
         },
-        catalog.models(strategy.descriptor.id.as_str()),
+        catalog
+            .models(strategy.descriptor.id.as_str())
+            .into_iter()
+            .map(|mut model| {
+                if matches!(strategy.kind, StrategyKind::OpenAiNative)
+                    && let Some(capabilities) =
+                        ta_provider_llm::realtime::media_capabilities(&model.id)
+                {
+                    model.media_capabilities = capabilities;
+                }
+                model
+            })
+            .collect(),
     )
 }
 

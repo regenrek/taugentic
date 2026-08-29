@@ -1,17 +1,19 @@
 use ta_protocol::wire::{
-    ApprovalId, ApprovalRequest, ArtifactId, AuthProfileId, RunId, SessionId, WorkspaceId,
+    ApprovalId, ApprovalRequest, ArtifactId, AuthProfileId, AuthProfilePreferences,
+    CodeHostAccountId, RunId, SessionId, WorkspaceId,
 };
 
 use crate::{
     ArtifactPublishCommitResult, ArtifactRecord, CheckpointPersistCommitResult, CheckpointRecord,
     CommitArtifactPublish, CommitCheckpointPersist, CommitReceiptEvent, CommitRunTransition,
-    CommitSessionOpen, CommitStartupReconciliation, EventRecord, NativeRunListPage,
-    NativeRunListQuery, ReceiptEventCommitResult, RunEventRange, RunEventRangeQuery, RunProjection,
-    RunTransitionCommitResult, SessionAgentTurnsPage, SessionAgentTurnsPageQuery,
-    SessionApprovalQuery, SessionEventPage, SessionEventPageQuery, SessionEventRange,
-    SessionEventRangeQuery, SessionOpenCommitResult, SessionProjection, StoreError,
-    WorkItemRepository, WorkspaceProjection, projections::PrincipalProjection,
-    receipts::ReceiptRepository,
+    CommitSessionNextRunSelection, CommitSessionOpen, CommitSessionOpenWithNavigation,
+    CommitStartupReconciliation, EventRecord, NativeRunListPage, NativeRunListQuery,
+    PluginRepository, ReceiptEventCommitResult, RunEventRange, RunEventRangeQuery, RunProjection,
+    RunTransitionCommitResult, ScheduledWorkRepository, SessionAgentTurnsPage,
+    SessionAgentTurnsPageQuery, SessionApprovalQuery, SessionEventPage, SessionEventPageQuery,
+    SessionEventRange, SessionEventRangeQuery, SessionNextRunSelectionCommitResult,
+    SessionOpenCommitResult, SessionProjection, StoreError, WorkItemRepository,
+    WorkspaceProjection, projections::PrincipalProjection, receipts::ReceiptRepository,
 };
 
 pub trait AuthProfileRepository {
@@ -24,7 +26,30 @@ pub trait AuthProfileRepository {
         &mut self,
         profile: crate::AuthProfileProjection,
     ) -> Result<(), StoreError>;
+    fn replace_auth_profile_preferences(
+        &mut self,
+        auth_profile_id: &AuthProfileId,
+        preferences: AuthProfilePreferences,
+    ) -> Result<(), StoreError>;
     fn remove_auth_profile(&mut self, auth_profile_id: &AuthProfileId) -> Result<bool, StoreError>;
+}
+
+/// Persists only redacted code-host account metadata. Credentials belong to
+/// the host secret store and must never cross this repository boundary.
+pub trait CodeHostAccountRepository {
+    fn code_host_account(
+        &self,
+        account_id: &CodeHostAccountId,
+    ) -> Result<Option<crate::CodeHostAccountProjection>, StoreError>;
+    fn code_host_accounts(&self) -> Result<Vec<crate::CodeHostAccountProjection>, StoreError>;
+    fn save_code_host_account(
+        &mut self,
+        account: crate::CodeHostAccountProjection,
+    ) -> Result<(), StoreError>;
+    fn remove_code_host_account(
+        &mut self,
+        account_id: &CodeHostAccountId,
+    ) -> Result<bool, StoreError>;
 }
 
 pub trait EventLogRepository {
@@ -88,6 +113,19 @@ pub trait WorkspaceRepository {
     fn workspaces(&self) -> Result<Vec<WorkspaceProjection>, StoreError>;
 }
 
+pub trait ThreadWorkspaceRepository {
+    fn thread_workspace(
+        &self,
+        session_id: &SessionId,
+    ) -> Result<Option<crate::ThreadWorkspaceRecord>, StoreError>;
+    fn append_thread_workspace_event(
+        &mut self,
+        session_id: &SessionId,
+        occurred_at_ms: u64,
+        event: crate::ThreadWorkspaceEvent,
+    ) -> Result<crate::ThreadWorkspaceRecord, StoreError>;
+}
+
 /// Navigation metadata has one durable store owner. Session/run/approval and
 /// workspace data is intentionally not duplicated here.
 pub trait NavigationRepository {
@@ -142,6 +180,16 @@ pub trait CommitRepository {
         input: CommitSessionOpen,
     ) -> Result<SessionOpenCommitResult, StoreError>;
 
+    fn commit_session_open_with_navigation(
+        &mut self,
+        input: CommitSessionOpenWithNavigation,
+    ) -> Result<SessionOpenCommitResult, StoreError>;
+
+    fn commit_session_next_run_selection(
+        &mut self,
+        input: CommitSessionNextRunSelection,
+    ) -> Result<SessionNextRunSelectionCommitResult, StoreError>;
+
     fn commit_artifact_publish(
         &mut self,
         input: CommitArtifactPublish,
@@ -160,6 +208,11 @@ pub trait CommitRepository {
 
 pub trait CheckpointRepository {
     fn checkpoints_for_run(&self, run_id: &RunId) -> Result<Vec<CheckpointRecord>, StoreError>;
+    fn checkpoints_for_workspace(
+        &self,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Vec<CheckpointRecord>, StoreError>;
+    fn checkpoint(&self, checkpoint_id: &str) -> Result<Option<CheckpointRecord>, StoreError>;
 }
 
 pub trait ArtifactRepository {
@@ -196,8 +249,12 @@ pub trait PersistenceStore:
     + CheckpointRepository
     + ArtifactRepository
     + AuthProfileRepository
+    + CodeHostAccountRepository
     + ReceiptRepository
     + WorkItemRepository
+    + ThreadWorkspaceRepository
+    + ScheduledWorkRepository
+    + PluginRepository
 {
 }
 
@@ -212,7 +269,11 @@ impl<T> PersistenceStore for T where
         + CheckpointRepository
         + ArtifactRepository
         + AuthProfileRepository
+        + CodeHostAccountRepository
         + ReceiptRepository
         + WorkItemRepository
+        + ThreadWorkspaceRepository
+        + ScheduledWorkRepository
+        + PluginRepository
 {
 }

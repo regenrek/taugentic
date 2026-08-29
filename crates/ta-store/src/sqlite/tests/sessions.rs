@@ -18,6 +18,7 @@ fn rotate_session_authority_consumes_recovery_slot_once() {
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
 
@@ -112,6 +113,7 @@ fn rotate_session_authority_persists_recovery_slot_across_reopen() {
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     let rotated_once = store
@@ -198,6 +200,7 @@ fn open_persists_and_reloads_existing_rows() {
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store
@@ -223,11 +226,7 @@ fn open_persists_and_reloads_existing_rows() {
         .expect("run should persist");
     store
         .commit_checkpoint_persist(CommitCheckpointPersist {
-            checkpoint: CheckpointRecord {
-                run_id: RunId::new("run-1").expect("run id"),
-                revision: 1,
-                artifact_path: "checkpoints/run-1/rev-1.json".to_string(),
-            },
+            checkpoint: crate::test_checkpoint_record(RunId::new("run-1").expect("run id"), 1),
             occurred_at_ms: 20,
         })
         .expect("checkpoint should persist");

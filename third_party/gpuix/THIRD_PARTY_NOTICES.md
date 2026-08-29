@@ -28,33 +28,31 @@ icons (ISC, Copyright (c) 2026 Lucide Icons and Contributors). The OpenAI mark
 is ported from **[Comet](https://github.com/zeronsh/comet)** (MIT, Copyright (c)
 2026 Wing).
 
-## Bundled grammars
+## Bundled syntax definitions
 
-Syntax highlighting bundles the following Tree-sitter components. Versions are
-pinned in `packages/native/Cargo.lock`.
+Syntax highlighting uses **[Syntect](https://github.com/trishume/syntect)** (MIT)
+with its pure-Rust **[fancy-regex](https://github.com/fancy-regex/fancy-regex)**
+engine (MIT). Extra Sublime syntaxes (TypeScript, TSX, TOML, and others missing
+from Syntect's default dump) come from **[two-face](https://codeberg.org/CosmicHarper/two-face)**,
+the pack curated by [bat](https://github.com/sharkdp/bat). Versions are pinned
+in `packages/native/Cargo.lock`.
+
+The two-face crate is MIT OR Apache-2.0. The **embedded syntax files** have
+their own licenses (Sublime, MIT, BSD, Apache, and others). The full listing
+is in two-face's
+[acknowledgements](https://codeberg.org/CosmicHarper/two-face/src/branch/main/generated/acknowledgements_full.md).
 
 | Component | License | Source |
 | --- | --- | --- |
-| Tree-sitter | MIT | https://github.com/tree-sitter/tree-sitter |
-| Tree-sitter highlight | MIT | https://github.com/tree-sitter/tree-sitter |
-| Rust grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-rust |
-| JavaScript grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-javascript |
-| TypeScript grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-typescript |
-| Python grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-python |
-| Go grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-go |
-| JSON grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-json |
-| Bash grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-bash |
-| HTML grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-html |
-| CSS grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-css |
-| C grammar and queries | MIT | https://github.com/tree-sitter/tree-sitter-c |
-| TOML grammar and queries | MIT | https://github.com/tree-sitter-grammars/tree-sitter-toml |
-| Markdown grammar and queries | MIT | https://github.com/tree-sitter-grammars/tree-sitter-markdown |
-| YAML grammar and queries | MIT | https://github.com/tree-sitter-grammars/tree-sitter-yaml |
+| Syntect | MIT | https://github.com/trishume/syntect |
+| fancy-regex | MIT | https://github.com/fancy-regex/fancy-regex |
+| two-face crate | MIT OR Apache-2.0 | https://codeberg.org/CosmicHarper/two-face |
 
 ## Other dependencies
 
 | Component | License | Source |
 | --- | --- | --- |
+| alacritty_terminal (Zed fork, pinned revision) | Apache-2.0 | https://github.com/zed-industries/alacritty |
 | pulldown-cmark | MIT | https://github.com/pulldown-cmark/pulldown-cmark |
 | arboard | MIT / Apache-2.0 | https://github.com/1Password/arboard |
 | GPUI | Apache-2.0 | https://github.com/zed-industries/zed |

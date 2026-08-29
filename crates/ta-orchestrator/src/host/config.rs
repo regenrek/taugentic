@@ -272,6 +272,10 @@ impl DaemonConfig {
         self.artifact_root.clone()
     }
 
+    pub fn plugin_root(&self) -> PathBuf {
+        self.artifact_root.join("plugins")
+    }
+
     pub fn log_path(&self) -> PathBuf {
         self.observability
             .file_output

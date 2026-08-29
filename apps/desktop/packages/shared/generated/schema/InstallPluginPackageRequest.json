@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "PluginCapability": {
+      "enum": [
+        "workspaceRead",
+        "workspaceWrite",
+        "processExecute",
+        "network"
+      ],
+      "type": "string"
+    },
+    "PluginInspection": {
+      "additionalProperties": false,
+      "properties": {
+        "digestSha256": {
+          "type": "string"
+        },
+        "pluginId": {
+          "type": "string"
+        },
+        "requestedCapabilities": {
+          "items": {
+            "$ref": "#/$defs/PluginCapability"
+          },
+          "type": "array"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pluginId",
+        "version",
+        "digestSha256",
+        "requestedCapabilities"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "grantedCapabilities": {
+      "items": {
+        "$ref": "#/$defs/PluginCapability"
+      },
+      "type": "array"
+    },
+    "inspection": {
+      "$ref": "#/$defs/PluginInspection"
+    },
+    "sourcePath": {
+      "description": "Transient local directory input. It is never persisted or projected.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sourcePath",
+    "inspection",
+    "grantedCapabilities"
+  ],
+  "title": "InstallPluginPackageRequest",
+  "type": "object"
+}

@@ -1,0 +1,273 @@
+{
+  "$defs": {
+    "ScheduledWorkOccurrenceState": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "pending",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparing",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancellationRequested",
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "claimed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "completed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "failed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "budgetExceeded",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "preparationFailed",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "detail"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "preparationCancelled",
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "cleanup_detail": {
+              "type": "string"
+            },
+            "intended_terminal": {
+              "$ref": "#/$defs/ScheduledWorkPreparationTerminal"
+            },
+            "kind": {
+              "const": "cleanupRequired",
+              "type": "string"
+            },
+            "preparation_detail": {
+              "type": "string"
+            },
+            "resource": {
+              "$ref": "#/$defs/ScheduledWorkUnpublishedResource"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "run_id",
+            "resource",
+            "intended_terminal",
+            "preparation_detail",
+            "cleanup_detail"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ScheduledWorkPreparationTerminal": {
+      "enum": [
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "ScheduledWorkUnpublishedResource": {
+      "additionalProperties": false,
+      "description": "Exact deterministic identity of the only unpublished external resource a\npreparation may own.  It is durable solely when cleanup needs human\nintervention; it intentionally contains no credentials or provider data.",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "parentRepo": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRepo",
+        "worktreePath",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dueAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "scheduledWorkId": {
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/ScheduledWorkOccurrenceState"
+    }
+  },
+  "required": [
+    "id",
+    "scheduledWorkId",
+    "dueAtMs",
+    "state"
+  ],
+  "title": "ScheduledWorkOccurrence",
+  "type": "object"
+}

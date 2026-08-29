@@ -2,7 +2,9 @@ use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::{
     ApprovalScope, ForkRunRequest, ForkRunResult, RunHarnessKind, RunSource, RunStatus,
 };
-use ta_store::{CommitRunTransition, PersistenceStore, RunEventRangeQuery, RunProjection};
+use ta_store::{
+    CommitRunTransition, PersistenceStore, RunEventRangeQuery, RunProjection, UserTurnCommit,
+};
 use taugentic_agent::AgentExecutionHarness;
 use uuid::Uuid;
 
@@ -71,7 +73,7 @@ where
                     request.parent_event_seq
                 )));
             }
-            super::fork_snapshot::fork_initial_state_for_parent(
+            super::fork_snapshot::native_history_initial_state_for_parent(
                 &*store,
                 &session_id,
                 &parent,
@@ -98,6 +100,10 @@ where
         if objective.trim().is_empty() {
             return Err(RunExecutionError::EmptyRunObjective);
         }
+        let user_turn = UserTurnCommit::Append {
+            text: objective.clone(),
+            attachments: Vec::new(),
+        };
 
         let fork_run_id = crate::RunId::new(format!("run-{}", Uuid::new_v4().simple()))
             .expect("generated run id should be valid");
@@ -179,34 +185,36 @@ where
                 .commit_run_transition(CommitRunTransition {
                     session_id: session_id.clone(),
                     run: fork,
+                    user_turn,
                     events,
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .map_err(|error| fail_scheduled_run(error.into()))?;
-            if committed.run.status == RunStatus::Running {
-                self.runtime
-                    .claim_live_run(committed.run.id.clone(), session_id.clone());
-            }
             (committed.run, committed.events)
         };
         self.publish_records(&events);
 
         if run.status == RunStatus::Running {
+            let generation = self
+                .runtime
+                .claim_live_run(run.id.clone(), session_id.clone());
             let start_result = self.start_provider_execution(
                 &session_id,
                 &run.id,
-                &run.objective,
                 &runtime_profile,
                 run.source.route(),
+                generation,
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
                 && latest_run.status == RunStatus::Running
             {
-                self.fail_live_run_and_publish(
+                self.fail_live_run_and_publish_for_generation(
                     session_id.clone(),
                     &latest_run.id,
                     error.to_string(),
+                    generation,
                 )?;
                 run = self.load_run_projection(&latest_run.id)?;
             } else if latest_run.status != RunStatus::Cancelled {
@@ -283,19 +291,33 @@ mod tests {
             .run(parent_run_id)
             .expect("run lookup should work")
             .expect("parent should exist");
+        let event = match status {
+            RunStatus::Queued | RunStatus::Running | RunStatus::WaitingForApproval => {
+                crate::RunEvent::active(parent_run_id.clone(), status, None, None, None)
+                    .expect("parent status should be active")
+            }
+            RunStatus::Completed
+            | RunStatus::Failed
+            | RunStatus::BudgetExceeded
+            | RunStatus::Cancelled => crate::RunEvent::terminal(
+                parent_run_id.clone(),
+                status,
+                crate::RunStatusReason::new(format!("parent {status:?}"))
+                    .expect("parent terminal status reason should be valid"),
+                None,
+                None,
+                None,
+            )
+            .expect("parent status should be terminal"),
+        };
         store
             .commit_run_transition(CommitRunTransition {
                 session_id: session_id.clone(),
                 run: RunProjection { status, ..existing },
-                events: vec![DaemonEvent::Run(crate::RunEvent {
-                    run_id: parent_run_id.clone(),
-                    status,
-                    detail: format!("parent {status:?}"),
-                    output_contract: None,
-                    recipe_id: None,
-                    result: None,
-                })],
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                events: vec![DaemonEvent::Run(event)],
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })
             .expect("status update should persist");
     }
@@ -385,8 +407,8 @@ mod tests {
         assert!(cancelled.events.iter().all(|record| {
             !matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == fork.run.id && *status == RunStatus::Cancelled
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &fork.run.id && event.status() == RunStatus::Cancelled
             )
         }));
     }
@@ -462,15 +484,19 @@ mod tests {
                         status: RunStatus::Running,
                         ..queued_fork
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: fork.run.id.clone(),
-                        status: RunStatus::Running,
-                        detail: "Seeded running fork for cancel independence proof".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            fork.run.id.clone(),
+                            RunStatus::Running,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("seeded running fork status should be active"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("fork should transition to running");
         }
@@ -497,8 +523,8 @@ mod tests {
         assert!(cancelled.events.iter().all(|record| {
             !matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent { run_id, status, .. })
-                    if *run_id == parent.run.id && *status == RunStatus::Cancelled
+                DaemonEvent::Run(crate::RunEvent::Status(event))
+                    if event.run_id() == &parent.run.id && event.status() == RunStatus::Cancelled
             )
         }));
     }
@@ -554,15 +580,21 @@ mod tests {
                         claimed_files: Vec::new(),
                         conflict_summary: None,
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: failed_run_id.clone(),
-                        status: RunStatus::Failed,
-                        detail: "failed parent".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::terminal(
+                            failed_run_id.clone(),
+                            RunStatus::Failed,
+                            crate::RunStatusReason::new("failed parent")
+                                .expect("failed parent reason should be valid"),
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("failed parent status should be terminal"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("failed parent should persist");
         }

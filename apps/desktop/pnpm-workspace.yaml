@@ -1,15 +1,12 @@
 packages:
   - packages/*
 
-overrides:
-  "@gpuix/native": 0.4.0
-  "@gpuix/react": 0.4.0
-
 minimumReleaseAge: 10080
 trustPolicy: no-downgrade
 
 minimumReleaseAgeExclude:
-  - "@gpuix/native"
-  - "@gpuix/native-*"
-  - "@gpuix/react"
+  - "@regenrek/gpuix-native"
+  - "@regenrek/gpuix-native-darwin-arm64"
+  - "@regenrek/gpuix-native-darwin-x64"
+  - "@regenrek/gpuix-react"
   - "eventsource-parser"

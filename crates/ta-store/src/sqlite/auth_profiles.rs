@@ -1,5 +1,5 @@
 use rusqlite::{OptionalExtension, params};
-use ta_protocol::wire::AuthProfileId;
+use ta_protocol::wire::{AuthProfileId, AuthProfilePreferences};
 
 use crate::{AuthProfileProjection, AuthProfileRepository, SqliteStore, StoreError};
 
@@ -67,11 +67,84 @@ impl AuthProfileRepository for SqliteStore {
                     profile.id().as_str(),
                     profile.auth_method_id().as_str(),
                     profile.profile.profile.provider_id.as_str(),
-                    i64::from(profile.order),
-                    profile.is_default,
+                    i64::from(profile.profile.preferences.order),
+                    profile.profile.preferences.is_default,
                     data_json,
                 ],
             )
+            .map_err(|source| StoreError::PrepareStore {
+                path: self.path.clone(),
+                source,
+            })?;
+        Ok(())
+    }
+
+    fn replace_auth_profile_preferences(
+        &mut self,
+        auth_profile_id: &AuthProfileId,
+        preferences: AuthProfilePreferences,
+    ) -> Result<(), StoreError> {
+        let target =
+            self.auth_profile(auth_profile_id)?
+                .ok_or_else(|| StoreError::MissingRecord {
+                    entity: "auth profile",
+                    key: auth_profile_id.as_str().to_string(),
+                })?;
+        let provider_id = target.profile.profile.provider_id.clone();
+        let auth_method_id = target.profile.profile.auth_method_id.clone();
+        let mut group = self
+            .auth_profiles()?
+            .into_iter()
+            .filter(|profile| {
+                profile.profile.profile.provider_id == provider_id
+                    && profile.profile.profile.auth_method_id == auth_method_id
+            })
+            .collect::<Vec<_>>();
+        group.sort_by(|left, right| {
+            left.profile
+                .preferences
+                .order
+                .cmp(&right.profile.preferences.order)
+                .then_with(|| left.id().cmp(right.id()))
+        });
+        if preferences.order as usize >= group.len() {
+            return Err(StoreError::AuthProfilePreferenceOrderOutOfRange {
+                order: preferences.order,
+                group_len: group.len(),
+            });
+        }
+        let target_index = group
+            .iter()
+            .position(|profile| profile.id() == auth_profile_id)
+            .expect("target is in its group");
+        let mut target = group.remove(target_index);
+        target.profile.preferences.label = preferences.label;
+        target.profile.preferences.is_default = preferences.is_default;
+        group.insert(preferences.order as usize, target);
+        for (order, profile) in group.iter_mut().enumerate() {
+            profile.profile.preferences.order = order as u32;
+            if preferences.is_default {
+                profile.profile.preferences.is_default = profile.id() == auth_profile_id;
+            } else if profile.id() == auth_profile_id {
+                profile.profile.preferences.is_default = false;
+            }
+        }
+        let transaction = self
+            .conn
+            .transaction()
+            .map_err(|source| StoreError::PrepareStore {
+                path: self.path.clone(),
+                source,
+            })?;
+        for profile in group {
+            let data_json = Self::encode("auth profile", &profile)?;
+            transaction.execute(
+                "UPDATE auth_profiles SET sort_order = ?2, is_default = ?3, data_json = ?4 WHERE id = ?1",
+                params![profile.id().as_str(), i64::from(profile.profile.preferences.order), profile.profile.preferences.is_default, data_json],
+            ).map_err(|source| StoreError::PrepareStore { path: self.path.clone(), source })?;
+        }
+        transaction
+            .commit()
             .map_err(|source| StoreError::PrepareStore {
                 path: self.path.clone(),
                 source,

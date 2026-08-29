@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "PluginCapability": {
+      "enum": [
+        "workspaceRead",
+        "workspaceWrite",
+        "processExecute",
+        "network"
+      ],
+      "type": "string"
+    },
+    "PluginLifecycleState": {
+      "enum": [
+        "disabled",
+        "activating",
+        "active",
+        "failed"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digestSha256": {
+      "type": "string"
+    },
+    "grantedCapabilities": {
+      "items": {
+        "$ref": "#/$defs/PluginCapability"
+      },
+      "type": "array"
+    },
+    "lifecycleState": {
+      "$ref": "#/$defs/PluginLifecycleState"
+    },
+    "pluginId": {
+      "type": "string"
+    },
+    "requestedCapabilities": {
+      "items": {
+        "$ref": "#/$defs/PluginCapability"
+      },
+      "type": "array"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pluginId",
+    "version",
+    "digestSha256",
+    "requestedCapabilities",
+    "grantedCapabilities",
+    "lifecycleState"
+  ],
+  "title": "PluginInstallation",
+  "type": "object"
+}

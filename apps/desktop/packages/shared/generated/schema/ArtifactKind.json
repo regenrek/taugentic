@@ -4,7 +4,8 @@
     "Transcript",
     "Patch",
     "FileSnapshot",
-    "CommandLog"
+    "CommandLog",
+    "Image"
   ],
   "title": "ArtifactKind",
   "type": "string"

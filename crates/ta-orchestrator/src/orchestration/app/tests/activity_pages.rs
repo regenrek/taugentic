@@ -201,11 +201,15 @@ fn agent_turns_page_materializes_committed_rows_from_stream_frames() {
         .expect("session should open");
     let started = ensure_running_run(&service, &session.id, "run-a");
 
-    commit_agent_stream_events(
+    commit_agent_stream_events_with_user_turn(
         &service,
         &session.id,
         &started.body.id,
         500,
+        ta_store::UserTurnCommit::Append {
+            text: "run-a".to_string(),
+            attachments: Vec::new(),
+        },
         vec![
             DaemonEvent::AgentStream(agent_stream_event(
                 started.body.id.clone(),
@@ -253,11 +257,16 @@ fn agent_turns_page_materializes_committed_rows_from_stream_frames() {
         })
     );
     assert_eq!(page.next_before, None);
-    assert_eq!(page.items.len(), 1);
+    assert_eq!(page.items.len(), 2);
     assert!(matches!(
         &page.items[0],
         crate::AgentTurnRow::Assistant(row)
             if row.text == "hello world" && row.started_at_ms == 500 && row.completed_at_ms == 500
+    ));
+    assert!(matches!(
+        &page.items[1],
+        crate::AgentTurnRow::User(row)
+            if row.text == "run-a"
     ));
 }
 

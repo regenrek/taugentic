@@ -1,31 +1,62 @@
 use ta_protocol::wire::{
-    ActivityCursor, ActivityPageQuery, AgentRuntimeModelId, AgentRuntimeSelection,
-    AgentRuntimeStrategyId, AgentStreamEvent, AgentStreamFrame, AgentStreamItemId,
-    AgentStreamTurnId, AgentToolCallOutcome, ApprovalActor, ApprovalDecision, ApprovalRequest,
-    ApprovalResolution, ApprovalResolutionReason, ApprovalScope, ApprovalSnapshotResult,
-    ApprovalTarget, ArtifactEvent, ArtifactId, ArtifactKind, ArtifactSnapshotResult,
-    ArtifactSummary, CapsuleResult, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope,
-    DaemonEventKind, DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeParams,
+    ActivityCursor, ActivityPageQuery, AgentRuntimeMediaCapabilities, AgentRuntimeMediaCapability,
+    AgentRuntimeModelId, AgentRuntimeModelRef, AgentRuntimeSelection, AgentRuntimeStrategyId,
+    AgentStreamEvent, AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome,
+    ApprovalActor, ApprovalDecision, ApprovalRequest, ApprovalResolution, ApprovalResolutionReason,
+    ApprovalScope, ApprovalSnapshotResult, ApprovalTarget, ArtifactEvent, ArtifactId, ArtifactKind,
+    ArtifactMetadata, ArtifactSnapshotResult, ArtifactSummary, CapsuleResult, ContinueRunRequest,
+    ContinueRunResult, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope, DaemonEventKind,
+    DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeParams,
     DaemonNavigationSubscribeResult, DaemonProjectOpenParams, DaemonProjectOpenResult,
     DaemonRunCompleteWithResultParams, DaemonSessionAttachParams, DaemonSessionAttachResult,
     DaemonSessionOpenParams, DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
     DaemonWorkspaceGetParams, DaemonWorkspaceGetResult, DaemonWorkspaceListParams,
     DaemonWorkspaceListResult, DaemonWorkspaceOpenParams, DaemonWorkspaceOpenResult, EnvPolicy,
     ExecutionContext, ForkRunRequest, ForkRunResult, GetAgentRuntimeQuery, GetArtifactQuery,
-    ListApprovalsQuery, ListArtifactsQuery, ListNativeRunsRequest, ListNativeRunsResult,
-    METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_EVENT,
-    METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
+    JoinRunRequest, ListApprovalsQuery, ListArtifactsQuery, ListNativeRunsRequest,
+    ListNativeRunsResult, METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT,
+    METHOD_DAEMON_RUN_CONTINUE, METHOD_DAEMON_RUN_EVENT, METHOD_DAEMON_RUN_FORK,
+    METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
     METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN,
-    NetworkPolicy, OutputContractKind, PatchResult, PermissionPolicy, ProcessExecPolicy,
-    PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest, ResumeRunResult, ResumeRunState,
-    RunEvent, RunEventDelta, RunEventStreamError, RunEventStreamItem, RunEventStreamPayload,
-    RunExecutionRoute, RunHarnessKind, RunId, RunListEntry, RunListFilter, RunRecord, RunSource,
-    RunStatus, RuntimeLanePendingState, RuntimePolicyMode, RuntimeProfileId, RuntimeProfilePatch,
-    SandboxProfile, SessionAuthority, SessionId, SessionStatus, SessionSummary, StartRunCommand,
-    StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult, TrustState, Workspace,
-    WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceScope, WorkspaceSelector,
-    WorktreeCleanupPolicy,
+    NativeRunRelationship, NetworkPolicy, OutputContractKind, PatchResult, PermissionPolicy,
+    ProcessExecPolicy, PublicApprovalResolution, PublicDaemonEvent, ResumeRunRequest,
+    ResumeRunResult, ResumeRunState, RunEvent, RunEventDelta, RunEventStreamError,
+    RunEventStreamItem, RunEventStreamPayload, RunExecutionRoute, RunHarnessKind, RunId,
+    RunListEntry, RunListFilter, RunRecord, RunSource, RunStatus, RunStatusEvent, RunSummary,
+    RuntimeLanePendingState, RuntimePolicyMode, RuntimeProfileId, RuntimeProfilePatch,
+    SandboxProfile, SessionAuthority, SessionId, SessionStatus, SessionSummary, SpawnRunRequest,
+    StartRunCommand, StreamEmission, SubscribeRunEventsRequest, SubscribeRunEventsResult,
+    ThreadWorkspaceMutation, ThreadWorkspacePin, ThreadWorkspaceQuery,
+    ThreadWorkspaceUpdateCommand, ThreadWorkspaceWorkLogEntry, ThreadWorkspaceWorkLogKind,
+    TrustState, Workspace, WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceScope,
+    WorkspaceSelector, WorktreeCleanupPolicy,
 };
+
+#[test]
+fn navigation_project_space_intent_uses_optional_camel_case_space_id() {
+    let project_id = ta_protocol::wire::ProjectId::new("project-desktop").expect("project id");
+    let space_id = ta_protocol::wire::SpaceId::new("space-product").expect("space id");
+    let placed = ta_protocol::wire::DaemonNavigationIntent::SetProjectSpace {
+        project_id: project_id.clone(),
+        space_id: Some(space_id),
+    };
+    assert_eq!(
+        serde_json::to_value(&placed).expect("placed intent serializes"),
+        serde_json::json!({
+            "kind": "setProjectSpace",
+            "projectId": "project-desktop",
+            "spaceId": "space-product"
+        })
+    );
+    let ungrouped = ta_protocol::wire::DaemonNavigationIntent::SetProjectSpace {
+        project_id,
+        space_id: None,
+    };
+    assert_eq!(
+        serde_json::to_value(&ungrouped).expect("ungrouped intent serializes"),
+        serde_json::json!({ "kind": "setProjectSpace", "projectId": "project-desktop" })
+    );
+}
 
 fn execution_context() -> ExecutionContext {
     let root = WorkspacePath::canonicalize_existing(
@@ -64,6 +95,52 @@ fn execution_route() -> RunExecutionRoute {
 }
 
 #[test]
+fn scheduled_work_source_roundtrips_with_frozen_occurrence_link() {
+    let context = execution_context();
+    let definition = ta_protocol::wire::ScheduledWorkDefinition {
+        id: ta_protocol::wire::ScheduledWorkId::new("schedule-release").expect("schedule id"),
+        session_id: SessionId::new("session-scheduled").expect("session id"),
+        objective: "Run the release checks".to_string(),
+        route: execution_route(),
+        execution_request: ta_protocol::wire::ScheduledWorkExecutionRequest {
+            workspace_id: context.workspace_id.clone(),
+            workspace_root: context.workspace_root.clone(),
+            repo_root: context.workspace_root.clone(),
+            artifact_root: context.artifact_root.clone(),
+            workspace_mode: ta_protocol::wire::WorkspaceMode::WorkspaceWrite,
+            cleanup_policy: ta_protocol::wire::WorktreeCleanupPolicy::DeleteOnSuccess,
+            planned_write_files: Vec::new(),
+            workspace_scope: context.workspace_scope.clone(),
+            sandbox_profile: context.sandbox_profile.clone(),
+            permission_policy: context.permission_policy,
+            network_policy: context.network_policy.clone(),
+            env_policy: context.env_policy.clone(),
+        },
+        due_at_ms: 1_700_000_000_000,
+        attention_policy: ta_protocol::wire::ScheduledWorkAttentionPolicy::AttentionOnly,
+    };
+    definition.validate().expect("frozen definition validates");
+    assert!(
+        definition
+            .execution_request
+            .matches_execution_context(&context)
+    );
+    let source = RunSource::ScheduledWork {
+        route: definition.route.clone(),
+        scheduled_work_id: definition.id.clone(),
+        occurrence_id: ta_protocol::wire::ScheduledWorkOccurrenceId::new("occurrence-release")
+            .expect("occurrence id"),
+    };
+    let json = serde_json::to_value(&source).expect("source serializes");
+    assert_eq!(json["kind"], "scheduledWork");
+    assert_eq!(RunSource::route(&source), &definition.route);
+    assert_eq!(
+        serde_json::from_value::<RunSource>(json).expect("source deserializes"),
+        source
+    );
+}
+
+#[test]
 fn start_run_command_serializes_with_camel_case_fields() {
     let command = StartRunCommand {
         objective: "Ship protocol cleanup".to_string(),
@@ -73,6 +150,7 @@ fn start_run_command_serializes_with_camel_case_fields() {
             auth_profile_id: execution_route().auth_profile_id,
             model_id: execution_route().model_id,
         },
+        attachments: Vec::new(),
     };
 
     let json = serde_json::to_value(&command).expect("command should serialize");
@@ -85,8 +163,59 @@ fn start_run_command_serializes_with_camel_case_fields() {
                 "runtimeProfileId": "runtime-openai-safe",
                 "authProfileId": "profile-test",
                 "modelId": "gpt-5.6-sol"
-            }
+            },
+            "attachments": []
         })
+    );
+}
+
+#[test]
+fn continue_run_contract_roundtrips_with_session_and_message() {
+    let request = ContinueRunRequest {
+        session_id: SessionId::new("session-continue").expect("session id"),
+        run_id: RunId::new("run-continue").expect("run id"),
+        message: "Continue from the durable branch.".to_string(),
+    };
+    let encoded = serde_json::to_value(&request).expect("serialize continuation request");
+    assert_eq!(encoded["sessionId"], "session-continue");
+    assert_eq!(encoded["runId"], "run-continue");
+    assert_eq!(encoded["message"], "Continue from the durable branch.");
+    assert_eq!(
+        serde_json::from_value::<ContinueRunRequest>(encoded).expect("roundtrip"),
+        request
+    );
+    assert_eq!(METHOD_DAEMON_RUN_CONTINUE, "daemon.run.continue");
+    let result = ContinueRunResult {
+        run: RunRecord {
+            id: RunId::new("run-continue").expect("run id"),
+            session_id: SessionId::new("session-continue").expect("session id"),
+            parent_run_id: None,
+            runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe").expect("profile"),
+            objective: "Continue from the durable branch.".to_string(),
+            status: RunStatus::Running,
+            harness: RunHarnessKind::Native,
+            source: RunSource::User {
+                route: execution_route(),
+                output_contract: None,
+                model_id: None,
+                recipe_id: None,
+                attachments: Vec::new(),
+            },
+            execution_context: execution_context(),
+            started_at_ms: None,
+            ended_at_ms: None,
+            last_event_seq: None,
+            workspace_info: None,
+            claimed_files: Vec::new(),
+            conflict_summary: None,
+        },
+    };
+    assert_eq!(
+        serde_json::from_value::<ContinueRunResult>(
+            serde_json::to_value(&result).expect("serialize result")
+        )
+        .expect("result roundtrip"),
+        result
     );
 }
 
@@ -150,7 +279,7 @@ fn run_source_native_subagent_roundtrips_through_json() {
 }
 
 #[test]
-fn run_completion_event_roundtrips_with_capsule_result() {
+fn run_status_event_constructor_roundtrips_with_capsule_result_and_validates_reason_categories() {
     let result = CapsuleResult::Patch(PatchResult {
         patch_receipt_ids: vec!["receipt_patch".to_string()],
         touched_files: vec!["crates/ta-protocol/src/wire/event.rs".to_string()],
@@ -158,21 +287,101 @@ fn run_completion_event_roundtrips_with_capsule_result() {
         passing: true,
         blockers: Vec::new(),
     });
-    let event = RunEvent {
-        run_id: RunId::new("run-1").expect("run id"),
-        status: RunStatus::Completed,
-        detail: "completed".to_string(),
-        output_contract: Some(OutputContractKind::Patch),
-        recipe_id: None,
-        result: Some(result.clone()),
-    };
+    let event = RunEvent::terminal(
+        RunId::new("run-1").expect("run id"),
+        RunStatus::Completed,
+        ta_protocol::wire::RunStatusReason::new("completed").expect("reason"),
+        Some(OutputContractKind::Patch),
+        None,
+        Some(result.clone()),
+    )
+    .expect("completed is terminal");
 
     let json = serde_json::to_value(&event).expect("run event should serialize");
     let decoded: RunEvent = serde_json::from_value(json.clone()).expect("run event roundtrip");
 
     assert_eq!(decoded, event);
-    assert_eq!(json["outputContract"], "patch");
-    assert_eq!(json["result"]["kind"], "patch");
+    assert_eq!(json["kind"], "status");
+    assert_eq!(json["payload"]["outputContract"], "patch");
+    assert_eq!(json["payload"]["result"]["kind"], "patch");
+    assert!(
+        serde_json::from_value::<RunEvent>(serde_json::json!({
+            "kind": "status",
+            "payload": { "runId": "run-invalid", "status": "running", "reason": "nope" }
+        }))
+        .is_err()
+    );
+    assert!(
+        serde_json::from_value::<RunEvent>(serde_json::json!({
+            "kind": "status",
+            "payload": { "runId": "run-invalid", "status": "completed" }
+        }))
+        .is_err()
+    );
+}
+
+#[test]
+fn exhausted_profile_status_roundtrips_without_profile_id_ownership() {
+    let event = RunEvent::terminal_with_auth_profile_exhaustion(
+        RunId::new("run-exhausted").expect("run id"),
+        ta_protocol::wire::RunStatusReason::new("The selected account is rate limited.")
+            .expect("reason"),
+        ta_protocol::wire::AuthProfileExhaustion::RateLimited,
+    )
+    .expect("typed exhaustion status");
+
+    let value = serde_json::to_value(&event).expect("status serializes");
+    assert_eq!(value["payload"]["authProfileExhaustion"], "rateLimited");
+    assert!(value["payload"].get("authProfileId").is_none());
+    assert_eq!(
+        serde_json::from_value::<RunEvent>(value).expect("status roundtrips"),
+        event
+    );
+}
+
+#[test]
+fn run_event_active_terminal_constructors_enforce_status_categories_and_reason() {
+    let run_id = RunId::new("run-status-constructor").expect("run id");
+    let active = RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+        .expect("running is active");
+    assert!(matches!(
+        active,
+        RunEvent::Status(ref event) if event.reason().is_none()
+    ));
+    assert_eq!(
+        RunEvent::active(run_id.clone(), RunStatus::Completed, None, None, None),
+        Err(ta_protocol::wire::DomainError::RunStatusMustBeActive)
+    );
+
+    let reason = ta_protocol::wire::RunStatusReason::new("completed").expect("reason");
+    let terminal = RunEvent::terminal(
+        run_id.clone(),
+        RunStatus::Completed,
+        reason,
+        None,
+        None,
+        None,
+    )
+    .expect("completed is terminal");
+    assert!(matches!(
+        terminal,
+        RunEvent::Status(ref event) if event.reason().is_some_and(|reason| reason.as_str() == "completed")
+    ));
+    assert_eq!(
+        RunEvent::terminal(
+            run_id,
+            RunStatus::Running,
+            ta_protocol::wire::RunStatusReason::new("not terminal").expect("reason"),
+            None,
+            None,
+            None,
+        ),
+        Err(ta_protocol::wire::DomainError::RunStatusMustBeTerminal)
+    );
+    assert_eq!(
+        ta_protocol::wire::RunStatusReason::new(" \t\n "),
+        Err(ta_protocol::wire::DomainError::EmptyRunStatusReason)
+    );
 }
 
 #[test]
@@ -488,7 +697,9 @@ fn list_native_runs_contract_roundtrips_with_cursor_and_parent_filter() {
     let result = ListNativeRunsResult {
         runs: vec![RunListEntry {
             id: RunId::new("run-child").expect("run id"),
-            parent_run_id: Some(RunId::new("run-parent").expect("parent run id")),
+            relationship: NativeRunRelationship::FreshSpawn {
+                parent_run_id: RunId::new("run-parent").expect("parent run id"),
+            },
             output_contract: None,
             recipe_id: None,
             harness: RunHarnessKind::Native,
@@ -525,8 +736,78 @@ fn list_native_runs_contract_roundtrips_with_cursor_and_parent_filter() {
     );
     assert_eq!(result_json["runs"][0]["startedAtMs"], "120");
     assert_eq!(result_json["runs"][0]["lastEventSeq"], "42");
+    assert_eq!(
+        result_json["runs"][0]["relationship"],
+        serde_json::json!({
+            "kind": "freshSpawn",
+            "parentRunId": "run-parent"
+        })
+    );
     assert_eq!(decoded_request, request);
     assert_eq!(decoded_result, result);
+}
+
+#[test]
+fn account_switched_continuation_relationship_roundtrips_distinctly_from_a_fork() {
+    let relationship = NativeRunRelationship::AccountSwitchedContinuation {
+        parent_run_id: RunId::new("run-exhausted-parent").expect("parent run id"),
+        parent_event_seq: 42,
+    };
+    let encoded = serde_json::to_value(&relationship).expect("relationship serializes");
+    assert_eq!(
+        encoded,
+        serde_json::json!({
+            "kind": "accountSwitchedContinuation",
+            "parentRunId": "run-exhausted-parent",
+            "parentEventSeq": "42"
+        })
+    );
+    assert_eq!(
+        serde_json::from_value::<NativeRunRelationship>(encoded)
+            .expect("relationship deserializes"),
+        relationship
+    );
+}
+
+#[test]
+fn fresh_spawn_and_join_contract_roundtrip() {
+    let selection = AgentRuntimeSelection {
+        runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe").expect("profile"),
+        auth_profile_id: Some(ta_protocol::wire::AuthProfileId::new("profile-test").expect("auth")),
+        model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model")),
+    };
+    let spawn = SpawnRunRequest {
+        session_id: SessionId::new("session-fresh").expect("session"),
+        parent_run_id: RunId::new("run-parent").expect("parent"),
+        objective: "Review this independently".to_string(),
+        selection,
+        output_contract: None,
+        recipe_id: None,
+        workspace_scope: WorkspaceMode::WorkspaceWrite,
+        cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,
+        planned_write_files: Vec::new(),
+    };
+    let join = JoinRunRequest {
+        session_id: spawn.session_id.clone(),
+        parent_run_id: spawn.parent_run_id.clone(),
+        child_run_id: RunId::new("run-fresh-child").expect("child"),
+    };
+
+    let spawn_json = serde_json::to_value(&spawn).expect("spawn should serialize");
+    let join_json = serde_json::to_value(&join).expect("join should serialize");
+    let decoded_spawn: SpawnRunRequest =
+        serde_json::from_value(spawn_json.clone()).expect("spawn should deserialize");
+    let decoded_join: JoinRunRequest =
+        serde_json::from_value(join_json.clone()).expect("join should deserialize");
+
+    assert_eq!(spawn_json["parentRunId"], "run-parent");
+    assert_eq!(
+        spawn_json["selection"]["runtimeProfileId"],
+        "runtime-openai-safe"
+    );
+    assert_eq!(join_json["childRunId"], "run-fresh-child");
+    assert_eq!(decoded_spawn, spawn);
+    assert_eq!(decoded_join, join);
 }
 
 #[test]
@@ -536,7 +817,8 @@ fn daemon_event_roundtrips_through_json() {
             id: ArtifactId::new("artifact-1").expect("artifact id should be valid"),
             run_id: RunId::new("run-1").expect("run id should be valid"),
             kind: ArtifactKind::Patch,
-            storage_path: "artifacts/run-1/patch.diff".to_string(),
+            metadata: ArtifactMetadata::Standard,
+            display_name: "patch.diff".to_string(),
         },
     });
 
@@ -660,6 +942,32 @@ fn daemon_session_open_params_support_project_workspace_selector() {
 }
 
 #[test]
+fn daemon_session_open_params_support_temporary_workspace_selector() {
+    let params = DaemonSessionOpenParams {
+        title: "Temporary conversation".to_string(),
+        workspace: WorkspaceSelector::ByTemporary {
+            workspace_id: WorkspaceId::new("workspace-test-default").expect("workspace id"),
+        },
+    };
+
+    let json = serde_json::to_value(&params).expect("open params should serialize");
+    let decoded: DaemonSessionOpenParams =
+        serde_json::from_value(json.clone()).expect("open params should deserialize");
+
+    assert_eq!(decoded, params);
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "title": "Temporary conversation",
+            "workspace": {
+                "kind": "byTemporary",
+                "workspaceId": "workspace-test-default"
+            }
+        })
+    );
+}
+
+#[test]
 fn daemon_workspace_rpc_payloads_roundtrip_through_json() {
     assert_eq!(METHOD_DAEMON_WORKSPACE_OPEN, "daemon.workspace.open");
     assert_eq!(METHOD_DAEMON_WORKSPACE_LIST, "daemon.workspace.list");
@@ -760,6 +1068,7 @@ fn artifact_get_query_serializes_with_camel_case_fields() {
     let query = GetArtifactQuery {
         artifact_id: ta_protocol::wire::ArtifactId::new("artifact-1")
             .expect("artifact id should be valid"),
+        pdf_page_index: None,
     };
 
     let json = serde_json::to_value(&query).expect("query should serialize");
@@ -800,6 +1109,36 @@ fn runtime_profile_patch_roundtrips_editable_fields() {
         })
     );
     assert_eq!(decoded, patch);
+}
+
+#[test]
+fn auth_profile_preferences_set_contract_roundtrips_as_a_complete_replacement() {
+    let params = ta_protocol::wire::DaemonAgentRuntimeAuthProfilePreferencesSetParams {
+        auth_profile_id: ta_protocol::wire::AuthProfileId::new("profile-openai-b")
+            .expect("profile id"),
+        preferences: ta_protocol::wire::AuthProfilePreferences {
+            label: "Secondary OpenAI".to_string(),
+            order: 1,
+            is_default: false,
+        },
+    };
+
+    let json = serde_json::to_value(&params).expect("params should serialize");
+    let decoded: ta_protocol::wire::DaemonAgentRuntimeAuthProfilePreferencesSetParams =
+        serde_json::from_value(json.clone()).expect("params should deserialize");
+
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "authProfileId": "profile-openai-b",
+            "preferences": {
+                "label": "Secondary OpenAI",
+                "order": 1,
+                "isDefault": false
+            }
+        })
+    );
+    assert_eq!(decoded, params);
 }
 
 #[test]
@@ -890,7 +1229,8 @@ fn artifact_snapshot_result_roundtrips_through_json() {
             id: ArtifactId::new("artifact-1").expect("artifact id"),
             run_id: RunId::new("run-1").expect("run id"),
             kind: ArtifactKind::Patch,
-            storage_path: "artifacts/run-1/patch.diff".to_string(),
+            metadata: ArtifactMetadata::Standard,
+            display_name: "patch.diff".to_string(),
         }],
         latest_cursor: Some(daemon_event_cursor(12)),
     };
@@ -1137,7 +1477,8 @@ fn daemon_event_envelope_roundtrips_with_full_lineage() {
                 id: ArtifactId::new("artifact-1").expect("artifact id"),
                 run_id: RunId::new("run-1").expect("run id"),
                 kind: ArtifactKind::Patch,
-                storage_path: "artifacts/run-1/patch.diff".to_string(),
+                metadata: ArtifactMetadata::Standard,
+                display_name: "patch.diff".to_string(),
             },
         }),
     };
@@ -1260,6 +1601,7 @@ fn session_summary() -> SessionSummary {
         id: SessionId::new("session-1").expect("session id"),
         title: "Build daemon app server".to_string(),
         status: SessionStatus::Idle,
+        next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
     }
 }
 
@@ -1281,4 +1623,100 @@ fn workspace_summary() -> Workspace {
 fn session_authority() -> SessionAuthority {
     SessionAuthority::new("session-authority-1session-authority-1".to_string())
         .expect("session authority")
+}
+
+#[test]
+fn thread_workspace_contract_is_strict_and_roundtrips_every_mutation() {
+    let query_error = serde_json::from_value::<ThreadWorkspaceQuery>(serde_json::json!({
+        "unexpected": true
+    }))
+    .expect_err("empty query must reject unknown fields");
+    assert!(query_error.to_string().contains("unknown field"));
+
+    let pin = ThreadWorkspacePin {
+        run_id: RunId::new("run-thread-workspace").expect("run id"),
+        cursor: ActivityCursor { sequence: 7 },
+    };
+    let mutations = vec![
+        ThreadWorkspaceMutation::GoalSet {
+            value: "goal".to_string(),
+        },
+        ThreadWorkspaceMutation::PlanSet {
+            value: "plan".to_string(),
+        },
+        ThreadWorkspaceMutation::NotesSet {
+            value: "notes".to_string(),
+        },
+        ThreadWorkspaceMutation::RecapSet {
+            value: "recap".to_string(),
+        },
+        ThreadWorkspaceMutation::PinAdded { pin: pin.clone() },
+        ThreadWorkspaceMutation::PinRemoved {
+            cursor: pin.cursor.clone(),
+        },
+    ];
+    for mutation in mutations {
+        let command = ThreadWorkspaceUpdateCommand { mutation };
+        let value = serde_json::to_value(&command).expect("command serializes");
+        assert_eq!(
+            serde_json::from_value::<ThreadWorkspaceUpdateCommand>(value)
+                .expect("command roundtrips"),
+            command
+        );
+    }
+
+    let error = serde_json::from_value::<ThreadWorkspaceUpdateCommand>(serde_json::json!({
+        "mutation": { "kind": "goalSet", "value": "goal", "unexpected": true }
+    }))
+    .expect_err("update must reject unknown nested fields");
+    assert!(error.to_string().contains("unknown field"));
+
+    let entry = ThreadWorkspaceWorkLogEntry {
+        sequence: 42,
+        occurred_at_ms: 1_725_000_000_123,
+        kind: ThreadWorkspaceWorkLogKind::GoalSet,
+    };
+    assert_eq!(
+        serde_json::to_value(entry).expect("entry serializes"),
+        serde_json::json!({
+            "sequence": "42",
+            "occurredAtMs": "1725000000123",
+            "kind": "goalSet"
+        })
+    );
+}
+
+#[test]
+fn image_media_contract_is_closed() {
+    let model = AgentRuntimeModelRef {
+        id: AgentRuntimeModelId::new("model-image").expect("model id"),
+        display_name: "Image model".to_string(),
+        context_limit: None,
+        input_cost_per_million_micros: None,
+        output_cost_per_million_micros: None,
+        reasoning: true,
+        tool_call: true,
+        structured_output: false,
+        media_capabilities: AgentRuntimeMediaCapabilities {
+            image_input: AgentRuntimeMediaCapability::Supported,
+            image_output: AgentRuntimeMediaCapability::Unsupported,
+            voice_input: AgentRuntimeMediaCapability::Unsupported,
+            voice_output: AgentRuntimeMediaCapability::Unsupported,
+        },
+    };
+    let model_value = serde_json::to_value(model).expect("model serializes");
+    assert!(model_value.get("inputModalities").is_none());
+    let capabilities = AgentRuntimeMediaCapabilities {
+        image_input: AgentRuntimeMediaCapability::Supported,
+        image_output: AgentRuntimeMediaCapability::Unsupported,
+        voice_input: AgentRuntimeMediaCapability::Unsupported,
+        voice_output: AgentRuntimeMediaCapability::Unsupported,
+    };
+    assert_eq!(
+        serde_json::from_value::<AgentRuntimeMediaCapabilities>(
+            serde_json::to_value(capabilities.clone()).expect("capabilities serialize"),
+        )
+        .expect("capabilities deserialize"),
+        capabilities
+    );
 }

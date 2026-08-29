@@ -1,7 +1,8 @@
 use ta_auth_openai::{AccountInfo, StoredCredentials};
 use ta_protocol::wire::{
     AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState, AuthProfileManagementMode,
-    AuthProfileMethodInfo, AuthProfileRef, AuthProfileState,
+    AuthProfileMethodInfo, AuthProfilePreferences, AuthProfileRef, AuthProfileState,
+    AuthProfileUsage,
 };
 
 use super::{OpenAiSubscriptionAuth, profile_lock};
@@ -187,7 +188,14 @@ fn profile_state(
                 .filter(|value| !value.is_empty()),
             plan_tier: account.and_then(|account| account.plan_tier.clone()),
         },
+        preferences: AuthProfilePreferences {
+            label: "OpenAI ChatGPT Subscription".to_string(),
+            order: 0,
+            is_default: false,
+        },
+        usage: AuthProfileUsage::Unavailable,
         connection_state,
+        exhaustion: None,
         last_error,
         management_mode: AuthProfileManagementMode::Interactive,
         can_login,

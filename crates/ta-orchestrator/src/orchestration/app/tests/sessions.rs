@@ -328,6 +328,146 @@ fn open_project_session_validates_membership_and_persists_project_placement() {
 }
 
 #[test]
+fn opening_standalone_and_temporary_sessions_persists_navigation_with_the_session() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let workspace_id = ta_store::default_test_workspace_id();
+
+    let standalone = service
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Standalone conversation".to_string(),
+                workspace_id: workspace_id.clone(),
+            },
+        )
+        .expect("standalone conversation should open");
+    let temporary = service
+        .open_temporary_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Temporary conversation".to_string(),
+                workspace_id: workspace_id.clone(),
+            },
+        )
+        .expect("temporary conversation should open");
+
+    let snapshot = service
+        .navigation_snapshot(TEST_OWNER_PRINCIPAL_ID, None)
+        .expect("navigation should load");
+    assert!(snapshot.conversations.iter().any(|conversation| {
+        conversation.session_id == standalone.id
+            && conversation.workspace_id == workspace_id
+            && conversation.placement == ta_protocol::wire::ConversationPlacement::Standalone
+    }));
+    assert!(snapshot.conversations.iter().any(|conversation| {
+        conversation.session_id == temporary.id
+            && conversation.workspace_id == workspace_id
+            && conversation.placement == ta_protocol::wire::ConversationPlacement::Temporary
+    }));
+}
+
+#[test]
+fn navigation_snapshot_search_normalizes_once_and_includes_all_conversation_placements() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let workspace_id = ta_store::default_test_workspace_id();
+    let project_snapshot = service
+        .apply_navigation_intent(
+            TEST_OWNER_PRINCIPAL_ID,
+            ta_protocol::wire::DaemonNavigationIntent::CreateProject {
+                space_id: None,
+                title: "Desktop".to_string(),
+                workspace_ids: vec![workspace_id.clone()],
+            },
+        )
+        .expect("project should be created");
+    let project_id = project_snapshot.projects[0].id.clone();
+    let project = service
+        .open_project_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Needle project".to_string(),
+                workspace_id: workspace_id.clone(),
+            },
+            project_id,
+        )
+        .expect("project conversation should open");
+    let active_project = service
+        .open_project_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Needle active project".to_string(),
+                workspace_id: workspace_id.clone(),
+            },
+            project_snapshot.projects[0].id.clone(),
+        )
+        .expect("active project conversation should open");
+    let standalone = service
+        .open_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Needle standalone".to_string(),
+                workspace_id: workspace_id.clone(),
+            },
+        )
+        .expect("standalone conversation should open");
+    let temporary = service
+        .open_temporary_session(
+            TEST_CLIENT_NAME,
+            TEST_OWNER_PRINCIPAL_ID,
+            &OpenSessionRequest {
+                title: "Needle temporary".to_string(),
+                workspace_id,
+            },
+        )
+        .expect("temporary conversation should open");
+    service
+        .apply_navigation_intent(
+            TEST_OWNER_PRINCIPAL_ID,
+            ta_protocol::wire::DaemonNavigationIntent::SetArchived {
+                session_id: project.id.clone(),
+                archived: true,
+            },
+        )
+        .expect("project conversation should archive");
+
+    let snapshot = service
+        .navigation_snapshot(TEST_OWNER_PRINCIPAL_ID, Some("  NEEDLE  "))
+        .expect("daemon search should load");
+
+    assert_eq!(snapshot.conversations.len(), 4);
+    assert!(
+        snapshot
+            .conversations
+            .iter()
+            .any(|conversation| conversation.session_id == project.id && conversation.archived)
+    );
+    assert!(
+        snapshot
+            .conversations
+            .iter()
+            .any(|conversation| conversation.session_id == active_project.id
+                && !conversation.archived)
+    );
+    assert!(
+        snapshot
+            .conversations
+            .iter()
+            .any(|conversation| conversation.session_id == standalone.id)
+    );
+    assert!(
+        snapshot
+            .conversations
+            .iter()
+            .any(|conversation| conversation.session_id == temporary.id)
+    );
+}
+
+#[test]
 fn open_project_session_rejects_workspace_outside_project() {
     let service = AppService::bootstrap().expect("app service should boot");
     let snapshot = service
@@ -437,19 +577,33 @@ fn commit_session_status_test_run(
         .store
         .lock()
         .expect("app store should not be poisoned");
+    let event = match status {
+        RunStatus::Queued | RunStatus::Running | RunStatus::WaitingForApproval => {
+            crate::RunEvent::active(run.id.clone(), status, None, None, None)
+                .expect("session status should be active")
+        }
+        RunStatus::Completed
+        | RunStatus::Failed
+        | RunStatus::BudgetExceeded
+        | RunStatus::Cancelled => crate::RunEvent::terminal(
+            run.id.clone(),
+            status,
+            crate::RunStatusReason::new(format!("Session status test transition to {status:?}"))
+                .expect("session terminal status reason should be valid"),
+            None,
+            None,
+            None,
+        )
+        .expect("session status should be terminal"),
+    };
     store
         .commit_run_transition(CommitRunTransition {
             session_id: session_id.clone(),
             run: run.clone(),
-            events: vec![DaemonEvent::Run(crate::RunEvent {
-                run_id: run.id,
-                status,
-                detail: format!("Session status test transition to {status:?}"),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            })],
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(event)],
             occurred_at_ms: 100,
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("run transition should commit");
 }

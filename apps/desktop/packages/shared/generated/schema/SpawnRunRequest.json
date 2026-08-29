@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "WorkspaceMode": {
+      "enum": [
+        "readonly",
+        "workspaceWrite",
+        "worktreeWrite",
+        "repoWriteWithApproval",
+        "remoteWorker",
+        "containerized",
+        "ephemeral"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Creates an independent child with durable parent lineage and a fresh\nconversation history. Runtime selection is explicit and provider-neutral.",
+  "properties": {
+    "cleanupPolicy": {
+      "$ref": "#/$defs/WorktreeCleanupPolicy",
+      "default": "deleteOnSuccess"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "outputContract": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutputContractKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parentRunId": {
+      "type": "string"
+    },
+    "plannedWriteFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "recipeId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "workspaceScope": {
+      "$ref": "#/$defs/WorkspaceMode",
+      "default": "worktreeWrite"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "objective",
+    "selection"
+  ],
+  "title": "SpawnRunRequest",
+  "type": "object"
+}

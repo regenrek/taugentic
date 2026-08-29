@@ -5,23 +5,113 @@
         "Transcript",
         "Patch",
         "FileSnapshot",
-        "CommandLog"
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
       ],
       "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "displayName": {
+      "type": "string"
+    },
     "id": {
       "type": "string"
     },
     "kind": {
       "$ref": "#/$defs/ArtifactKind"
     },
-    "runId": {
-      "type": "string"
+    "metadata": {
+      "$ref": "#/$defs/ArtifactMetadata"
     },
-    "storagePath": {
+    "runId": {
       "type": "string"
     }
   },
@@ -29,7 +119,8 @@
     "id",
     "runId",
     "kind",
-    "storagePath"
+    "metadata",
+    "displayName"
   ],
   "title": "ArtifactSummary",
   "type": "object"

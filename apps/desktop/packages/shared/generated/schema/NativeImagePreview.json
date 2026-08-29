@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "An ephemeral native-renderer source materialized from a daemon-validated\nimage query. The source is owned and cleaned up by the desktop bridge.",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "mediaType": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "mediaType",
+    "revision",
+    "byteLen"
+  ],
+  "title": "NativeImagePreview",
+  "type": "object"
+}

@@ -1,4 +1,8 @@
 use super::*;
+use ta_protocol::wire::{
+    AuthProfilePreferences, DaemonAgentRuntimeAuthProfilePreferencesSetParams,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET,
+};
 
 #[test]
 fn daemon_status_returns_ready_payload() {
@@ -46,7 +50,7 @@ fn daemon_diagnostics_snapshot_returns_runtime_payload() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -107,12 +111,14 @@ fn daemon_diagnostics_snapshot_requires_initialize_first() {
 #[test]
 fn daemon_session_list_returns_daemon_owned_read_models() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
+    let other_owner_principal_id = issue_test_principal_id(&state, "other-client");
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -120,7 +126,7 @@ fn daemon_session_list_returns_daemon_owned_read_models() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -131,7 +137,7 @@ fn daemon_session_list_returns_daemon_owned_read_models() {
         .app
         .open_session(
             "other-client",
-            OTHER_TEST_OWNER_PRINCIPAL_ID,
+            &other_owner_principal_id,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -218,7 +224,7 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -261,7 +267,23 @@ fn daemon_agent_runtime_get_returns_snapshot_without_attached_session() {
             "snapshot should contain provider {provider_id}"
         );
     }
-    assert!(snapshot.auth_profiles.is_empty());
+    let realtime_environment = snapshot
+        .auth_profiles
+        .iter()
+        .find(|profile| profile.profile.id.as_str() == "profile-openai-api-key-environment")
+        .expect("registered OpenAI Realtime environment profile");
+    assert_eq!(realtime_environment.profile.provider_id.as_str(), "openai");
+    assert_eq!(
+        realtime_environment.profile.auth_method_id.as_str(),
+        "openai-api-key"
+    );
+    assert_eq!(
+        realtime_environment.management_mode,
+        ta_protocol::wire::AuthProfileManagementMode::Environment
+    );
+    assert!(!realtime_environment.can_login);
+    assert!(!realtime_environment.can_logout);
+    assert_eq!(snapshot.auth_profiles.len(), 1);
     for auth_method_id in ["codex-chatgpt", "openai-chatgpt", "anthropic-api-key"] {
         assert!(
             snapshot
@@ -337,7 +359,7 @@ fn daemon_agent_runtime_profile_patch_updates_profile_without_attached_session()
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -388,7 +410,7 @@ fn daemon_agent_runtime_extension_set_updates_snapshot_without_attached_session(
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -433,7 +455,7 @@ fn daemon_agent_runtime_auth_login_unknown_method_returns_invalid_params() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -470,7 +492,7 @@ fn daemon_agent_runtime_auth_logout_unknown_profile_returns_invalid_params() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -497,4 +519,125 @@ fn daemon_agent_runtime_auth_logout_unknown_profile_returns_invalid_params() {
 
     assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
     assert!(error.message.contains("auth profile does not exist"));
+}
+
+#[test]
+fn daemon_agent_runtime_auth_profile_preferences_set_returns_authoritative_group_snapshot() {
+    let state = boot(test_config());
+    for (id, order, is_default) in [
+        ("profile-openai-a", 0, true),
+        ("profile-openai-b", 1, false),
+        ("profile-openai-c", 2, false),
+    ] {
+        let mut profile = ta_store::connected_test_auth_profile(id, "openai-chatgpt", "openai");
+        profile.profile.preferences = AuthProfilePreferences {
+            label: id.to_string(),
+            order,
+            is_default,
+        };
+        state
+            .app
+            .seed_auth_profile_for_tests(profile)
+            .expect("profile should persist");
+    }
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
+        attached_session_id: None,
+    }));
+    let session = test_session();
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(164),
+            method: METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET.to_string(),
+            params: Some(
+                serde_json::to_value(DaemonAgentRuntimeAuthProfilePreferencesSetParams {
+                    auth_profile_id: AuthProfileId::new("profile-openai-b").expect("profile id"),
+                    preferences: AuthProfilePreferences {
+                        label: "Secondary OpenAI".to_string(),
+                        order: 0,
+                        is_default: true,
+                    },
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect("preference replacement should succeed");
+    let snapshot: AgentRuntimeSnapshot =
+        serde_json::from_value(response).expect("snapshot should deserialize");
+    let profiles = snapshot
+        .auth_profiles
+        .into_iter()
+        .filter(|profile| {
+            profile.profile.provider_id.as_str() == "openai"
+                && profile.profile.auth_method_id.as_str() == "openai-chatgpt"
+        })
+        .map(|profile| {
+            (
+                profile.profile.id.as_str().to_string(),
+                profile.preferences.label,
+                profile.preferences.order,
+                profile.preferences.is_default,
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        profiles,
+        vec![
+            (
+                "profile-openai-b".to_string(),
+                "Secondary OpenAI".to_string(),
+                0,
+                true
+            ),
+            (
+                "profile-openai-a".to_string(),
+                "profile-openai-a".to_string(),
+                1,
+                false
+            ),
+            (
+                "profile-openai-c".to_string(),
+                "profile-openai-c".to_string(),
+                2,
+                false
+            ),
+        ]
+    );
+
+    let error = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(165),
+            method: METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET.to_string(),
+            params: Some(
+                serde_json::to_value(DaemonAgentRuntimeAuthProfilePreferencesSetParams {
+                    auth_profile_id: AuthProfileId::new("profile-openai-b").expect("profile id"),
+                    preferences: AuthProfilePreferences {
+                        label: " invalid ".to_string(),
+                        order: 0,
+                        is_default: true,
+                    },
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect_err("surrounding label whitespace must reject");
+    assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
+    assert!(error.message.contains("label"));
 }

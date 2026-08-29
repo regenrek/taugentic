@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "pdfPageIndex": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "path"
+  ],
+  "title": "WorkspaceFileReadParams",
+  "type": "object"
+}

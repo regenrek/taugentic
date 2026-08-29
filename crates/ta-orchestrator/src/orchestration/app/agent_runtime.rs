@@ -3,8 +3,8 @@ use ta_store::PersistenceStore;
 use crate::{
     AuthProfileLoginResult, AuthProfileLogoutResult, DaemonAgentRuntimeAuthLoginCompleteParams,
     DaemonAgentRuntimeAuthLoginParams, DaemonAgentRuntimeAuthLogoutParams,
-    DaemonAgentRuntimePatchProfileParams, DaemonAgentRuntimeSetExtensionEnabledParams,
-    GetAgentRuntimeQuery,
+    DaemonAgentRuntimeAuthProfilePreferencesSetParams, DaemonAgentRuntimePatchProfileParams,
+    DaemonAgentRuntimeSetExtensionEnabledParams, GetAgentRuntimeQuery,
 };
 
 use super::{AppService, AppServiceError};
@@ -38,6 +38,15 @@ where
         self.agent_runtime
             .login_auth_profile(params)
             .await
+            .map_err(AppServiceError::from)
+    }
+
+    pub fn replace_agent_runtime_auth_profile_preferences(
+        &self,
+        params: &DaemonAgentRuntimeAuthProfilePreferencesSetParams,
+    ) -> Result<crate::AgentRuntimeSnapshot, AppServiceError> {
+        self.agent_runtime
+            .replace_auth_profile_preferences(params)
             .map_err(AppServiceError::from)
     }
 

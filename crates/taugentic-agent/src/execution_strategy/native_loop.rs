@@ -114,21 +114,42 @@ fn spawn_loop(
     )
 }
 
-/// Builds the native session, appending the fork objective to caller-provided
-/// fork history as the next user message.
+/// Builds the native session from the daemon-owned durable history. The
+/// objective policy decides whether this run contributes the next user turn or
+/// that turn has already been replayed from durable history.
 fn session_for_request(request: &ExecutionRequest) -> Session {
-    let Some(initial_state) = request.fork_initial_state.clone() else {
+    let Some(initial_state) = request.native_history.clone() else {
         return Session::new(request);
     };
-    let mut history = initial_state.messages;
-    history.push(ta_provider_llm::client::StreamMessage::user(
-        request.objective.clone(),
-    ));
+    let provider_session_id = initial_state.provider_session_id.clone();
+    let history = history_for_native_history(initial_state, &request.objective);
     Session::from_request_history(
         history,
-        initial_state.provider_session_id,
+        provider_session_id,
         request.system_prompt.as_deref(),
     )
+}
+
+fn history_for_native_history(
+    initial_state: crate::NativeHistoryInitialState,
+    objective: &str,
+) -> Vec<ta_provider_llm::client::StreamMessage> {
+    match initial_state.objective_policy {
+        crate::NativeHistoryObjectivePolicy::AppendNextObjective => {
+            history_with_next_user_message(initial_state.messages, objective)
+        }
+        crate::NativeHistoryObjectivePolicy::ObjectiveAlreadyInHistory => initial_state.messages,
+    }
+}
+
+fn history_with_next_user_message(
+    mut durable_history: Vec<ta_provider_llm::client::StreamMessage>,
+    objective: &str,
+) -> Vec<ta_provider_llm::client::StreamMessage> {
+    durable_history.push(ta_provider_llm::client::StreamMessage::user(
+        objective.to_string(),
+    ));
+    durable_history
 }
 
 struct LoopRuntimeParts {
@@ -237,5 +258,62 @@ mod tests {
 
         assert_eq!(spec.id.as_ref(), "openrouter");
         assert_eq!(spec.base_url.as_ref(), "https://openrouter.ai/api/v1");
+    }
+
+    #[test]
+    fn continuation_initial_state_appends_once_to_durable_history() {
+        let history = history_with_next_user_message(
+            vec![
+                ta_provider_llm::client::StreamMessage::user("original prompt"),
+                ta_provider_llm::client::StreamMessage::assistant("original answer", Vec::new()),
+            ],
+            "next durable user turn",
+        );
+        assert_eq!(history.len(), 3);
+        assert_eq!(history[2].content, "next durable user turn");
+        assert_eq!(
+            history
+                .iter()
+                .filter(|message| message.content == "next durable user turn")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn repeated_identical_continuation_message_is_not_deduplicated() {
+        let history = history_with_next_user_message(
+            vec![ta_provider_llm::client::StreamMessage::user("same message")],
+            "same message",
+        );
+        assert_eq!(history.len(), 2);
+        assert_eq!(
+            history
+                .iter()
+                .filter(|message| message.content == "same message")
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn account_switched_history_does_not_append_the_persisted_objective_again() {
+        let objective = "repeat this exact text";
+        let history = history_for_native_history(
+            crate::NativeHistoryInitialState {
+                messages: vec![ta_provider_llm::client::StreamMessage::user(objective)],
+                provider_session_id: None,
+                objective_policy: crate::NativeHistoryObjectivePolicy::ObjectiveAlreadyInHistory,
+            },
+            objective,
+        );
+        assert_eq!(history.len(), 1);
+        assert_eq!(
+            history
+                .iter()
+                .filter(|message| message.content == objective)
+                .count(),
+            1
+        );
     }
 }

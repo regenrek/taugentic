@@ -1,0 +1,348 @@
+{
+  "$defs": {
+    "ConflictSummary": {
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warningCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "warningCount",
+        "files"
+      ],
+      "type": "object"
+    },
+    "NativeRunRelationship": {
+      "description": "Daemon-owned native run lineage for workspace presentation.\n\nThis is deliberately a required discriminated projection: desktop surfaces\nrender relationship semantics from the daemon rather than deriving a branch\nkind from nullable parent or fork fields.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "OutputContractKind": {
+      "enum": [
+        "debug",
+        "patch",
+        "review",
+        "test",
+        "plan",
+        "custom"
+      ],
+      "type": "string"
+    },
+    "RunHarnessKind": {
+      "enum": [
+        "unknown",
+        "native",
+        "acp",
+        "codexAppServer",
+        "realtimeVoice"
+      ],
+      "type": "string"
+    },
+    "RunLineageGraphEdge": {
+      "properties": {
+        "childRunId": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parentRunId",
+        "childRunId"
+      ],
+      "type": "object"
+    },
+    "RunListEntry": {
+      "properties": {
+        "claimedFiles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "conflictSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConflictSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastEventSeq": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objectivePreview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outputContract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutputContractKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recipeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "relationship": {
+          "$ref": "#/$defs/NativeRunRelationship"
+        },
+        "startedAtMs": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "workspaceInfo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorktreeInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "relationship",
+        "harness",
+        "status"
+      ],
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "queued",
+        "running",
+        "waitingForApproval",
+        "completed",
+        "failed",
+        "budgetExceeded",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "WorktreeCleanupPolicy": {
+      "enum": [
+        "deleteOnSuccess",
+        "deleteOnTerminal",
+        "keep",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "WorktreeInfo": {
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "cleanupPolicy": {
+          "$ref": "#/$defs/WorktreeCleanupPolicy"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "branch",
+        "cleanupPolicy"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cycleBroken": {
+      "type": "boolean"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/RunLineageGraphEdge"
+      },
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/RunListEntry"
+      },
+      "type": "array"
+    },
+    "omittedCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "orphanRunIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "totalCount": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "nodes",
+    "edges",
+    "orphanRunIds",
+    "totalCount",
+    "omittedCount",
+    "truncated",
+    "cycleBroken"
+  ],
+  "title": "RunLineageGraphResult",
+  "type": "object"
+}

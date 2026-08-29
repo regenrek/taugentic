@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 async-trait.workspace = true
+base64.workspace = true
 futures-executor.workspace = true
 futures-util.workspace = true
 include_dir.workspace = true
@@ -20,8 +21,10 @@ ta-auth-openai = { path = "../ta-auth-openai" }
 ta-protocol = { path = "../ta-protocol" }
 thiserror.workspace = true
 tokio.workspace = true
+tokio-tungstenite.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
+tungstenite.workspace = true
 url.workspace = true
 uuid.workspace = true
 

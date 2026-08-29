@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "text",
+          "type": "string"
+        },
+        "language": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "dataUri": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "image",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dataUri",
+        "mediaType",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "pdf",
+          "type": "string"
+        },
+        "pageCount": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pageIndex": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "previewDataUri": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "previewDataUri",
+        "pageIndex",
+        "pageCount",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "dataBase64": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "binary",
+          "type": "string"
+        },
+        "mediaType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "dataBase64",
+        "revision",
+        "byteLen"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "BoundedFileContent"
+}

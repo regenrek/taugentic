@@ -4,7 +4,8 @@
     "unknown",
     "native",
     "acp",
-    "codexAppServer"
+    "codexAppServer",
+    "realtimeVoice"
   ],
   "title": "RunHarnessKind",
   "type": "string"

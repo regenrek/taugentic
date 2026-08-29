@@ -11,6 +11,7 @@ build = "build.rs"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+base64.workspace = true
 napi.workspace = true
 napi-derive.workspace = true
 parking_lot.workspace = true
@@ -20,9 +21,19 @@ ta-daemon-client = { path = "../ta-daemon-client" }
 ta-jsonrpc = { path = "../ta-jsonrpc" }
 ta-orchestrator = { path = "../ta-orchestrator" }
 ta-protocol = { path = "../ta-protocol" }
+ta-macos-avfoundation = { path = "../ta-macos-avfoundation" }
+ta-host-platform = { path = "../ta-host-platform" }
 
 [build-dependencies]
 napi-build.workspace = true
 
 [dev-dependencies]
 ta-observability = { path = "../ta-observability" }
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"

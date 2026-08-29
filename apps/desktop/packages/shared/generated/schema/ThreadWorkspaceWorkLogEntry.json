@@ -1,0 +1,38 @@
+{
+  "$defs": {
+    "ThreadWorkspaceWorkLogKind": {
+      "enum": [
+        "goalSet",
+        "planSet",
+        "notesSet",
+        "recapSet",
+        "pinAdded",
+        "pinRemoved"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/ThreadWorkspaceWorkLogKind"
+    },
+    "occurredAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "sequence": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sequence",
+    "occurredAtMs",
+    "kind"
+  ],
+  "title": "ThreadWorkspaceWorkLogEntry",
+  "type": "object"
+}

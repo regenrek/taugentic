@@ -1,12 +1,12 @@
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentStreamEvent, ApprovalRequest, ApprovalResolution, ArtifactSummary, BudgetEvent,
-    CapsuleResult, ConflictWarning, ContextReceipt, OutputContractKind, PublicApprovalResolution,
-    ReceiptId, ReceiptKind, ReceiptProvenance, ReceiptState, RunId, RunStatus, SessionId,
-    SessionStatus, u64_string,
+    AgentStreamEvent, ApprovalRequest, ApprovalResolution, ArtifactSummary, AuthProfileExhaustion,
+    BudgetEvent, CapsuleResult, ConflictWarning, ContextReceipt, DomainError, OutputContractKind,
+    PublicApprovalResolution, ReceiptId, ReceiptKind, ReceiptProvenance, ReceiptState, RunId,
+    RunStatus, SessionId, SessionStatus, u64_string,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -113,18 +113,210 @@ pub struct SessionEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "kind", content = "payload", rename_all = "camelCase")]
+#[ts(export_to = "generated/")]
+pub enum RunEvent {
+    Status(RunStatusEvent),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
-pub struct RunEvent {
-    pub run_id: RunId,
-    pub status: RunStatus,
-    pub detail: String,
+pub struct RunStatusEvent {
+    run_id: RunId,
+    status: RunStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output_contract: Option<OutputContractKind>,
+    reason: Option<RunStatusReason>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recipe_id: Option<String>,
+    output_contract: Option<OutputContractKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub result: Option<CapsuleResult>,
+    recipe_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    result: Option<CapsuleResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    auth_profile_exhaustion: Option<AuthProfileExhaustion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, schemars::JsonSchema, ts_rs::TS)]
+#[serde(transparent)]
+#[ts(export_to = "generated/")]
+pub struct RunStatusReason(String);
+
+impl RunStatusReason {
+    pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
+        let value = value.into();
+        if value.trim().is_empty() {
+            return Err(DomainError::EmptyRunStatusReason);
+        }
+        Ok(Self(value))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl RunStatusEvent {
+    pub fn run_id(&self) -> &RunId {
+        &self.run_id
+    }
+
+    pub fn status(&self) -> RunStatus {
+        self.status
+    }
+
+    pub fn reason(&self) -> Option<&RunStatusReason> {
+        self.reason.as_ref()
+    }
+
+    pub fn output_contract(&self) -> Option<&OutputContractKind> {
+        self.output_contract.as_ref()
+    }
+
+    pub fn recipe_id(&self) -> Option<&str> {
+        self.recipe_id.as_deref()
+    }
+
+    pub fn result(&self) -> Option<&CapsuleResult> {
+        self.result.as_ref()
+    }
+
+    pub fn auth_profile_exhaustion(&self) -> Option<AuthProfileExhaustion> {
+        self.auth_profile_exhaustion
+    }
+
+    fn new(
+        run_id: RunId,
+        status: RunStatus,
+        reason: Option<RunStatusReason>,
+        output_contract: Option<OutputContractKind>,
+        recipe_id: Option<String>,
+        result: Option<CapsuleResult>,
+        auth_profile_exhaustion: Option<AuthProfileExhaustion>,
+    ) -> Result<Self, DomainError> {
+        if status.is_active() && reason.is_some() {
+            return Err(DomainError::ActiveRunStatusHasReason);
+        }
+        if status.is_terminal() && reason.is_none() {
+            return Err(DomainError::TerminalRunStatusMissingReason);
+        }
+        if auth_profile_exhaustion.is_some() && status != RunStatus::Failed {
+            return Err(DomainError::RunStatusMustBeTerminal);
+        }
+        Ok(Self {
+            run_id,
+            status,
+            reason,
+            output_contract,
+            recipe_id,
+            result,
+            auth_profile_exhaustion,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for RunStatusEvent {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Raw {
+            run_id: RunId,
+            status: RunStatus,
+            #[serde(default)]
+            reason: Option<RunStatusReason>,
+            #[serde(default)]
+            output_contract: Option<OutputContractKind>,
+            #[serde(default)]
+            recipe_id: Option<String>,
+            #[serde(default)]
+            result: Option<CapsuleResult>,
+            auth_profile_exhaustion: Option<AuthProfileExhaustion>,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        Self::new(
+            raw.run_id,
+            raw.status,
+            raw.reason,
+            raw.output_contract,
+            raw.recipe_id,
+            raw.result,
+            raw.auth_profile_exhaustion,
+        )
+        .map_err(serde::de::Error::custom)
+    }
+}
+
+impl<'de> Deserialize<'de> for RunStatusReason {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Self::new(String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+    }
+}
+
+impl RunEvent {
+    pub fn run_id(&self) -> &RunId {
+        match self {
+            Self::Status(event) => &event.run_id,
+        }
+    }
+
+    pub fn active(
+        run_id: RunId,
+        status: RunStatus,
+        output_contract: Option<OutputContractKind>,
+        recipe_id: Option<String>,
+        result: Option<CapsuleResult>,
+    ) -> Result<Self, DomainError> {
+        if !status.is_active() {
+            return Err(DomainError::RunStatusMustBeActive);
+        }
+        Ok(Self::Status(RunStatusEvent::new(
+            run_id,
+            status,
+            None,
+            output_contract,
+            recipe_id,
+            result,
+            None,
+        )?))
+    }
+
+    pub fn terminal(
+        run_id: RunId,
+        status: RunStatus,
+        reason: RunStatusReason,
+        output_contract: Option<OutputContractKind>,
+        recipe_id: Option<String>,
+        result: Option<CapsuleResult>,
+    ) -> Result<Self, DomainError> {
+        if !status.is_terminal() {
+            return Err(DomainError::RunStatusMustBeTerminal);
+        }
+        Ok(Self::Status(RunStatusEvent::new(
+            run_id,
+            status,
+            Some(reason),
+            output_contract,
+            recipe_id,
+            result,
+            None,
+        )?))
+    }
+
+    pub fn terminal_with_auth_profile_exhaustion(
+        run_id: RunId,
+        reason: RunStatusReason,
+        exhaustion: AuthProfileExhaustion,
+    ) -> Result<Self, DomainError> {
+        Ok(Self::Status(RunStatusEvent::new(
+            run_id,
+            RunStatus::Failed,
+            Some(reason),
+            None,
+            None,
+            None,
+            Some(exhaustion),
+        )?))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

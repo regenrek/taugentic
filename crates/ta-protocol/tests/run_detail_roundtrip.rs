@@ -70,6 +70,7 @@ fn run_detail_roundtrips_with_typed_result_violation_and_receipt() {
         claimed_files: Vec::new(),
         conflict_summary: None,
         token_usage: None,
+        auth_profile_exhaustion: None,
     };
 
     let json = serde_json::to_value(&detail).expect("run detail should serialize");
@@ -103,6 +104,7 @@ fn run_detail_skips_absent_optional_fields() {
         claimed_files: Vec::new(),
         conflict_summary: None,
         token_usage: None,
+        auth_profile_exhaustion: None,
     };
 
     let json = serde_json::to_value(&detail).expect("run detail should serialize");

@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
-use ta_store::{
-    ArtifactRecord, PersistenceStore, SessionEventPageQuery, StoreError, native_run_parent_id,
-};
+use ta_store::{PersistenceStore, SessionEventPageQuery, StoreError, native_run_parent_id};
 
 use crate::{
-    ArtifactSummary, ContextReceipt, DaemonEvent, MAX_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT,
+    AuthProfileExhaustion, ContextReceipt, DaemonEvent, MAX_SESSION_OVERVIEW_RECENT_ACTIVITY_LIMIT,
     OutputContractKind, RunDetail, RunListEntry, RunSource, RunStatus, RunSummary,
     SessionOverviewLaneStatus, SessionSummary,
 };
@@ -51,7 +49,7 @@ fn project_latest_run_from_events(
     events: &[ta_store::EventRecord],
 ) -> Option<RunSummary> {
     events.iter().find_map(|record| match &record.payload {
-        DaemonEvent::Run(event) => session_runs.get(&event.run_id).cloned(),
+        DaemonEvent::Run(event) => session_runs.get(event.run_id()).cloned(),
         DaemonEvent::Approval(_)
         | DaemonEvent::Artifact(_)
         | DaemonEvent::ContextReceipt(_)
@@ -97,8 +95,9 @@ pub(super) fn project_run_detail(
     run: &ta_store::RunProjection,
     quarantine_receipt: Option<ContextReceipt>,
     token_usage: Option<crate::TokenUsageTotals>,
+    auth_profile_exhaustion: Option<AuthProfileExhaustion>,
 ) -> RunDetail {
-    let parent_run_id = run_parent_id(run);
+    let parent_run_id = native_run_parent_id(run);
     let (output_contract, recipe_id) = native_run_contract_fields(run);
     RunDetail {
         summary: project_run_summary(run),
@@ -113,16 +112,17 @@ pub(super) fn project_run_detail(
         claimed_files: run.claimed_files.clone(),
         conflict_summary: run.conflict_summary.clone(),
         token_usage,
+        auth_profile_exhaustion,
     }
 }
 
 pub(super) fn project_run_list_entry(run: ta_store::RunProjection) -> RunListEntry {
-    let parent_run_id = native_run_parent_id(&run);
+    let relationship = native_run_relationship(&run);
     let (output_contract, recipe_id) = native_run_contract_fields(&run);
     let objective_preview = Some(trim_run_objective_preview(&run.objective));
     RunListEntry {
         id: run.id,
-        parent_run_id,
+        relationship,
         output_contract,
         recipe_id,
         harness: run.harness,
@@ -137,11 +137,35 @@ pub(super) fn project_run_list_entry(run: ta_store::RunProjection) -> RunListEnt
     }
 }
 
-fn run_parent_id(run: &ta_store::RunProjection) -> Option<crate::RunId> {
+fn native_run_relationship(run: &ta_store::RunProjection) -> crate::NativeRunRelationship {
     match &run.source {
-        RunSource::NativeSubagent { parent_run_id, .. }
-        | RunSource::Forked { parent_run_id, .. } => Some(parent_run_id.clone()),
-        RunSource::User { .. } => None,
+        RunSource::ScheduledWork { .. } | RunSource::User { .. } => {
+            crate::NativeRunRelationship::Root
+        }
+        RunSource::NativeSubagent { parent_run_id, .. } => {
+            crate::NativeRunRelationship::NativeSubagent {
+                parent_run_id: parent_run_id.clone(),
+            }
+        }
+        RunSource::FreshSpawn { parent_run_id, .. } => crate::NativeRunRelationship::FreshSpawn {
+            parent_run_id: parent_run_id.clone(),
+        },
+        RunSource::Forked {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        } => crate::NativeRunRelationship::Fork {
+            parent_run_id: parent_run_id.clone(),
+            parent_event_seq: *parent_event_seq,
+        },
+        RunSource::AccountSwitchedContinuation {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        } => crate::NativeRunRelationship::AccountSwitchedContinuation {
+            parent_run_id: parent_run_id.clone(),
+            parent_event_seq: *parent_event_seq,
+        },
     }
 }
 
@@ -154,12 +178,19 @@ fn native_run_contract_fields(
             recipe_id,
             ..
         }
+        | RunSource::FreshSpawn {
+            output_contract,
+            recipe_id,
+            ..
+        }
         | RunSource::User {
             output_contract,
             recipe_id,
             ..
         } => (*output_contract, recipe_id.clone()),
-        RunSource::Forked { .. } => (None, None),
+        RunSource::ScheduledWork { .. }
+        | RunSource::Forked { .. }
+        | RunSource::AccountSwitchedContinuation { .. } => (None, None),
     }
 }
 
@@ -196,10 +227,10 @@ pub(super) fn summarize_event_preview(event: &DaemonEvent) -> String {
         DaemonEvent::Session(event) => {
             format!("Session {}", summarize_session_status(event.status))
         }
-        DaemonEvent::Run(event) => format!(
+        DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event)) => format!(
             "Run {}: {}",
-            summarize_run_status(event.status),
-            event.detail.trim()
+            summarize_run_status(event.status()),
+            event.reason().map_or("", |reason| reason.as_str()).trim()
         ),
         DaemonEvent::Approval(crate::ApprovalEvent::Requested { request }) => {
             format!("Approval requested: {}", request.reason.trim())
@@ -333,6 +364,7 @@ fn summarize_artifact_kind(kind: crate::ArtifactKind) -> &'static str {
         crate::ArtifactKind::Patch => "patch",
         crate::ArtifactKind::FileSnapshot => "file snapshot",
         crate::ArtifactKind::CommandLog => "command log",
+        crate::ArtifactKind::Image => "image",
     }
 }
 
@@ -341,14 +373,6 @@ pub(super) fn project_session_summary(session: ta_store::SessionProjection) -> S
         id: session.id,
         title: session.title,
         status: session.status,
-    }
-}
-
-pub(super) fn project_artifact_summary(artifact: ArtifactRecord) -> ArtifactSummary {
-    ArtifactSummary {
-        id: artifact.id,
-        run_id: artifact.run_id,
-        kind: artifact.kind,
-        storage_path: artifact.storage_path,
+        next_run_selection: session.next_run_selection,
     }
 }

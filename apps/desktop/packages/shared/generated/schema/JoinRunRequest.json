@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Reads a directly-related Fresh Spawn child. The response is idempotent for\nqueued, running, and terminal children because all fields are projections of\nexisting daemon/store records.",
+  "properties": {
+    "childRunId": {
+      "type": "string"
+    },
+    "parentRunId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "childRunId"
+  ],
+  "title": "JoinRunRequest",
+  "type": "object"
+}

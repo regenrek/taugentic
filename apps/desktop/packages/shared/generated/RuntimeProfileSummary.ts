@@ -2,6 +2,7 @@
 import type { AgentRuntimeStrategyId } from "./AgentRuntimeStrategyId.js";
 import type { AuthMethodId } from "./AuthMethodId.js";
 import type { RuntimePolicyMode } from "./RuntimePolicyMode.js";
+import type { RuntimeProfileExecutionKind } from "./RuntimeProfileExecutionKind.js";
 import type { RuntimeProfileId } from "./RuntimeProfileId.js";
 
-export type RuntimeProfileSummary = { id: RuntimeProfileId, displayName: string, providerId: AgentRuntimeStrategyId, authMethodId?: AuthMethodId | null, policyMode: RuntimePolicyMode, };
+export type RuntimeProfileSummary = { id: RuntimeProfileId, displayName: string, providerId: AgentRuntimeStrategyId, authMethodId?: AuthMethodId | null, policyMode: RuntimePolicyMode, executionKind: RuntimeProfileExecutionKind, };

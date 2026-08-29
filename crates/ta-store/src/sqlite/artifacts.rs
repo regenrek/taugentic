@@ -6,6 +6,7 @@ impl SqliteStore {
         &mut self,
         artifact: ArtifactRecord,
     ) -> Result<(), StoreError> {
+        artifact.validate_metadata()?;
         let changed = self
             .conn
             .execute(

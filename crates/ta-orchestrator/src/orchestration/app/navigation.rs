@@ -34,24 +34,11 @@ where
             .iter()
             .map(|session| session.id.clone())
             .collect::<std::collections::BTreeSet<_>>();
-        let mut conversation_metadata = state
+        let conversation_metadata = state
             .conversations
             .into_iter()
             .filter(|item| session_ids.contains(&item.session_id))
             .collect::<Vec<_>>();
-        for session in &sessions {
-            if !conversation_metadata
-                .iter()
-                .any(|item| item.session_id == session.id)
-            {
-                conversation_metadata.push(NavigationConversationMetadata {
-                    session_id: session.id.clone(),
-                    placement: ConversationPlacement::Standalone,
-                    archived: false,
-                    pinned: false,
-                });
-            }
-        }
         let conversations = conversation_metadata
             .into_iter()
             .filter_map(|item| {
@@ -63,6 +50,7 @@ where
                     .is_none_or(|needle| session.title.to_lowercase().contains(needle))
                     .then_some(NavigationConversation {
                         session_id: item.session_id,
+                        workspace_id: session.workspace_id.clone(),
                         title: session.title.clone(),
                         status: session.status,
                         placement: item.placement,
@@ -184,9 +172,29 @@ where
                     .iter_mut()
                     .find(|project| project.id == project_id)
                     .ok_or_else(|| {
-                        AppServiceError::SessionNotFound(project_id.as_str().to_string())
+                        AppServiceError::ProjectNotFound(project_id.as_str().to_string())
                     })?;
                 project.workspace_ids = workspace_ids;
+            }
+            DaemonNavigationIntent::SetProjectSpace {
+                project_id,
+                space_id,
+            } => {
+                if let Some(space_id) = &space_id {
+                    if !state.spaces.iter().any(|space| space.id == *space_id) {
+                        return Err(AppServiceError::SessionNotFound(
+                            space_id.as_str().to_string(),
+                        ));
+                    }
+                }
+                let project = state
+                    .projects
+                    .iter_mut()
+                    .find(|project| project.id == project_id)
+                    .ok_or_else(|| {
+                        AppServiceError::ProjectNotFound(project_id.as_str().to_string())
+                    })?;
+                project.space_id = space_id;
             }
             DaemonNavigationIntent::PlaceConversation {
                 session_id,
@@ -301,7 +309,7 @@ pub(super) fn validate_conversation_placement(
         .projects
         .iter()
         .find(|project| project.id == *project_id)
-        .ok_or_else(|| AppServiceError::SessionNotFound(project_id.as_str().to_string()))?;
+        .ok_or_else(|| AppServiceError::ProjectNotFound(project_id.as_str().to_string()))?;
     if !project.workspace_ids.contains(workspace_id) {
         return Err(AppServiceError::WorkspaceNotFound(
             workspace_id.as_str().to_string(),
@@ -454,5 +462,52 @@ mod tests {
         let encoded = serde_json::to_value(state).expect("navigation state JSON");
         assert!(encoded["conversations"][0].get("title").is_none());
         assert!(encoded["conversations"][0].get("status").is_none());
+    }
+
+    #[test]
+    fn navigation_sets_project_space_or_ungroups_the_project() {
+        let service = AppService::bootstrap().expect("service");
+        let created = service
+            .apply_navigation_intent(
+                OWNER,
+                DaemonNavigationIntent::CreateSpace {
+                    title: "Product".to_string(),
+                },
+            )
+            .expect("space");
+        let space_id = created.spaces[0].id.clone();
+        let created = service
+            .apply_navigation_intent(
+                OWNER,
+                DaemonNavigationIntent::CreateProject {
+                    space_id: None,
+                    title: "Desktop".to_string(),
+                    workspace_ids: vec![ta_store::default_test_workspace_id()],
+                },
+            )
+            .expect("project");
+        let project_id = created.projects[0].id.clone();
+
+        let placed = service
+            .apply_navigation_intent(
+                OWNER,
+                DaemonNavigationIntent::SetProjectSpace {
+                    project_id: project_id.clone(),
+                    space_id: Some(space_id),
+                },
+            )
+            .expect("placed project");
+        assert!(placed.projects[0].space_id.is_some());
+
+        let ungrouped = service
+            .apply_navigation_intent(
+                OWNER,
+                DaemonNavigationIntent::SetProjectSpace {
+                    project_id,
+                    space_id: None,
+                },
+            )
+            .expect("ungrouped project");
+        assert_eq!(ungrouped.projects[0].space_id, None);
     }
 }

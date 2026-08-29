@@ -280,6 +280,7 @@ mod tests {
                 title: "Temporary".to_string(),
                 status: SessionStatus::Idle,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             })
             .expect("session");
         store
@@ -323,16 +324,13 @@ mod tests {
                 session_id: session_id.clone(),
                 run_id: run_id.clone(),
                 kind: ArtifactKind::Patch,
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
                 storage_path: "artifacts/temporary.patch".to_string(),
             })
             .expect("artifact");
         store
             .commit_checkpoint_persist(CommitCheckpointPersist {
-                checkpoint: CheckpointRecord {
-                    run_id: run_id.clone(),
-                    revision: 1,
-                    artifact_path: "checkpoints/temporary.json".to_string(),
-                },
+                checkpoint: crate::test_checkpoint_record(run_id.clone(), 1),
                 occurred_at_ms: 1,
             })
             .expect("checkpoint");

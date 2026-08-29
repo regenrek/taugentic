@@ -22,6 +22,7 @@ fn read_run_events_uses_session_cursor_and_preserves_run_limit() {
                 title: "Replay".to_string(),
                 status: SessionStatus::Running,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             })
             .expect("session should persist");
     }
@@ -32,14 +33,16 @@ fn read_run_events_uses_session_cursor_and_preserves_run_limit() {
                 sequence,
                 session_id: session_id.clone(),
                 occurred_at_ms: sequence * 10,
-                payload: DaemonEvent::Run(ta_protocol::wire::RunEvent {
-                    run_id: run_id.clone(),
-                    status: RunStatus::Running,
-                    detail: format!("event {sequence}"),
-                    output_contract: None,
-                    recipe_id: None,
-                    result: None,
-                }),
+                payload: DaemonEvent::Run(
+                    ta_protocol::wire::RunEvent::active(
+                        run_id.clone(),
+                        RunStatus::Running,
+                        None,
+                        None,
+                        None,
+                    )
+                    .expect("active status"),
+                ),
             })
             .expect("event should seed");
     };
@@ -113,6 +116,7 @@ fn approval_lookup_distinguishes_pending_resolved_and_not_found_after_reopen() {
                 title: "Approval lookup".to_string(),
                 status: SessionStatus::Running,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             })
             .expect("session");
         store
@@ -237,6 +241,7 @@ fn session_event_page_returns_decode_record_for_corrupt_event_payload() {
                     title: "Persisted".to_string(),
                     status: SessionStatus::Idle,
                     workspace_id: crate::default_test_workspace_id(),
+                    next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
                 },
                 occurred_at_ms: 20,
             })
@@ -292,6 +297,7 @@ fn events_read_returns_decode_record_for_corrupt_event_payload_after_reopen() {
                     title: "Persisted".to_string(),
                     status: SessionStatus::Idle,
                     workspace_id: crate::default_test_workspace_id(),
+                    next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
                 },
                 occurred_at_ms: 20,
             })

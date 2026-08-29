@@ -1,4 +1,4 @@
-use ta_work_source::{
+use ta_protocol::wire::{
     SourceCursor, WorkItem, WorkItemKey, WorkItemStatus, WorkSource, WorkSourceKind,
 };
 

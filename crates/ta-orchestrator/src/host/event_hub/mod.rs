@@ -469,14 +469,16 @@ mod tests {
             sequence,
             session_id: session_id.clone(),
             occurred_at_ms: 100 + sequence,
-            payload: DaemonEvent::Run(RunEvent {
-                run_id: RunId::new(format!("run-{sequence}")).expect("run id"),
-                status: RunStatus::Running,
-                detail: "running".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                RunEvent::active(
+                    RunId::new(format!("run-{sequence}")).expect("run id"),
+                    RunStatus::Running,
+                    None,
+                    None,
+                    None,
+                )
+                .expect("active status"),
+            ),
         }
     }
 

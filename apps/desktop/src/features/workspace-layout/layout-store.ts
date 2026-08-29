@@ -1,29 +1,68 @@
-import type { DockLayout } from "@gpuix/react"
+import type { DockLayout } from "@regenrek/gpuix-react"
 import type { WorkspaceId } from "@taugentic/desktop-protocol"
 
 import { desktopSettings, type DesktopPresentation, type DesktopTheme } from "../../platform/settings/desktop-settings.js"
 
 export const defaultWorkspaceLayout: DockLayout = {
-  kind: "tabs",
+  kind: "split",
   id: "workspace-root",
-  panels: ["conversation", "activity"],
-  active: "conversation",
+  direction: "horizontal",
+  ratio: 0.22,
+  first: {
+    kind: "split",
+    id: "workspace-navigation",
+    direction: "vertical",
+    ratio: 0.64,
+    first: {
+      kind: "tabs",
+      id: "workspace-files",
+      panels: ["files"],
+      active: "files",
+    },
+    second: {
+      kind: "tabs",
+      id: "workspace-artifacts",
+      panels: ["artifacts"],
+      active: "artifacts",
+    },
+  },
+  second: {
+    kind: "split",
+    id: "workspace-content",
+    direction: "horizontal",
+    ratio: 0.68,
+    first: {
+      kind: "tabs",
+      id: "workspace-primary",
+      panels: ["conversation", "source", "diff"],
+      active: "conversation",
+    },
+    second: {
+      kind: "tabs",
+      id: "workspace-inspection",
+      panels: ["activity", "thread-workspace", "git", "pull-requests", "terminal", "image", "pdf"],
+      active: "git",
+    },
+  },
 }
 
-export function workspacePresentation(workspaceId: WorkspaceId): DesktopPresentation {
-  const persisted = desktopSettings.presentation(workspaceId)
-  if (persisted) return persisted
-  const presentation = { theme: "dark", layout: defaultWorkspaceLayout } satisfies DesktopPresentation
-  desktopSettings.savePresentation(workspaceId, presentation)
-  return presentation
+/** An unconfigured workspace reads the desktop-owned appearance without persisting. */
+export function workspacePresentation(workspaceId?: WorkspaceId): DesktopPresentation {
+  const configured = workspaceId === undefined ? undefined : desktopSettings.presentation(workspaceId)
+  return configured ?? { theme: desktopSettings.appearance().theme, layout: defaultWorkspaceLayout }
 }
 
 export function saveWorkspaceLayout(workspaceId: WorkspaceId, layout: DockLayout): void {
-  const current = workspacePresentation(workspaceId)
-  desktopSettings.savePresentation(workspaceId, { ...current, layout })
+  desktopSettings.saveLayout(workspaceId, layout)
 }
 
-export function saveWorkspaceTheme(workspaceId: WorkspaceId, theme: DesktopTheme): void {
-  const current = workspacePresentation(workspaceId)
-  desktopSettings.savePresentation(workspaceId, { ...current, theme })
+export function saveDesktopTheme(theme: DesktopTheme): void {
+  desktopSettings.saveAppearance({ theme })
+}
+
+/** The persisted dock tree is the single owner of panel visibility. */
+export function isDockPanelVisible(layout: DockLayout, panelId: string): boolean {
+  if (layout.zoomed) return layout.zoomed === panelId
+  if (layout.kind === "tabs") return layout.active === panelId
+  return isDockPanelVisible(layout.first, panelId) || isDockPanelVisible(layout.second, panelId)
 }

@@ -3,6 +3,14 @@
   "properties": {
     "artifactId": {
       "type": "string"
+    },
+    "pdfPageIndex": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
     }
   },
   "required": [

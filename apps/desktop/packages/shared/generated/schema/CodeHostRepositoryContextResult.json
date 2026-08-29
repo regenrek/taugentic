@@ -1,0 +1,62 @@
+{
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRemote": {
+      "properties": {
+        "remoteName": {
+          "type": "string"
+        },
+        "repository": {
+          "$ref": "#/$defs/CodeHostRepositoryRef"
+        }
+      },
+      "required": [
+        "remoteName",
+        "repository"
+      ],
+      "type": "object"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "remotes": {
+      "items": {
+        "$ref": "#/$defs/CodeHostRemote"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "remotes"
+  ],
+  "title": "CodeHostRepositoryContextResult",
+  "type": "object"
+}

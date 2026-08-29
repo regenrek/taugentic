@@ -166,15 +166,26 @@ fn timeline_event_from_record(
     lineage_ids: &BTreeSet<RunId>,
 ) -> Option<RunTimelineEvent> {
     let (run_id, kind, status, label, payload) = match record.payload {
-        DaemonEvent::Run(event) if lineage_ids.contains(&event.run_id) => (
-            event.run_id,
-            RunTimelineEventKind::RunStatus,
-            Some(event.status),
-            event.detail.clone(),
-            RunTimelineEventPayload::Run {
-                detail: event.detail,
-            },
-        ),
+        DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if lineage_ids.contains(event.run_id()) =>
+        {
+            (
+                event.run_id().clone(),
+                RunTimelineEventKind::RunStatus,
+                Some(event.status()),
+                event.reason().map_or_else(
+                    || "run status changed".to_string(),
+                    |reason| reason.as_str().to_string(),
+                ),
+                RunTimelineEventPayload::Run {
+                    detail: event.reason().map_or_else(
+                        || "run status changed".to_string(),
+                        |reason| reason.as_str().to_string(),
+                    ),
+                    auth_profile_exhaustion: event.auth_profile_exhaustion(),
+                },
+            )
+        }
         DaemonEvent::Approval(ApprovalEvent::Requested { request })
             if lineage_ids.contains(&request.run_id) =>
         {
@@ -387,10 +398,12 @@ fn conflict_touches_lineage(
 
 fn run_recipe_id(run: &RunProjection) -> Option<String> {
     match &run.source {
-        RunSource::NativeSubagent { recipe_id, .. } | RunSource::User { recipe_id, .. } => {
-            recipe_id.clone()
-        }
-        RunSource::Forked { .. } => None,
+        RunSource::NativeSubagent { recipe_id, .. }
+        | RunSource::FreshSpawn { recipe_id, .. }
+        | RunSource::User { recipe_id, .. } => recipe_id.clone(),
+        RunSource::ScheduledWork { .. }
+        | RunSource::Forked { .. }
+        | RunSource::AccountSwitchedContinuation { .. } => None,
     }
 }
 
@@ -399,9 +412,14 @@ fn run_output_contract(run: &RunProjection) -> Option<OutputContractKind> {
         RunSource::NativeSubagent {
             output_contract, ..
         }
+        | RunSource::FreshSpawn {
+            output_contract, ..
+        }
         | RunSource::User {
             output_contract, ..
         } => *output_contract,
-        RunSource::Forked { .. } => None,
+        RunSource::ScheduledWork { .. }
+        | RunSource::Forked { .. }
+        | RunSource::AccountSwitchedContinuation { .. } => None,
     }
 }

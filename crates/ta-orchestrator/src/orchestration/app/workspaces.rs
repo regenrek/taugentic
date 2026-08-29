@@ -154,6 +154,37 @@ where
             .map(WorkspaceProjection::into_inner)
             .ok_or_else(|| AppServiceError::WorkspaceNotFound(workspace_id.as_str().to_string()))
     }
+
+    pub(super) fn project_workspace(
+        &self,
+        owner_principal_id: &str,
+        project_id: &ProjectId,
+        workspace_id: &WorkspaceId,
+    ) -> Result<Workspace, AppServiceError> {
+        let owner_principal_id = sanitize_session_owner_principal_id(owner_principal_id)?;
+        let store = self.store.lock().expect("app store should not be poisoned");
+        let navigation = store.navigation_state(&owner_principal_id)?;
+        let project = navigation
+            .projects
+            .iter()
+            .find(|project| project.id == *project_id)
+            .ok_or_else(|| AppServiceError::ProjectNotFound(project_id.as_str().to_string()))?;
+        if !project.workspace_ids.contains(workspace_id) {
+            return Err(AppServiceError::WorkspaceNotFound(
+                workspace_id.as_str().to_string(),
+            ));
+        }
+        let workspace = store
+            .workspace(workspace_id)?
+            .map(WorkspaceProjection::into_inner)
+            .ok_or_else(|| AppServiceError::WorkspaceNotFound(workspace_id.as_str().to_string()))?;
+        if !matches!(workspace.trust_state, TrustState::UserConfirmed { .. }) {
+            return Err(AppServiceError::WorkspaceTrustRequired(
+                workspace_id.as_str().to_string(),
+            ));
+        }
+        Ok(workspace)
+    }
 }
 
 fn probe_workspace_permissions(root: &Path) -> Result<(), AppServiceError> {

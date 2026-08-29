@@ -42,6 +42,7 @@ pub struct CatalogModel {
     pub tool_call: bool,
     pub structured_output: bool,
     pub input_modalities: Vec<String>,
+    pub output_modalities: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -142,7 +143,23 @@ fn model_ref(model: &CatalogModel) -> AgentRuntimeModelRef {
         reasoning: model.reasoning,
         tool_call: model.tool_call,
         structured_output: model.structured_output,
-        input_modalities: model.input_modalities.clone(),
+        media_capabilities: ta_protocol::wire::AgentRuntimeMediaCapabilities {
+            image_input: modality_capability(&model.input_modalities, "image"),
+            image_output: modality_capability(&model.output_modalities, "image"),
+            voice_input: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+            voice_output: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+        },
+    }
+}
+
+fn modality_capability(
+    modalities: &[String],
+    modality: &str,
+) -> ta_protocol::wire::AgentRuntimeMediaCapability {
+    if modalities.iter().any(|value| value == modality) {
+        ta_protocol::wire::AgentRuntimeMediaCapability::Supported
+    } else {
+        ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported
     }
 }
 

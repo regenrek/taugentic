@@ -1,5 +1,9 @@
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use sha2::{Digest, Sha256};
 use ta_protocol::wire::{
-    ArtifactKind, ContextReceiptEvent, DaemonEvent, ReceiptKind, ReceiptProvenance, RunHarnessKind,
+    AgentRuntimeMediaCapability, AgentStreamItemId, AgentStreamTurnId, ArtifactKind,
+    ArtifactMetadata, ContextReceiptEvent, DaemonEvent, ImageArtifactMetadata,
+    ImageArtifactProvenance, ImageMediaType, ReceiptKind, ReceiptProvenance, RunHarnessKind,
     RunSource,
 };
 use ta_store::{
@@ -9,10 +13,148 @@ use ta_store::{
 
 use super::*;
 
+pub(super) fn image_media_type(bytes: &[u8]) -> Option<ImageMediaType> {
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some(ImageMediaType::Png)
+    } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+        Some(ImageMediaType::Jpeg)
+    } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        Some(ImageMediaType::Gif)
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some(ImageMediaType::Webp)
+    } else {
+        None
+    }
+}
+
 impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
+    pub(super) fn record_generated_image_for_leased_run(
+        &self,
+        session_id: crate::SessionId,
+        run_id: RunId,
+        generation: u64,
+        turn_id: AgentStreamTurnId,
+        item_id: AgentStreamItemId,
+        raw_base64: &str,
+    ) -> Result<ArtifactMutationResult, RunExecutionError> {
+        let run = self.load_run_projection(&run_id)?;
+        if run.session_id != session_id {
+            return Err(RunExecutionError::RunSessionMismatch(
+                run_id.as_str().to_string(),
+            ));
+        }
+        if self
+            .agent_runtime
+            .media_capabilities_for_route(run.source.route())
+            .map_err(map_agent_runtime_error)?
+            .image_output
+            == AgentRuntimeMediaCapability::Unsupported
+        {
+            return Err(RunExecutionError::ProviderExecutionFailed(
+                "the selected runtime does not support image output".to_string(),
+            ));
+        }
+        let bytes = BASE64.decode(raw_base64).map_err(|_| {
+            RunExecutionError::ProviderExecutionFailed(
+                "completed imageGeneration result is not standard base64".to_string(),
+            )
+        })?;
+        if bytes.is_empty()
+            || bytes.len() as u64 > ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_BYTES
+        {
+            return Err(RunExecutionError::ProviderExecutionFailed(
+                "completed imageGeneration result exceeds the image artifact limit".to_string(),
+            ));
+        }
+        let media_type = image_media_type(&bytes).ok_or_else(|| {
+            RunExecutionError::ProviderExecutionFailed(
+                "completed imageGeneration result is not a supported image".to_string(),
+            )
+        })?;
+        {
+            let store = self.store.lock().expect("app store should not be poisoned");
+            let existing_artifacts = store.artifacts_for_run(&run_id)?;
+            let previous_image_count = existing_artifacts
+                .iter()
+                .filter(|artifact| artifact.kind == ArtifactKind::Image)
+                .count();
+            if previous_image_count >= ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_COUNT {
+                return Err(RunExecutionError::ProviderExecutionFailed(
+                    "completed imageGeneration result exceeds the image artifact count limit"
+                        .to_string(),
+                ));
+            }
+            let previous_image_bytes = existing_artifacts
+                .into_iter()
+                .filter_map(|artifact| match artifact.metadata {
+                    ArtifactMetadata::Image(metadata) => Some(metadata.byte_len),
+                    ArtifactMetadata::Standard => None,
+                })
+                .sum::<u64>();
+            if previous_image_bytes.saturating_add(bytes.len() as u64)
+                > ta_protocol::wire::WORKSPACE_IMAGE_ATTACHMENT_MAX_TOTAL_BYTES
+            {
+                return Err(RunExecutionError::ProviderExecutionFailed(
+                    "completed imageGeneration results exceed the aggregate image artifact limit"
+                        .to_string(),
+                ));
+            }
+        }
+        let directory = self.artifact_root().join(run_id.as_str());
+        std::fs::create_dir_all(&directory).map_err(|error| {
+            RunExecutionError::ProviderExecutionFailed(format!(
+                "failed to create image artifact directory: {error}"
+            ))
+        })?;
+        let path = directory.join(format!(
+            "image-{}.{}",
+            uuid::Uuid::new_v4().simple(),
+            media_type.extension()
+        ));
+        std::fs::write(&path, &bytes).map_err(|error| {
+            RunExecutionError::ProviderExecutionFailed(format!(
+                "failed to write image artifact: {error}"
+            ))
+        })?;
+        let metadata = ArtifactMetadata::Image(ImageArtifactMetadata {
+            media_type,
+            sha256: format!("sha256:{:x}", Sha256::digest(&bytes)),
+            byte_len: bytes.len() as u64,
+            provenance: ImageArtifactProvenance {
+                runtime_profile_id: run.runtime_profile_id.clone(),
+                provider_id: run.source.route().provider_id.clone(),
+                turn_id,
+                item_id,
+            },
+        });
+        let artifact = ArtifactRecord {
+            id: ta_protocol::wire::ArtifactId::new(format!(
+                "artifact-{}",
+                uuid::Uuid::new_v4().simple()
+            ))
+            .expect("generated artifact id should be valid"),
+            session_id,
+            run_id,
+            kind: ArtifactKind::Image,
+            metadata,
+            storage_path: path.to_string_lossy().into_owned(),
+        };
+        let artifact_run_id = artifact.run_id.clone();
+        let artifact_session_id = artifact.session_id.clone();
+        let result = self.runtime.with_live_generation_lease(
+            &artifact_run_id,
+            &artifact_session_id,
+            generation,
+            || self.record_artifact_for_leased_run(artifact),
+        );
+        if result.is_err() {
+            let _ = std::fs::remove_file(path);
+        }
+        result
+    }
     pub fn record_artifact(
         &self,
         artifact: ArtifactRecord,
@@ -82,9 +224,70 @@ where
             }
             (committed.artifact, events)
         };
-        let summary = project_artifact_summary(artifact);
+        let summary = ta_store::project_artifact_summary(&artifact);
         Ok(ArtifactMutationResult {
             artifact: summary,
+            events,
+        })
+    }
+
+    /// Provider callbacks enter only after ActiveExecutionOwner has retained
+    /// their exact generation lease. This variant intentionally omits the
+    /// public point-in-time ownership preflight; it performs the same durable
+    /// artifact and receipt commit while the caller's owner lease is alive.
+    pub(super) fn record_artifact_for_leased_run(
+        &self,
+        artifact: ArtifactRecord,
+    ) -> Result<ArtifactMutationResult, RunExecutionError> {
+        let storage_path = artifact.storage_path.trim();
+        if storage_path.is_empty() {
+            return Err(RunExecutionError::EmptyArtifactStoragePath);
+        }
+        let artifact = ArtifactRecord {
+            storage_path: storage_path.to_string(),
+            ..artifact
+        };
+        let (artifact, events) = {
+            let mut store = self.store.lock().expect("app store should not be poisoned");
+            let Some(run) = store.run(&artifact.run_id)? else {
+                return Err(RunExecutionError::RunNotFound(
+                    artifact.run_id.as_str().to_string(),
+                ));
+            };
+            if run.session_id != artifact.session_id || run.status != RunStatus::Running {
+                return Err(RunExecutionError::RunNotLiveOwned(
+                    artifact.run_id.as_str().to_string(),
+                ));
+            }
+            let committed = match store.commit_artifact_publish(CommitArtifactPublish {
+                artifact,
+                occurred_at_ms: current_time_ms(),
+            }) {
+                Ok(committed) => committed,
+                Err(StoreError::CommitRunStatusMismatch {
+                    entity: "artifact", ..
+                }) => {
+                    return Err(RunExecutionError::RunNotLiveOwned(
+                        "artifact run is no longer actively running".to_string(),
+                    ));
+                }
+                Err(error) => return Err(RunExecutionError::Store(error)),
+            };
+            let mut events = vec![committed.event.clone()];
+            let run = store.run(&committed.artifact.run_id)?.ok_or_else(|| {
+                RunExecutionError::RunNotFound(committed.artifact.run_id.as_str().to_string())
+            })?;
+            if let Some(input) = artifact_receipt_create_input(&run, &committed.artifact)
+                && let Err(error) =
+                    append_artifact_receipt_event(&mut *store, &committed.artifact, input)
+                        .map(|event| events.extend(event))
+            {
+                tracing::warn!(artifact_id = committed.artifact.id.as_str(), run_id = committed.artifact.run_id.as_str(), error = %error, "failed to auto-create artifact receipt after artifact commit");
+            }
+            (committed.artifact, events)
+        };
+        Ok(ArtifactMutationResult {
+            artifact: ta_store::project_artifact_summary(&artifact),
             events,
         })
     }
@@ -99,9 +302,13 @@ fn artifact_receipt_create_input(
         return None;
     }
     let parent_run_id = match &run.source {
-        RunSource::User { .. } => None,
+        RunSource::ScheduledWork { .. } | RunSource::User { .. } => None,
         RunSource::NativeSubagent { parent_run_id, .. }
-        | RunSource::Forked { parent_run_id, .. } => Some(parent_run_id.clone()),
+        | RunSource::FreshSpawn { parent_run_id, .. }
+        | RunSource::Forked { parent_run_id, .. }
+        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
+            Some(parent_run_id.clone())
+        }
     };
     Some(CreateReceipt {
         session_id: artifact.session_id.clone(),
@@ -166,7 +373,9 @@ fn receipt_kind_for_artifact(kind: ArtifactKind) -> ReceiptKind {
     match kind {
         ArtifactKind::Patch => ReceiptKind::Patch,
         ArtifactKind::FileSnapshot => ReceiptKind::Evidence,
-        ArtifactKind::Transcript | ArtifactKind::CommandLog => ReceiptKind::Artifact,
+        ArtifactKind::Transcript | ArtifactKind::CommandLog | ArtifactKind::Image => {
+            ReceiptKind::Artifact
+        }
     }
 }
 
@@ -176,6 +385,7 @@ fn artifact_kind_label(kind: ArtifactKind) -> &'static str {
         ArtifactKind::Patch => "patch",
         ArtifactKind::FileSnapshot => "file snapshot",
         ArtifactKind::CommandLog => "command log",
+        ArtifactKind::Image => "image",
     }
 }
 
@@ -216,6 +426,7 @@ mod tests {
                 session_id: session.id.clone(),
                 run_id: RunId::new("run-missing").expect("run id"),
                 kind: ArtifactKind::Transcript,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-missing/transcript.md".to_string(),
             })
             .expect_err("missing run must fail");
@@ -419,6 +630,7 @@ mod tests {
                 session_id: session.id.clone(),
                 run_id: started.id.clone(),
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch.diff".to_string(),
             })
             .expect("first artifact should record");
@@ -429,6 +641,7 @@ mod tests {
                 session_id: session.id.clone(),
                 run_id: started.id,
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch-2.diff".to_string(),
             })
             .expect_err("duplicate artifact must fail");
@@ -490,6 +703,7 @@ mod tests {
                     session_id: session.id.clone(),
                     run_id: started.id.clone(),
                     kind: ArtifactKind::Patch,
+                    metadata: ArtifactMetadata::Standard,
                     storage_path: "artifacts/run-a/patch.diff".to_string(),
                 })
                 .expect("artifact should still record")
@@ -546,11 +760,20 @@ mod tests {
             .expect("session should open");
         let started = ensure_running_run(&app, &execution, &session.id, "Ship patch");
 
-        assert!(
-            runtime
-                .run_execution_runtime()
-                .release_live_run(&started.id)
-        );
+        let execution_runtime = runtime.run_execution_runtime();
+        let generation = execution_runtime
+            .live_execution_for(&started.id)
+            .filter(|live_execution| live_execution.session_id == session.id)
+            .expect("started run should have an execution")
+            .generation;
+        execution_runtime
+            .with_terminal_live_generation_lease_and_take_handle(
+                &started.id,
+                &session.id,
+                generation,
+                || Ok(()),
+            )
+            .expect("test terminal lease should retire the owner");
 
         let error = execution
             .record_artifact(ArtifactRecord {
@@ -558,6 +781,7 @@ mod tests {
                 session_id: session.id.clone(),
                 run_id: started.id,
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch.diff".to_string(),
             })
             .expect_err("artifact publish must require live owner");

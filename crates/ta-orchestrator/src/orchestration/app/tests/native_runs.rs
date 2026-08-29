@@ -86,13 +86,11 @@ fn list_native_runs_filters_children_and_paginates() {
     assert_eq!(second.next_cursor, None);
     assert_eq!(children.runs.len(), 1);
     assert_eq!(children.runs[0].id.as_str(), "run-child");
-    assert_eq!(
-        children.runs[0]
-            .parent_run_id
-            .as_ref()
-            .map(|id| id.as_str()),
-        Some("run-parent-b")
-    );
+    assert!(matches!(
+        children.runs[0].relationship,
+        crate::NativeRunRelationship::NativeSubagent { ref parent_run_id }
+            if parent_run_id.as_str() == "run-parent-b"
+    ));
 }
 
 #[test]

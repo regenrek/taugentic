@@ -1,6 +1,7 @@
 use ta_policy::{Operation, evaluate_execution_context};
 use ta_store::CommitRunTransition;
 
+use super::provider_sink::RunCompletionProjection;
 use super::*;
 
 impl<S> RunExecutionService<S>
@@ -67,6 +68,7 @@ where
                         output_contract: None,
                         model_id: route.model_id.clone(),
                         recipe_id: None,
+                        attachments: Vec::new(),
                     },
                     execution_context: prepared_context.execution_context,
                     result: None,
@@ -78,15 +80,13 @@ where
                     claimed_files: prepared_context.claimed_files,
                     conflict_summary: prepared_context.conflict_summary,
                 },
-                events: vec![DaemonEvent::Run(crate::RunEvent {
-                    run_id: run_id.clone(),
-                    status: RunStatus::Running,
-                    detail: "Seeded live run for owner-layer proof".to_string(),
-                    output_contract: None,
-                    recipe_id: None,
-                    result: None,
-                })],
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                events: vec![DaemonEvent::Run(
+                    crate::RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                        .expect("active status"),
+                )],
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })?;
             (committed.run, committed.events)
         };
@@ -123,15 +123,13 @@ where
                 status: RunStatus::Queued,
                 ..existing_run
             },
-            events: vec![DaemonEvent::Run(crate::RunEvent {
-                run_id: run_id.clone(),
-                status: RunStatus::Queued,
-                detail: "Queued after daemon restart reconciliation".to_string(),
-                output_contract: None,
-                recipe_id,
-                result: None,
-            })],
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(
+                crate::RunEvent::active(run_id.clone(), RunStatus::Queued, None, recipe_id, None)
+                    .expect("active status"),
+            )],
             occurred_at_ms: current_time_ms(),
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })?;
         Ok(())
     }
@@ -160,12 +158,11 @@ where
         Ok(promoted_events)
     }
 
-    fn promote_queued_run(
+    pub(crate) fn promote_queued_run(
         &self,
         session_id: crate::SessionId,
         run_id: &RunId,
     ) -> Result<RunMutationResult, RunExecutionError> {
-        let operation = Operation::new(ApprovalScope::ProcessExec, "execute run");
         let queued_run = self.load_run_projection(run_id)?;
         if queued_run.session_id != session_id {
             return Err(RunExecutionError::RunSessionMismatch(
@@ -181,7 +178,15 @@ where
             .runtime
             .runtime_profile(&queued_run.runtime_profile_id)
             .map_err(map_agent_runtime_error)?;
-        let decision = evaluate_execution_context(&queued_run.execution_context, &operation);
+        let decision = match runtime_profile.execution_kind {
+            ta_protocol::wire::RuntimeProfileExecutionKind::AgentRun => evaluate_execution_context(
+                &queued_run.execution_context,
+                &Operation::new(ApprovalScope::ProcessExec, "execute run"),
+            ),
+            ta_protocol::wire::RuntimeProfileExecutionKind::RealtimeVoice => {
+                ta_policy::PolicyDecision::Allow
+            }
+        };
         let (mut run, mut events) = {
             let mut store = self.store.lock().expect("app store should not be poisoned");
             let Some(existing_run) = store.run(run_id)? else {
@@ -207,34 +212,37 @@ where
                     status,
                     ..existing_run
                 },
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
                 events,
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })?;
-            if committed.run.status == RunStatus::Running {
-                self.runtime
-                    .claim_live_run(committed.run.id.clone(), session_id.clone());
-            }
             (committed.run, committed.events)
         };
         if run.status == RunStatus::Running {
+            let generation = self
+                .runtime
+                .claim_live_run(run.id.clone(), session_id.clone());
             let start_result = self.start_provider_execution(
                 &session_id,
                 &run.id,
-                &run.objective,
                 &runtime_profile,
                 run.source.route(),
+                generation,
             );
             let latest_run = self.load_run_projection(&run.id)?;
             if let Err(error) = start_result
                 && latest_run.status == RunStatus::Running
             {
-                let (failed_run, failed_events) = self.fail_live_run_without_publish(
+                let failed = self.commit_failed_live_run_for_generation(
                     session_id.clone(),
                     &latest_run.id,
                     error.to_string(),
+                    RunCompletionProjection::default(),
+                    generation,
                 )?;
-                run = failed_run;
-                events.extend(failed_events);
+                run = self.load_run_projection(&latest_run.id)?;
+                events.extend(failed.events);
             } else if latest_run.status != RunStatus::Cancelled {
                 run = latest_run;
             }

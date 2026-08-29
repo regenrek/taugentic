@@ -55,6 +55,11 @@ pub enum CodexAppServerEvent {
     Activity {
         message: String,
     },
+    ImageGenerated {
+        turn_id: String,
+        item_id: String,
+        data_base64: String,
+    },
 }
 
 pub fn event_from_notification(
@@ -205,6 +210,31 @@ fn item_completed_event(
                 turn_id,
                 item_id: required_string(&item, "id")?,
                 outcome: outcome_from_item(&item),
+            }))
+        }
+        Some("imageGeneration") => {
+            if item.get("status").and_then(Value::as_str) != Some("completed") {
+                return Ok(Some(CodexAppServerEvent::Activity {
+                    message: "item/completed:imageGeneration-failed".to_string(),
+                }));
+            }
+            let result = item.get("result").cloned().unwrap_or(Value::Null);
+            if result.get("truncated").and_then(Value::as_bool) != Some(false) {
+                return Err(CodexLlmClientError::Protocol(
+                    "completed imageGeneration result must be an untruncated raw base64 payload"
+                        .to_string(),
+                ));
+            }
+            let data_base64 = required_string(&result, "text")?;
+            if data_base64.trim().is_empty() {
+                return Err(CodexLlmClientError::Protocol(
+                    "completed imageGeneration result must not be empty".to_string(),
+                ));
+            }
+            Ok(Some(CodexAppServerEvent::ImageGenerated {
+                turn_id,
+                item_id: required_string(&item, "id")?,
+                data_base64,
             }))
         }
         Some(kind) => Ok(Some(CodexAppServerEvent::Activity {

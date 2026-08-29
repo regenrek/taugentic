@@ -8,7 +8,7 @@ fn daemon_approval_decide_requires_matching_attached_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -29,7 +29,7 @@ fn daemon_approval_decide_requires_matching_attached_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(SessionId::new("session-other").expect("session id")),
     }));
     let session = test_session();
@@ -67,7 +67,7 @@ fn daemon_approval_decide_collapses_missing_and_resolved_public_errors() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -88,7 +88,7 @@ fn daemon_approval_decide_collapses_missing_and_resolved_public_errors() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -207,7 +207,7 @@ fn assert_approval_decision_transitions_run_and_clears_pending_approval(
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -228,7 +228,7 @@ fn assert_approval_decision_transitions_run_and_clears_pending_approval(
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -297,7 +297,7 @@ fn daemon_approval_decide_redacts_actor_in_public_activity_page() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -318,7 +318,7 @@ fn daemon_approval_decide_redacts_actor_in_public_activity_page() {
         initialized: true,
         client_name: Some("desktop-main".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();

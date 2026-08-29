@@ -1,0 +1,39 @@
+{
+  "$defs": {
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/WorkspaceFileKind"
+    },
+    "path": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "revision",
+    "kind",
+    "byteLen"
+  ],
+  "title": "WorkspaceFileAttachment",
+  "type": "object"
+}

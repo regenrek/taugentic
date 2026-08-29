@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "CodeHostCommentKind": {
+      "enum": [
+        "conversation",
+        "review"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/CodeHostCommentKind"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "authorLogin",
+    "body",
+    "webUrl",
+    "createdAt"
+  ],
+  "title": "CodeHostComment",
+  "type": "object"
+}

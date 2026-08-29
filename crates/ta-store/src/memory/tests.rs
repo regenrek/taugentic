@@ -29,6 +29,10 @@ fn agent_stream_event(run_id: &RunId, frame: AgentStreamFrame) -> DaemonEvent {
 
 mod agent_turns;
 mod artifacts;
+mod code_host_accounts;
 mod commits;
+mod plugins;
 mod repositories;
+mod scheduled_work;
+mod thread_workspace;
 mod work_items;

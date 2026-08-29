@@ -5,8 +5,14 @@ use thiserror::Error;
 pub enum StoreError {
     #[error("duplicate {entity} record for key {key}")]
     DuplicateRecord { entity: &'static str, key: String },
+    #[error("artifact kind {kind} is incompatible with metadata {metadata}")]
+    ArtifactMetadataMismatch { kind: String, metadata: String },
     #[error("{entity} record does not exist for key {key}")]
     MissingRecord { entity: &'static str, key: String },
+    #[error(
+        "auth profile preference order {order} is outside its provider-method group of {group_len}"
+    )]
+    AuthProfilePreferenceOrderOutOfRange { order: u32, group_len: usize },
     #[error("committed {entity} session mismatch: expected {expected}, got {actual}")]
     CommitSessionMismatch {
         entity: &'static str,
@@ -23,8 +29,25 @@ pub enum StoreError {
     CommitRunEventMismatch { expected: String, actual: String },
     #[error("execution context is immutable after run creation: {run_id}")]
     ImmutableRunExecutionContext { run_id: String },
+    #[error("run source route is immutable after run creation: {run_id}")]
+    ImmutableRunSourceRoute { run_id: String },
+    #[error("auth profile mutation does not match the immutable run route: {run_id}")]
+    AuthProfileMutationRouteMismatch { run_id: String },
+    #[error("auth profile mutation lacks its matching terminal exhausted status: {run_id}")]
+    AuthProfileMutationMissingTerminalStatus { run_id: String },
     #[error("committed store transition requires at least one event")]
     EmptyCommitEvents,
+    #[error("scheduled work validation failed: {detail}")]
+    ScheduledWorkValidation { detail: String },
+    #[error("scheduled work occurrence {occurrence_id} is not pending")]
+    ScheduledWorkOccurrenceNotPending { occurrence_id: String },
+    #[error("scheduled work occurrence {occurrence_id} is not claimed by run {run_id}")]
+    ScheduledWorkOccurrenceClaimMismatch {
+        occurrence_id: String,
+        run_id: String,
+    },
+    #[error("scheduled work run source does not match occurrence {occurrence_id}")]
+    ScheduledWorkRunSourceMismatch { occurrence_id: String },
     #[error("session insert requires existing workspace; workspace_id {workspace_id} unknown")]
     SessionWorkspaceMissing { workspace_id: String },
     #[error("invalid approval lifecycle for {approval_id}: {detail}")]
@@ -113,6 +136,16 @@ impl PartialEq for StoreError {
                 },
             ) => left_entity == right_entity && left_key == right_key,
             (
+                Self::ArtifactMetadataMismatch {
+                    kind: left_kind,
+                    metadata: left_metadata,
+                },
+                Self::ArtifactMetadataMismatch {
+                    kind: right_kind,
+                    metadata: right_metadata,
+                },
+            ) => left_kind == right_kind && left_metadata == right_metadata,
+            (
                 Self::MissingRecord {
                     entity: left_entity,
                     key: left_key,
@@ -122,6 +155,16 @@ impl PartialEq for StoreError {
                     key: right_key,
                 },
             ) => left_entity == right_entity && left_key == right_key,
+            (
+                Self::AuthProfilePreferenceOrderOutOfRange {
+                    order: left_order,
+                    group_len: left_group_len,
+                },
+                Self::AuthProfilePreferenceOrderOutOfRange {
+                    order: right_order,
+                    group_len: right_group_len,
+                },
+            ) => left_order == right_order && left_group_len == right_group_len,
             (
                 Self::CommitSessionMismatch {
                     entity: left_entity,

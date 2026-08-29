@@ -1,7 +1,13 @@
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use ta_protocol::wire::{AuthMethodId, AuthProfileConnectionState, AuthProfileLoginMethod};
+use std::sync::Arc;
+
+use ta_protocol::wire::{
+    AuthMethodId, AuthProfileConnectionState, AuthProfileLoginMethod, EnvPolicy, ExecutionContext,
+    NetworkPolicy, PermissionPolicy, ProcessExecPolicy, SandboxProfile, WorkspaceId, WorkspacePath,
+    WorkspaceScope,
+};
 
 use super::*;
 
@@ -65,6 +71,82 @@ for line in sys.stdin:
 
 #[test]
 #[cfg(unix)]
+fn codex_app_server_image_turn_uses_local_image_and_accepts_only_completed_base64_generation() {
+    let binary = write_script(
+        "image-turn",
+        r#"#!/usr/bin/env python3
+import json, sys
+for line in sys.stdin:
+    msg = json.loads(line)
+    method = msg.get("method")
+    if method == "initialize":
+        print(json.dumps({"id": msg["id"], "result": {}}), flush=True)
+    elif method == "thread/start":
+        print(json.dumps({"id": msg["id"], "result": {"thread": {"id": "thread-image"}}}), flush=True)
+    elif method == "turn/start":
+        inputs = msg["params"]["input"]
+        valid = len(inputs) == 2 and inputs[0].get("type") == "text" and inputs[1].get("type") == "localImage"
+        if not valid:
+            print(json.dumps({"id": msg["id"], "error": {"code": -32602, "message": "localImage input missing"}}), flush=True)
+            continue
+        print(json.dumps({"id": msg["id"], "result": {"turn": {"id": "turn-image"}}}), flush=True)
+        print(json.dumps({"method": "item/completed", "params": {"turnId": "turn-image", "item": {"id": "item-image", "type": "imageGeneration", "status": "completed", "result": {"truncated": False, "text": "iVBORw0KGgo="}}}}), flush=True)
+        print(json.dumps({"method": "turn/completed", "params": {"turn": {"id": "turn-image", "status": "completed"}}}), flush=True)
+"#,
+    );
+    let root = std::env::current_dir().expect("workspace root");
+    let root = WorkspacePath::canonicalize_existing(root).expect("canonical workspace root");
+    let context = ExecutionContext {
+        workspace_id: WorkspaceId::new("workspace-image-client").expect("workspace id"),
+        workspace_root: root.clone(),
+        effective_cwd: root.clone(),
+        artifact_root: root.clone(),
+        workspace_scope: WorkspaceScope::Local { root: root.clone() },
+        sandbox_profile: SandboxProfile {
+            read_roots: vec![root.clone()],
+            write_roots: vec![root.clone()],
+            denied_roots: Vec::new(),
+            process_exec: ProcessExecPolicy::AllowAll,
+        },
+        permission_policy: PermissionPolicy::WorkspaceWrite,
+        network_policy: NetworkPolicy::Open,
+        env_policy: EnvPolicy::workspace_default(),
+    };
+    let image = unique_dir("image-input").join("input.png");
+    fs::create_dir_all(image.parent().expect("image parent")).expect("image directory");
+    fs::write(&image, b"\x89PNG\r\n\x1a\n").expect("image fixture");
+
+    let mut session = CodexAppServerClient::with_binary(binary)
+        .start_session(CodexAppServerInput {
+            execution_context: Arc::new(context),
+            model: None,
+            auth_profile_id: Some("profile-image-client".to_string()),
+        })
+        .expect("app-server session");
+    session
+        .send_user_turn("describe the image", &[image])
+        .expect("turn start");
+    let cancellation = tokio_util::sync::CancellationToken::new();
+    let mut generated = Vec::new();
+    session
+        .stream_events(&cancellation, |event| {
+            if let CodexAppServerEvent::ImageGenerated { data_base64, .. } = event {
+                generated.push(data_base64);
+            }
+            Ok(())
+        })
+        .expect("completed generation must stream");
+    assert_eq!(generated, vec!["iVBORw0KGgo=".to_string()]);
+
+    let rejected = event_from_notification(
+        "item/completed",
+        &json!({"params": {"turnId": "turn-image", "item": {"id": "item-image", "type": "imageGeneration", "status": "completed", "result": {"truncated": true, "text": "iVBORw0KGgo="}}}}),
+    );
+    assert!(matches!(rejected, Err(CodexLlmClientError::Protocol(_))));
+}
+
+#[test]
+#[cfg(unix)]
 fn account_login_retains_early_completion_and_reads_the_profile_account() {
     let binary = write_script(
         "account-login",
@@ -83,6 +165,7 @@ for line in sys.stdin:
             print(json.dumps({"id": msg["id"], "error": {"code": -32602, "message": "profile scope missing"}}), flush=True)
             continue
         print(json.dumps({"method": "account/login/completed", "params": {"loginId": "login-test", "success": True, "error": None}}), flush=True)
+        print(json.dumps({"method": "account/updated", "params": {"authMode": "chatgpt", "planType": "pro"}}), flush=True)
         print(json.dumps({"id": msg["id"], "result": {"type": "chatgpt", "loginId": "login-test", "authUrl": "https://example.test/authorize"}}), flush=True)
     elif method == "account/read":
         print(json.dumps({"id": msg["id"], "result": {"account": {"type": "chatgpt", "email": "person@example.test", "planType": "pro"}, "requiresOpenaiAuth": True}}), flush=True)
@@ -106,7 +189,11 @@ for line in sys.stdin:
     );
     session
         .wait_for_chatgpt_login(&login_id)
-        .expect("early completion notification");
+        .expect("account readiness notification");
+    assert!(
+        session.recv_message_tick().expect("next message").is_none(),
+        "login readiness must consume the account update that makes account/read authoritative"
+    );
     assert_eq!(
         session.read_chatgpt_account().expect("account read"),
         Some((
@@ -119,7 +206,7 @@ for line in sys.stdin:
 
 #[test]
 #[cfg(unix)]
-fn auth_login_returns_the_browser_challenge_before_awaiting_completion() {
+fn auth_lifecycle_returns_the_challenge_and_runs_control_io_from_tokio() {
     let binary = write_script(
         "two-phase-account-login",
         r#"#!/usr/bin/env python3
@@ -134,15 +221,20 @@ for line in sys.stdin:
     elif method == "account/login/start":
         print(json.dumps({"id": msg["id"], "result": {"type": "chatgpt", "loginId": "two-phase-login", "authUrl": "https://example.test/authorize"}}), flush=True)
         print(json.dumps({"method": "account/login/completed", "params": {"loginId": "two-phase-login", "success": True, "error": None}}), flush=True)
+        print(json.dumps({"method": "account/updated", "params": {"authMode": "chatgpt", "planType": "pro"}}), flush=True)
     elif method == "account/read":
         print(json.dumps({"id": msg["id"], "result": {"account": {"type": "chatgpt", "email": "person@example.test", "planType": "pro"}, "requiresOpenaiAuth": True}}), flush=True)
+    elif method == "account/logout":
+        print(json.dumps({"id": msg["id"], "result": {}}), flush=True)
 "#,
     );
     let client = CodexAppServerClient::with_binary(binary);
     let profile_id = AuthProfileId::new("profile-two-phase-login").expect("profile id");
     let auth_method_id = AuthMethodId::new("codex-chatgpt").expect("auth method id");
 
-    let started = crate::auth::codex_oauth::login(&client, &auth_method_id, &profile_id)
+    let caller = tokio::runtime::Runtime::new().expect("caller runtime");
+    let started = caller
+        .block_on(async { crate::auth::codex_oauth::login(&client, &auth_method_id, &profile_id) })
         .expect("login start");
     assert_eq!(
         started.auth_profile.connection_state,
@@ -156,11 +248,14 @@ for line in sys.stdin:
         "https://example.test/authorize"
     );
 
-    let completed =
-        crate::auth::codex_oauth::complete_login(&profile_id).expect("login completion");
+    let completed = caller
+        .block_on(async { crate::auth::codex_oauth::complete_login(&profile_id) })
+        .expect("login completion");
     assert_eq!(
         completed.auth_profile.connection_state,
         AuthProfileConnectionState::Connected
     );
     assert!(completed.challenge.is_none());
+    let result = caller.block_on(async { crate::auth::codex_oauth::logout(&client, &profile_id) });
+    assert!(result.expect("logout").disconnected);
 }

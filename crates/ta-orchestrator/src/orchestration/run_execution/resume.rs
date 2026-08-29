@@ -119,15 +119,20 @@ mod tests {
                         status: RunStatus::Completed,
                         ..existing
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: run.id.clone(),
-                        status: RunStatus::Completed,
-                        detail: "done".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::terminal(
+                            run.id.clone(),
+                            RunStatus::Completed,
+                            crate::RunStatusReason::new("done").expect("reason"),
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("completed is terminal"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("terminal run should persist");
         }
@@ -205,15 +210,19 @@ mod tests {
                         claimed_files: Vec::new(),
                         conflict_summary: None,
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: child_run_id.clone(),
-                        status: RunStatus::Running,
-                        detail: "child started".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            child_run_id.clone(),
+                            RunStatus::Running,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("active status"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("child run should persist");
         }

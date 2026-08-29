@@ -1,6 +1,43 @@
 use super::*;
+use crate::{
+    CommitSessionNextRunSelection, CommitSessionOpenWithNavigation,
+    SessionNextRunSelectionCommitResult, UserTurnCommit, user_row,
+};
 
 impl CommitRepository for InMemoryStore {
+    fn commit_session_open_with_navigation(
+        &mut self,
+        input: CommitSessionOpenWithNavigation,
+    ) -> Result<SessionOpenCommitResult, StoreError> {
+        let result = self.commit_session_open(CommitSessionOpen {
+            session: input.session,
+            occurred_at_ms: input.occurred_at_ms,
+        })?;
+        self.navigation_states
+            .insert(input.owner_principal_id, input.navigation);
+        Ok(result)
+    }
+
+    fn commit_session_next_run_selection(
+        &mut self,
+        input: CommitSessionNextRunSelection,
+    ) -> Result<SessionNextRunSelectionCommitResult, StoreError> {
+        let existing = self
+            .sessions
+            .get(&input.session_id)
+            .cloned()
+            .ok_or_else(|| StoreError::MissingRecord {
+                entity: "session",
+                key: input.session_id.as_str().to_string(),
+            })?;
+        let session = SessionProjection {
+            next_run_selection: input.selection,
+            ..existing
+        };
+        self.sessions.insert(session.id.clone(), session.clone());
+        Ok(SessionNextRunSelectionCommitResult { session })
+    }
+
     fn commit_session_open(
         &mut self,
         input: CommitSessionOpen,
@@ -58,6 +95,9 @@ impl CommitRepository for InMemoryStore {
         }
         let existing_run = self.runs.get(&input.run.id).cloned();
         validate_run_execution_context(existing_run.as_ref(), &input.run)?;
+        crate::validate_run_source_route(existing_run.as_ref(), &input.run)?;
+        crate::validate_scheduled_run_source_link(existing_run.as_ref(), &input.run)?;
+        crate::validate_auth_profile_mutation(&input)?;
         validate_run_transition_events(&input)?;
         ApprovalLifecycleState::fold_session_records(
             self.events
@@ -66,11 +106,58 @@ impl CommitRepository for InMemoryStore {
         )?
         .validate_run_transition(&input.run.id, input.events.iter())?;
 
+        let scheduled_terminal_occurrence = crate::scheduled_work::scheduled_run_source(&input.run)
+            .and_then(|(_, occurrence_id)| {
+                crate::scheduled_terminal_state(input.run.id.clone(), input.run.status)
+                    .map(|state| (occurrence_id.clone(), state))
+            });
+        if let Some((occurrence_id, _)) = &scheduled_terminal_occurrence {
+            let occurrence = self
+                .scheduled_work_occurrences
+                .get(occurrence_id)
+                .ok_or_else(|| StoreError::MissingRecord {
+                    entity: "scheduled work occurrence",
+                    key: occurrence_id.as_str().to_string(),
+                })?;
+            if crate::claimed_run_id(occurrence) != Some(&input.run.id) {
+                return Err(StoreError::ScheduledWorkOccurrenceClaimMismatch {
+                    occurrence_id: occurrence_id.as_str().to_string(),
+                    run_id: input.run.id.as_str().to_string(),
+                });
+            }
+        }
+
+        if let crate::AuthProfileCommitMutation::SetExhausted {
+            auth_profile_id,
+            exhaustion,
+        } = &input.auth_profile_mutation
+        {
+            let profile = self.auth_profiles.get_mut(auth_profile_id).ok_or_else(|| {
+                StoreError::MissingRecord {
+                    entity: "auth profile",
+                    key: auth_profile_id.as_str().to_string(),
+                }
+            })?;
+            profile.profile.exhaustion = Some(*exhaustion);
+        }
+
         let mut emitted = Vec::with_capacity(input.events.len());
         let mut persisted = Vec::with_capacity(input.events.len());
         for payload in input.events {
             let sequence = self.next_event_sequence;
             self.next_event_sequence = self.next_event_sequence.saturating_add(1);
+            if let UserTurnCommit::Append { text, attachments } = &input.user_turn
+                && emitted.is_empty()
+            {
+                let row = user_row(
+                    &input.run,
+                    sequence,
+                    input.occurred_at_ms,
+                    text.clone(),
+                    attachments.clone(),
+                );
+                self.agent_turn_rows.insert(row_sequence(&row), row);
+            }
             let event = EventRecord {
                 sequence,
                 session_id: input.session_id.clone(),
@@ -100,6 +187,13 @@ impl CommitRepository for InMemoryStore {
             persisted.last().map(|event| event.sequence),
         );
         self.runs.insert(run.id.clone(), run.clone());
+        if let Some((occurrence_id, state)) = scheduled_terminal_occurrence {
+            let occurrence = self
+                .scheduled_work_occurrences
+                .get_mut(&occurrence_id)
+                .expect("scheduled occurrence validated above");
+            occurrence.state = state;
+        }
         let session_runs = self
             .runs
             .values()
@@ -159,6 +253,7 @@ impl CommitRepository for InMemoryStore {
         &mut self,
         input: CommitArtifactPublish,
     ) -> Result<ArtifactPublishCommitResult, StoreError> {
+        input.artifact.validate_metadata()?;
         if !self.sessions.contains_key(&input.artifact.session_id) {
             return Err(StoreError::MissingRecord {
                 entity: "session",
@@ -191,12 +286,7 @@ impl CommitRepository for InMemoryStore {
         }
         self.save_seed_artifact(input.artifact.clone())?;
         let payload = DaemonEvent::Artifact(ArtifactEvent {
-            artifact: ArtifactSummary {
-                id: input.artifact.id.clone(),
-                run_id: input.artifact.run_id.clone(),
-                kind: input.artifact.kind,
-                storage_path: input.artifact.storage_path.clone(),
-            },
+            artifact: crate::project_artifact_summary(&input.artifact),
         });
         let event = EventRecord {
             sequence: self.next_event_sequence,

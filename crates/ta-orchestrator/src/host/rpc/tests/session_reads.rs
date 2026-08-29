@@ -1,14 +1,72 @@
 use super::*;
 
+fn issue_test_principal_id(state: &BootstrapState, client_name: &str) -> String {
+    state
+        .app
+        .resolve_or_issue_session_principal(client_name, None)
+        .expect("test principal should issue")
+        .principal_id
+}
+
 #[test]
-fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
+fn daemon_session_open_creates_temporary_conversation_from_typed_workspace_selector() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
+        attached_session_id: None,
+    }));
+
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &test_session(),
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(12),
+            method: METHOD_DAEMON_SESSION_OPEN.to_string(),
+            params: Some(
+                serde_json::to_value(DaemonSessionOpenParams {
+                    title: "Temporary conversation".to_string(),
+                    workspace: WorkspaceSelector::ByTemporary {
+                        workspace_id: ta_store::default_test_workspace_id(),
+                    },
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect("daemon.session.open should succeed");
+    let opened: DaemonSessionOpenResult =
+        serde_json::from_value(response).expect("response should deserialize");
+
+    let snapshot = state
+        .app
+        .navigation_snapshot(&owner_principal_id, None)
+        .expect("navigation should load");
+    assert!(snapshot.conversations.iter().any(|conversation| {
+        conversation.session_id == opened.session.id
+            && conversation.placement == crate::ConversationPlacement::Temporary
+            && conversation.workspace_id == ta_store::default_test_workspace_id()
+    }));
+}
+
+#[test]
+fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
+    let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
+    let other_owner_principal_id = issue_test_principal_id(&state, "other-client");
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let session_state = Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(TEST_CLIENT_NAME.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -16,7 +74,7 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -27,7 +85,7 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
         .app
         .open_session(
             "other-client",
-            OTHER_TEST_OWNER_PRINCIPAL_ID,
+            &other_owner_principal_id,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -75,12 +133,13 @@ fn daemon_session_overview_returns_daemon_owned_visualizer_projection() {
 #[test]
 fn daemon_run_list_filters_by_session() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let opened = state
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -91,7 +150,7 @@ fn daemon_run_list_filters_by_session() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Ignore me".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -102,7 +161,7 @@ fn daemon_run_list_filters_by_session() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -142,12 +201,13 @@ fn daemon_run_list_filters_by_session() {
 #[test]
 fn daemon_approval_list_filters_by_session() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let opened = state
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -158,7 +218,7 @@ fn daemon_approval_list_filters_by_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -200,12 +260,13 @@ fn daemon_approval_list_filters_by_session() {
 #[test]
 fn daemon_run_get_returns_none_outside_selected_session() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let opened = state
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -216,7 +277,7 @@ fn daemon_run_get_returns_none_outside_selected_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id.clone()),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -251,7 +312,7 @@ fn daemon_run_get_returns_none_outside_selected_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id),
         attached_session_id: Some(SessionId::new("session-2").expect("session id")),
     }));
     let other_response = handle_request(
@@ -288,12 +349,13 @@ fn daemon_run_get_returns_none_outside_selected_session() {
 #[test]
 fn daemon_session_get_returns_optional_summary() {
     let state = boot(test_config());
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
     let opened = state
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -311,7 +373,7 @@ fn daemon_session_get_returns_optional_summary() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();

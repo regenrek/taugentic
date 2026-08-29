@@ -1,4 +1,112 @@
 use super::*;
+use crate::StoreSeedRepository;
+use ta_protocol::wire::{
+    AgentRuntimeStrategyId, AgentStreamItemId, AgentStreamTurnId, ArtifactMetadata,
+    ImageArtifactMetadata, ImageArtifactProvenance, ImageMediaType, RuntimeProfileId,
+};
+
+fn image_metadata() -> ArtifactMetadata {
+    ArtifactMetadata::Image(ImageArtifactMetadata {
+        media_type: ImageMediaType::Png,
+        sha256: "sha256:fixture".to_string(),
+        byte_len: 8,
+        provenance: ImageArtifactProvenance {
+            runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe")
+                .expect("runtime profile id"),
+            provider_id: AgentRuntimeStrategyId::new("codex").expect("provider id"),
+            turn_id: AgentStreamTurnId::new("turn-fixture").expect("turn id"),
+            item_id: AgentStreamItemId::new("item-fixture").expect("item id"),
+        },
+    })
+}
+
+fn metadata_mismatch(id: &str, image_kind: bool) -> ArtifactRecord {
+    ArtifactRecord {
+        id: ArtifactId::new(id).expect("artifact id"),
+        session_id: SessionId::new("session-metadata").expect("session id"),
+        run_id: RunId::new("run-metadata").expect("run id"),
+        kind: if image_kind {
+            ArtifactKind::Image
+        } else {
+            ArtifactKind::Patch
+        },
+        metadata: if image_kind {
+            ArtifactMetadata::Standard
+        } else {
+            image_metadata()
+        },
+        storage_path: "artifact.bin".to_string(),
+    }
+}
+
+fn metadata_commit_store() -> InMemoryStore {
+    let mut store = InMemoryStore::current();
+    store
+        .save_session(SessionProjection {
+            id: SessionId::new("session-metadata").expect("session id"),
+            owner_client_name: "memory-tests".to_string(),
+            owner_principal_id: "principal-test-owner".to_string(),
+            current_session_authority_hash: "session-authority-hash".to_string(),
+            current_session_authority_generation: 0,
+            recovery_session_authority_hash: None,
+            recovery_session_authority_generation: None,
+            title: "Metadata".to_string(),
+            status: SessionStatus::Running,
+            workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
+        })
+        .expect("session");
+    store
+        .save_run(RunProjection {
+            id: RunId::new("run-metadata").expect("run id"),
+            session_id: SessionId::new("session-metadata").expect("session id"),
+            runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe")
+                .expect("runtime profile id"),
+            objective: "Validate metadata".to_string(),
+            status: RunStatus::Running,
+            source: crate::default_test_run_source(),
+            execution_context: crate::default_test_execution_context(),
+            harness: RunHarnessKind::Unknown,
+            result: None,
+            contract_violation: None,
+            started_at_ms: None,
+            ended_at_ms: None,
+            last_event_seq: None,
+            workspace_info: None,
+            claimed_files: Vec::new(),
+            conflict_summary: None,
+        })
+        .expect("run");
+    store
+}
+
+#[test]
+fn artifact_metadata_mismatch_is_rejected_at_seed_and_commit_boundaries() {
+    for (id, image_kind) in [
+        ("artifact-seed-image", true),
+        ("artifact-seed-standard", false),
+    ] {
+        let mut store = InMemoryStore::current();
+        let error = store
+            .save_artifact(metadata_mismatch(id, image_kind))
+            .expect_err("seed must reject either metadata mismatch direction");
+        assert!(matches!(error, StoreError::ArtifactMetadataMismatch { .. }));
+    }
+
+    for (id, image_kind) in [
+        ("artifact-commit-image", true),
+        ("artifact-commit-standard", false),
+    ] {
+        let mut store = metadata_commit_store();
+        let error = store
+            .commit_artifact_publish(CommitArtifactPublish {
+                artifact: metadata_mismatch(id, image_kind),
+                occurred_at_ms: 1,
+            })
+            .expect_err("commit must reject either metadata mismatch direction");
+        assert!(matches!(error, StoreError::ArtifactMetadataMismatch { .. }));
+    }
+}
 
 #[test]
 fn durable_activity_reads_include_session_scoped_artifact_events() {
@@ -20,7 +128,8 @@ fn durable_activity_reads_include_session_scoped_artifact_events() {
                     id: artifact_a.clone(),
                     run_id: run_a.clone(),
                     kind: ArtifactKind::Patch,
-                    storage_path: "artifacts/run-a/patch.diff".to_string(),
+                    metadata: ArtifactMetadata::Standard,
+                    display_name: "patch.diff".to_string(),
                 },
             }),
         })
@@ -35,7 +144,8 @@ fn durable_activity_reads_include_session_scoped_artifact_events() {
                     id: artifact_b,
                     run_id: run_b,
                     kind: ArtifactKind::Transcript,
-                    storage_path: "artifacts/run-b/transcript.md".to_string(),
+                    metadata: ArtifactMetadata::Standard,
+                    display_name: "transcript.md".to_string(),
                 },
             }),
         })
@@ -50,7 +160,8 @@ fn durable_activity_reads_include_session_scoped_artifact_events() {
                     id: ArtifactId::new("artifact-c").expect("artifact id"),
                     run_id: run_a,
                     kind: ArtifactKind::Patch,
-                    storage_path: "artifacts/run-a/patch-2.diff".to_string(),
+                    metadata: ArtifactMetadata::Standard,
+                    display_name: "patch-2.diff".to_string(),
                 },
             }),
         })
@@ -160,6 +271,7 @@ fn artifact_reads_are_session_scoped_and_ordered() {
             session_id: session_a.clone(),
             run_id: run_c.clone(),
             kind: ArtifactKind::Transcript,
+            metadata: ArtifactMetadata::Standard,
             storage_path: "artifacts/run-c/transcript.md".to_string(),
         })
         .expect("artifact c");
@@ -169,6 +281,7 @@ fn artifact_reads_are_session_scoped_and_ordered() {
             session_id: session_b.clone(),
             run_id: run_b.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ArtifactMetadata::Standard,
             storage_path: "artifacts/run-b/patch.diff".to_string(),
         })
         .expect("artifact b");
@@ -178,6 +291,7 @@ fn artifact_reads_are_session_scoped_and_ordered() {
             session_id: session_a.clone(),
             run_id: run_a.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ArtifactMetadata::Standard,
             storage_path: "artifacts/run-a/patch.diff".to_string(),
         })
         .expect("artifact a");
@@ -243,6 +357,7 @@ fn commit_artifact_publish_persists_artifact_and_allocates_monotonic_event_seque
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Running,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
     store
@@ -307,6 +422,7 @@ fn commit_artifact_publish_persists_artifact_and_allocates_monotonic_event_seque
                 session_id: session_id.clone(),
                 run_id: RunId::new("run-a").expect("run id"),
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch.diff".to_string(),
             },
             occurred_at_ms: 20,
@@ -319,6 +435,7 @@ fn commit_artifact_publish_persists_artifact_and_allocates_monotonic_event_seque
                 session_id: session_id.clone(),
                 run_id: RunId::new("run-b").expect("run id"),
                 kind: ArtifactKind::Transcript,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-b/transcript.md".to_string(),
             },
             occurred_at_ms: 30,
@@ -373,6 +490,7 @@ fn commit_run_transition_rejects_cross_session_run_projection() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
 
@@ -398,15 +516,19 @@ fn commit_run_transition_rejects_cross_session_run_projection() {
                 claimed_files: Vec::new(),
                 conflict_summary: None,
             },
-            events: vec![DaemonEvent::Run(RunEvent {
-                run_id: RunId::new("run-a").expect("run id"),
-                status: RunStatus::Running,
-                detail: "Execution started".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            })],
+            user_turn: crate::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(
+                RunEvent::active(
+                    RunId::new("run-a").expect("run id"),
+                    RunStatus::Running,
+                    None,
+                    None,
+                    None,
+                )
+                .expect("active status"),
+            )],
             occurred_at_ms: 20,
+            auth_profile_mutation: crate::AuthProfileCommitMutation::Unchanged,
         })
         .expect_err("cross-session run commit must fail");
 
@@ -439,6 +561,7 @@ fn commit_run_transition_rejects_orphan_approval_resolution() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
 
@@ -464,6 +587,7 @@ fn commit_run_transition_rejects_orphan_approval_resolution() {
                 claimed_files: Vec::new(),
                 conflict_summary: None,
             },
+            user_turn: crate::UserTurnCommit::NoUserTurn,
             events: vec![DaemonEvent::Approval(ApprovalEvent::Resolved {
                 resolution: ta_protocol::wire::ApprovalResolution::new(
                     ApprovalId::new("approval-a").expect("approval id"),
@@ -476,6 +600,7 @@ fn commit_run_transition_rejects_orphan_approval_resolution() {
                 ),
             })],
             occurred_at_ms: 20,
+            auth_profile_mutation: crate::AuthProfileCommitMutation::Unchanged,
         })
         .expect_err("orphan approval resolution must fail");
 
@@ -506,6 +631,7 @@ fn commit_run_transition_rejects_mismatched_run_event_run_id() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
 
@@ -531,15 +657,19 @@ fn commit_run_transition_rejects_mismatched_run_event_run_id() {
                 claimed_files: Vec::new(),
                 conflict_summary: None,
             },
-            events: vec![DaemonEvent::Run(RunEvent {
-                run_id: RunId::new("run-b").expect("run id"),
-                status: RunStatus::Running,
-                detail: "Execution started".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            })],
+            user_turn: crate::UserTurnCommit::NoUserTurn,
+            events: vec![DaemonEvent::Run(
+                RunEvent::active(
+                    RunId::new("run-b").expect("run id"),
+                    RunStatus::Running,
+                    None,
+                    None,
+                    None,
+                )
+                .expect("active status"),
+            )],
             occurred_at_ms: 20,
+            auth_profile_mutation: crate::AuthProfileCommitMutation::Unchanged,
         })
         .expect_err("mismatched run event run id must fail");
 
@@ -570,6 +700,7 @@ fn commit_run_transition_rejects_mismatched_agent_stream_run_id() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
 
@@ -595,6 +726,7 @@ fn commit_run_transition_rejects_mismatched_agent_stream_run_id() {
                 claimed_files: Vec::new(),
                 conflict_summary: None,
             },
+            user_turn: crate::UserTurnCommit::NoUserTurn,
             events: vec![DaemonEvent::AgentStream(AgentStreamEvent {
                 run_id: RunId::new("run-b").expect("run id"),
                 emission: ta_protocol::wire::StreamEmission {
@@ -605,6 +737,7 @@ fn commit_run_transition_rejects_mismatched_agent_stream_run_id() {
                 },
             })],
             occurred_at_ms: 20,
+            auth_profile_mutation: crate::AuthProfileCommitMutation::Unchanged,
         })
         .expect_err("mismatched agent stream run id must fail");
 
@@ -635,6 +768,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Running,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
     store
@@ -649,6 +783,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
             title: "Other".to_string(),
             status: SessionStatus::Running,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
     store
@@ -680,6 +815,7 @@ fn commit_artifact_publish_rejects_cross_session_run_projection() {
                 session_id: session_id.clone(),
                 run_id: RunId::new("run-a").expect("run id"),
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch.diff".to_string(),
             },
             occurred_at_ms: 20,
@@ -721,6 +857,7 @@ fn commit_artifact_publish_rejects_non_running_run_projection() {
             title: "Build daemon app server".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session");
     store
@@ -752,6 +889,7 @@ fn commit_artifact_publish_rejects_non_running_run_projection() {
                 session_id: session_id.clone(),
                 run_id: RunId::new("run-a").expect("run id"),
                 kind: ArtifactKind::Patch,
+                metadata: ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-a/patch.diff".to_string(),
             },
             occurred_at_ms: 20,

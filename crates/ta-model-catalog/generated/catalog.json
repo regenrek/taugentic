@@ -20,6 +20,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-haiku-4-5": {
@@ -36,6 +39,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-haiku-4-5-20251001": {
@@ -52,6 +58,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-4-5": {
@@ -68,6 +77,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-4-5-20251101": {
@@ -84,6 +96,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-4-6": {
@@ -100,6 +115,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-4-7": {
@@ -116,6 +134,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-4-8": {
@@ -132,6 +153,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-opus-5": {
@@ -148,6 +172,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-sonnet-4-5": {
@@ -164,6 +191,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-sonnet-4-5-20250929": {
@@ -180,6 +210,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-sonnet-4-6": {
@@ -196,6 +229,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "claude-sonnet-5": {
@@ -212,6 +248,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         }
       }
@@ -232,6 +271,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek-v4-flash-vision-exp": {
@@ -247,6 +289,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek-v4-pro": {
@@ -260,6 +305,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         }
@@ -285,6 +333,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deep-research-preview-04-2026": {
@@ -303,6 +354,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-2.5-computer-use-preview-10-2025": {
@@ -318,6 +372,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-2.5-flash": {
@@ -336,6 +393,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-2.5-flash-lite": {
@@ -354,6 +414,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-2.5-pro": {
@@ -372,6 +435,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3-flash-preview": {
@@ -390,6 +456,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.1-flash-lite": {
@@ -408,6 +477,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.1-flash-lite-image": {
@@ -421,6 +493,10 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text",
+            "image"
+          ],
+          "outputModalities": [
             "text",
             "image"
           ]
@@ -440,6 +516,9 @@
             "image",
             "video",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.1-pro-preview": {
@@ -458,6 +537,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.1-pro-preview-customtools": {
@@ -476,6 +558,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.5-flash": {
@@ -494,6 +579,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.5-flash-lite": {
@@ -512,6 +600,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.6-flash": {
@@ -530,6 +621,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-3.7-flash": {
@@ -548,6 +642,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-flash-latest": {
@@ -566,6 +663,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-flash-lite-latest": {
@@ -584,6 +684,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemini-robotics-er-1.6-preview": {
@@ -601,6 +704,9 @@
             "image",
             "video",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemma-4-26b-a4b-it": {
@@ -616,6 +722,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gemma-4-31b-it": {
@@ -631,6 +740,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         }
       }
@@ -651,6 +763,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "llama-3.3-70b-versatile": {
@@ -664,6 +779,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -679,6 +797,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-oss-20b": {
@@ -693,6 +814,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-oss-safeguard-20b": {
@@ -706,6 +830,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -722,6 +849,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         }
       }
@@ -744,6 +874,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-4.1-mini": {
@@ -760,6 +893,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-4o": {
@@ -776,6 +912,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-4o-2024-08-06": {
@@ -791,6 +930,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-4o-2024-11-20": {
@@ -806,6 +948,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-4o-mini": {
@@ -822,6 +967,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5": {
@@ -837,6 +985,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5-mini": {
@@ -852,6 +1003,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5-nano": {
@@ -867,6 +1021,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5-pro": {
@@ -882,6 +1039,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.1": {
@@ -897,6 +1057,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.2": {
@@ -912,6 +1075,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.2-chat-latest": {
@@ -927,6 +1093,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.2-pro": {
@@ -942,6 +1111,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.3-chat-latest": {
@@ -957,6 +1129,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.3-codex": {
@@ -973,6 +1148,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.3-codex-spark": {
@@ -989,6 +1167,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.4": {
@@ -1005,6 +1186,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.4-mini": {
@@ -1020,6 +1204,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.4-nano": {
@@ -1035,6 +1222,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.4-pro": {
@@ -1050,6 +1240,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.5": {
@@ -1066,6 +1259,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.5-pro": {
@@ -1082,6 +1278,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.6": {
@@ -1098,6 +1297,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.6-luna": {
@@ -1114,6 +1316,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.6-sol": {
@@ -1130,6 +1335,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-5.6-terra": {
@@ -1146,6 +1354,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "gpt-realtime-2.1": {
@@ -1162,6 +1373,10 @@
             "text",
             "audio",
             "image"
+          ],
+          "outputModalities": [
+            "text",
+            "audio"
           ]
         },
         "o3": {
@@ -1178,6 +1393,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "o3-pro": {
@@ -1193,6 +1411,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         }
       }
@@ -1213,6 +1434,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "aion-labs/aion-3.0": {
@@ -1227,6 +1451,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "aion-labs/aion-3.0-mini": {
@@ -1240,6 +1467,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1258,6 +1488,9 @@
             "image",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "amazon/nova-lite-v1": {
@@ -1273,6 +1506,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "amazon/nova-micro-v1": {
@@ -1286,6 +1522,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1302,6 +1541,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "amazon/nova-pro-v1": {
@@ -1317,6 +1559,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-3-haiku": {
@@ -1332,6 +1577,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-fable-5": {
@@ -1348,6 +1596,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-haiku-4.5": {
@@ -1364,6 +1615,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4": {
@@ -1380,6 +1634,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.1": {
@@ -1396,6 +1653,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.5": {
@@ -1412,6 +1672,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.6": {
@@ -1428,6 +1691,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.7": {
@@ -1444,6 +1710,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.7-fast": {
@@ -1460,6 +1729,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.8": {
@@ -1476,6 +1748,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-4.8-fast": {
@@ -1492,6 +1767,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-5": {
@@ -1508,6 +1786,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-opus-5-fast": {
@@ -1524,6 +1805,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-sonnet-4": {
@@ -1540,6 +1824,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-sonnet-4.5": {
@@ -1556,6 +1843,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-sonnet-4.6": {
@@ -1572,6 +1862,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "anthropic/claude-sonnet-5": {
@@ -1588,6 +1881,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "arcee-ai/trinity-large-thinking": {
@@ -1602,6 +1898,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "arcee-ai/virtuoso-large": {
@@ -1615,6 +1914,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1632,6 +1934,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "bytedance-seed/seed-1.6-flash": {
@@ -1648,6 +1953,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "bytedance-seed/seed-2-1-turbo": {
@@ -1664,6 +1972,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "bytedance-seed/seed-2.0-code": {
@@ -1680,6 +1991,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "bytedance-seed/seed-2.0-lite": {
@@ -1696,6 +2010,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "bytedance-seed/seed-2.0-mini": {
@@ -1712,6 +2029,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "cohere/command-r-08-2024": {
@@ -1725,6 +2045,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1740,6 +2063,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "cohere/north-mini-code:free": {
@@ -1753,6 +2079,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1768,6 +2097,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-chat-v3-0324": {
@@ -1781,6 +2113,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1796,6 +2131,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-r1": {
@@ -1809,6 +2147,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1824,6 +2165,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-v3.1-terminus": {
@@ -1837,6 +2181,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1852,6 +2199,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-v3.2-exp": {
@@ -1865,6 +2215,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1880,6 +2233,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-v4-flash-0731": {
@@ -1893,6 +2249,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1909,6 +2268,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-v4-pro": {
@@ -1923,6 +2285,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "deepseek/deepseek-v4-pro-0813": {
@@ -1936,6 +2301,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -1952,6 +2320,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-2.5-flash": {
@@ -1970,6 +2341,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-2.5-flash-lite": {
@@ -1988,6 +2362,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-2.5-pro": {
@@ -2006,6 +2383,9 @@
             "audio",
             "video",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-2.5-pro-preview": {
@@ -2023,6 +2403,9 @@
             "image",
             "text",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-2.5-pro-preview-05-06": {
@@ -2041,6 +2424,9 @@
             "pdf",
             "audio",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3-flash-preview": {
@@ -2059,6 +2445,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3-pro-image": {
@@ -2072,6 +2461,10 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text",
+            "image"
+          ],
+          "outputModalities": [
             "text",
             "image"
           ]
@@ -2092,6 +2485,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.1-flash-lite-preview": {
@@ -2110,6 +2506,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.1-pro-preview": {
@@ -2128,6 +2527,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.1-pro-preview-customtools": {
@@ -2146,6 +2548,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.5-flash": {
@@ -2164,6 +2569,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.5-flash-lite": {
@@ -2182,6 +2590,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.6-flash": {
@@ -2200,6 +2611,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemini-3.7-flash": {
@@ -2218,6 +2632,9 @@
             "video",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-3-12b-it": {
@@ -2233,6 +2650,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-3-27b-it": {
@@ -2248,6 +2668,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-4-26b-a4b-it": {
@@ -2264,6 +2687,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-4-26b-a4b-it:free": {
@@ -2280,6 +2706,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-4-31b-it": {
@@ -2296,6 +2725,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "google/gemma-4-31b-it:free": {
@@ -2312,6 +2744,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "ibm-granite/granite-4.1-8b": {
@@ -2325,6 +2760,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2340,6 +2778,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "inclusionai/ling-3.0-flash": {
@@ -2353,6 +2794,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2368,6 +2812,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "kwaipilot/kat-coder-pro-v2": {
@@ -2381,6 +2828,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2396,6 +2846,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "liquid/lfm-2.5-2.6b:free": {
@@ -2409,6 +2862,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2424,6 +2880,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta-llama/llama-3.1-70b-instruct": {
@@ -2437,6 +2896,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2452,6 +2914,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta-llama/llama-3.3-70b-instruct": {
@@ -2465,6 +2930,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2481,6 +2949,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta-llama/llama-4-scout": {
@@ -2496,6 +2967,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta/muse-glimmer-30b": {
@@ -2511,6 +2985,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta/muse-spark-1.1": {
@@ -2529,6 +3006,9 @@
             "video",
             "pdf",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta/muse-spark-1.2": {
@@ -2547,6 +3027,9 @@
             "video",
             "pdf",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "meta/muse-spark-1.2-contributor": {
@@ -2565,6 +3048,9 @@
             "video",
             "pdf",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "minimax/minimax-m1": {
@@ -2578,6 +3064,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2593,6 +3082,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "minimax/minimax-m2.1": {
@@ -2606,6 +3098,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2621,6 +3116,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "minimax/minimax-m2.7": {
@@ -2635,6 +3133,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "minimax/minimax-m2.7:free": {
@@ -2648,6 +3149,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2665,6 +3169,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "minimax/minimax-m3:free": {
@@ -2681,6 +3188,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/codestral-2508": {
@@ -2696,6 +3206,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/devstral-2512": {
@@ -2711,6 +3224,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/ministral-14b-2512": {
@@ -2726,6 +3242,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/ministral-3b-2512": {
@@ -2741,6 +3260,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/ministral-8b-2512": {
@@ -2756,6 +3278,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-large": {
@@ -2771,6 +3296,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-large-2407": {
@@ -2786,6 +3314,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-large-2512": {
@@ -2802,6 +3333,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-medium-3": {
@@ -2818,6 +3352,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-medium-3-5": {
@@ -2834,6 +3371,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-medium-3.1": {
@@ -2850,6 +3390,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-nemo": {
@@ -2863,6 +3406,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2879,6 +3425,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-small-2603": {
@@ -2894,6 +3443,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/mistral-small-3.2-24b-instruct": {
@@ -2908,6 +3460,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "image",
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2924,6 +3479,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "mistralai/voxtral-small-24b-2507": {
@@ -2940,6 +3498,9 @@
             "text",
             "audio",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "moonshotai/kimi-k2": {
@@ -2953,6 +3514,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2968,6 +3532,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "moonshotai/kimi-k2-thinking": {
@@ -2981,6 +3548,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -2997,6 +3567,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "moonshotai/kimi-k2.6": {
@@ -3012,6 +3585,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "moonshotai/kimi-k2.7-code": {
@@ -3027,6 +3603,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "moonshotai/kimi-k3": {
@@ -3043,6 +3622,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nex-agi/nex-n2-mini": {
@@ -3058,6 +3640,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nex-agi/nex-n2-pro": {
@@ -3073,6 +3658,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nvidia/nemotron-3-nano-30b-a3b": {
@@ -3086,6 +3674,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3104,6 +3695,9 @@
             "image",
             "video",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nvidia/nemotron-3-super-120b-a12b": {
@@ -3117,6 +3711,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3132,6 +3729,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nvidia/nemotron-3-ultra-550b-a55b": {
@@ -3145,6 +3745,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3160,6 +3763,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "nvidia/nemotron-3.5-lightning": {
@@ -3173,6 +3779,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3188,6 +3797,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-3.5-turbo": {
@@ -3201,6 +3813,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3216,6 +3831,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-3.5-turbo-16k": {
@@ -3230,6 +3848,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4": {
@@ -3243,6 +3864,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3259,6 +3883,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4-turbo-preview": {
@@ -3272,6 +3899,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3289,6 +3919,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4.1-mini": {
@@ -3305,6 +3938,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4.1-nano": {
@@ -3321,6 +3957,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o": {
@@ -3337,6 +3976,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o-2024-05-13": {
@@ -3353,6 +3995,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o-2024-08-06": {
@@ -3369,6 +4014,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o-2024-11-20": {
@@ -3385,6 +4033,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o-mini": {
@@ -3401,6 +4052,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-4o-mini-2024-07-18": {
@@ -3417,6 +4071,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5": {
@@ -3433,6 +4090,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5-mini": {
@@ -3449,6 +4109,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5-nano": {
@@ -3465,6 +4128,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5-pro": {
@@ -3481,6 +4147,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.1": {
@@ -3497,6 +4166,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.1-codex": {
@@ -3512,6 +4184,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.1-codex-max": {
@@ -3527,6 +4202,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.1-codex-mini": {
@@ -3542,6 +4220,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.2": {
@@ -3557,6 +4238,9 @@
           "inputModalities": [
             "pdf",
             "image",
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3574,6 +4258,9 @@
             "pdf",
             "image",
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.2-codex": {
@@ -3589,6 +4276,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.2-pro": {
@@ -3605,6 +4295,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.3-codex": {
@@ -3621,6 +4314,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.4": {
@@ -3637,6 +4333,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.4-mini": {
@@ -3652,6 +4351,9 @@
           "inputModalities": [
             "pdf",
             "image",
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3669,6 +4371,9 @@
             "pdf",
             "image",
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.4-pro": {
@@ -3685,6 +4390,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.5": {
@@ -3701,6 +4409,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.5-pro": {
@@ -3717,6 +4428,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-luna": {
@@ -3733,6 +4447,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-luna-pro": {
@@ -3749,6 +4466,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-sol": {
@@ -3765,6 +4485,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-sol-pro": {
@@ -3781,6 +4504,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-terra": {
@@ -3797,6 +4523,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-5.6-terra-pro": {
@@ -3813,6 +4542,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-audio": {
@@ -3828,6 +4560,10 @@
           "inputModalities": [
             "text",
             "audio"
+          ],
+          "outputModalities": [
+            "text",
+            "audio"
           ]
         },
         "openai/gpt-audio-mini": {
@@ -3841,6 +4577,10 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text",
+            "audio"
+          ],
+          "outputModalities": [
             "text",
             "audio"
           ]
@@ -3859,6 +4599,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-oss-120b": {
@@ -3872,6 +4615,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3887,6 +4633,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/gpt-oss-safeguard-20b": {
@@ -3900,6 +4649,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -3917,6 +4669,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o3": {
@@ -3933,6 +4688,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o3-mini": {
@@ -3948,6 +4706,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o3-mini-high": {
@@ -3963,6 +4724,9 @@
           "inputModalities": [
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o3-pro": {
@@ -3979,6 +4743,9 @@
             "text",
             "pdf",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o4-mini": {
@@ -3995,6 +4762,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openai/o4-mini-high": {
@@ -4011,6 +4781,9 @@
             "image",
             "text",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openrouter/auto": {
@@ -4029,6 +4802,9 @@
             "audio",
             "pdf",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "openrouter/free": {
@@ -4044,6 +4820,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "poolside/laguna-s-2.1": {
@@ -4057,6 +4836,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4072,6 +4854,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "poolside/laguna-xs-2.1": {
@@ -4085,6 +4870,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4100,6 +4888,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen-2.5-72b-instruct": {
@@ -4113,6 +4904,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4128,6 +4922,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen-plus": {
@@ -4141,6 +4938,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4156,6 +4956,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen-plus-2025-07-28:thinking": {
@@ -4169,6 +4972,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4184,6 +4990,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-235b-a22b": {
@@ -4197,6 +5006,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4212,6 +5024,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-235b-a22b-thinking-2507": {
@@ -4225,6 +5040,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4240,6 +5058,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-30b-a3b-instruct-2507": {
@@ -4253,6 +5074,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4268,6 +5092,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-32b": {
@@ -4281,6 +5108,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4296,6 +5126,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-coder": {
@@ -4309,6 +5142,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4324,6 +5160,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-coder-flash": {
@@ -4337,6 +5176,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4352,6 +5194,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-coder-plus": {
@@ -4365,6 +5210,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4380,6 +5228,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-max-thinking": {
@@ -4393,6 +5244,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4408,6 +5262,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-next-80b-a3b-thinking": {
@@ -4421,6 +5278,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4437,6 +5297,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-235b-a22b-thinking": {
@@ -4452,6 +5315,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-30b-a3b-instruct": {
@@ -4467,6 +5333,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-30b-a3b-thinking": {
@@ -4482,6 +5351,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-32b-instruct": {
@@ -4497,6 +5369,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-8b-instruct": {
@@ -4512,6 +5387,9 @@
           "inputModalities": [
             "image",
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3-vl-8b-thinking": {
@@ -4526,6 +5404,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "image",
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4543,6 +5424,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-27b": {
@@ -4559,6 +5443,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-35b-a3b": {
@@ -4575,6 +5462,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-397b-a17b": {
@@ -4591,6 +5481,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-9b": {
@@ -4607,6 +5500,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-flash-02-23": {
@@ -4623,6 +5519,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-plus-02-15": {
@@ -4639,6 +5538,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.5-plus-20260420": {
@@ -4655,6 +5557,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.6-27b": {
@@ -4671,6 +5576,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.6-35b-a3b": {
@@ -4687,6 +5595,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.6-flash": {
@@ -4703,6 +5614,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.6-max-preview": {
@@ -4716,6 +5630,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4733,6 +5650,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.7-flash": {
@@ -4749,6 +5669,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.7-max": {
@@ -4762,6 +5685,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4778,6 +5704,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.8-2.4t-a95b": {
@@ -4791,6 +5720,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4808,6 +5740,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "qwen/qwen3.8-max": {
@@ -4824,6 +5759,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "rekaai/reka-edge": {
@@ -4840,6 +5778,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "relace/relace-search": {
@@ -4853,6 +5794,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4869,6 +5813,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "sakana/sakana-namazu": {
@@ -4885,6 +5832,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "sao10k/l3.1-euryale-70b": {
@@ -4898,6 +5848,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4915,6 +5868,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "stepfun/step-3.5-flash": {
@@ -4928,6 +5884,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4945,6 +5904,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "tencent/hy3": {
@@ -4958,6 +5920,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -4973,6 +5938,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "thedrummer/unslopnemo-12b": {
@@ -4986,6 +5954,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5003,6 +5974,9 @@
             "text",
             "image",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "thinkingmachines/inkling-small": {
@@ -5019,6 +5993,9 @@
             "text",
             "image",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "thinkingmachines/inkling-small:free": {
@@ -5035,6 +6012,9 @@
             "text",
             "image",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "thinkingmachines/inkling:free": {
@@ -5051,6 +6031,9 @@
             "text",
             "image",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "upstage/solar-pro-3": {
@@ -5065,6 +6048,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "upstage/solar-pro4": {
@@ -5078,6 +6064,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5095,6 +6084,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "x-ai/grok-4.3": {
@@ -5111,6 +6103,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "x-ai/grok-4.5": {
@@ -5127,6 +6122,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "x-ai/grok-4.6": {
@@ -5143,6 +6141,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "x-ai/grok-build-0.1": {
@@ -5159,6 +6160,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "xiaomi/mimo-v2.5": {
@@ -5176,6 +6180,9 @@
             "image",
             "audio",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "xiaomi/mimo-v2.5-pro": {
@@ -5189,6 +6196,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5204,6 +6214,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-4.5-air": {
@@ -5217,6 +6230,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5233,6 +6249,9 @@
           "inputModalities": [
             "text",
             "image"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-4.6": {
@@ -5246,6 +6265,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5263,6 +6285,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-4.7": {
@@ -5276,6 +6301,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5291,6 +6319,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-5": {
@@ -5304,6 +6335,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5319,6 +6353,9 @@
           "structuredOutput": false,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-5.1": {
@@ -5332,6 +6369,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5347,6 +6387,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-5.2:free": {
@@ -5361,6 +6404,9 @@
           "structuredOutput": true,
           "inputModalities": [
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "z-ai/glm-5.3": {
@@ -5374,6 +6420,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5391,6 +6440,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~anthropic/claude-fable-latest": {
@@ -5407,6 +6459,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~anthropic/claude-haiku-latest": {
@@ -5423,6 +6478,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~anthropic/claude-opus-latest": {
@@ -5439,6 +6497,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~anthropic/claude-sonnet-latest": {
@@ -5455,6 +6516,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~deepseek/deepseek-v4-flash-latest": {
@@ -5468,6 +6532,9 @@
           "toolCall": true,
           "structuredOutput": true,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5487,6 +6554,9 @@
             "video",
             "pdf",
             "audio"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~google/gemini-pro-latest": {
@@ -5505,6 +6575,9 @@
             "image",
             "text",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~moonshotai/kimi-latest": {
@@ -5521,6 +6594,9 @@
             "text",
             "image",
             "video"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~openai/gpt-latest": {
@@ -5536,6 +6612,9 @@
           "inputModalities": [
             "pdf",
             "image",
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         },
@@ -5553,6 +6632,9 @@
             "pdf",
             "image",
             "text"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~x-ai/grok-latest": {
@@ -5569,6 +6651,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "~z-ai/glm-latest": {
@@ -5582,6 +6667,9 @@
           "toolCall": true,
           "structuredOutput": false,
           "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
             "text"
           ]
         }
@@ -5605,6 +6693,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "grok-4.20-0309-reasoning": {
@@ -5621,6 +6712,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "grok-4.3": {
@@ -5637,6 +6731,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "grok-4.5": {
@@ -5653,6 +6750,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "grok-4.6": {
@@ -5669,6 +6769,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         },
         "grok-build-0.1": {
@@ -5685,6 +6788,9 @@
             "text",
             "image",
             "pdf"
+          ],
+          "outputModalities": [
+            "text"
           ]
         }
       }

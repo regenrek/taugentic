@@ -84,6 +84,7 @@ fn open_rejects_orphan_artifact_rows() {
                 session_id: SessionId::new("session-1").expect("session id"),
                 run_id: RunId::new("run-missing").expect("run id"),
                 kind: ArtifactKind::Transcript,
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
                 storage_path: "artifacts/run-missing/transcript.md".to_string(),
             })
             .expect("artifact json")

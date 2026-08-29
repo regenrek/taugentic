@@ -56,6 +56,23 @@
         "workspaceId"
       ],
       "type": "object"
+    },
+    {
+      "description": "Opens a disposable conversation in an existing workspace. The\nplacement is chosen by the daemon as part of the same session-open\ncommit; clients cannot create it as standalone and move it later.",
+      "properties": {
+        "kind": {
+          "const": "byTemporary",
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "workspaceId"
+      ],
+      "type": "object"
     }
   ],
   "title": "WorkspaceSelector"

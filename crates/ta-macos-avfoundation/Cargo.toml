@@ -1,0 +1,30 @@
+[package]
+name = "ta-macos-avfoundation"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6.2"
+objc2 = { version = "0.6.4", default-features = false, features = ["std"] }
+objc2-av-foundation = { version = "=0.3.2", default-features = false, features = ["AVCaptureDevice", "AVMediaFormat", "block2"] }
+objc2-avf-audio = { version = "=0.3.2", default-features = false, features = ["AVAudioBuffer", "AVAudioConverter", "AVAudioEngine", "AVAudioFormat", "AVAudioIONode", "AVAudioMixerNode", "AVAudioNode", "AVAudioPlayerNode", "AVAudioTime", "AVAudioTypes", "block2"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["NSNotification", "NSString", "NSOperation", "block2"] }
+
+[features]
+hardware-acceptance = []
+
+[[bin]]
+name = "voice-hardware-acceptance"
+path = "src/bin/voice-hardware-acceptance.rs"
+required-features = ["hardware-acceptance"]
+
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"

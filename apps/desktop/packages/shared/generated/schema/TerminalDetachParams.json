@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId"
+  ],
+  "title": "TerminalDetachParams",
+  "type": "object"
+}

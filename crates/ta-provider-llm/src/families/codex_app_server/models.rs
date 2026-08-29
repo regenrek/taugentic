@@ -3,8 +3,12 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
-use ta_protocol::wire::{AgentRuntimeModelId, AgentRuntimeModelRef};
+use ta_protocol::wire::{
+    AgentRuntimeMediaCapabilities, AgentRuntimeMediaCapability, AgentRuntimeModelId,
+    AgentRuntimeModelRef,
+};
 
+use super::process::run_on_control_thread;
 use super::{CodexAppServerClient, CodexLlmClientError};
 
 const MODEL_CATALOG_TTL: Duration = Duration::from_secs(300);
@@ -50,16 +54,6 @@ pub fn model_catalog() -> Result<CodexModelCatalog, CodexLlmClientError> {
 
 fn fetch_model_catalog() -> Result<CodexModelCatalog, CodexLlmClientError> {
     run_on_control_thread(fetch_model_catalog_on_control_thread)
-}
-
-fn run_on_control_thread<T, F>(task: F) -> Result<T, CodexLlmClientError>
-where
-    T: Send + 'static,
-    F: FnOnce() -> Result<T, CodexLlmClientError> + Send + 'static,
-{
-    std::thread::spawn(task).join().map_err(|_| {
-        CodexLlmClientError::CommandFailed("Codex control worker panicked".to_string())
-    })?
 }
 
 fn fetch_model_catalog_on_control_thread() -> Result<CodexModelCatalog, CodexLlmClientError> {
@@ -134,7 +128,12 @@ fn parse_model(value: &Value) -> Result<AgentRuntimeModelRef, CodexLlmClientErro
         reasoning: true,
         tool_call: true,
         structured_output: false,
-        input_modalities: Vec::new(),
+        media_capabilities: AgentRuntimeMediaCapabilities {
+            image_input: AgentRuntimeMediaCapability::Supported,
+            image_output: AgentRuntimeMediaCapability::Supported,
+            voice_input: AgentRuntimeMediaCapability::Unsupported,
+            voice_output: AgentRuntimeMediaCapability::Unsupported,
+        },
     })
 }
 

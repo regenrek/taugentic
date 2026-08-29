@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A one-shot request whose session is supplied by the authenticated RPC\nattachment. The caller supplies one explicit runtime selection; the daemon\nvalidates it and freezes the route plus complete non-secret execution\nrequest before the durable definition is created.",
+  "properties": {
+    "dueAtMs": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    }
+  },
+  "required": [
+    "objective",
+    "selection",
+    "dueAtMs"
+  ],
+  "title": "CreateScheduledWorkRequest",
+  "type": "object"
+}

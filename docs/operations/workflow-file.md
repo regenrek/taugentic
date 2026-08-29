@@ -28,6 +28,7 @@ name: default-github-implementation
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-example
   active_states: ["ready"]
   terminal_states: ["done", "cancelled"]
 orchestrator:
@@ -61,7 +62,7 @@ budgets:
     max_cost_usd: 25.0
 ```
 
-Provider IDs and model IDs must match the daemon runtime catalog (`codex`, `openai`, `anthropic`, or a declarative provider ID). `github_issues` currently binds `source.repo` to `owner/name`; `active_states` is used as the issue label filter for the existing GitHub source adapter.
+Provider IDs and model IDs must match the daemon runtime catalog (`codex`, `openai`, `anthropic`, or a declarative provider ID). `github_issues` binds `source.repo` to `owner/name`, requires the opaque ID of one explicitly connected code-host account in `source.code_host_account_id`, and uses `active_states` as its issue label filter. The daemon rejects a missing or inaccessible account instead of inferring one.
 
 ## Reload Semantics
 

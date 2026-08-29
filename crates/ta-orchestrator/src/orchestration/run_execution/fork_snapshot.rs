@@ -1,13 +1,13 @@
 use std::collections::BTreeSet;
 
 use ta_protocol::wire::{
-    AgentStreamFrame, AgentStreamTurnId, AgentToolCallRow, AgentTurnRow, RunHarnessKind, RunSource,
+    AgentStreamFrame, AgentStreamTurnId, AgentToolCallRow, AgentTurnRow, RunSource,
 };
 use ta_provider_llm::client::{StreamMessage, StreamToolCallRecord};
 use ta_store::{
     PersistenceStore, RunEventRangeQuery, RunProjection, SessionAgentTurnsPageQuery, row_sequence,
 };
-use taugentic_agent::ForkInitialState;
+use taugentic_agent::{NativeHistoryInitialState, NativeHistoryObjectivePolicy};
 
 use super::*;
 
@@ -18,11 +18,11 @@ impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
-    pub(super) fn fork_initial_state_for_run(
+    pub(super) fn native_history_initial_state_for_run(
         &self,
         session_id: &crate::SessionId,
         run_id: &RunId,
-    ) -> Result<Option<ForkInitialState>, RunExecutionError> {
+    ) -> Result<Option<NativeHistoryInitialState>, RunExecutionError> {
         let store = self.store.lock().expect("app store should not be poisoned");
         let Some(run) = store.run(run_id)? else {
             return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
@@ -32,14 +32,124 @@ where
                 run.id.as_str().to_string(),
             ));
         }
-        build_fork_initial_state(&*store, &run)
+        build_native_history_initial_state(&*store, &run)
+    }
+
+    /// Test-only inspection of a fork's ancestor snapshot; dispatch uses the
+    /// full native history owned by `native_history_initial_state_for_run`.
+    #[cfg(test)]
+    pub(super) fn fork_ancestor_history_for_run(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+    ) -> Result<Option<NativeHistoryInitialState>, RunExecutionError> {
+        let store = self.store.lock().expect("app store should not be poisoned");
+        let Some(run) = store.run(run_id)? else {
+            return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+        };
+        if run.session_id != *session_id {
+            return Err(RunExecutionError::RunSessionMismatch(
+                run.id.as_str().to_string(),
+            ));
+        }
+        build_fork_ancestor_initial_state(&*store, &run)
+    }
+
+    #[cfg(test)]
+    pub(super) fn continuation_initial_state_for_run(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+    ) -> Result<NativeHistoryInitialState, RunExecutionError> {
+        let store = self.store.lock().expect("app store should not be poisoned");
+        let run = store
+            .run(run_id)?
+            .ok_or_else(|| RunExecutionError::RunNotFound(run_id.as_str().to_string()))?;
+        if run.session_id != *session_id {
+            return Err(RunExecutionError::RunSessionMismatch(
+                run.id.as_str().to_string(),
+            ));
+        }
+        if run.harness != RunHarnessKind::Native {
+            return Err(RunExecutionError::RunNotNativeHarness(
+                run.id.as_str().to_string(),
+            ));
+        }
+        build_native_history_before_next_turn(&*store, &run)
     }
 }
 
-fn build_fork_initial_state(
+/// The one native fork dispatch builder. The current run's final durable User
+/// row is the explicit `UserTurnCommit::Append` payload which the native
+/// Session will append as its objective. All preceding rows are history.
+///
+/// Initial forks, queued continuations, and scheduler rehydration all reach
+/// this function through `start_provider_execution`; none owns a separate
+/// snapshot rule.
+fn build_native_history_initial_state(
     store: &impl PersistenceStore,
     run: &RunProjection,
-) -> Result<Option<ForkInitialState>, RunExecutionError> {
+) -> Result<Option<NativeHistoryInitialState>, RunExecutionError> {
+    let (messages, objective_policy) = match run.source {
+        RunSource::Forked { .. } => (
+            native_history_for_dispatch(store, run)?,
+            NativeHistoryObjectivePolicy::AppendNextObjective,
+        ),
+        RunSource::AccountSwitchedContinuation { .. } => (
+            native_history_until(store, run, u64::MAX)?,
+            NativeHistoryObjectivePolicy::ObjectiveAlreadyInHistory,
+        ),
+        RunSource::ScheduledWork { .. }
+        | RunSource::User { .. }
+        | RunSource::NativeSubagent { .. }
+        | RunSource::FreshSpawn { .. } => {
+            return Ok(None);
+        }
+    };
+    Ok(Some(NativeHistoryInitialState {
+        messages,
+        provider_session_id: None,
+        objective_policy,
+    }))
+}
+
+/// Builds all durable history when there is not yet a current persisted user
+/// turn. This is used only before `ContinueRun` commits its new Append row.
+#[cfg(test)]
+fn build_native_history_before_next_turn(
+    store: &impl PersistenceStore,
+    run: &RunProjection,
+) -> Result<NativeHistoryInitialState, RunExecutionError> {
+    Ok(NativeHistoryInitialState {
+        messages: native_history_until(store, run, u64::MAX)?,
+        provider_session_id: None,
+        objective_policy: NativeHistoryObjectivePolicy::AppendNextObjective,
+    })
+}
+
+fn native_history_for_dispatch(
+    store: &impl PersistenceStore,
+    run: &RunProjection,
+) -> Result<Vec<StreamMessage>, RunExecutionError> {
+    let mut messages = native_history_until(store, run, u64::MAX)?;
+    let current_turn = messages.pop().ok_or_else(|| {
+        RunExecutionError::RunForkPointNotTurnBoundary(
+            "native fork dispatch is missing its explicit current user turn".to_string(),
+        )
+    })?;
+    if current_turn.role != ta_provider_llm::client::StreamRole::User {
+        return Err(RunExecutionError::RunForkPointNotTurnBoundary(
+            "native fork dispatch current durable turn is not a user turn".to_string(),
+        ));
+    }
+    Ok(messages)
+}
+
+#[cfg(test)]
+fn build_fork_ancestor_initial_state(
+    store: &impl PersistenceStore,
+    run: &RunProjection,
+) -> Result<Option<NativeHistoryInitialState>, RunExecutionError> {
     let RunSource::Forked {
         parent_run_id,
         parent_event_seq,
@@ -48,38 +158,74 @@ fn build_fork_initial_state(
     else {
         return Ok(None);
     };
-
-    let Some(parent) = store.run(parent_run_id)? else {
-        return Err(RunExecutionError::RunNotFound(
-            parent_run_id.as_str().to_string(),
-        ));
-    };
+    let parent = store
+        .run(parent_run_id)?
+        .ok_or_else(|| RunExecutionError::RunNotFound(parent_run_id.as_str().to_string()))?;
     if parent.session_id != run.session_id {
         return Err(RunExecutionError::RunSessionMismatch(
             parent.id.as_str().to_string(),
         ));
     }
-    if parent.harness != RunHarnessKind::Native {
-        return Err(RunExecutionError::RunNotNativeHarness(
-            parent.id.as_str().to_string(),
-        ));
-    }
-
-    fork_initial_state_for_parent(store, &run.session_id, &parent, *parent_event_seq).map(Some)
+    Ok(Some(native_history_initial_state_for_parent(
+        store,
+        &run.session_id,
+        &parent,
+        *parent_event_seq,
+    )?))
 }
 
-pub(super) fn fork_initial_state_for_parent(
+/// Rebuild one branch only from daemon-owned lineage and ordered turn rows.
+/// Each recursive parent is clipped at the exact fork boundary before the
+/// descendant's own durable rows are appended.
+fn native_history_until(
+    store: &impl PersistenceStore,
+    run: &RunProjection,
+    boundary: u64,
+) -> Result<Vec<StreamMessage>, RunExecutionError> {
+    let mut messages = match &run.source {
+        RunSource::Forked {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        }
+        | RunSource::AccountSwitchedContinuation {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        } => {
+            let parent = store.run(parent_run_id)?.ok_or_else(|| {
+                RunExecutionError::RunNotFound(parent_run_id.as_str().to_string())
+            })?;
+            if parent.session_id != run.session_id {
+                return Err(RunExecutionError::RunSessionMismatch(
+                    parent.id.as_str().to_string(),
+                ));
+            }
+            native_history_until(store, &parent, *parent_event_seq)?
+        }
+        RunSource::ScheduledWork { .. }
+        | RunSource::User { .. }
+        | RunSource::NativeSubagent { .. }
+        | RunSource::FreshSpawn { .. } => Vec::new(),
+    };
+    let rows = read_parent_turn_rows_until(store, &run.session_id, &run.id, boundary)?;
+    messages.extend(turn_rows_to_messages(rows)?);
+    Ok(messages)
+}
+
+pub(super) fn native_history_initial_state_for_parent(
     store: &impl PersistenceStore,
     session_id: &crate::SessionId,
     parent: &RunProjection,
     parent_event_seq: u64,
-) -> Result<ForkInitialState, RunExecutionError> {
+) -> Result<NativeHistoryInitialState, RunExecutionError> {
     let events = read_parent_events_until(store, session_id, &parent.id, parent_event_seq)?;
     validate_fork_boundary(store, session_id, &parent.id, parent_event_seq, &events)?;
     let rows = read_parent_turn_rows_until(store, session_id, &parent.id, parent_event_seq)?;
-    Ok(ForkInitialState {
-        messages: turn_rows_to_messages(parent.objective.clone(), rows)?,
+    Ok(NativeHistoryInitialState {
+        messages: turn_rows_to_messages(rows)?,
         provider_session_id: None,
+        objective_policy: NativeHistoryObjectivePolicy::AppendNextObjective,
     })
 }
 
@@ -263,22 +409,28 @@ fn read_parent_turn_rows_until(
 
 fn row_run_id(row: &AgentTurnRow) -> &RunId {
     match row {
+        AgentTurnRow::User(row) => &row.run_id,
         AgentTurnRow::Assistant(row) => &row.run_id,
         AgentTurnRow::ToolCall(row) => &row.run_id,
         AgentTurnRow::PendingState(row) => &row.run_id,
     }
 }
 
-fn turn_rows_to_messages(
-    parent_objective: String,
-    rows: Vec<AgentTurnRow>,
-) -> Result<Vec<StreamMessage>, RunExecutionError> {
-    let mut messages = vec![StreamMessage::user(parent_objective)];
+fn turn_rows_to_messages(rows: Vec<AgentTurnRow>) -> Result<Vec<StreamMessage>, RunExecutionError> {
+    let mut messages = Vec::new();
     let mut index = 0;
     while index < rows.len() {
+        if let AgentTurnRow::User(user) = &rows[index] {
+            messages.push(StreamMessage::user(user_message_with_attachments(
+                &user.text,
+                &user.attachments,
+            )));
+            index += 1;
+            continue;
+        }
         let AgentTurnRow::Assistant(assistant) = &rows[index] else {
             return Err(RunExecutionError::RunForkPointNotTurnBoundary(
-                "fork snapshot has tool row without assistant row".to_string(),
+                "native history has non-message row without assistant row".to_string(),
             ));
         };
         let turn_id = assistant.turn_id.clone();
@@ -335,4 +487,47 @@ fn tool_call_record(row: &AgentToolCallRow) -> Result<StreamToolCallRecord, RunE
             ))
         })?,
     })
+}
+
+#[cfg(test)]
+mod scheduled_work_contract_tests {
+    use super::*;
+    use ta_protocol::wire::{
+        RunHarnessKind, RunId, RunStatus, ScheduledWorkId, ScheduledWorkOccurrenceId, SessionId,
+    };
+
+    #[test]
+    fn scheduled_work_has_no_inherited_native_history() {
+        let run = RunProjection {
+            id: RunId::new("run-scheduled-history").expect("run id"),
+            session_id: SessionId::new("session-scheduled-history").expect("session id"),
+            runtime_profile_id: ta_store::default_test_run_source()
+                .route()
+                .runtime_profile_id
+                .clone(),
+            objective: "Scheduled root".to_string(),
+            status: RunStatus::Queued,
+            harness: RunHarnessKind::Native,
+            source: RunSource::ScheduledWork {
+                route: ta_store::default_test_run_source().route().clone(),
+                scheduled_work_id: ScheduledWorkId::new("schedule-history").expect("schedule id"),
+                occurrence_id: ScheduledWorkOccurrenceId::new("occurrence-history")
+                    .expect("occurrence id"),
+            },
+            execution_context: ta_store::default_test_execution_context(),
+            result: None,
+            contract_violation: None,
+            started_at_ms: None,
+            ended_at_ms: None,
+            last_event_seq: None,
+            workspace_info: None,
+            claimed_files: Vec::new(),
+            conflict_summary: None,
+        };
+        assert_eq!(
+            build_native_history_initial_state(&ta_store::InMemoryStore::current(), &run)
+                .expect("history"),
+            None
+        );
+    }
 }

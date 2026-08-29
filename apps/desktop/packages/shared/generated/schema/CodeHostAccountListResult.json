@@ -1,0 +1,51 @@
+{
+  "$defs": {
+    "CodeHostAccount": {
+      "properties": {
+        "accountLogin": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "displayName",
+        "accountLogin",
+        "host"
+      ],
+      "type": "object"
+    },
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accounts": {
+      "items": {
+        "$ref": "#/$defs/CodeHostAccount"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "accounts"
+  ],
+  "title": "CodeHostAccountListResult",
+  "type": "object"
+}

@@ -50,14 +50,12 @@ pub fn read_public_terminal_run_event(
                 .expect("daemon event params should deserialize");
         if matches!(
             &envelope.event,
-            PublicDaemonEvent::Run(ta_protocol::wire::RunEvent {
-                run_id: event_run_id,
-                status:
+            PublicDaemonEvent::Run(ta_protocol::wire::RunEvent::Status(status_event))
+                if status_event.run_id() == run_id && matches!(status_event.status(),
                     ta_protocol::wire::RunStatus::Completed
                     | ta_protocol::wire::RunStatus::Failed
                     | ta_protocol::wire::RunStatus::Cancelled,
-                ..
-            }) if event_run_id == run_id
+                )
         ) {
             return envelope;
         }
@@ -76,14 +74,12 @@ pub fn read_terminal_run_event(
                 .expect("daemon event params should deserialize");
         if matches!(
             &envelope.event,
-            ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent {
-                run_id: event_run_id,
-                status:
+            ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(status_event))
+                if status_event.run_id() == run_id && matches!(status_event.status(),
                     ta_protocol::wire::RunStatus::Completed
                     | ta_protocol::wire::RunStatus::Failed
                     | ta_protocol::wire::RunStatus::Cancelled,
-                ..
-            }) if event_run_id == run_id
+                )
         ) {
             return envelope;
         }
@@ -381,14 +377,12 @@ pub fn read_remote_terminal_run_event(
         let envelope = read_remote_event_notification(socket);
         if matches!(
             &envelope.event,
-            ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent {
-                run_id: event_run_id,
-                status:
+            ta_protocol::wire::DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(status_event))
+                if status_event.run_id() == run_id && matches!(status_event.status(),
                     ta_protocol::wire::RunStatus::Completed
                     | ta_protocol::wire::RunStatus::Failed
                     | ta_protocol::wire::RunStatus::Cancelled,
-                ..
-            }) if event_run_id == run_id
+                )
         ) {
             return envelope;
         }

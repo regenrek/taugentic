@@ -1,0 +1,44 @@
+{
+  "$defs": {
+    "CodeHostCheckStatus": {
+      "enum": [
+        "queued",
+        "inProgress",
+        "completed",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "conclusion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "detailsUrl": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/CodeHostCheckStatus"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "status"
+  ],
+  "title": "CodeHostCheck",
+  "type": "object"
+}

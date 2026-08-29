@@ -94,9 +94,12 @@ runtime code.
 Run these commands after a protocol change:
 
 ```sh
-cargo xtask export-protocol
+cargo xtask export-protocol --expect-write generated/ChangedType.ts --expect-delete generated/RemovedType.ts
 cargo xtask check-protocol
 ```
+
+Repeat either declaration flag for every generated path in the candidate diff;
+one side may be absent, but the declared union must be nonempty and exact.
 
 ## Dependency direction
 
@@ -114,16 +117,19 @@ behavior in GPUIX, and runtime behavior in the daemon.
 
 ## Dependency policy
 
-Taugentic pins both `@gpuix/react` and `@gpuix/native` to exact versions. Keep
-the direct native dependency even though React also depends on it. The direct
-pin prevents the bridge and the native binary from moving independently.
+Taugentic pins `@regenrek/gpuix-react` to an exact published version. That
+package pins `@regenrek/gpuix-native` and its platform packages to the same
+exact fork release, so the reconciler, bridge, and native binary cannot move
+independently. The fork adds native features required by Taugentic while GPUIX
+remains the upstream rendering owner.
 
-Upgrade both packages in one change. Run the type check, the native live-window
-test, and the manual milestone test before accepting the upgrade.
+Upgrade the complete fork package family in one change. Run the type check,
+the native live-window test, and the manual milestone test before accepting
+the upgrade.
 
 pnpm delays other new package releases for seven days and rejects downgraded
-registry trust signals. The GPUIX packages and their direct event parser are
-explicit exceptions because Taugentic pins and reviews each GPUIX release.
+registry trust signals. The GPUIX fork packages and their direct event parser
+are explicit exceptions because Taugentic pins and reviews each fork release.
 `ta-jsonrpc` owns one Tokio local-socket actor per persistent client. Its sole
 reader correlates responses and fans out notifications through bounded queues;
 lag is reported as a terminal backpressure error rather than blocking the

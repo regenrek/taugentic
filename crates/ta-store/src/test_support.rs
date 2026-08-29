@@ -1,14 +1,15 @@
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState,
-    AuthProfileId, AuthProfileManagementMode, AuthProfileRef, AuthProfileState, EnvPolicy,
-    ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy, RunExecutionRoute,
-    RunHarnessKind, RunSource, RuntimeProfileId, SandboxProfile, TrustState, Workspace,
-    WorkspaceId, WorkspacePath, WorkspaceScope,
+    AuthProfileId, AuthProfileManagementMode, AuthProfilePreferences, AuthProfileRef,
+    AuthProfileState, AuthProfileUsage, EnvPolicy, ExecutionContext, GitCheckpointPhase,
+    NetworkPolicy, PermissionPolicy, ProcessExecPolicy, RunExecutionRoute, RunHarnessKind, RunId,
+    RunSource, RuntimeProfileId, SandboxProfile, TrustState, Workspace, WorkspaceId, WorkspacePath,
+    WorkspaceScope,
 };
 
 use crate::{
-    ArtifactRecord, AuthProfileProjection, EventRecord, PrincipalProjection, RunProjection,
-    SessionProjection, StoreError, WorkspaceProjection,
+    ArtifactRecord, AuthProfileProjection, CheckpointRecord, EventRecord, PrincipalProjection,
+    RunProjection, SessionProjection, StoreError, WorkspaceProjection,
 };
 
 pub trait StoreSeedRepository {
@@ -23,6 +24,25 @@ pub trait StoreSeedRepository {
 /// Stable default workspace identifier seeded by every test. Tests that need
 /// distinct workspaces should call [`seed_test_workspace`] with an explicit id.
 pub const DEFAULT_TEST_WORKSPACE_ID: &str = "workspace-test-default";
+
+pub fn test_checkpoint_record(run_id: RunId, revision: u64) -> CheckpointRecord {
+    CheckpointRecord {
+        checkpoint_id: format!("checkpoint-{}-{revision}", run_id.as_str()),
+        workspace_id: default_test_workspace_id(),
+        run_id,
+        revision,
+        phase: if revision == 0 {
+            GitCheckpointPhase::BeforeTurn
+        } else {
+            GitCheckpointPhase::AfterTurn
+        },
+        base_head: None,
+        staged_commit: "1111111111111111111111111111111111111111".to_string(),
+        full_commit: "2222222222222222222222222222222222222222".to_string(),
+        fingerprint: "sha256:test-checkpoint".to_string(),
+        created_at_ms: revision,
+    }
+}
 
 /// Build a deterministic test workspace projection rooted at `root`. Tests
 /// must persist this via [`StoreSeedRepository::save_workspace`] before
@@ -119,6 +139,7 @@ pub fn default_test_run_source() -> RunSource {
         output_contract: None,
         model_id: None,
         recipe_id: None,
+        attachments: Vec::new(),
     }
 }
 
@@ -140,6 +161,13 @@ pub fn connected_test_auth_profile(
                 account_hint: None,
                 plan_tier: None,
             },
+            preferences: AuthProfilePreferences {
+                label: "Test profile".to_string(),
+                order: 0,
+                is_default: true,
+            },
+            usage: AuthProfileUsage::Unavailable,
+            exhaustion: None,
             connection_state: AuthProfileConnectionState::Connected,
             last_error: None,
             management_mode: AuthProfileManagementMode::Interactive,
@@ -151,7 +179,5 @@ pub fn connected_test_auth_profile(
             methods: Vec::new(),
         },
         external_account_id: None,
-        order: 0,
-        is_default: true,
     }
 }

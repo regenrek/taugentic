@@ -4,6 +4,7 @@ use ta_protocol::wire::{
 };
 use ta_store::CommitRunTransition;
 
+use super::provider_sink::RunCompletionProjection;
 use super::*;
 
 impl<S> RunExecutionService<S>
@@ -78,20 +79,18 @@ where
                 let committed = store.commit_run_transition(CommitRunTransition {
                     session_id: session_id.clone(),
                     run: existing_run,
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
                     events: vec![DaemonEvent::Approval(ApprovalEvent::Resolved {
                         resolution: resolution.clone(),
                     })],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })?;
                 (committed.run, committed.events, Some(resolution))
             } else {
-                let (next_run_status, detail) = match params.decision {
-                    ApprovalDecision::Approved => {
-                        (RunStatus::Running, "Approval granted".to_string())
-                    }
-                    ApprovalDecision::Rejected => {
-                        (RunStatus::Failed, "Approval rejected".to_string())
-                    }
+                let next_run_status = match params.decision {
+                    ApprovalDecision::Approved => RunStatus::Running,
+                    ApprovalDecision::Rejected => RunStatus::Failed,
                 };
 
                 if existing_run.status != RunStatus::WaitingForApproval {
@@ -104,26 +103,37 @@ where
                     status: next_run_status,
                     ..existing_run
                 };
+                let run_event = match params.decision {
+                    ApprovalDecision::Approved => crate::RunEvent::active(
+                        run.id.clone(),
+                        run.status,
+                        None,
+                        recipe_id_for_run(&run),
+                        None,
+                    )
+                    .expect("approved status should be active"),
+                    ApprovalDecision::Rejected => crate::RunEvent::terminal(
+                        run.id.clone(),
+                        run.status,
+                        crate::RunStatusReason::new("Approval rejected")
+                            .expect("approval rejection reason should be valid"),
+                        None,
+                        recipe_id_for_run(&run),
+                        None,
+                    )
+                    .expect("rejected status should be terminal"),
+                };
                 let committed = store.commit_run_transition(CommitRunTransition {
                     session_id: session_id.clone(),
                     run: run.clone(),
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
                     events: vec![
                         DaemonEvent::Approval(ApprovalEvent::Resolved { resolution }),
-                        DaemonEvent::Run(crate::RunEvent {
-                            run_id: run.id.clone(),
-                            status: run.status,
-                            detail,
-                            output_contract: None,
-                            recipe_id: recipe_id_for_run(&run),
-                            result: None,
-                        }),
+                        DaemonEvent::Run(run_event),
                     ],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })?;
-                if committed.run.status == RunStatus::Running {
-                    self.runtime
-                        .claim_live_run(committed.run.id.clone(), session_id.clone());
-                }
                 (committed.run, committed.events, None)
             }
         };
@@ -134,6 +144,9 @@ where
                 .map_err(map_agent_runtime_error)?;
         }
         if run.status == RunStatus::Running && !resolved_live_approval {
+            let generation = self
+                .runtime
+                .claim_live_run(run.id.clone(), session_id.clone());
             let runtime_profile = self
                 .runtime
                 .runtime_profile(&run.runtime_profile_id)
@@ -141,21 +154,23 @@ where
             let start_result = self.start_provider_execution(
                 &session_id,
                 &run.id,
-                &run.objective,
                 &runtime_profile,
                 run.source.route(),
+                generation,
             );
             let latest_run = self.load_run_projection(&run.id)?;
             match start_result {
                 Ok(()) => {}
                 Err(error) if latest_run.status == RunStatus::Running => {
-                    let (failed_run, failed_events) = self.fail_live_run_without_publish(
+                    let failed = self.commit_failed_live_run_for_generation(
                         session_id.clone(),
                         &latest_run.id,
                         error.to_string(),
+                        RunCompletionProjection::default(),
+                        generation,
                     )?;
-                    run = failed_run;
-                    events.extend(failed_events);
+                    run = self.load_run_projection(&latest_run.id)?;
+                    events.extend(failed.events);
                 }
                 Err(_) if latest_run.status != RunStatus::Cancelled => {
                     run = latest_run;
@@ -253,28 +268,36 @@ where
             let committed = store.commit_run_transition(CommitRunTransition {
                 session_id: session_id.clone(),
                 run: run.clone(),
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
                 events: vec![
                     DaemonEvent::Approval(ApprovalEvent::Resolved { resolution }),
-                    DaemonEvent::Run(crate::RunEvent {
-                        run_id: run.id.clone(),
-                        status: run.status,
-                        detail: "Approval expired".to_string(),
-                        output_contract: None,
-                        recipe_id: recipe_id_for_run(&run),
-                        result: None,
-                    }),
+                    DaemonEvent::Run(
+                        crate::RunEvent::terminal(
+                            run.id.clone(),
+                            run.status,
+                            crate::RunStatusReason::new("Approval expired")
+                                .expect("approval expiration reason should be valid"),
+                            None,
+                            recipe_id_for_run(&run),
+                            None,
+                        )
+                        .expect("expired status should be terminal"),
+                    ),
                 ],
                 occurred_at_ms: now_ms,
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })?;
             (committed.run, committed.events)
         } else {
             let committed = store.commit_run_transition(CommitRunTransition {
                 session_id: session_id.clone(),
                 run: existing_run,
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
                 events: vec![DaemonEvent::Approval(ApprovalEvent::Resolved {
                     resolution,
                 })],
                 occurred_at_ms: now_ms,
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })?;
             (committed.run, committed.events)
         };

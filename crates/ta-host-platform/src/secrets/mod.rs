@@ -104,8 +104,8 @@ mod tests {
     #[test]
     fn memory_store_round_trips_secret_values() -> Result<(), HostSecretError> {
         let store = backends::memory::MemoryHostSecretStore::default();
-        let key = HostSecretKey::new("work_source.github/github_pat")?;
-        let value = HostSecretValue::new("ghp_test")?;
+        let key = HostSecretKey::new("example/provider/account/access_token")?;
+        let value = HostSecretValue::new("example-secret")?;
 
         store.store_secret(&key, &value)?;
 
@@ -113,7 +113,7 @@ mod tests {
             store
                 .load_secret(&key)?
                 .map(|secret| secret.expose_secret().to_string()),
-            Some("ghp_test".to_string())
+            Some("example-secret".to_string())
         );
         store.delete_secret(&key)?;
         assert!(store.load_secret(&key)?.is_none());

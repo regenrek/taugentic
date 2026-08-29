@@ -5,7 +5,8 @@
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },

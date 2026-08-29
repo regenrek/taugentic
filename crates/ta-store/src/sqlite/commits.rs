@@ -1,6 +1,254 @@
 use super::*;
+use crate::{
+    CommitSessionNextRunSelection, CommitSessionOpenWithNavigation,
+    SessionNextRunSelectionCommitResult, UserTurnCommit, user_row,
+};
+
+fn scheduled_terminal_occurrence_tx(
+    tx: &rusqlite::Transaction<'_>,
+    run: &RunProjection,
+) -> Result<
+    Option<(
+        ta_protocol::wire::ScheduledWorkOccurrenceId,
+        ta_protocol::wire::ScheduledWorkOccurrenceState,
+        String,
+    )>,
+    StoreError,
+> {
+    crate::scheduled_work::scheduled_run_source(run)
+        .and_then(|(_, occurrence_id)| {
+            crate::scheduled_terminal_state(run.id.clone(), run.status)
+                .map(|state| (occurrence_id.clone(), state))
+        })
+        .map(|(occurrence_id, state)| {
+            let occurrence_json: String = tx
+                .query_row(
+                    "SELECT data_json FROM scheduled_work_occurrences WHERE id = ?",
+                    [occurrence_id.as_str()],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|source| StoreError::QueryStore {
+                    entity: "scheduled work occurrence",
+                    source,
+                })?
+                .ok_or_else(|| StoreError::MissingRecord {
+                    entity: "scheduled work occurrence",
+                    key: occurrence_id.as_str().to_string(),
+                })?;
+            let occurrence: ta_protocol::wire::ScheduledWorkOccurrence =
+                SqliteStore::decode("scheduled_work_occurrence", occurrence_json.clone())?;
+            if crate::claimed_run_id(&occurrence) != Some(&run.id) {
+                return Err(StoreError::ScheduledWorkOccurrenceClaimMismatch {
+                    occurrence_id: occurrence_id.as_str().to_string(),
+                    run_id: run.id.as_str().to_string(),
+                });
+            }
+            Ok((occurrence_id, state, occurrence_json))
+        })
+        .transpose()
+}
+
+fn settle_scheduled_terminal_occurrence_tx(
+    tx: &rusqlite::Transaction<'_>,
+    run: &RunProjection,
+) -> Result<(), StoreError> {
+    let Some((occurrence_id, state, expected_claimed_json)) =
+        scheduled_terminal_occurrence_tx(tx, run)?
+    else {
+        return Ok(());
+    };
+    let state_name = match state {
+        ta_protocol::wire::ScheduledWorkOccurrenceState::Completed { .. } => "completed",
+        ta_protocol::wire::ScheduledWorkOccurrenceState::Failed { .. } => "failed",
+        ta_protocol::wire::ScheduledWorkOccurrenceState::BudgetExceeded { .. } => "budget_exceeded",
+        ta_protocol::wire::ScheduledWorkOccurrenceState::Cancelled { .. } => "cancelled",
+        ta_protocol::wire::ScheduledWorkOccurrenceState::Pending
+        | ta_protocol::wire::ScheduledWorkOccurrenceState::Preparing { .. }
+        | ta_protocol::wire::ScheduledWorkOccurrenceState::PreparationCancellationRequested {
+            ..
+        }
+        | ta_protocol::wire::ScheduledWorkOccurrenceState::Claimed { .. } => {
+            unreachable!("terminal state only")
+        }
+        ta_protocol::wire::ScheduledWorkOccurrenceState::PreparationFailed { .. } => {
+            "preparation_failed"
+        }
+        ta_protocol::wire::ScheduledWorkOccurrenceState::PreparationCancelled { .. } => {
+            "preparation_cancelled"
+        }
+        ta_protocol::wire::ScheduledWorkOccurrenceState::CleanupRequired { .. } => {
+            "cleanup_required"
+        }
+    };
+    let mut occurrence: ta_protocol::wire::ScheduledWorkOccurrence =
+        SqliteStore::decode("scheduled_work_occurrence", expected_claimed_json.clone())?;
+    occurrence.state = state;
+    let changed = tx
+        .execute(
+            "UPDATE scheduled_work_occurrences SET state = ?, data_json = ? WHERE id = ? AND state = 'claimed' AND run_id = ? AND data_json = ?",
+            params![
+                state_name,
+                SqliteStore::encode("scheduled_work_occurrence", &occurrence)?,
+                occurrence_id.as_str(),
+                run.id.as_str(),
+                expected_claimed_json
+            ],
+        )
+        .map_err(|source| StoreError::QueryStore {
+            entity: "scheduled work occurrence",
+            source,
+        })?;
+    if changed != 1 {
+        return Err(StoreError::ScheduledWorkOccurrenceClaimMismatch {
+            occurrence_id: occurrence_id.as_str().to_string(),
+            run_id: run.id.as_str().to_string(),
+        });
+    }
+    Ok(())
+}
 
 impl CommitRepository for SqliteStore {
+    fn commit_session_open_with_navigation(
+        &mut self,
+        input: CommitSessionOpenWithNavigation,
+    ) -> Result<SessionOpenCommitResult, StoreError> {
+        let tx = self
+            .conn
+            .transaction()
+            .map_err(|source| StoreError::QueryStore {
+                entity: "session_navigation_transaction",
+                source,
+            })?;
+        let workspace_exists: i64 = tx
+            .query_row(
+                "SELECT COUNT(1) FROM workspaces WHERE id = ?",
+                [input.session.workspace_id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(|source| StoreError::QueryStore {
+                entity: "workspace",
+                source,
+            })?;
+        if workspace_exists == 0 {
+            return Err(StoreError::SessionWorkspaceMissing {
+                workspace_id: input.session.workspace_id.as_str().to_string(),
+            });
+        }
+        tx.execute(
+            "INSERT INTO sessions (id, data_json, workspace_id, last_commit_id) VALUES (?, ?, ?, NULL)",
+            params![
+                input.session.id.as_str(),
+                Self::encode("session_projection", &input.session)?,
+                input.session.workspace_id.as_str(),
+            ],
+        )
+        .map_err(|source| StoreError::QueryStore { entity: "session", source })?;
+        let session_id = input.session.id.clone();
+        let payload = DaemonEvent::Session(ta_protocol::wire::SessionEvent {
+            session_id: session_id.clone(),
+            status: input.session.status,
+        });
+        let sequence = self.next_runtime_sequence;
+        tx.execute(
+            "INSERT INTO events (sequence, session_id, occurred_at_ms, payload_json) VALUES (?, ?, ?, ?)",
+            params![
+                sequence as i64,
+                input.session.id.as_str(),
+                input.occurred_at_ms as i64,
+                Self::encode("daemon_event", &payload)?,
+            ],
+        )
+        .map_err(|source| StoreError::QueryStore { entity: "event", source })?;
+        tx.execute(
+            "INSERT INTO commits (session_id, kind, occurred_at_ms, first_sequence, last_sequence) VALUES (?, ?, ?, ?, ?)",
+            params![
+                input.session.id.as_str(),
+                "session_open",
+                input.occurred_at_ms as i64,
+                sequence as i64,
+                sequence as i64,
+            ],
+        )
+        .map_err(|source| StoreError::QueryStore { entity: "commit", source })?;
+        let commit_id = tx.last_insert_rowid() as u64;
+        tx.execute(
+            "UPDATE sessions SET last_commit_id = ? WHERE id = ?",
+            params![commit_id as i64, input.session.id.as_str()],
+        )
+        .map_err(|source| StoreError::QueryStore {
+            entity: "session",
+            source,
+        })?;
+        tx.execute(
+            "INSERT INTO navigation_states (owner_principal_id, data_json) VALUES (?, ?) ON CONFLICT(owner_principal_id) DO UPDATE SET data_json = excluded.data_json",
+            params![
+                input.owner_principal_id,
+                Self::encode("navigation_state", &input.navigation)?,
+            ],
+        )
+        .map_err(|source| StoreError::QueryStore { entity: "navigation_state", source })?;
+        tx.commit().map_err(|source| StoreError::QueryStore {
+            entity: "session_navigation_transaction",
+            source,
+        })?;
+        self.next_runtime_sequence = self.next_runtime_sequence.saturating_add(1);
+        Ok(SessionOpenCommitResult {
+            commit: CommitBoundary {
+                id: commit_id,
+                first_sequence: sequence,
+                last_sequence: sequence,
+            },
+            session: input.session,
+            event: EventRecord {
+                sequence,
+                session_id,
+                occurred_at_ms: input.occurred_at_ms,
+                payload,
+            },
+        })
+    }
+
+    fn commit_session_next_run_selection(
+        &mut self,
+        input: CommitSessionNextRunSelection,
+    ) -> Result<SessionNextRunSelectionCommitResult, StoreError> {
+        let existing_json: String = self
+            .conn
+            .query_row(
+                "SELECT data_json FROM sessions WHERE id = ?",
+                [input.session_id.as_str()],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|source| StoreError::QueryStore {
+                entity: "session",
+                source,
+            })?
+            .ok_or_else(|| StoreError::MissingRecord {
+                entity: "session",
+                key: input.session_id.as_str().to_string(),
+            })?;
+        let existing: SessionProjection = Self::decode("session_projection", existing_json)?;
+        let session = SessionProjection {
+            next_run_selection: input.selection,
+            ..existing
+        };
+        self.conn
+            .execute(
+                "UPDATE sessions SET data_json = ? WHERE id = ?",
+                params![
+                    Self::encode("session_projection", &session)?,
+                    session.id.as_str(),
+                ],
+            )
+            .map_err(|source| StoreError::QueryStore {
+                entity: "session",
+                source,
+            })?;
+        Ok(SessionNextRunSelectionCommitResult { session })
+    }
+
     fn commit_session_open(
         &mut self,
         input: CommitSessionOpen,
@@ -158,10 +406,49 @@ impl CommitRepository for SqliteStore {
             .map(|json| Self::decode("run_projection", json))
             .transpose()?;
         validate_run_execution_context(existing_run.as_ref(), &input.run)?;
+        crate::validate_run_source_route(existing_run.as_ref(), &input.run)?;
+        crate::validate_scheduled_run_source_link(existing_run.as_ref(), &input.run)?;
+        crate::validate_auth_profile_mutation(&input)?;
         validate_run_transition_events(&input)?;
         let session_events = Self::events_for_session_tx(&tx, &input.session_id)?;
         ApprovalLifecycleState::fold_session_records(session_events.iter())?
             .validate_run_transition(&input.run.id, input.events.iter())?;
+
+        if let crate::AuthProfileCommitMutation::SetExhausted {
+            auth_profile_id,
+            exhaustion,
+        } = &input.auth_profile_mutation
+        {
+            let profile_json: String = tx
+                .query_row(
+                    "SELECT data_json FROM auth_profiles WHERE id = ?",
+                    [auth_profile_id.as_str()],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|source| StoreError::QueryStore {
+                    entity: "auth profile",
+                    source,
+                })?
+                .ok_or_else(|| StoreError::MissingRecord {
+                    entity: "auth profile",
+                    key: auth_profile_id.as_str().to_string(),
+                })?;
+            let mut profile: crate::AuthProfileProjection =
+                Self::decode("auth profile", profile_json)?;
+            profile.profile.exhaustion = Some(*exhaustion);
+            tx.execute(
+                "UPDATE auth_profiles SET data_json = ? WHERE id = ?",
+                params![
+                    Self::encode("auth profile", &profile)?,
+                    auth_profile_id.as_str()
+                ],
+            )
+            .map_err(|source| StoreError::QueryStore {
+                entity: "auth profile",
+                source,
+            })?;
+        }
 
         tx.execute(
             "INSERT INTO runs (id, session_id, data_json, last_commit_id) VALUES (?, ?, ?, NULL)
@@ -176,6 +463,8 @@ impl CommitRepository for SqliteStore {
             entity: "run",
             source,
         })?;
+
+        settle_scheduled_terminal_occurrence_tx(&tx, &input.run)?;
 
         let session_runs = Self::session_runs_tx(&tx, &input.session_id)?;
         let session = SessionProjection {
@@ -207,6 +496,29 @@ impl CommitRepository for SqliteStore {
                 occurred_at_ms: input.occurred_at_ms,
                 payload,
             };
+            if let UserTurnCommit::Append { text, attachments } = &input.user_turn
+                && emitted.is_empty()
+            {
+                let row = user_row(
+                    &input.run,
+                    next_sequence,
+                    input.occurred_at_ms,
+                    text.clone(),
+                    attachments.clone(),
+                );
+                tx.execute(
+                    "INSERT INTO agent_turn_rows (sequence, session_id, data_json) VALUES (?, ?, ?)",
+                    params![
+                        row_sequence(&row) as i64,
+                        row_session_id(&row).as_str(),
+                        Self::encode("agent_turn_row", &row)?
+                    ],
+                )
+                .map_err(|source| StoreError::QueryStore {
+                    entity: "agent_turn_row",
+                    source,
+                })?;
+            }
             if let Some(row) = apply_agent_stream_event(
                 &mut self.in_flight_assistant_turns,
                 &mut self.in_flight_tool_calls,
@@ -376,6 +688,7 @@ impl CommitRepository for SqliteStore {
                 .transpose()?;
 
             validate_run_execution_context(existing_run.as_ref(), &transition.run)?;
+            crate::validate_scheduled_run_source_link(existing_run.as_ref(), &transition.run)?;
             validate_run_transition_events(&transition)?;
             let mut emitted = Vec::with_capacity(transition.events.len());
             let mut persisted = Vec::with_capacity(transition.events.len());
@@ -447,6 +760,7 @@ impl CommitRepository for SqliteStore {
                 entity: "run",
                 source,
             })?;
+            settle_scheduled_terminal_occurrence_tx(&tx, &run)?;
             affected_sessions.insert(transition.session_id.clone(), commit_id);
             results.push(RunTransitionCommitResult {
                 commit: CommitBoundary {
@@ -511,6 +825,7 @@ impl CommitRepository for SqliteStore {
         &mut self,
         input: CommitArtifactPublish,
     ) -> Result<ArtifactPublishCommitResult, StoreError> {
+        input.artifact.validate_metadata()?;
         let tx = self
             .conn
             .transaction()
@@ -571,12 +886,7 @@ impl CommitRepository for SqliteStore {
             });
         }
         let payload = DaemonEvent::Artifact(ta_protocol::wire::ArtifactEvent {
-            artifact: ta_protocol::wire::ArtifactSummary {
-                id: input.artifact.id.clone(),
-                run_id: input.artifact.run_id.clone(),
-                kind: input.artifact.kind,
-                storage_path: input.artifact.storage_path.clone(),
-            },
+            artifact: crate::project_artifact_summary(&input.artifact),
         });
         let sequence = self.next_runtime_sequence;
         tx.execute(

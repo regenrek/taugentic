@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "checkpointId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "checkpointId"
+  ],
+  "title": "GitCheckpointPrepareRevertParams",
+  "type": "object"
+}

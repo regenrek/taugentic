@@ -141,16 +141,16 @@ fn scan_tail_for_tokens_and_errors(
             continue;
         }
         match &record.payload {
-            DaemonEvent::Run(run)
-                if matches!(run.status, RunStatus::Failed | RunStatus::BudgetExceeded) =>
+            DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(run))
+                if matches!(run.status(), RunStatus::Failed | RunStatus::BudgetExceeded) =>
             {
                 recent_errors.push(DaemonDiagnosticError {
                     occurred_at_ms: record.occurred_at_ms,
                     source: "run".to_string(),
                     message: redact_diagnostic_text(&format!(
                         "{} · {}",
-                        run.run_id.as_str(),
-                        run.detail
+                        run.run_id().as_str(),
+                        run.reason().map_or("", |reason| reason.as_str())
                     )),
                 });
             }

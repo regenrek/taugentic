@@ -45,6 +45,9 @@ pub enum ConversationPlacement {
 #[ts(export_to = "generated/")]
 pub struct NavigationConversation {
     pub session_id: SessionId,
+    /// Derived from the canonical session projection when the snapshot is
+    /// read. Navigation persistence deliberately does not retain this value.
+    pub workspace_id: WorkspaceId,
     /// Derived from the canonical session projection when the snapshot is read.
     /// Navigation persistence deliberately does not retain this value.
     pub title: String,
@@ -115,6 +118,11 @@ pub enum DaemonNavigationIntent {
     SetProjectWorkspaces {
         project_id: ProjectId,
         workspace_ids: Vec<WorkspaceId>,
+    },
+    SetProjectSpace {
+        project_id: ProjectId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        space_id: Option<SpaceId>,
     },
     PlaceConversation {
         session_id: SessionId,

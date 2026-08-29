@@ -1,9 +1,29 @@
 use serde::{Deserialize, Serialize};
-use ta_protocol::wire::{DaemonEvent, SessionId};
+use ta_protocol::wire::{
+    AuthProfileExhaustion, AuthProfileId, DaemonEvent, RunId, SessionId, SessionNextRunSelection,
+    WorkspaceFileAttachment,
+};
 
 use crate::{
     ArtifactRecord, CheckpointRecord, EventRecord, RunProjection, SessionProjection, StoreError,
+    scheduled_run_source,
 };
+
+pub(crate) fn scheduled_terminal_state(
+    run_id: RunId,
+    status: ta_protocol::wire::RunStatus,
+) -> Option<ta_protocol::wire::ScheduledWorkOccurrenceState> {
+    use ta_protocol::wire::{RunStatus, ScheduledWorkOccurrenceState};
+    match status {
+        RunStatus::Completed => Some(ScheduledWorkOccurrenceState::Completed { run_id }),
+        RunStatus::Failed => Some(ScheduledWorkOccurrenceState::Failed { run_id }),
+        RunStatus::BudgetExceeded => Some(ScheduledWorkOccurrenceState::BudgetExceeded { run_id }),
+        RunStatus::Cancelled => Some(ScheduledWorkOccurrenceState::Cancelled {
+            run_id: Some(run_id),
+        }),
+        RunStatus::Queued | RunStatus::Running | RunStatus::WaitingForApproval => None,
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitBoundary {
@@ -16,8 +36,31 @@ pub struct CommitBoundary {
 pub struct CommitRunTransition {
     pub session_id: SessionId,
     pub run: RunProjection,
+    pub user_turn: UserTurnCommit,
     pub events: Vec<DaemonEvent>,
     pub occurred_at_ms: u64,
+    pub auth_profile_mutation: AuthProfileCommitMutation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthProfileCommitMutation {
+    Unchanged,
+    SetExhausted {
+        auth_profile_id: AuthProfileId,
+        exhaustion: AuthProfileExhaustion,
+    },
+}
+
+/// The only input that may materialize a durable user row while committing a
+/// run transition. Callers must state their intent explicitly; run projection
+/// fields are never interpreted as user input.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UserTurnCommit {
+    Append {
+        text: String,
+        attachments: Vec<WorkspaceFileAttachment>,
+    },
+    NoUserTurn,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,10 +83,10 @@ pub(crate) fn validate_run_transition_events(
     for event in &input.events {
         match event {
             DaemonEvent::Run(run_event) => {
-                if run_event.run_id != input.run.id {
+                if run_event.run_id() != &input.run.id {
                     return Err(StoreError::CommitRunEventMismatch {
                         expected: input.run.id.as_str().to_string(),
-                        actual: run_event.run_id.as_str().to_string(),
+                        actual: run_event.run_id().as_str().to_string(),
                     });
                 }
             }
@@ -106,10 +149,96 @@ pub(crate) fn validate_run_execution_context(
     Ok(())
 }
 
+pub(crate) fn validate_run_source_route(
+    existing: Option<&RunProjection>,
+    next: &RunProjection,
+) -> Result<(), StoreError> {
+    if existing.is_some_and(|run| run.source.route() != next.source.route()) {
+        return Err(StoreError::ImmutableRunSourceRoute {
+            run_id: next.id.as_str().to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// A schedule occurrence link is immutable once a run exists. Keeping this
+/// narrow preserves existing source evolution rules while preventing a normal
+/// run from being converted into a scheduled terminal transition (or vice
+/// versa) merely because both sources happen to share a route.
+pub(crate) fn validate_scheduled_run_source_link(
+    existing: Option<&RunProjection>,
+    next: &RunProjection,
+) -> Result<(), StoreError> {
+    let Some(existing) = existing else {
+        return Ok(());
+    };
+    match (scheduled_run_source(existing), scheduled_run_source(next)) {
+        (Some((existing_work, existing_occurrence)), Some((next_work, next_occurrence)))
+            if existing_work == next_work && existing_occurrence == next_occurrence =>
+        {
+            Ok(())
+        }
+        (None, None) => Ok(()),
+        _ => Err(StoreError::ScheduledWorkRunSourceMismatch {
+            occurrence_id: scheduled_run_source(next)
+                .map(|(_, occurrence)| occurrence.as_str().to_string())
+                .unwrap_or_else(|| "none".to_string()),
+        }),
+    }
+}
+
+pub(crate) fn validate_auth_profile_mutation(
+    input: &CommitRunTransition,
+) -> Result<(), StoreError> {
+    let AuthProfileCommitMutation::SetExhausted {
+        auth_profile_id,
+        exhaustion,
+    } = &input.auth_profile_mutation
+    else {
+        return Ok(());
+    };
+    if input.run.source.route().auth_profile_id.as_ref() != Some(auth_profile_id) {
+        return Err(StoreError::AuthProfileMutationRouteMismatch {
+            run_id: input.run.id.as_str().to_string(),
+        });
+    }
+    let matches_terminal_event = input.events.iter().any(|event| {
+        matches!(event,
+            DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(status))
+                if status.status() == ta_protocol::wire::RunStatus::Failed
+                    && status.auth_profile_exhaustion() == Some(*exhaustion)
+        )
+    });
+    if !matches_terminal_event {
+        return Err(StoreError::AuthProfileMutationMissingTerminalStatus {
+            run_id: input.run.id.as_str().to_string(),
+        });
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitSessionOpen {
     pub session: SessionProjection,
     pub occurred_at_ms: u64,
+}
+
+/// One atomic session-open operation that also writes the session's explicit
+/// navigation metadata. The application assembles the validated final
+/// navigation state before this reaches the store; the store owns making both
+/// projections durable together.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitSessionOpenWithNavigation {
+    pub session: SessionProjection,
+    pub owner_principal_id: String,
+    pub navigation: crate::NavigationState,
+    pub occurred_at_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitSessionNextRunSelection {
+    pub session_id: SessionId,
+    pub selection: SessionNextRunSelection,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,6 +246,11 @@ pub struct SessionOpenCommitResult {
     pub commit: CommitBoundary,
     pub session: SessionProjection,
     pub event: EventRecord,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionNextRunSelectionCommitResult {
+    pub session: SessionProjection,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

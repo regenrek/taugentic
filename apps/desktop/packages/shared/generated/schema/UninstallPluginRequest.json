@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digestSha256": {
+      "type": "string"
+    },
+    "pluginId": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pluginId",
+    "version",
+    "digestSha256"
+  ],
+  "title": "UninstallPluginRequest",
+  "type": "object"
+}

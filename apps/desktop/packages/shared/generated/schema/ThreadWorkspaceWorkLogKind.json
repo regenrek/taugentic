@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "goalSet",
+    "planSet",
+    "notesSet",
+    "recapSet",
+    "pinAdded",
+    "pinRemoved"
+  ],
+  "title": "ThreadWorkspaceWorkLogKind",
+  "type": "string"
+}

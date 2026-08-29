@@ -10,16 +10,22 @@ rust-version.workspace = true
 test-support = ["ta-store/test-support"]
 
 [dependencies]
+base64.workspace = true
 futures-util.workspace = true
 futures-executor.workspace = true
+hayro.workspace = true
+ignore.workspace = true
 nix.workspace = true
 parking_lot.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 ta-host-platform = { path = "../ta-host-platform" }
+ta-code-host = { path = "../ta-code-host" }
+ta-exec = { path = "../ta-exec" }
 ta-jsonrpc = { path = "../ta-jsonrpc" }
 ta-model-catalog = { path = "../ta-model-catalog" }
+ta-plugin = { path = "../ta-plugin" }
 ta-observability = { path = "../ta-observability" }
 ta-policy = { path = "../ta-policy" }
 ta-provider-acp = { path = "../ta-provider-acp" }
@@ -37,6 +43,7 @@ tracing.workspace = true
 tungstenite.workspace = true
 ts-rs.workspace = true
 uuid.workspace = true
+url.workspace = true
 sha2.workspace = true
 toml.workspace = true
 

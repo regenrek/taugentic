@@ -1,0 +1,34 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cursor": {
+      "$ref": "#/$defs/ActivityCursor"
+    },
+    "runId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "cursor"
+  ],
+  "title": "ThreadWorkspacePin",
+  "type": "object"
+}

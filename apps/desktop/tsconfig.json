@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "jsxImportSource": "@gpuix/react",
+    "jsxImportSource": "@regenrek/gpuix-react",
     "noEmit": true,
     "types": ["node", "bun"]
   },

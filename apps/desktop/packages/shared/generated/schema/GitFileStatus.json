@@ -1,0 +1,54 @@
+{
+  "$defs": {
+    "GitChangeKind": {
+      "enum": [
+        "added",
+        "modified",
+        "deleted",
+        "renamed",
+        "copied",
+        "typeChanged",
+        "unmerged",
+        "untracked"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "originalPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "path": {
+      "type": "string"
+    },
+    "staged": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GitChangeKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unstaged": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GitChangeKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "title": "GitFileStatus",
+  "type": "object"
+}

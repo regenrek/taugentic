@@ -7,6 +7,13 @@
         "deny"
       ],
       "type": "string"
+    },
+    "RuntimeProfileExecutionKind": {
+      "enum": [
+        "agentRun",
+        "realtimeVoice"
+      ],
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -19,6 +26,9 @@
     },
     "displayName": {
       "type": "string"
+    },
+    "executionKind": {
+      "$ref": "#/$defs/RuntimeProfileExecutionKind"
     },
     "id": {
       "type": "string"
@@ -34,7 +44,8 @@
     "id",
     "displayName",
     "providerId",
-    "policyMode"
+    "policyMode",
+    "executionKind"
   ],
   "title": "RuntimeProfileSummary",
   "type": "object"

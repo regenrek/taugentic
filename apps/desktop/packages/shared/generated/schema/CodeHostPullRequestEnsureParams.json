@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "baseBranch": {
+      "type": "string"
+    },
+    "baseRemoteName": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "headBranch": {
+      "type": "string"
+    },
+    "headRemoteName": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "headRemoteName",
+    "headBranch",
+    "baseRemoteName",
+    "baseBranch",
+    "title",
+    "body",
+    "draft"
+  ],
+  "title": "CodeHostPullRequestEnsureParams",
+  "type": "object"
+}

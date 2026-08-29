@@ -261,7 +261,8 @@
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -375,7 +376,38 @@
     "RunSource": {
       "oneOf": [
         {
+          "description": "A one-shot run claimed from a durable Scheduled Work occurrence. Its\nroute is frozen at definition creation; it is a root run and never\ninherits a recipe, output contract, attachments, or parent history.",
           "properties": {
+            "kind": {
+              "const": "scheduledWork",
+              "type": "string"
+            },
+            "occurrenceId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "scheduledWorkId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "scheduledWorkId",
+            "occurrenceId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "attachments": {
+              "items": {
+                "$ref": "#/$defs/WorkspaceFileAttachment"
+              },
+              "type": "array"
+            },
             "kind": {
               "const": "user",
               "type": "string"
@@ -408,7 +440,8 @@
           },
           "required": [
             "kind",
-            "route"
+            "route",
+            "attachments"
           ],
           "type": "object"
         },
@@ -473,9 +506,93 @@
           "type": "object"
         },
         {
+          "description": "An independent child run that retains durable parent lineage without\ninheriting a parent turn, fork boundary, or native-subagent lifecycle.",
+          "properties": {
+            "cleanupPolicy": {
+              "$ref": "#/$defs/WorktreeCleanupPolicy",
+              "default": "deleteOnSuccess"
+            },
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "modelId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outputContract": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/OutputContractKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "plannedWriteFiles": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "recipeId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            },
+            "workspaceScope": {
+              "$ref": "#/$defs/WorkspaceMode",
+              "default": "worktreeWrite"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "kind": {
               "const": "forked",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
+            }
+          },
+          "required": [
+            "kind",
+            "route",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -543,6 +660,41 @@
         "processExec"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     },
     "WorkspaceMode": {
       "enum": [

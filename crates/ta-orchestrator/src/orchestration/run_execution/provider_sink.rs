@@ -1,6 +1,7 @@
 use ta_protocol::wire::{
-    AgentStreamEvent, ApprovalRequest, ApprovalResolution, ArtifactId, ArtifactKind, CapsuleResult,
-    TokenUsageRecordedEvent, ValidationError,
+    AgentStreamEvent, AgentStreamItemId, AgentStreamTurnId, ApprovalRequest, ApprovalResolution,
+    ArtifactId, ArtifactKind, AuthProfileExhaustion, CapsuleResult, TokenUsageRecordedEvent,
+    ValidationError,
 };
 use ta_provider_llm::client::LlmTokenUsage;
 use ta_store::{ArtifactRecord, CommitRunTransition};
@@ -13,17 +14,19 @@ use super::*;
 
 mod completion;
 
-pub(super) struct ProviderRunExecutionSink<S = InMemoryStore>
+pub(crate) struct ProviderRunExecutionSink<S = InMemoryStore>
 where
     S: PersistenceStore + Send + 'static,
 {
-    pub(super) service: RunExecutionService<S>,
-    pub(super) session_id: crate::SessionId,
-    pub(super) run_id: RunId,
+    pub(crate) service: RunExecutionService<S>,
+    pub(crate) session_id: crate::SessionId,
+    pub(crate) run_id: RunId,
+    /// Ephemeral capability issued by ActiveExecutionOwner. Never persisted.
+    pub(crate) generation: u64,
 }
 
 #[derive(Debug, Default)]
-struct RunCompletionProjection {
+pub(crate) struct RunCompletionProjection {
     output_contract: Option<OutputContractKind>,
     result: Option<CapsuleResult>,
     contract_violation: Option<ValidationError>,
@@ -33,14 +36,52 @@ impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
+    /// The provider callback capability is retained from owner validation
+    /// through the entire store mutation. Publishing occurs after this method
+    /// returns, so no provider code runs while the owner lease is held.
+    fn with_live_generation_store_mutation<T>(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+        generation: u64,
+        action: impl FnOnce(&mut S) -> Result<T, RunExecutionError>,
+    ) -> Result<T, RunExecutionError> {
+        self.runtime
+            .with_live_generation_lease(run_id, session_id, generation, || {
+                let mut store = self.store.lock().expect("app store should not be poisoned");
+                action(&mut store)
+            })
+    }
+
     fn emit_live_run_detail_and_publish(
         &self,
         session_id: crate::SessionId,
         run_id: &RunId,
-        detail: String,
+        _detail: String,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
         let committed =
-            self.commit_live_run_status(session_id, run_id, RunStatus::Running, detail)?;
+            self.with_live_generation_store_mutation(&session_id, run_id, generation, |store| {
+                let Some(run) = store.run(run_id)? else {
+                    return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+                };
+                let event = crate::RunEvent::active(
+                    run_id.clone(),
+                    RunStatus::Running,
+                    None,
+                    recipe_id_for_run(&run),
+                    None,
+                )
+                .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+                commit_live_run_event_in_store(
+                    store,
+                    session_id.clone(),
+                    run_id,
+                    event,
+                    RunCompletionProjection::default(),
+                    ta_store::AuthProfileCommitMutation::Unchanged,
+                )
+            })?;
         self.publish_records(&committed.events);
         Ok(())
     }
@@ -50,8 +91,9 @@ where
         session_id: crate::SessionId,
         run_id: &RunId,
         frame: StreamEmission,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        let committed = self.commit_live_agent_stream(session_id, run_id, frame)?;
+        let committed = self.commit_live_agent_stream(session_id, run_id, frame, generation)?;
         self.publish_records(&committed.events);
         Ok(())
     }
@@ -61,9 +103,230 @@ where
         session_id: crate::SessionId,
         run_id: &RunId,
         usage: LlmTokenUsage,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        let committed = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
+        let commit_session_id = session_id.clone();
+        let committed =
+            self.with_live_generation_store_mutation(&session_id, run_id, generation, |store| {
+                let Some(existing_run) = store.run(run_id)? else {
+                    return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+                };
+                if existing_run.session_id != session_id {
+                    return Err(RunExecutionError::RunSessionMismatch(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                if existing_run.status != RunStatus::Running {
+                    return Err(RunExecutionError::RunNotLiveOwned(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                let recorded_at_ms = current_time_ms();
+                Ok(store.commit_run_transition(CommitRunTransition {
+                    session_id: commit_session_id,
+                    run: existing_run,
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::TokenUsageRecorded(TokenUsageRecordedEvent {
+                        run_id: run_id.clone(),
+                        capsule_id: None,
+                        prompt_tokens: usage.prompt_tokens,
+                        completion_tokens: usage.completion_tokens,
+                        cached_tokens: usage.cached_tokens,
+                        reasoning_tokens: usage.reasoning_tokens,
+                        model: usage.model,
+                        provider: usage.provider,
+                        recorded_at_ms,
+                    })],
+                    occurred_at_ms: recorded_at_ms,
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+                })?)
+            })?;
+        self.publish_records(&committed.events);
+        Ok(())
+    }
+
+    pub(super) fn fail_live_run_and_publish_for_generation(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        detail: String,
+        generation: u64,
+    ) -> Result<(), RunExecutionError> {
+        let committed = self.commit_failed_live_run_for_generation(
+            session_id.clone(),
+            run_id,
+            detail,
+            RunCompletionProjection::default(),
+            generation,
+        )?;
+        let mut records = committed.events;
+        records.extend(self.advance_ready_queue(&session_id, run_id, RunStatus::Failed)?);
+        self.publish_records(&records);
+        Ok(())
+    }
+
+    pub(super) fn commit_failed_live_run_for_generation(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        detail: String,
+        completion: RunCompletionProjection,
+        generation: u64,
+    ) -> Result<RunMutationResult, RunExecutionError> {
+        self.commit_failed_live_run_for_generation_with_exhaustion(
+            session_id, run_id, detail, completion, generation, None,
+        )
+    }
+
+    fn fail_typed_exhaustion_and_publish_for_generation(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        exhaustion: AuthProfileExhaustion,
+        generation: u64,
+    ) -> Result<(), RunExecutionError> {
+        let detail = match exhaustion {
+            AuthProfileExhaustion::RateLimited => "The selected account is rate limited.",
+            AuthProfileExhaustion::CreditsExhausted => {
+                "The selected account has exhausted its credits."
+            }
+        };
+        let committed = self.commit_failed_live_run_for_generation_with_exhaustion(
+            session_id.clone(),
+            run_id,
+            detail.to_string(),
+            RunCompletionProjection::default(),
+            generation,
+            Some(exhaustion),
+        )?;
+        let mut records = committed.events;
+        records.extend(self.advance_ready_queue(&session_id, run_id, RunStatus::Failed)?);
+        self.publish_records(&records);
+        Ok(())
+    }
+
+    fn commit_failed_live_run_for_generation_with_exhaustion(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        mut detail: String,
+        mut completion: RunCompletionProjection,
+        generation: u64,
+        exhaustion: Option<AuthProfileExhaustion>,
+    ) -> Result<RunMutationResult, RunExecutionError> {
+        let prepared_checkpoint = match self.prepare_after_user_turn_checkpoint(run_id) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                tracing::error!(
+                    run_id = run_id.as_str(),
+                    error = %error,
+                    "after-turn checkpoint capture failed; failing terminal run"
+                );
+                if exhaustion.is_none() {
+                    detail =
+                        format!("{detail}; the after-turn Git checkpoint could not be captured");
+                }
+                completion = RunCompletionProjection::default();
+                None
+            }
+        };
+        let run = self.load_run_projection(run_id)?;
+        let auth_profile_mutation = match exhaustion {
+            Some(exhaustion) => match run.source.route().auth_profile_id.clone() {
+                Some(auth_profile_id) => ta_store::AuthProfileCommitMutation::SetExhausted {
+                    auth_profile_id,
+                    exhaustion,
+                },
+                None => ta_store::AuthProfileCommitMutation::Unchanged,
+            },
+            None => ta_store::AuthProfileCommitMutation::Unchanged,
+        };
+        let reason = crate::RunStatusReason::new(detail)
+            .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+        let event = match exhaustion {
+            Some(exhaustion) => crate::RunEvent::terminal_with_auth_profile_exhaustion(
+                run_id.clone(),
+                reason,
+                exhaustion,
+            ),
+            None => crate::RunEvent::terminal(
+                run_id.clone(),
+                RunStatus::Failed,
+                reason,
+                completion.output_contract.clone(),
+                recipe_id_for_run(&run),
+                completion.result.clone(),
+            ),
+        }
+        .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+        self.commit_live_run_event(
+            session_id,
+            run_id,
+            event,
+            completion,
+            generation,
+            prepared_checkpoint,
+            auth_profile_mutation,
+        )
+    }
+
+    pub(super) fn commit_live_run_event(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        event: crate::RunEvent,
+        completion: RunCompletionProjection,
+        generation: u64,
+        prepared_checkpoint: Option<super::checkpoints::PreparedAfterUserTurnCheckpoint>,
+        auth_profile_mutation: ta_store::AuthProfileCommitMutation,
+    ) -> Result<RunMutationResult, RunExecutionError> {
+        let commit_session_id = session_id.clone();
+        let terminal = self
+            .runtime
+            .with_terminal_live_generation_lease_and_take_handle(
+                run_id,
+                &session_id,
+                generation,
+                || {
+                    let mut store = self.store.lock().expect("app store should not be poisoned");
+                    self.commit_terminal_body(
+                        &mut *store,
+                        commit_session_id,
+                        run_id,
+                        event,
+                        completion,
+                        auth_profile_mutation,
+                        None,
+                        prepared_checkpoint.as_ref(),
+                    )
+                },
+            );
+        let (committed, handle) = match terminal {
+            Ok(value) => value,
+            Err(error) => {
+                if let Some(prepared_checkpoint) = prepared_checkpoint {
+                    prepared_checkpoint.cleanup_unpersisted()?;
+                }
+                return Err(error);
+            }
+        };
+        if let Some(handle) = handle {
+            handle
+                .cancel()
+                .map_err(|error| RunExecutionError::ProviderExecutionFailed(error.to_string()))?;
+        }
+        Ok(committed)
+    }
+
+    fn commit_live_agent_stream(
+        &self,
+        session_id: crate::SessionId,
+        run_id: &RunId,
+        frame: StreamEmission,
+        generation: u64,
+    ) -> Result<RunMutationResult, RunExecutionError> {
+        let commit_session_id = session_id.clone();
+        self.with_live_generation_store_mutation(&session_id, run_id, generation, |store| {
             let Some(existing_run) = store.run(run_id)? else {
                 return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
             };
@@ -72,166 +335,26 @@ where
                     existing_run.id.as_str().to_string(),
                 ));
             }
-            if existing_run.status != RunStatus::Running
-                || !self.runtime.is_live_run_running(run_id, &session_id)
-            {
+            if existing_run.status != RunStatus::Running {
                 return Err(RunExecutionError::RunNotLiveOwned(
                     existing_run.id.as_str().to_string(),
                 ));
             }
-            let recorded_at_ms = current_time_ms();
-            store.commit_run_transition(CommitRunTransition {
-                session_id,
+            let committed = store.commit_run_transition(CommitRunTransition {
+                session_id: commit_session_id,
                 run: existing_run,
-                events: vec![DaemonEvent::TokenUsageRecorded(TokenUsageRecordedEvent {
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                events: vec![DaemonEvent::AgentStream(AgentStreamEvent {
                     run_id: run_id.clone(),
-                    capsule_id: None,
-                    prompt_tokens: usage.prompt_tokens,
-                    completion_tokens: usage.completion_tokens,
-                    cached_tokens: usage.cached_tokens,
-                    reasoning_tokens: usage.reasoning_tokens,
-                    model: usage.model,
-                    provider: usage.provider,
-                    recorded_at_ms,
+                    emission: frame,
                 })],
-                occurred_at_ms: recorded_at_ms,
-            })?
-        };
-        self.publish_records(&committed.events);
-        Ok(())
-    }
-
-    pub(super) fn fail_live_run_and_publish(
-        &self,
-        session_id: crate::SessionId,
-        run_id: &RunId,
-        detail: String,
-    ) -> Result<(), RunExecutionError> {
-        let committed =
-            self.commit_live_run_status(session_id.clone(), run_id, RunStatus::Failed, detail)?;
-        let mut records = committed.events;
-        records.extend(self.advance_ready_queue(&session_id, run_id, RunStatus::Failed)?);
-        self.publish_records(&records);
-        Ok(())
-    }
-
-    pub(super) fn fail_live_run_without_publish(
-        &self,
-        session_id: crate::SessionId,
-        run_id: &RunId,
-        detail: String,
-    ) -> Result<(RunProjection, Vec<EventRecord>), RunExecutionError> {
-        let committed =
-            self.commit_live_run_status(session_id, run_id, RunStatus::Failed, detail)?;
-        Ok((self.load_run_projection(run_id)?, committed.events))
-    }
-
-    fn commit_live_run_status(
-        &self,
-        session_id: crate::SessionId,
-        run_id: &RunId,
-        status: RunStatus,
-        detail: String,
-    ) -> Result<RunMutationResult, RunExecutionError> {
-        self.commit_live_run_status_with_completion(
-            session_id,
-            run_id,
-            status,
-            detail,
-            RunCompletionProjection::default(),
-        )
-    }
-
-    fn commit_live_run_status_with_completion(
-        &self,
-        session_id: crate::SessionId,
-        run_id: &RunId,
-        status: RunStatus,
-        detail: String,
-        completion: RunCompletionProjection,
-    ) -> Result<RunMutationResult, RunExecutionError> {
-        let mut store = self.store.lock().expect("app store should not be poisoned");
-        let Some(existing_run) = store.run(run_id)? else {
-            return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
-        };
-        if existing_run.session_id != session_id {
-            return Err(RunExecutionError::RunSessionMismatch(
-                existing_run.id.as_str().to_string(),
-            ));
-        }
-        if existing_run.status != RunStatus::Running
-            || !self.runtime.is_live_run_running(run_id, &session_id)
-        {
-            return Err(RunExecutionError::RunNotLiveOwned(
-                existing_run.id.as_str().to_string(),
-            ));
-        }
-        let recipe_id = recipe_id_for_run(&existing_run);
-        let projected_result = completion
-            .contract_violation
-            .is_none()
-            .then(|| completion.result.clone())
-            .flatten();
-
-        let committed = store.commit_run_transition(CommitRunTransition {
-            session_id,
-            run: RunProjection {
-                status,
-                result: projected_result,
-                contract_violation: completion.contract_violation,
-                ..existing_run
-            },
-            events: vec![DaemonEvent::Run(crate::RunEvent {
-                run_id: run_id.clone(),
-                status,
-                detail,
-                output_contract: completion.output_contract,
-                recipe_id,
-                result: completion.result,
-            })],
-            occurred_at_ms: current_time_ms(),
-        })?;
-        Ok(RunMutationResult {
-            run: project_run_summary(committed.run),
-            events: committed.events,
-        })
-    }
-
-    fn commit_live_agent_stream(
-        &self,
-        session_id: crate::SessionId,
-        run_id: &RunId,
-        frame: StreamEmission,
-    ) -> Result<RunMutationResult, RunExecutionError> {
-        let mut store = self.store.lock().expect("app store should not be poisoned");
-        let Some(existing_run) = store.run(run_id)? else {
-            return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
-        };
-        if existing_run.session_id != session_id {
-            return Err(RunExecutionError::RunSessionMismatch(
-                existing_run.id.as_str().to_string(),
-            ));
-        }
-        if existing_run.status != RunStatus::Running
-            || !self.runtime.is_live_run_running(run_id, &session_id)
-        {
-            return Err(RunExecutionError::RunNotLiveOwned(
-                existing_run.id.as_str().to_string(),
-            ));
-        }
-
-        let committed = store.commit_run_transition(CommitRunTransition {
-            session_id,
-            run: existing_run,
-            events: vec![DaemonEvent::AgentStream(AgentStreamEvent {
-                run_id: run_id.clone(),
-                emission: frame,
-            })],
-            occurred_at_ms: current_time_ms(),
-        })?;
-        Ok(RunMutationResult {
-            run: project_run_summary(committed.run),
-            events: committed.events,
+                occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+            })?;
+            Ok(RunMutationResult {
+                run: project_run_summary(committed.run),
+                events: committed.events,
+            })
         })
     }
 
@@ -241,15 +364,23 @@ where
         run_id: RunId,
         kind: ArtifactKind,
         storage_path: String,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
-        let artifact = self.record_artifact(ArtifactRecord {
-            id: ArtifactId::new(format!("artifact-{}", Uuid::new_v4().simple()))
-                .expect("generated artifact id should be valid"),
-            session_id,
-            run_id,
-            kind,
-            storage_path,
-        })?;
+        let artifact_session_id = session_id.clone();
+        let artifact_run_id = run_id.clone();
+        let artifact =
+            self.runtime
+                .with_live_generation_lease(&run_id, &session_id, generation, || {
+                    self.record_artifact_for_leased_run(ArtifactRecord {
+                        id: ArtifactId::new(format!("artifact-{}", Uuid::new_v4().simple()))
+                            .expect("generated artifact id should be valid"),
+                        session_id: artifact_session_id,
+                        run_id: artifact_run_id,
+                        kind,
+                        metadata: ta_protocol::wire::ArtifactMetadata::Standard,
+                        storage_path,
+                    })
+                })?;
         self.publish_records(&artifact.events);
         Ok(())
     }
@@ -259,36 +390,38 @@ where
         session_id: crate::SessionId,
         run_id: &RunId,
         request: ApprovalRequest,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
         if request.run_id != *run_id {
             return Err(RunExecutionError::RunSessionMismatch(
                 request.run_id.as_str().to_string(),
             ));
         }
-        let committed = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
-            let Some(existing_run) = store.run(run_id)? else {
-                return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
-            };
-            if existing_run.session_id != session_id {
-                return Err(RunExecutionError::RunSessionMismatch(
-                    existing_run.id.as_str().to_string(),
-                ));
-            }
-            if existing_run.status != RunStatus::Running
-                || !self.runtime.is_live_run_running(run_id, &session_id)
-            {
-                return Err(RunExecutionError::RunNotLiveOwned(
-                    existing_run.id.as_str().to_string(),
-                ));
-            }
-            store.commit_run_transition(CommitRunTransition {
-                session_id,
-                run: existing_run,
-                events: vec![DaemonEvent::Approval(ApprovalEvent::Requested { request })],
-                occurred_at_ms: current_time_ms(),
-            })?
-        };
+        let commit_session_id = session_id.clone();
+        let committed =
+            self.with_live_generation_store_mutation(&session_id, run_id, generation, |store| {
+                let Some(existing_run) = store.run(run_id)? else {
+                    return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+                };
+                if existing_run.session_id != session_id {
+                    return Err(RunExecutionError::RunSessionMismatch(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                if existing_run.status != RunStatus::Running {
+                    return Err(RunExecutionError::RunNotLiveOwned(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                Ok(store.commit_run_transition(CommitRunTransition {
+                    session_id: commit_session_id,
+                    run: existing_run,
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Approval(ApprovalEvent::Requested { request })],
+                    occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+                })?)
+            })?;
         self.publish_records(&committed.events);
         Ok(())
     }
@@ -298,38 +431,40 @@ where
         session_id: crate::SessionId,
         run_id: &RunId,
         resolution: ApprovalResolution,
+        generation: u64,
     ) -> Result<(), RunExecutionError> {
         if resolution.run_id != *run_id {
             return Err(RunExecutionError::RunSessionMismatch(
                 resolution.run_id.as_str().to_string(),
             ));
         }
-        let committed = {
-            let mut store = self.store.lock().expect("app store should not be poisoned");
-            let Some(existing_run) = store.run(run_id)? else {
-                return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
-            };
-            if existing_run.session_id != session_id {
-                return Err(RunExecutionError::RunSessionMismatch(
-                    existing_run.id.as_str().to_string(),
-                ));
-            }
-            if existing_run.status != RunStatus::Running
-                || !self.runtime.is_live_run_running(run_id, &session_id)
-            {
-                return Err(RunExecutionError::RunNotLiveOwned(
-                    existing_run.id.as_str().to_string(),
-                ));
-            }
-            store.commit_run_transition(CommitRunTransition {
-                session_id,
-                run: existing_run,
-                events: vec![DaemonEvent::Approval(ApprovalEvent::Resolved {
-                    resolution,
-                })],
-                occurred_at_ms: current_time_ms(),
-            })?
-        };
+        let commit_session_id = session_id.clone();
+        let committed =
+            self.with_live_generation_store_mutation(&session_id, run_id, generation, |store| {
+                let Some(existing_run) = store.run(run_id)? else {
+                    return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+                };
+                if existing_run.session_id != session_id {
+                    return Err(RunExecutionError::RunSessionMismatch(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                if existing_run.status != RunStatus::Running {
+                    return Err(RunExecutionError::RunNotLiveOwned(
+                        existing_run.id.as_str().to_string(),
+                    ));
+                }
+                Ok(store.commit_run_transition(CommitRunTransition {
+                    session_id: commit_session_id,
+                    run: existing_run,
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Approval(ApprovalEvent::Resolved {
+                        resolution,
+                    })],
+                    occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
+                })?)
+            })?;
         self.publish_records(&committed.events);
         Ok(())
     }
@@ -347,17 +482,30 @@ where
 {
     fn push_stream(&self, frame: StreamEmission) -> Result<(), ExecutionError> {
         self.service
-            .emit_agent_stream_and_publish(self.session_id.clone(), &self.run_id, frame)
+            .emit_agent_stream_and_publish(
+                self.session_id.clone(),
+                &self.run_id,
+                frame,
+                self.generation,
+            )
             .and_then(|()| {
-                self.service
-                    .enforce_budget_after_stream(&self.session_id, &self.run_id)
+                self.service.enforce_budget_after_stream(
+                    &self.session_id,
+                    &self.run_id,
+                    self.generation,
+                )
             })
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
     fn record_token_usage(&self, usage: LlmTokenUsage) -> Result<(), ExecutionError> {
         self.service
-            .record_token_usage_and_publish(self.session_id.clone(), &self.run_id, usage)
+            .record_token_usage_and_publish(
+                self.session_id.clone(),
+                &self.run_id,
+                usage,
+                self.generation,
+            )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
@@ -367,6 +515,7 @@ where
                 self.session_id.clone(),
                 &self.run_id,
                 detail.to_string(),
+                self.generation,
             )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
@@ -377,13 +526,23 @@ where
 
     fn request_approval(&self, request: ApprovalRequest) -> Result<(), ExecutionError> {
         self.service
-            .request_approval_and_publish(self.session_id.clone(), &self.run_id, request)
+            .request_approval_and_publish(
+                self.session_id.clone(),
+                &self.run_id,
+                request,
+                self.generation,
+            )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
     fn resolve_approval(&self, resolution: ApprovalResolution) -> Result<(), ExecutionError> {
         self.service
-            .resolve_approval_and_publish(self.session_id.clone(), &self.run_id, resolution)
+            .resolve_approval_and_publish(
+                self.session_id.clone(),
+                &self.run_id,
+                resolution,
+                self.generation,
+            )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
@@ -398,8 +557,30 @@ where
                 self.run_id.clone(),
                 kind,
                 storage_path.to_string(),
+                self.generation,
             )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
+    }
+
+    fn record_image_artifact(
+        &self,
+        turn_id: AgentStreamTurnId,
+        item_id: AgentStreamItemId,
+        data_base64: &str,
+    ) -> Result<(), ExecutionError> {
+        let artifact = self
+            .service
+            .record_generated_image_for_leased_run(
+                self.session_id.clone(),
+                self.run_id.clone(),
+                self.generation,
+                turn_id,
+                item_id,
+                data_base64,
+            )
+            .map_err(|error| ExecutionError::Unsupported(error.to_string()))?;
+        self.service.publish_records(&artifact.events);
+        Ok(())
     }
 
     fn start_native_child_run(
@@ -414,7 +595,11 @@ where
             )));
         }
         self.service
-            .start_native_child_run(self.session_id.clone(), request)
+            .start_native_child_run_from_generation(
+                self.session_id.clone(),
+                request,
+                self.generation,
+            )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
@@ -433,15 +618,91 @@ where
                 &self.run_id,
                 detail.to_string(),
                 result,
+                self.generation,
             )
             .map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
 
     fn fail(&self, error: ExecutionError) -> Result<(), ExecutionError> {
-        self.service
-            .fail_live_run_and_publish(self.session_id.clone(), &self.run_id, error.to_string())
-            .map_err(|error| ExecutionError::Unsupported(error.to_string()))
+        let result = match error {
+            ExecutionError::RateLimited { .. } => self
+                .service
+                .fail_typed_exhaustion_and_publish_for_generation(
+                    self.session_id.clone(),
+                    &self.run_id,
+                    AuthProfileExhaustion::RateLimited,
+                    self.generation,
+                ),
+            ExecutionError::CreditsExhausted(_) => self
+                .service
+                .fail_typed_exhaustion_and_publish_for_generation(
+                    self.session_id.clone(),
+                    &self.run_id,
+                    AuthProfileExhaustion::CreditsExhausted,
+                    self.generation,
+                ),
+            error => self.service.fail_live_run_and_publish_for_generation(
+                self.session_id.clone(),
+                &self.run_id,
+                error.to_string(),
+                self.generation,
+            ),
+        };
+        result.map_err(|error| ExecutionError::Unsupported(error.to_string()))
     }
+}
+
+fn commit_live_run_event_in_store<S>(
+    store: &mut S,
+    session_id: crate::SessionId,
+    run_id: &RunId,
+    event: crate::RunEvent,
+    completion: RunCompletionProjection,
+    auth_profile_mutation: ta_store::AuthProfileCommitMutation,
+) -> Result<RunMutationResult, RunExecutionError>
+where
+    S: PersistenceStore,
+{
+    let Some(existing_run) = store.run(run_id)? else {
+        return Err(RunExecutionError::RunNotFound(run_id.as_str().to_string()));
+    };
+    if existing_run.session_id != session_id {
+        return Err(RunExecutionError::RunSessionMismatch(
+            existing_run.id.as_str().to_string(),
+        ));
+    }
+    if existing_run.status != RunStatus::Running {
+        return Err(RunExecutionError::RunNotLiveOwned(
+            existing_run.id.as_str().to_string(),
+        ));
+    }
+    let projected_result = completion
+        .contract_violation
+        .is_none()
+        .then(|| completion.result.clone())
+        .flatten();
+    let crate::RunEvent::Status(status_event) = &event else {
+        return Err(RunExecutionError::ProviderExecutionFailed(
+            "invalid provider status event".to_string(),
+        ));
+    };
+    let committed = store.commit_run_transition(CommitRunTransition {
+        session_id,
+        run: RunProjection {
+            status: status_event.status(),
+            result: projected_result,
+            contract_violation: completion.contract_violation,
+            ..existing_run
+        },
+        user_turn: ta_store::UserTurnCommit::NoUserTurn,
+        events: vec![DaemonEvent::Run(event)],
+        occurred_at_ms: current_time_ms(),
+        auth_profile_mutation,
+    })?;
+    Ok(RunMutationResult {
+        run: project_run_summary(committed.run),
+        events: committed.events,
+    })
 }
 
 #[cfg(test)]
@@ -450,10 +711,14 @@ mod tests {
     use crate::orchestration::run_execution::test_support::*;
     use crate::{ListReceiptsRequest, ReceiptState};
     use ta_protocol::wire::{
-        DebugResult, OutputContractKind, PatchResult, ReceiptKind, ValidationError,
+        DebugResult, GitCheckpointPhase, OutputContractKind, PatchResult, ReceiptKind,
+        ValidationError,
     };
     use ta_provider_llm::client::LlmTokenUsage;
-    use ta_store::{CommitRepository, EventLogRepository, ProjectionRepository};
+    use ta_store::{
+        AuthProfileRepository, CheckpointRepository, CommitRepository, EventLogRepository,
+        ProjectionRepository,
+    };
 
     #[test]
     fn complete_with_valid_capsule_result_promotes_parent_receipt() {
@@ -663,6 +928,117 @@ mod tests {
     }
 
     #[test]
+    fn missing_after_turn_checkpoint_fails_and_releases_user_run() {
+        let repository_root = init_dispatch_repo();
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        set_default_test_workspace_root(&app, repository_root.path());
+        let session = open_session(&app, "Checkpoint terminal failure");
+        let run = ensure_running_run(
+            &app,
+            &execution,
+            &session.id,
+            "Fail closed when the repository disappears",
+        );
+        execution
+            .capture_before_user_turn(&run.id)
+            .expect("before checkpoint should capture");
+        std::fs::remove_dir_all(repository_root.path()).expect("remove isolated test repository");
+        let sink = provider_sink(&execution, &session.id, &run.id);
+
+        sink.complete("provider completed")
+            .expect("terminal failure should be committed and published");
+
+        let stored_run = execution
+            .store
+            .lock()
+            .expect("store lock")
+            .run(&run.id)
+            .expect("run lookup")
+            .expect("run should exist");
+        let checkpoints = execution
+            .store
+            .lock()
+            .expect("store lock")
+            .checkpoints_for_run(&run.id)
+            .expect("checkpoint lookup");
+        assert_eq!(stored_run.status, RunStatus::Failed);
+        assert_eq!(checkpoints.len(), 1);
+        assert_eq!(checkpoints[0].phase, GitCheckpointPhase::BeforeTurn);
+        assert_eq!(execution.active_run_count(), 0);
+        assert!(!execution.is_live_run_running(&run.id, &session.id));
+        assert_completion_event(&execution, &session.id, &run.id, RunStatus::Failed, None);
+    }
+
+    #[test]
+    fn typed_credit_exhaustion_marks_only_the_selected_route_profile() {
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        let session = open_session(&app, "Typed exhaustion");
+        let run = ensure_running_run(&app, &execution, &session.id, "Fail once");
+        let selected_profile = execution
+            .store
+            .lock()
+            .expect("store lock")
+            .run(&run.id)
+            .expect("run lookup")
+            .expect("run")
+            .source
+            .route()
+            .auth_profile_id
+            .clone()
+            .expect("selected profile");
+        let other_profile =
+            ta_protocol::wire::AuthProfileId::new("profile-other-test").expect("other profile");
+        execution
+            .store
+            .lock()
+            .expect("store lock")
+            .save_auth_profile(ta_store::connected_test_auth_profile(
+                other_profile.as_str(),
+                "method-test",
+                "provider-test",
+            ))
+            .expect("other profile");
+
+        provider_sink(&execution, &session.id, &run.id)
+            .fail(ExecutionError::CreditsExhausted(
+                "provider payload must not be persisted".to_string(),
+            ))
+            .expect("typed failure should commit");
+
+        let store = execution.store.lock().expect("store lock");
+        let events = store.events_for_session(&session.id).expect("events");
+        assert!(events.iter().any(|record| matches!(
+            &record.payload,
+            DaemonEvent::Run(crate::RunEvent::Status(event))
+                if event.run_id() == &run.id
+                    && event.status() == RunStatus::Failed
+                    && event.auth_profile_exhaustion() == Some(AuthProfileExhaustion::CreditsExhausted)
+                    && event.reason().is_some_and(|reason| reason.as_str() == "The selected account has exhausted its credits.")
+        )));
+        assert_eq!(
+            store
+                .auth_profile(&selected_profile)
+                .expect("selected profile lookup")
+                .expect("selected profile")
+                .profile
+                .exhaustion,
+            Some(AuthProfileExhaustion::CreditsExhausted)
+        );
+        assert_eq!(
+            store
+                .auth_profile(&other_profile)
+                .expect("other profile lookup")
+                .expect("other profile")
+                .profile
+                .exhaustion,
+            None
+        );
+        assert_eq!(execution.active_run_count(), 0);
+    }
+
+    #[test]
     fn record_token_usage_persists_canonical_event() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
@@ -753,15 +1129,19 @@ mod tests {
                         claimed_files: Vec::new(),
                         conflict_summary: None,
                     },
-                    events: vec![DaemonEvent::Run(crate::RunEvent {
-                        run_id: run_id.clone(),
-                        status: RunStatus::Running,
-                        detail: "seed child".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    })],
+                    user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                    events: vec![DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            run_id.clone(),
+                            RunStatus::Running,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("seed child status should be active"),
+                    )],
                     occurred_at_ms: current_time_ms(),
+                    auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
                 })
                 .expect("run should seed");
         }
@@ -787,14 +1167,9 @@ mod tests {
         assert!(events.iter().any(|record| {
             matches!(
                 &record.payload,
-                DaemonEvent::Run(crate::RunEvent {
-                    run_id: event_run_id,
-                    status: event_status,
-                    result: event_result,
-                    ..
-                }) if *event_run_id == *run_id
-                    && *event_status == status
-                    && event_result.as_ref() == result.as_ref()
+                DaemonEvent::Run(crate::RunEvent::Status(event)) if event.run_id() == run_id
+                    && event.status() == status
+                    && event.result() == result.as_ref()
             )
         }));
     }

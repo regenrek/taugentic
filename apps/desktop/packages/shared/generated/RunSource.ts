@@ -4,7 +4,10 @@ import type { AgentStreamTurnId } from "./AgentStreamTurnId.js";
 import type { OutputContractKind } from "./OutputContractKind.js";
 import type { RunExecutionRoute } from "./RunExecutionRoute.js";
 import type { RunId } from "./RunId.js";
+import type { ScheduledWorkId } from "./ScheduledWorkId.js";
+import type { ScheduledWorkOccurrenceId } from "./ScheduledWorkOccurrenceId.js";
+import type { WorkspaceFileAttachment } from "./WorkspaceFileAttachment.js";
 import type { WorkspaceMode } from "./WorkspaceMode.js";
 import type { WorktreeCleanupPolicy } from "./WorktreeCleanupPolicy.js";
 
-export type RunSource = { "kind": "user", route: RunExecutionRoute, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, } | { "kind": "nativeSubagent", route: RunExecutionRoute, parentRunId: RunId, parentTurnId: AgentStreamTurnId, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, } | { "kind": "forked", route: RunExecutionRoute, parentRunId: RunId, parentEventSeq: string, };
+export type RunSource = { "kind": "scheduledWork", route: RunExecutionRoute, scheduledWorkId: ScheduledWorkId, occurrenceId: ScheduledWorkOccurrenceId, } | { "kind": "user", route: RunExecutionRoute, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, attachments: Array<WorkspaceFileAttachment>, } | { "kind": "nativeSubagent", route: RunExecutionRoute, parentRunId: RunId, parentTurnId: AgentStreamTurnId, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, } | { "kind": "freshSpawn", route: RunExecutionRoute, parentRunId: RunId, outputContract?: OutputContractKind | null, modelId?: AgentRuntimeModelId | null, recipeId?: string | null, workspaceScope: WorkspaceMode, cleanupPolicy: WorktreeCleanupPolicy, plannedWriteFiles?: Array<string>, } | { "kind": "forked", route: RunExecutionRoute, parentRunId: RunId, parentEventSeq: string, } | { "kind": "accountSwitchedContinuation", route: RunExecutionRoute, parentRunId: RunId, parentEventSeq: string, };

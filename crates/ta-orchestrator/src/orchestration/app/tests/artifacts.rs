@@ -33,6 +33,7 @@ fn list_artifacts_filters_by_session_run_and_artifact() {
             session_id: session_a.id.clone(),
             run_id: run_a.body.id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-a/patch.diff".to_string(),
         })
         .expect("artifact should record");
@@ -42,6 +43,7 @@ fn list_artifacts_filters_by_session_run_and_artifact() {
             session_id: session_b.id.clone(),
             run_id: run_b.body.id,
             kind: ArtifactKind::Transcript,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-b/transcript.md".to_string(),
         })
         .expect("artifact should record");
@@ -59,10 +61,7 @@ fn list_artifacts_filters_by_session_run_and_artifact() {
     assert_eq!(artifacts.items.len(), 1);
     assert_eq!(artifacts.items[0].run_id, run_a.body.id);
     assert_eq!(artifacts.items[0].kind, ArtifactKind::Patch);
-    assert_eq!(
-        artifacts.items[0].storage_path,
-        "artifacts/run-a/patch.diff"
-    );
+    assert_eq!(artifacts.items[0].display_name, "patch.diff");
     assert!(artifacts.latest_cursor.is_some());
 }
 
@@ -87,17 +86,18 @@ fn record_artifact_returns_trimmed_summary_and_deferred_records() {
             session_id: session.id.clone(),
             run_id: started.body.id,
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: " artifacts/run-a/patch.diff ".to_string(),
         })
         .expect("artifact should record");
 
-    assert_eq!(recorded.body.storage_path, "artifacts/run-a/patch.diff");
+    assert_eq!(recorded.body.display_name, "patch.diff");
     assert_eq!(recorded.deferred_records.len(), 2);
     assert!(matches!(
         &recorded.deferred_records[0].payload,
         DaemonEvent::Artifact(ArtifactEvent { artifact })
             if artifact.id == recorded.body.id
-                && artifact.storage_path == "artifacts/run-a/patch.diff"
+                && artifact.display_name == "patch.diff"
     ));
     assert!(matches!(
         &recorded.deferred_records[1].payload,
@@ -148,6 +148,7 @@ fn record_artifact_auto_creates_native_receipts_with_kind_mapping() {
                 session_id: session.id.clone(),
                 run_id: started.body.id.clone(),
                 kind: *artifact_kind,
+                metadata: ta_protocol::wire::ArtifactMetadata::Standard,
                 storage_path: format!("artifacts/run-a/{name}"),
             })
             .expect("artifact should record");
@@ -201,6 +202,7 @@ fn record_artifact_skips_receipt_for_external_harness() {
             session_id: session.id.clone(),
             run_id: started.body.id,
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/external/patch.diff".to_string(),
         })
         .expect("external artifact should record");
@@ -262,6 +264,7 @@ fn receipt_rpc_app_methods_filter_and_transition() {
             session_id: session.id.clone(),
             run_id: started.body.id.clone(),
             kind: ArtifactKind::FileSnapshot,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-a/snapshot.txt".to_string(),
         })
         .expect("artifact should record");
@@ -317,7 +320,7 @@ fn receipt_rpc_app_methods_filter_and_transition() {
 }
 
 #[test]
-fn get_artifact_returns_summary_only_for_selected_session() {
+fn get_artifact_returns_bounded_content_only_for_selected_session() {
     let service = AppService::bootstrap().expect("app service should boot");
     let selected_session = service
         .open_session(
@@ -341,6 +344,13 @@ fn get_artifact_returns_summary_only_for_selected_session() {
         .expect("session should open");
     let selected_run = ensure_running_run(&service, &selected_session.id, "selected");
     let selected_artifact = ArtifactId::new("artifact-1").expect("artifact id");
+    let artifact_path = service
+        .run_execution
+        .artifact_root()
+        .join("artifacts/run-1/patch.diff");
+    std::fs::create_dir_all(artifact_path.parent().expect("artifact parent"))
+        .expect("artifact parent should exist");
+    std::fs::write(&artifact_path, "-old\n+new\n").expect("artifact should write");
 
     service
         .record_artifact(ArtifactRecord {
@@ -348,6 +358,7 @@ fn get_artifact_returns_summary_only_for_selected_session() {
             session_id: selected_session.id.clone(),
             run_id: selected_run.body.id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         })
         .expect("artifact should record");
@@ -357,6 +368,7 @@ fn get_artifact_returns_summary_only_for_selected_session() {
             &selected_session.id,
             &GetArtifactQuery {
                 artifact_id: selected_artifact.clone(),
+                pdf_page_index: None,
             },
         )
         .expect("artifact lookup should work");
@@ -374,6 +386,7 @@ fn get_artifact_returns_summary_only_for_selected_session() {
             &other_session.id,
             &GetArtifactQuery {
                 artifact_id: selected_artifact,
+                pdf_page_index: None,
             },
         )
         .expect("artifact lookup should work");
@@ -382,11 +395,20 @@ fn get_artifact_returns_summary_only_for_selected_session() {
         selected
             .as_ref()
             .expect("artifact should exist")
-            .storage_path,
-        "artifacts/run-1/patch.diff"
+            .artifact
+            .display_name,
+        "patch.diff"
     );
     assert_eq!(listed.items.len(), 1);
-    assert_eq!(Some(listed.items[0].clone()), selected);
+    assert_eq!(
+        selected.as_ref().map(|artifact| artifact.artifact.clone()),
+        Some(listed.items[0].clone())
+    );
+    assert!(matches!(
+        selected.expect("artifact should exist").content,
+        ta_protocol::wire::BoundedFileContent::Text { text, language, .. }
+            if text == "-old\n+new\n" && language.as_deref() == Some("diff")
+    ));
     assert!(listed.latest_cursor.is_some());
     assert_eq!(other, None);
 }

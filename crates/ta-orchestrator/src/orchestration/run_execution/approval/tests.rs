@@ -141,6 +141,7 @@ fn list_approvals_expires_stale_waiting_request() {
                         output_contract: None,
                         model_id: None,
                         recipe_id: None,
+                        attachments: Vec::new(),
                     },
                     execution_context: ta_store::default_test_execution_context(),
                     result: None,
@@ -152,18 +153,22 @@ fn list_approvals_expires_stale_waiting_request() {
                     claimed_files: Vec::new(),
                     conflict_summary: None,
                 },
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
                 events: vec![
-                    DaemonEvent::Run(crate::RunEvent {
-                        run_id: run_id.clone(),
-                        status: RunStatus::WaitingForApproval,
-                        detail: "Waiting for approval".to_string(),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    }),
+                    DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            run_id.clone(),
+                            RunStatus::WaitingForApproval,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("active status"),
+                    ),
                     DaemonEvent::Approval(ApprovalEvent::Requested { request }),
                 ],
                 occurred_at_ms: 1,
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })
             .expect("waiting approval should persist");
     }

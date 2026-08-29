@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "byteLen": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "mediaType": {
+      "$ref": "#/$defs/ImageMediaType"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ImageArtifactProvenance"
+    },
+    "sha256": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "mediaType",
+    "sha256",
+    "byteLen",
+    "provenance"
+  ],
+  "title": "ImageArtifactMetadata",
+  "type": "object"
+}

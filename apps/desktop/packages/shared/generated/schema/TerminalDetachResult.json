@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "detached": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "detached"
+  ],
+  "title": "TerminalDetachResult",
+  "type": "object"
+}

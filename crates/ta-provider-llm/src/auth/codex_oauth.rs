@@ -4,13 +4,14 @@ use std::sync::{Mutex, OnceLock};
 use ta_protocol::wire::{
     AgentRuntimeStrategyId, AuthMethodId, AuthProfileConnectionState, AuthProfileId,
     AuthProfileLoginChallenge, AuthProfileLoginMethod, AuthProfileLoginResult,
-    AuthProfileLogoutResult, AuthProfileManagementMode, AuthProfileMethodInfo, AuthProfileRef,
-    AuthProfileState,
+    AuthProfileLogoutResult, AuthProfileManagementMode, AuthProfileMethodInfo,
+    AuthProfilePreferences, AuthProfileRef, AuthProfileState, AuthProfileUsage,
 };
 use url::Url;
 
 use crate::families::codex_app_server::{
     CODEX_PROVIDER_ID, CodexAppServerClient, CodexLlmClientError, client::CodexAppServerSession,
+    run_on_control_thread,
 };
 
 const CODEX_CHATGPT_AUTH_METHOD_ID: &str = "codex-chatgpt";
@@ -33,8 +34,13 @@ pub(crate) fn login(
             "unsupported Codex auth method".to_string(),
         ));
     }
-    let mut session = client.start_control_session_for_profile(auth_profile_id)?;
-    let (login_id, authorize_url) = session.start_chatgpt_login()?;
+    let client = client.clone();
+    let worker_profile_id = auth_profile_id.clone();
+    let (session, login_id, authorize_url) = run_on_control_thread(move || {
+        let mut session = client.start_control_session_for_profile(&worker_profile_id)?;
+        let (login_id, authorize_url) = session.start_chatgpt_login()?;
+        Ok((session, login_id, authorize_url))
+    })?;
     let authorize_url = Url::parse(&authorize_url).map_err(|_| {
         CodexLlmClientError::Protocol(
             "account/login/start returned an invalid auth URL".to_string(),
@@ -82,10 +88,7 @@ pub(crate) fn login(
 pub(crate) fn complete_login(
     auth_profile_id: &AuthProfileId,
 ) -> Result<AuthProfileLoginResult, CodexLlmClientError> {
-    let PendingCodexLogin {
-        mut session,
-        login_id,
-    } = pending_logins()
+    let pending = pending_logins()
         .lock()
         .map_err(|_| {
             CodexLlmClientError::CommandFailed(
@@ -98,12 +101,17 @@ pub(crate) fn complete_login(
                 "Codex ChatGPT login is not pending for this profile".to_string(),
             )
         })?;
-
-    session.wait_for_chatgpt_login(&login_id)?;
-    let (account_hint, plan_tier) = session.read_chatgpt_account()?.ok_or_else(|| {
-        CodexLlmClientError::Auth(
-            "Codex ChatGPT login completed without a connected account".to_string(),
-        )
+    let (account_hint, plan_tier) = run_on_control_thread(move || {
+        let PendingCodexLogin {
+            mut session,
+            login_id,
+        } = pending;
+        session.wait_for_chatgpt_login(&login_id)?;
+        session.read_chatgpt_account()?.ok_or_else(|| {
+            CodexLlmClientError::Auth(
+                "Codex ChatGPT login completed without a connected account".to_string(),
+            )
+        })
     })?;
     Ok(AuthProfileLoginResult {
         auth_profile: auth_profile_state(
@@ -120,7 +128,7 @@ pub(crate) fn logout(
     client: &CodexAppServerClient,
     auth_profile_id: &AuthProfileId,
 ) -> Result<AuthProfileLogoutResult, CodexLlmClientError> {
-    if pending_logins()
+    if let Some(pending) = pending_logins()
         .lock()
         .map_err(|_| {
             CodexLlmClientError::CommandFailed(
@@ -128,16 +136,22 @@ pub(crate) fn logout(
             )
         })?
         .remove(auth_profile_id)
-        .is_some()
     {
+        run_on_control_thread(move || {
+            drop(pending);
+            Ok(())
+        })?;
         return Ok(AuthProfileLogoutResult {
             auth_profile_id: auth_profile_id.clone(),
             disconnected: true,
         });
     }
-    client
-        .start_control_session_for_profile(auth_profile_id)?
-        .logout_account()?;
+    let client = client.clone();
+    let worker_profile_id = auth_profile_id.clone();
+    run_on_control_thread(move || {
+        let mut session = client.start_control_session_for_profile(&worker_profile_id)?;
+        session.logout_account()
+    })?;
     Ok(AuthProfileLogoutResult {
         auth_profile_id: auth_profile_id.clone(),
         disconnected: true,
@@ -164,7 +178,14 @@ fn auth_profile_state(
             account_hint,
             plan_tier,
         },
+        preferences: AuthProfilePreferences {
+            label: "Codex ChatGPT".to_string(),
+            order: 0,
+            is_default: false,
+        },
+        usage: AuthProfileUsage::Unavailable,
         connection_state,
+        exhaustion: None,
         last_error: None,
         management_mode: AuthProfileManagementMode::Interactive,
         can_login: connection_state != AuthProfileConnectionState::PendingLogin,

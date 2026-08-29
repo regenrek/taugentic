@@ -271,6 +271,15 @@ impl ExecutionSink for RecordingSink {
         Ok(())
     }
 
+    fn record_image_artifact(
+        &self,
+        _: ta_protocol::wire::AgentStreamTurnId,
+        _: ta_protocol::wire::AgentStreamItemId,
+        _: &str,
+    ) -> Result<(), ExecutionError> {
+        Ok(())
+    }
+
     fn complete(&self, _detail: &str) -> Result<(), ExecutionError> {
         if let Some(sender) = self
             .completed_tx

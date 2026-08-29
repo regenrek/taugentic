@@ -1,0 +1,278 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "Transcript",
+        "Patch",
+        "FileSnapshot",
+        "CommandLog",
+        "Image"
+      ],
+      "type": "string"
+    },
+    "ArtifactMetadata": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "standard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageArtifactMetadata",
+          "properties": {
+            "kind": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ArtifactSummary": {
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "metadata": {
+          "$ref": "#/$defs/ArtifactMetadata"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "runId",
+        "kind",
+        "metadata",
+        "displayName"
+      ],
+      "type": "object"
+    },
+    "BoundedFileContent": {
+      "oneOf": [
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "text",
+              "type": "string"
+            },
+            "language": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataUri": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "image",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataUri",
+            "mediaType",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "kind": {
+              "const": "pdf",
+              "type": "string"
+            },
+            "pageCount": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "pageIndex": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "previewDataUri": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "previewDataUri",
+            "pageIndex",
+            "pageCount",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "byteLen": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "dataBase64": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "binary",
+              "type": "string"
+            },
+            "mediaType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "dataBase64",
+            "revision",
+            "byteLen"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ImageArtifactMetadata": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "mediaType": {
+          "$ref": "#/$defs/ImageMediaType"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ImageArtifactProvenance"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mediaType",
+        "sha256",
+        "byteLen",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "ImageArtifactProvenance": {
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "turnId",
+        "itemId"
+      ],
+      "type": "object"
+    },
+    "ImageMediaType": {
+      "enum": [
+        "png",
+        "jpeg",
+        "webp",
+        "gif"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifact": {
+      "$ref": "#/$defs/ArtifactSummary"
+    },
+    "content": {
+      "$ref": "#/$defs/BoundedFileContent"
+    }
+  },
+  "required": [
+    "artifact",
+    "content"
+  ],
+  "title": "ArtifactContentResult",
+  "type": "object"
+}

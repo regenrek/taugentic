@@ -22,10 +22,32 @@
         "runtimeProfileId"
       ],
       "type": "object"
+    },
+    "WorkspaceFileAttachmentRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "expectedRevision"
+      ],
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileAttachmentRequest"
+      },
+      "type": "array"
+    },
     "objective": {
       "type": "string"
     },
@@ -41,7 +63,8 @@
   },
   "required": [
     "objective",
-    "selection"
+    "selection",
+    "attachments"
   ],
   "title": "StartRunCommand",
   "type": "object"

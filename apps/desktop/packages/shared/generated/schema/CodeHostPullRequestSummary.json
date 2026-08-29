@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostPullRequestState": {
+      "enum": [
+        "open",
+        "closed",
+        "merged"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorLogin": {
+      "type": "string"
+    },
+    "baseBranch": {
+      "type": "string"
+    },
+    "baseRepository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "headBranch": {
+      "type": "string"
+    },
+    "headRepository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "headSha": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "number": {
+      "maxLength": 20,
+      "pattern": "^[0-9]+$",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/CodeHostPullRequestState"
+    },
+    "title": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "webUrl": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "number",
+    "title",
+    "state",
+    "draft",
+    "authorLogin",
+    "headRepository",
+    "headBranch",
+    "headSha",
+    "baseRepository",
+    "baseBranch",
+    "webUrl",
+    "updatedAt"
+  ],
+  "title": "CodeHostPullRequestSummary",
+  "type": "object"
+}

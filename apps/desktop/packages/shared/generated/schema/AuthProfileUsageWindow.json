@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A usage window reported directly by the authenticated provider account.",
+  "properties": {
+    "label": {
+      "type": "string"
+    },
+    "limit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "remaining": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resetsAtMs": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "label"
+  ],
+  "title": "AuthProfileUsageWindow",
+  "type": "object"
+}

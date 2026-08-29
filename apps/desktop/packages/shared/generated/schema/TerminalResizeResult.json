@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "TerminalSessionStatus": {
+      "enum": [
+        "running",
+        "exited"
+      ],
+      "type": "string"
+    },
+    "TerminalSessionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "cols": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "rows": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TerminalSessionStatus"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "workspaceId",
+        "status",
+        "rows",
+        "cols"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "terminal": {
+      "$ref": "#/$defs/TerminalSessionSummary"
+    }
+  },
+  "required": [
+    "terminal"
+  ],
+  "title": "TerminalResizeResult",
+  "type": "object"
+}

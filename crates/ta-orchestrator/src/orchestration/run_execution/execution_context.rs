@@ -1,9 +1,10 @@
 use ta_policy::{Operation, PolicyDecision, PolicyEngine};
+use ta_protocol::wire::ScheduledWorkExecutionRequest;
 use ta_protocol::wire::{
-    ApprovalScope, ConflictSummary, EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy,
-    ProcessExecPolicy, RuntimePolicyMode, RuntimeProfileSummary, SandboxProfile, TrustState,
-    WorkspaceCapabilityUnsupported, WorkspaceId, WorkspaceMode, WorkspacePath, WorkspaceScope,
-    WorktreeCleanupPolicy, WorktreeInfo,
+    AgentRuntimeSelection, ApprovalScope, ConflictSummary, EnvPolicy, ExecutionContext,
+    NetworkPolicy, PermissionPolicy, ProcessExecPolicy, RuntimePolicyMode, RuntimeProfileSummary,
+    SandboxProfile, TrustState, WorkspaceCapabilityUnsupported, WorkspaceId, WorkspaceMode,
+    WorkspacePath, WorkspaceScope, WorktreeCleanupPolicy, WorktreeInfo,
 };
 use ta_store::{PersistenceStore, WorkspaceProjection};
 
@@ -50,6 +51,80 @@ impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
+    /// Freezes the complete non-secret scheduled-work execution request at
+    /// creation time. This deliberately uses the same workspace-write policy
+    /// compiler as an ordinary run, but does not allocate a run-scoped
+    /// workspace or enter scheduler/provider execution.
+    pub(crate) fn freeze_scheduled_work_execution(
+        &self,
+        session_id: &crate::SessionId,
+        selection: &AgentRuntimeSelection,
+    ) -> Result<
+        (
+            ta_protocol::wire::RunExecutionRoute,
+            ScheduledWorkExecutionRequest,
+        ),
+        RunExecutionError,
+    > {
+        let validated = self
+            .agent_runtime
+            .validate_agent_run_selection(selection)
+            .map_err(map_agent_runtime_error)?;
+        let workspace = self.session_workspace(session_id)?;
+        if !matches!(workspace.trust_state(), TrustState::UserConfirmed { .. }) {
+            return Err(RunExecutionError::WorkspaceTrustRequired(
+                workspace.id().as_str().to_string(),
+            ));
+        }
+
+        let request = ExecutionContextRequest::workspace_write();
+        let workspace_root = workspace.root_realpath().clone();
+        let repo_root = workspace
+            .git_repo_root()
+            .unwrap_or_else(|| workspace.root_realpath())
+            .clone();
+        let artifact_root = prepare_artifact_root(self.runtime.artifact_root())?;
+        let compiled_policy = compile_execution_policy(
+            request.workspace_mode,
+            validated.runtime_profile().policy_mode,
+            self.runtime.supports_network(),
+        );
+        let workspace_scope = workspace_scope(
+            request.workspace_mode,
+            &workspace_root,
+            &repo_root,
+            &workspace_root,
+            None,
+        )?;
+        let sandbox_profile = sandbox_profile(
+            &workspace_root,
+            &workspace_root,
+            &artifact_root,
+            &repo_root,
+            &compiled_policy.permission_policy,
+            compiled_policy.process_exec,
+            Vec::new(),
+        );
+
+        Ok((
+            validated.route().clone(),
+            ScheduledWorkExecutionRequest {
+                workspace_id: workspace.id().clone(),
+                workspace_root,
+                repo_root,
+                artifact_root,
+                workspace_mode: request.workspace_mode,
+                cleanup_policy: request.cleanup_policy,
+                planned_write_files: request.planned_write_files,
+                workspace_scope,
+                sandbox_profile,
+                permission_policy: compiled_policy.permission_policy,
+                network_policy: compiled_policy.network_policy,
+                env_policy: EnvPolicy::workspace_default(),
+            },
+        ))
+    }
+
     pub(super) fn prepare_execution_context(
         &self,
         session_id: &crate::SessionId,
@@ -87,6 +162,53 @@ where
                 compiled_policy,
                 env_policy: EnvPolicy::workspace_default(),
                 denied_roots: Vec::new(),
+            },
+        )
+    }
+
+    /// Scheduled preparation consumes only the durable frozen request.  In
+    /// particular it does not consult the runtime profile policy or apply any
+    /// dispatch-time defaults.
+    pub(super) fn prepare_scheduled_execution_context(
+        &self,
+        session_id: &crate::SessionId,
+        run_id: &RunId,
+        frozen: &ScheduledWorkExecutionRequest,
+    ) -> Result<PreparedExecutionContext, RunExecutionError> {
+        reject_unsupported_scope(frozen.workspace_mode)?;
+        let workspace = self.session_workspace(session_id)?;
+        if workspace.id() != &frozen.workspace_id
+            || workspace.root_realpath() != &frozen.workspace_root
+            || workspace
+                .git_repo_root()
+                .unwrap_or_else(|| workspace.root_realpath())
+                != &frozen.repo_root
+        {
+            return Err(RunExecutionError::ExecutionContextPathInvalid(
+                "frozen scheduled-work workspace identity no longer matches the session"
+                    .to_string(),
+            ));
+        }
+        let compiled_policy = CompiledExecutionPolicy {
+            permission_policy: frozen.permission_policy,
+            process_exec: frozen.sandbox_profile.process_exec.clone(),
+            network_policy: frozen.network_policy.clone(),
+        };
+        self.prepare_execution_context_from_workspace(
+            run_id,
+            ExecutionWorkspaceInput {
+                workspace_id: &frozen.workspace_id,
+                workspace_root: &frozen.workspace_root,
+                parent_repo: &frozen.repo_root,
+                artifact_root: frozen.artifact_root.clone(),
+                request: ExecutionContextRequest {
+                    workspace_mode: frozen.workspace_mode,
+                    cleanup_policy: frozen.cleanup_policy,
+                    planned_write_files: frozen.planned_write_files.clone(),
+                },
+                compiled_policy,
+                env_policy: frozen.env_policy.clone(),
+                denied_roots: frozen.sandbox_profile.denied_roots.clone(),
             },
         )
     }

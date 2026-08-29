@@ -8,7 +8,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "selected".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -19,7 +19,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(selected_session.id.clone()),
     }));
     let session = test_session();
@@ -27,7 +27,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "other".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -44,6 +44,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
             session_id: selected_session.id.clone(),
             run_id: selected_run.body.id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         })
         .expect("selected artifact");
@@ -55,6 +56,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
             session_id: other_session.id.clone(),
             run_id: other_run.body.id,
             kind: ArtifactKind::Transcript,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-2/transcript.md".to_string(),
         })
         .expect("other artifact");
@@ -84,10 +86,7 @@ fn daemon_artifact_list_returns_session_scoped_artifacts() {
     assert_eq!(artifacts.items.len(), 1);
     assert_eq!(artifacts.items[0].run_id, selected_run.body.id);
     assert_eq!(artifacts.items[0].id, selected_artifact.body.id);
-    assert_eq!(
-        artifacts.items[0].storage_path,
-        "artifacts/run-1/patch.diff"
-    );
+    assert_eq!(artifacts.items[0].display_name, "patch.diff");
     assert!(artifacts.latest_cursor.is_some());
 }
 
@@ -99,7 +98,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "selected".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -110,7 +109,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(selected_session.id.clone()),
     }));
     let session = test_session();
@@ -118,7 +117,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "other".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -126,6 +125,13 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
         )
         .expect("session should open");
     let selected_run = ensure_running_run(&state, &selected_session.id, "selected");
+    let artifact_path = state
+        .config
+        .artifact_root()
+        .join("artifacts/run-1/patch.diff");
+    std::fs::create_dir_all(artifact_path.parent().expect("artifact parent"))
+        .expect("artifact parent should exist");
+    std::fs::write(&artifact_path, "-old\n+new\n").expect("artifact should write");
     let selected_artifact = state
         .app
         .record_artifact(ArtifactRecord {
@@ -134,6 +140,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
             session_id: selected_session.id.clone(),
             run_id: selected_run.body.id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         })
         .expect("selected artifact");
@@ -150,6 +157,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
             params: Some(
                 serde_json::to_value(GetArtifactQuery {
                     artifact_id: selected_artifact.body.id.clone(),
+                    pdf_page_index: None,
                 })
                 .expect("params"),
             ),
@@ -161,7 +169,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(SessionId::new("session-2").expect("session id")),
     }));
     let other_response = handle_request(
@@ -176,6 +184,7 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
             params: Some(
                 serde_json::to_value(GetArtifactQuery {
                     artifact_id: selected_artifact.body.id.clone(),
+                    pdf_page_index: None,
                 })
                 .expect("params"),
             ),
@@ -183,13 +192,22 @@ fn daemon_artifact_get_returns_only_selected_session_artifact() {
     )
     .expect("daemon.artifact.get should return attached-session scoped none");
 
-    let selected: Option<ArtifactSummary> =
+    let selected: Option<ArtifactContentResult> =
         serde_json::from_value(selected_response).expect("response should deserialize");
-    let other: Option<ArtifactSummary> =
+    let other: Option<ArtifactContentResult> =
         serde_json::from_value(other_response).expect("response should deserialize");
     assert_eq!(
-        selected.expect("artifact should exist").run_id,
+        selected
+            .as_ref()
+            .expect("artifact should exist")
+            .artifact
+            .run_id,
         selected_run.body.id
     );
+    assert!(matches!(
+        selected.expect("artifact should exist").content,
+        ta_protocol::wire::BoundedFileContent::Text { text, .. }
+            if text == "-old\n+new\n"
+    ));
     assert_eq!(other, None);
 }

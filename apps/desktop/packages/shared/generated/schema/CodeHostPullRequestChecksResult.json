@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "CodeHostCheck": {
+      "properties": {
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "detailsUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CodeHostCheckStatus"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status"
+      ],
+      "type": "object"
+    },
+    "CodeHostCheckStatus": {
+      "enum": [
+        "queued",
+        "inProgress",
+        "completed",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/CodeHostCheck"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "checks"
+  ],
+  "title": "CodeHostPullRequestChecksResult",
+  "type": "object"
+}

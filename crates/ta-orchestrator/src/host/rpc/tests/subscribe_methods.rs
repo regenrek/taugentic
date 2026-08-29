@@ -28,7 +28,7 @@ fn navigation_subscribe_requires_initialize_but_not_session_attachment() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let result: DaemonNavigationSubscribeResult = serde_json::from_value(
@@ -49,11 +49,12 @@ fn navigation_subscribe_requires_initialize_but_not_session_attachment() {
 fn navigation_invalidation_is_empty_and_principal_scoped() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let owner_principal_id = issue_test_principal_id(&state, TEST_CLIENT_NAME);
     let owned = state
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &owner_principal_id,
             &OpenSessionRequest {
                 title: "Owned navigation".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -66,7 +67,7 @@ fn navigation_invalidation_is_empty_and_principal_scoped() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(owner_principal_id),
         attached_session_id: None,
     }));
     handle_request(
@@ -96,7 +97,16 @@ fn navigation_invalidation_is_empty_and_principal_scoped() {
         }),
     });
 
-    let message = owner_outbound.blocking_recv().expect("owner notification");
+    let message = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .build()
+        .expect("notification test runtime")
+        .block_on(async {
+            tokio::time::timeout(Duration::from_secs(1), owner_outbound.recv())
+                .await
+                .expect("owner notification should arrive before the deadline")
+                .expect("owner notification channel should remain open")
+        });
     let JsonRpcMessage::Notification(notification) = message else {
         panic!("expected notification");
     };
@@ -112,7 +122,7 @@ fn daemon_session_attach_rejects_unknown_session() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -173,7 +183,7 @@ fn daemon_subscribe_requires_attached_session() {
         initialized: true,
         client_name: Some("test-client".to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: None,
     }));
     let session = test_session();
@@ -208,7 +218,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_is_stale() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -219,7 +229,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_is_stale() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -269,7 +279,7 @@ fn daemon_subscribe_returns_ready_when_cursor_is_current() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -284,6 +294,7 @@ fn daemon_subscribe_returns_ready_when_cursor_is_current() {
             session_id: opened.id.clone(),
             run_id: running.body.id,
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         })
         .expect("artifact should record");
@@ -291,7 +302,7 @@ fn daemon_subscribe_returns_ready_when_cursor_is_current() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -348,7 +359,7 @@ fn daemon_subscribe_returns_ready_when_live_lane_backlog_can_resume() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -384,7 +395,7 @@ fn daemon_subscribe_returns_ready_when_live_lane_backlog_can_resume() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -432,7 +443,7 @@ fn daemon_subscribe_caps_history_gap_cursor_to_durable_latest_when_live_only_fra
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -469,7 +480,7 @@ fn daemon_subscribe_caps_history_gap_cursor_to_durable_latest_when_live_only_fra
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -517,7 +528,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_epoch_differs() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -528,7 +539,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_epoch_differs() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();
@@ -580,7 +591,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_session_differs() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
@@ -591,7 +602,7 @@ fn daemon_subscribe_returns_history_gap_when_cursor_session_differs() {
         initialized: true,
         client_name: Some(TEST_CLIENT_NAME.to_string()),
         client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
+        principal_id: Some(issue_test_principal_id(&state, TEST_CLIENT_NAME)),
         attached_session_id: Some(opened.id.clone()),
     }));
     let session = test_session();

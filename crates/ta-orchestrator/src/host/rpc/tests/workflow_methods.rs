@@ -4,7 +4,7 @@ use super::*;
 fn workflow_status_reports_unloaded_by_default() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state();
+    let session_state = initialized_session_state(&state);
     let session = test_session();
 
     let response = handle_request(
@@ -29,7 +29,7 @@ fn workflow_status_reports_unloaded_by_default() {
 fn workflow_load_status_reload_and_validate_roundtrip() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state();
+    let session_state = initialized_session_state(&state);
     let session = test_session();
     let file = tempfile::NamedTempFile::new().expect("workflow file");
     std::fs::write(file.path(), workflow_yaml("first")).expect("workflow write");
@@ -100,7 +100,7 @@ fn workflow_load_status_reload_and_validate_roundtrip() {
 fn workflow_reload_failure_keeps_last_known_good() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state();
+    let session_state = initialized_session_state(&state);
     let session = test_session();
     let file = tempfile::NamedTempFile::new().expect("workflow file");
     std::fs::write(file.path(), workflow_yaml("first")).expect("workflow write");
@@ -147,14 +147,12 @@ fn workflow_reload_failure_keeps_last_known_good() {
     ));
 }
 
-fn initialized_session_state() -> Arc<Mutex<DaemonRpcSessionState>> {
-    Arc::new(Mutex::new(DaemonRpcSessionState {
-        initialized: true,
-        client_name: Some(TEST_CLIENT_NAME.to_string()),
-        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
-        attached_session_id: None,
-    }))
+fn initialized_session_state(state: &BootstrapState) -> Arc<Mutex<DaemonRpcSessionState>> {
+    initialized_test_session_state(
+        &issue_test_principal_id(state, TEST_CLIENT_NAME),
+        TEST_CLIENT_NAME,
+        None,
+    )
 }
 
 fn workflow_yaml(name: &str) -> String {
@@ -165,6 +163,7 @@ name: {name}
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-test
   active_states: ["ready"]
   terminal_states: ["done"]
 orchestrator:

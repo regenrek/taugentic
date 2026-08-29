@@ -41,11 +41,12 @@ pub(super) fn validate_completion_payload(
 }
 
 pub(super) fn completion_event_sequence(records: &[EventRecord]) -> Option<u64> {
-    records.iter().find_map(|record| match record.payload {
-        DaemonEvent::Run(ta_protocol::wire::RunEvent {
-            status: RunStatus::Completed | RunStatus::Failed,
-            ..
-        }) => Some(record.sequence),
+    records.iter().find_map(|record| match &record.payload {
+        DaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if matches!(event.status(), RunStatus::Completed | RunStatus::Failed) =>
+        {
+            Some(record.sequence)
+        }
         _ => None,
     })
 }

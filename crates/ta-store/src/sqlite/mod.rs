@@ -9,7 +9,7 @@ use ta_protocol::wire::{
     AgentTurnRow, ApprovalRequest, ArtifactId, ContextReceipt, DaemonEvent, ReceiptId, RunId,
     RunStatus, SessionId,
 };
-use ta_work_source::{SourceCursor, WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
+use ta_protocol::wire::{SourceCursor, WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
 
 #[cfg(any(test, feature = "test-support"))]
 use crate::StoreSeedRepository;
@@ -36,16 +36,20 @@ mod agent_turns;
 mod artifacts;
 mod auth_profiles;
 mod checkpoints;
+mod code_host_accounts;
 mod commits;
 mod events;
 mod migrations;
 mod navigation;
+mod plugins;
 mod principals;
 mod receipts;
 mod runs_list;
+mod scheduled_work;
 mod sessions;
 #[cfg(test)]
 mod tests;
+mod thread_workspace;
 mod work_items;
 mod workspaces;
 

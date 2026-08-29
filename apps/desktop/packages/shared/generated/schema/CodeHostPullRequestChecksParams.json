@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    },
+    "CodeHostRepositoryRef": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/CodeHostProviderKind"
+        }
+      },
+      "required": [
+        "provider",
+        "host",
+        "owner",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "headSha": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "repository": {
+      "$ref": "#/$defs/CodeHostRepositoryRef"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "accountId",
+    "repository",
+    "headSha"
+  ],
+  "title": "CodeHostPullRequestChecksParams",
+  "type": "object"
+}

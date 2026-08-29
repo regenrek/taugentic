@@ -1,6 +1,6 @@
 use super::*;
 use std::error::Error;
-use std::process::Output;
+use std::process::{Command, Output};
 use tempfile::TempDir;
 
 type TestResult = Result<(), Box<dyn Error + Send + Sync>>;
@@ -90,6 +90,29 @@ fn create_roundtrip_lists_worktree_and_branch() -> TestResult {
             .iter()
             .any(|record| record.branch.as_deref() == Some(handle.branch()))
     );
+    Ok(())
+}
+
+#[test]
+fn scheduled_resource_reattach_uses_exact_published_worktree_identity() -> TestResult {
+    let repo = init_repo()?;
+    let manager = WorktreeManager::new()?;
+    let handle = create_handle(
+        &manager,
+        repo.path(),
+        "scheduled-reattach",
+        CleanupPolicy::Keep,
+    )?;
+    let path = handle.path().to_path_buf();
+    let branch = handle.branch().to_string();
+    drop(handle);
+
+    let reattached =
+        WorktreeManager::new()?.reattach(repo.path(), &path, &branch, CleanupPolicy::Keep)?;
+
+    assert_eq!(reattached.path(), path);
+    assert_eq!(reattached.branch(), branch);
+    reattached.cleanup()?;
     Ok(())
 }
 

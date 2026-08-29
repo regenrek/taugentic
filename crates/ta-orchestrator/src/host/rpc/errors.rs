@@ -4,8 +4,76 @@ pub(super) fn map_app_service_error(
     error: crate::orchestration::AppServiceError,
 ) -> crate::JsonRpcErrorObject {
     match error {
+        crate::orchestration::AppServiceError::CodeHost(error) => match error {
+            ta_code_host::CodeHostError::InvalidConfig
+            | ta_code_host::CodeHostError::InvalidInput => invalid_params(error.to_string()),
+            ta_code_host::CodeHostError::CredentialsMissing
+            | ta_code_host::CodeHostError::Unauthorized => {
+                workspace_error(error.to_string(), "CodeHostAuthenticationRequired")
+            }
+            ta_code_host::CodeHostError::Forbidden => {
+                workspace_error(error.to_string(), "CodeHostPermissionDenied")
+            }
+            ta_code_host::CodeHostError::NotFound => {
+                workspace_error(error.to_string(), "CodeHostResourceNotFound")
+            }
+            ta_code_host::CodeHostError::Conflict | ta_code_host::CodeHostError::Validation => {
+                workspace_error(error.to_string(), "CodeHostConflict")
+            }
+            ta_code_host::CodeHostError::RateLimited { .. } => {
+                workspace_error(error.to_string(), "CodeHostRateLimited")
+            }
+            ta_code_host::CodeHostError::OutcomeUnknown => {
+                workspace_error(error.to_string(), "CodeHostOutcomeUnknown")
+            }
+            ta_code_host::CodeHostError::ResponseTooLarge => {
+                workspace_error(error.to_string(), "CodeHostResponseTooLarge")
+            }
+            ta_code_host::CodeHostError::Cancelled
+            | ta_code_host::CodeHostError::CredentialsBackend
+            | ta_code_host::CodeHostError::Unavailable
+            | ta_code_host::CodeHostError::InvalidResponse => internal_error(error.to_string()),
+        },
+        crate::orchestration::AppServiceError::CodeHostAccountNotFound
+        | crate::orchestration::AppServiceError::CodeHostAccountForbidden => workspace_error(
+            "code host account does not exist".to_string(),
+            "CodeHostAccountNotFound",
+        ),
+        crate::orchestration::AppServiceError::CodeHostAccountDisplayNameInvalid => {
+            invalid_params(error.to_string())
+        }
+        crate::orchestration::AppServiceError::CodeHostRepositoryNotInWorkspace
+        | crate::orchestration::AppServiceError::CodeHostRemoteNotFound => {
+            invalid_params(error.to_string())
+        }
+        crate::orchestration::AppServiceError::CodeHostWorkspaceRunActive => {
+            workspace_error(error.to_string(), "CodeHostWorkspaceRunActive")
+        }
+        crate::orchestration::AppServiceError::CodeHostPushTokenInvalid
+        | crate::orchestration::AppServiceError::CodeHostPushStateChanged => {
+            workspace_error(error.to_string(), "CodeHostPushConflict")
+        }
         crate::orchestration::AppServiceError::EmptySessionTitle => {
             invalid_params(error.to_string())
+        }
+        crate::orchestration::AppServiceError::PluginPackageInvalid => {
+            invalid_params(error.to_string())
+                .with_data(serde_json::json!({ "code": "PluginPackageInvalid" }))
+        }
+        crate::orchestration::AppServiceError::PluginInspectionStale => {
+            invalid_params(error.to_string())
+                .with_data(serde_json::json!({ "code": "PluginInspectionStale" }))
+        }
+        crate::orchestration::AppServiceError::PluginCapabilityGrantInvalid => {
+            invalid_params(error.to_string())
+                .with_data(serde_json::json!({ "code": "PluginCapabilityGrantInvalid" }))
+        }
+        crate::orchestration::AppServiceError::PluginInstallationNotFound => {
+            invalid_params(error.to_string())
+                .with_data(serde_json::json!({ "code": "PluginInstallationNotFound" }))
+        }
+        crate::orchestration::AppServiceError::PluginStageFailed => {
+            internal_error(error.to_string())
         }
         crate::orchestration::AppServiceError::SessionWorkspaceMissing => {
             invalid_params(error.to_string())
@@ -28,6 +96,88 @@ pub(super) fn map_app_service_error(
         }
         crate::orchestration::AppServiceError::WorkspaceSymlinkEscape(_) => {
             workspace_error(error.to_string(), "WorkspaceSymlinkEscape")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileInvalidPath { .. } => {
+            workspace_error(error.to_string(), "WorkspaceFileInvalidPath")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileNotFound(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileNotFound")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileNotRegular(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileNotRegular")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileSymlinkRejected(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileSymlinkRejected")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileTooLarge { .. } => {
+            workspace_error(error.to_string(), "WorkspaceFileTooLarge")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileUnsupportedKind(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileUnsupportedKind")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileInvalidPdf(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileInvalidPdf")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFilePdfPageOutOfRange { .. } => {
+            workspace_error(error.to_string(), "WorkspaceFilePdfPageOutOfRange")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileStale(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileStale")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileAttachmentLimitExceeded { .. } => {
+            workspace_error(error.to_string(), "WorkspaceFileAttachmentLimitExceeded")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileAttachmentDuplicate(_) => {
+            workspace_error(error.to_string(), "WorkspaceFileAttachmentDuplicate")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileWriteApprovalRequired => {
+            workspace_error(error.to_string(), "WorkspaceFileWriteApprovalRequired")
+        }
+        crate::orchestration::AppServiceError::WorkspaceFileIo { .. } => {
+            internal_error(error.to_string())
+        }
+        crate::orchestration::AppServiceError::ArtifactContentUnavailable { .. } => {
+            workspace_error(error.to_string(), "ArtifactContentUnavailable")
+        }
+        crate::orchestration::AppServiceError::TerminalApprovalRequired => {
+            workspace_error(error.to_string(), "TerminalApprovalRequired")
+        }
+        crate::orchestration::AppServiceError::TerminalInvalidSize { .. } => {
+            workspace_error(error.to_string(), "TerminalInvalidSize")
+        }
+        crate::orchestration::AppServiceError::TerminalInvalidInput => {
+            workspace_error(error.to_string(), "TerminalInvalidInput")
+        }
+        crate::orchestration::AppServiceError::TerminalNotFound(_) => {
+            workspace_error(error.to_string(), "TerminalNotFound")
+        }
+        crate::orchestration::AppServiceError::TerminalNotRunning(_) => {
+            workspace_error(error.to_string(), "TerminalNotRunning")
+        }
+        crate::orchestration::AppServiceError::TerminalOperationFailed(_) => {
+            internal_error(error.to_string())
+        }
+        crate::orchestration::AppServiceError::GitRepositoryRequired => {
+            workspace_error(error.to_string(), "GitRepositoryRequired")
+        }
+        crate::orchestration::AppServiceError::GitPathInvalid(_) => {
+            workspace_error(error.to_string(), "GitPathInvalid")
+        }
+        crate::orchestration::AppServiceError::GitOutputTooLarge => {
+            workspace_error(error.to_string(), "GitOutputTooLarge")
+        }
+        crate::orchestration::AppServiceError::GitOperationFailed(_) => {
+            internal_error(error.to_string())
+        }
+        crate::orchestration::AppServiceError::GitCommitMessageInvalid => {
+            invalid_params(error.to_string())
+        }
+        crate::orchestration::AppServiceError::GitCheckpointNotFound(_)
+        | crate::orchestration::AppServiceError::GitLastTurnUnavailable
+        | crate::orchestration::AppServiceError::GitRevertTokenInvalid
+        | crate::orchestration::AppServiceError::GitRevertStateChanged
+        | crate::orchestration::AppServiceError::GitWorkspaceRunActive => {
+            workspace_error(error.to_string(), "GitCheckpointConflict")
         }
         crate::orchestration::AppServiceError::WorkspaceOutsideAllowedRoots(_) => {
             workspace_error(error.to_string(), "WorkspaceOutsideAllowedRoots")
@@ -72,6 +222,10 @@ pub(super) fn map_app_service_error(
         crate::orchestration::AppServiceError::RunNotResumable(_) => {
             invalid_params(error.to_string())
         }
+        crate::orchestration::AppServiceError::RunNotAccountExhausted(_)
+        | crate::orchestration::AppServiceError::ReplacementAuthProfileMustDiffer(_) => {
+            invalid_params(error.to_string())
+        }
         crate::orchestration::AppServiceError::RunForkPointNotFound(_) => {
             invalid_params(error.to_string())
         }
@@ -112,7 +266,9 @@ pub(super) fn map_app_service_error(
         | crate::orchestration::AppServiceError::ReceiptTransitionViolation { .. } => {
             invalid_params(error.to_string())
         }
-        crate::orchestration::AppServiceError::WorkItemNotFound(_) => {
+        crate::orchestration::AppServiceError::WorkItemNotFound(_)
+        | crate::orchestration::AppServiceError::WorkItemNotAvailable(_)
+        | crate::orchestration::AppServiceError::WorkItemTriggerInFlight(_) => {
             invalid_params(error.to_string())
         }
         crate::orchestration::AppServiceError::WorkflowNotLoaded
@@ -152,8 +308,15 @@ pub(super) fn map_app_service_error(
         crate::orchestration::AppServiceError::SessionNotFound(session_id) => {
             invalid_params(format!("session does not exist: {session_id}"))
         }
+        crate::orchestration::AppServiceError::ProjectNotFound(project_id) => {
+            invalid_params(format!("project does not exist: {project_id}"))
+                .with_data(serde_json::json!({ "code": "ProjectNotFound" }))
+        }
         crate::orchestration::AppServiceError::SessionAuthorityRejected(session_id) => {
             invalid_params(format!("session authority rejected: {session_id}"))
+        }
+        crate::orchestration::AppServiceError::SystemClockBeforeUnixEpoch => {
+            internal_error(error.to_string())
         }
         crate::orchestration::AppServiceError::Store(error) => internal_error(error.to_string()),
     }

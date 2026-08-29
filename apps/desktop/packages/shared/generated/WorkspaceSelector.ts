@@ -3,4 +3,4 @@ import type { ProjectId } from "./ProjectId.js";
 import type { WorkspaceId } from "./WorkspaceId.js";
 import type { WorkspacePath } from "./WorkspacePath.js";
 
-export type WorkspaceSelector = { "kind": "byPath", path: WorkspacePath, trustAcknowledged: boolean, } | { "kind": "byId", id: WorkspaceId, } | { "kind": "byProject", projectId: ProjectId, workspaceId: WorkspaceId, };
+export type WorkspaceSelector = { "kind": "byPath", path: WorkspacePath, trustAcknowledged: boolean, } | { "kind": "byId", id: WorkspaceId, } | { "kind": "byProject", projectId: ProjectId, workspaceId: WorkspaceId, } | { "kind": "byTemporary", workspaceId: WorkspaceId, };

@@ -1,6 +1,7 @@
 # Rust
 /target/
 /target-cursor/
+**/target/
 **/*.rs.bk
 *.pdb
 

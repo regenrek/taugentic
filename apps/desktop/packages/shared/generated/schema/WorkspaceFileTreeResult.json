@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "WorkspaceFileEntry": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "isSymlink": {
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "name",
+        "kind",
+        "isSymlink",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/WorkspaceFileEntry"
+      },
+      "type": "array"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "entries",
+    "truncated"
+  ],
+  "title": "WorkspaceFileTreeResult",
+  "type": "object"
+}

@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "ThreadWorkspacePin": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "cursor"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "goalSet",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "planSet",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "notesSet",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "recapSet",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "pinAdded",
+          "type": "string"
+        },
+        "pin": {
+          "$ref": "#/$defs/ThreadWorkspacePin"
+        }
+      },
+      "required": [
+        "kind",
+        "pin"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "kind": {
+          "const": "pinRemoved",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "cursor"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "ThreadWorkspaceMutation"
+}

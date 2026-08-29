@@ -9,7 +9,8 @@ use super::*;
 use crate::{RunId, SessionId};
 use ta_host_platform::{HostCapabilities, HostOs, HostPlatform, LocalIpcKind, OsVersion};
 use ta_protocol::wire::{
-    AgentRuntimeModelId, AuthProfileId, CapsuleRecipe, OutputContractKind, RunExecutionRoute,
+    AgentRuntimeModelId, ApprovalActor, ApprovalDecision, ApprovalId, ApprovalResolution,
+    ApprovalResolutionReason, AuthProfileId, CapsuleRecipe, OutputContractKind, RunExecutionRoute,
 };
 use ta_provider_acp::descriptor::{AcpLaunchKind, AcpProviderSpec};
 use taugentic_agent::{AgentExecutionHarness, ExecutionError, ExecutionHandle};
@@ -38,7 +39,19 @@ fn active_execution_owner_tracks_live_running_runs() {
         .expect("run should have active execution");
     assert_eq!(live_execution.session_id, session_id.clone());
     assert!(execution.is_live_run_running(&run_id, &session_id));
-    assert!(execution.release_live_run(&run_id));
+    let generation = execution
+        .live_execution_for(&run_id)
+        .filter(|live_execution| live_execution.session_id == session_id)
+        .expect("claimed run has an execution")
+        .generation;
+    execution
+        .with_terminal_live_generation_lease_and_take_handle(
+            &run_id,
+            &session_id,
+            generation,
+            || Ok(()),
+        )
+        .expect("terminal lease should release the exact generation");
     assert!(execution.live_execution_for(&run_id).is_none());
 }
 
@@ -54,6 +67,22 @@ impl ExecutionHandle for CountingHandle {
     }
 }
 
+#[derive(Clone)]
+struct ApprovalCountingHandle {
+    approval_count: Arc<AtomicUsize>,
+}
+
+impl ExecutionHandle for ApprovalCountingHandle {
+    fn cancel(&self) -> Result<(), ExecutionError> {
+        Ok(())
+    }
+
+    fn resolve_approval(&self, _resolution: ApprovalResolution) -> Result<(), ExecutionError> {
+        self.approval_count.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
 #[test]
 fn active_execution_owner_cancels_attached_handle_on_drop() {
     let cancel_count = Arc::new(AtomicUsize::new(0));
@@ -61,10 +90,11 @@ fn active_execution_owner_cancels_attached_handle_on_drop() {
         let owner = ActiveExecutionOwner::new();
         let run_id = RunId::new("run-drop").expect("run id");
         let session_id = SessionId::new("session-drop").expect("session id");
-        owner.claim_run(run_id.clone(), session_id);
+        let generation = owner.claim_run(run_id.clone(), session_id);
         owner
             .attach_handle(
                 &run_id,
+                generation,
                 Arc::new(CountingHandle {
                     cancel_count: cancel_count.clone(),
                 }),
@@ -81,6 +111,7 @@ fn active_execution_owner_rejects_attach_without_claimed_slot() {
     let error = owner
         .attach_handle(
             &RunId::new("run-missing").expect("run id"),
+            1,
             Arc::new(CountingHandle {
                 cancel_count: Arc::new(AtomicUsize::new(0)),
             }),
@@ -96,22 +127,79 @@ fn active_execution_owner_marks_cancel_requested_before_activation() {
     let owner = ActiveExecutionOwner::new();
     let run_id = RunId::new("run-cancel-before-activate").expect("run id");
     let session_id = SessionId::new("session-cancel-before-activate").expect("session id");
-    owner.claim_run(run_id.clone(), session_id.clone());
-    owner
-        .cancel_run(&run_id, &session_id)
-        .expect("cancel should mark pending request");
-
+    let generation = owner.claim_run(run_id.clone(), session_id.clone());
     let disposition = owner
         .attach_handle(
             &run_id,
+            generation,
             Arc::new(CountingHandle {
                 cancel_count: cancel_count.clone(),
             }),
         )
-        .expect("attach handle after cancel");
+        .expect("attach handle");
+    assert_eq!(disposition, AttachHandleDisposition::Attached);
+}
 
-    assert_eq!(disposition, AttachHandleDisposition::CancelRequested);
-    assert_eq!(cancel_count.load(Ordering::SeqCst), 1);
+#[test]
+fn active_execution_generation_retires_old_callbacks_before_replacement() {
+    let owner = ActiveExecutionOwner::new();
+    let run_id = RunId::new("run-generation").expect("run id");
+    let session_id = SessionId::new("session-generation").expect("session id");
+    let old = owner.claim_run(run_id.clone(), session_id.clone());
+    let (result, _generation, _old_handle) = owner
+        .replace_run_with_generation_lease(&run_id, &session_id, |generation| {
+            Ok::<_, ()>(generation)
+        })
+        .expect("replace");
+    let next = result.expect("replacement action should succeed");
+    assert!(next > old);
+    assert!(!owner.is_current_generation(&run_id, &session_id, old));
+    assert!(owner.is_current_generation(&run_id, &session_id, next));
+}
+
+#[test]
+fn active_execution_owner_preserves_current_generation_and_handle_when_replacement_action_fails() {
+    let owner = ActiveExecutionOwner::new();
+    let run_id = RunId::new("run-replacement-action-fails").expect("run id");
+    let session_id = SessionId::new("session-replacement-action-fails").expect("session id");
+    let old_generation = owner.claim_run(run_id.clone(), session_id.clone());
+    let approval_count = Arc::new(AtomicUsize::new(0));
+    let handle: Arc<dyn ExecutionHandle> = Arc::new(ApprovalCountingHandle {
+        approval_count: approval_count.clone(),
+    });
+    owner
+        .attach_handle(&run_id, old_generation, handle.clone())
+        .expect("attach old handle");
+
+    let (result, replacement_generation, returned_handle) = owner
+        .replace_run_with_generation_lease(&run_id, &session_id, |_| {
+            Err::<(), _>("durable replacement action failed")
+        })
+        .expect("existing owner should lease replacement");
+
+    assert_eq!(result, Err("durable replacement action failed"));
+    assert!(replacement_generation > old_generation);
+    assert!(returned_handle.is_none());
+    assert!(owner.is_current_generation(&run_id, &session_id, old_generation));
+    let retained_handle = owner
+        .handle_for_tests(&run_id, &session_id)
+        .expect("failed replacement retains the old handle");
+    assert!(Arc::ptr_eq(&retained_handle, &handle));
+    owner
+        .resolve_approval(
+            &run_id,
+            &session_id,
+            ApprovalResolution::new(
+                ApprovalId::new("approval-replacement-action-fails").expect("approval id"),
+                run_id.clone(),
+                ApprovalDecision::Approved,
+                ApprovalResolutionReason::User,
+                ApprovalActor::new("test-principal").expect("approval actor"),
+                None,
+            ),
+        )
+        .expect("retained handle remains owned and usable");
+    assert_eq!(approval_count.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -173,9 +261,11 @@ fn provider_run_request_uses_registry_profile_provider_and_harness() {
                 run_id: &run_id,
                 objective: "test objective",
                 execution_context: Arc::new(ta_store::default_test_execution_context()),
-                fork_initial_state: None,
+                native_history: None,
                 output_contract: None,
                 subagent_recipes: Vec::new(),
+                attachments: Vec::new(),
+                generation: 1,
             })
             .expect("request should build");
 
@@ -224,7 +314,7 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
             run_id: &RunId::new("run-recipe-prompt").expect("run id"),
             objective: "test objective",
             execution_context: Arc::new(ta_store::default_test_execution_context()),
-            fork_initial_state: None,
+            native_history: None,
             output_contract: None,
             subagent_recipes: vec![CapsuleRecipe {
                 id: "debug-native-subagent".to_string(),
@@ -234,6 +324,8 @@ fn native_provider_run_request_uses_recipe_aware_delegation_prompt() {
                 prompt_template: "Return a debug result.".to_string(),
                 default_model: None,
             }],
+            attachments: Vec::new(),
+            generation: 1,
         })
         .expect("request should build");
 

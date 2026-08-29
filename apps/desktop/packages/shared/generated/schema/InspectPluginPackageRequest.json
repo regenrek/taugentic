@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "sourcePath": {
+      "description": "Transient local directory input. It is never persisted or projected.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sourcePath"
+  ],
+  "title": "InspectPluginPackageRequest",
+  "type": "object"
+}

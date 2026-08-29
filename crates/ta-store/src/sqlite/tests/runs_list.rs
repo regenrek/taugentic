@@ -17,6 +17,7 @@ fn session_read_returns_decode_record_for_corrupt_data_json() {
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store
@@ -58,6 +59,7 @@ fn sessions_read_returns_decode_record_for_corrupt_data_json() {
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store
@@ -100,6 +102,7 @@ fn run_read_returns_decode_record_for_corrupt_data_json() {
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store
@@ -163,6 +166,7 @@ fn runs_read_returns_decode_record_for_corrupt_data_json() {
             title: "Persisted".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
     store

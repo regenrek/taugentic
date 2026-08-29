@@ -249,11 +249,20 @@ fn signal_child(
     target: TerminationTarget,
     signal: TerminationSignal,
 ) -> Result<(), ExecError> {
+    signal_process_id(child.id(), target, signal)
+}
+
+#[cfg(unix)]
+fn signal_process_id(
+    id: Option<u32>,
+    target: TerminationTarget,
+    signal: TerminationSignal,
+) -> Result<(), ExecError> {
     use nix::errno::Errno;
     use nix::sys::signal::{Signal, kill, killpg};
     use nix::unistd::Pid;
 
-    let Some(id) = child.id() else {
+    let Some(id) = id else {
         return Ok(());
     };
     let signal = match signal {
@@ -273,6 +282,26 @@ fn signal_child(
         Ok(()) | Err(Errno::ESRCH) => Ok(()),
         Err(error) => Err(ExecError::Signal(error.to_string())),
     }
+}
+
+#[cfg(unix)]
+pub(crate) fn terminate_pty_child_tree(
+    child: &mut dyn portable_pty::Child,
+) -> Result<(), ExecError> {
+    signal_process_id(
+        child.process_id(),
+        TerminationTarget::ChildTree,
+        TerminationSignal::Kill,
+    )
+}
+
+#[cfg(not(unix))]
+pub(crate) fn terminate_pty_child_tree(
+    child: &mut dyn portable_pty::Child,
+) -> Result<(), ExecError> {
+    child
+        .kill()
+        .map_err(|error| ExecError::Signal(error.to_string()))
 }
 
 #[cfg(not(unix))]

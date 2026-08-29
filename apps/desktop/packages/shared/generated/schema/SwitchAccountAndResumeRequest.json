@@ -1,0 +1,47 @@
+{
+  "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Creates a new native continuation from a failed, account-exhausted parent.\nThe replacement account is mandatory and is validated against the exact\nparent runtime/provider/harness/model route before any state is written.",
+  "properties": {
+    "parentRunId": {
+      "type": "string"
+    },
+    "selection": {
+      "$ref": "#/$defs/AgentRuntimeSelection"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "parentRunId",
+    "selection"
+  ],
+  "title": "SwitchAccountAndResumeRequest",
+  "type": "object"
+}

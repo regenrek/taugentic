@@ -64,6 +64,7 @@ fn seatbelt_profile(profile: &SandboxProfile) -> Result<String, SandboxError> {
 
     if profile.child_inherits_tty_enabled() {
         rules.push(r#"(allow file-read* file-write* (literal "/dev/tty"))"#.to_string());
+        rules.push(r#"(allow file-ioctl (regex #"^/dev/ttys[0-9]+$"))"#.to_string());
     }
 
     for path in profile.fs_read_paths() {
@@ -181,5 +182,15 @@ mod tests {
             SandboxError::InvalidProfile(message)
                 if message.contains("loopback-only") && message.contains("Seatbelt")
         ));
+    }
+
+    #[test]
+    fn inherited_tty_access_is_scoped_to_macos_terminal_devices() {
+        let policy =
+            seatbelt_profile(&SandboxProfile::new().child_inherits_tty(true)).expect("TTY policy");
+
+        assert!(policy.contains(r#"(literal "/dev/tty")"#));
+        assert!(policy.contains(r#"(allow file-ioctl (regex #"^/dev/ttys[0-9]+$"))"#));
+        assert!(!policy.contains(r#"(allow file-ioctl)"#));
     }
 }

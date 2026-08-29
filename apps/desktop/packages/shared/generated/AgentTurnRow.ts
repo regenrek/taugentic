@@ -2,5 +2,6 @@
 import type { AgentAssistantRow } from "./AgentAssistantRow.js";
 import type { AgentPendingStateRow } from "./AgentPendingStateRow.js";
 import type { AgentToolCallRow } from "./AgentToolCallRow.js";
+import type { AgentUserRow } from "./AgentUserRow.js";
 
-export type AgentTurnRow = { "kind": "assistant" } & AgentAssistantRow | { "kind": "toolCall" } & AgentToolCallRow | { "kind": "pendingState" } & AgentPendingStateRow;
+export type AgentTurnRow = { "kind": "user" } & AgentUserRow | { "kind": "assistant" } & AgentAssistantRow | { "kind": "toolCall" } & AgentToolCallRow | { "kind": "pendingState" } & AgentPendingStateRow;

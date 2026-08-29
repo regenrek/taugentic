@@ -4,18 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/main.tsx",
-    "start": "bun src/main.tsx",
+    "dev": "node ./scripts/start-desktop.mjs --hot",
+    "start": "node ./scripts/start-desktop.mjs --release",
     "build": "pnpm run typecheck && cargo build --manifest-path ../../Cargo.toml -p ta-desktop-native --release && CARGO_PROFILE=release pnpm --filter @taugentic/desktop-daemon-native stage-native",
     "build:protocol": "pnpm --filter @taugentic/desktop-protocol build",
     "typecheck": "pnpm run build:protocol && tsc --noEmit",
     "check": "pnpm run typecheck && cargo xtask check-protocol",
+    "voice:acceptance": "node ./scripts/macos-voice-acceptance.mjs",
     "measure:m1": "bun tests/measure-m1.mts",
+    "measure:m8-cortex": "bun tests/measure-m8-cortex.mts",
     "test": "pnpm run build:protocol && bun test"
   },
   "dependencies": {
-    "@gpuix/native": "0.4.0",
-    "@gpuix/react": "0.4.0",
+    "@regenrek/gpuix-react": "0.5.0-regenrek.0",
     "@tanstack/react-query": "5.66.8",
     "@taugentic/desktop-daemon-native": "workspace:*",
     "@taugentic/desktop-protocol": "workspace:*",
@@ -31,11 +32,5 @@
   "engines": {
     "bun": ">=1.3.0"
   },
-  "packageManager": "pnpm@10.33.4",
-  "pnpm": {
-    "overrides": {
-      "@gpuix/native": "0.4.0",
-      "@gpuix/react": "0.4.0"
-    }
-  }
+  "packageManager": "pnpm@10.33.4"
 }

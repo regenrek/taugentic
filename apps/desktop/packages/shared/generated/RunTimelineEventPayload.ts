@@ -4,6 +4,7 @@ import type { ApprovalDecision } from "./ApprovalDecision.js";
 import type { ApprovalId } from "./ApprovalId.js";
 import type { ApprovalScope } from "./ApprovalScope.js";
 import type { ArtifactKind } from "./ArtifactKind.js";
+import type { AuthProfileExhaustion } from "./AuthProfileExhaustion.js";
 import type { BudgetMetric } from "./BudgetMetric.js";
 import type { BudgetScope } from "./BudgetScope.js";
 import type { ConflictWarning } from "./ConflictWarning.js";
@@ -11,4 +12,4 @@ import type { ReceiptKind } from "./ReceiptKind.js";
 import type { ReceiptState } from "./ReceiptState.js";
 import type { TokenUsageRecordedEvent } from "./TokenUsageRecordedEvent.js";
 
-export type RunTimelineEventPayload = { "kind": "run", detail: string, } | { "kind": "approvalRequested", approvalId: ApprovalId, scope: ApprovalScope, } | { "kind": "approvalResolved", approvalId: ApprovalId, decision: ApprovalDecision, } | { "kind": "conflict", warning: ConflictWarning, } | { "kind": "budgetExceeded", scope: BudgetScope, metric: BudgetMetric, limit: string, actual: string, } | { "kind": "tokenUsage", usage: TokenUsageRecordedEvent, } | { "kind": "toolCall", toolName?: string | null, outcome?: AgentToolCallOutcome | null, } | { "kind": "artifact", artifactId: string, artifactKind: ArtifactKind, } | { "kind": "receipt", receiptId: string, receiptKind: ReceiptKind, receiptState: ReceiptState, } | { "kind": "agentStream", frameKind: string, };
+export type RunTimelineEventPayload = { "kind": "run", detail: string, auth_profile_exhaustion: AuthProfileExhaustion | null, } | { "kind": "approvalRequested", approvalId: ApprovalId, scope: ApprovalScope, } | { "kind": "approvalResolved", approvalId: ApprovalId, decision: ApprovalDecision, } | { "kind": "conflict", warning: ConflictWarning, } | { "kind": "budgetExceeded", scope: BudgetScope, metric: BudgetMetric, limit: string, actual: string, } | { "kind": "tokenUsage", usage: TokenUsageRecordedEvent, } | { "kind": "toolCall", toolName?: string | null, outcome?: AgentToolCallOutcome | null, } | { "kind": "artifact", artifactId: string, artifactKind: ArtifactKind, } | { "kind": "receipt", receiptId: string, receiptKind: ReceiptKind, receiptState: ReceiptState, } | { "kind": "agentStream", frameKind: string, };

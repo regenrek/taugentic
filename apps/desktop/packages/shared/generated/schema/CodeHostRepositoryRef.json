@@ -1,0 +1,33 @@
+{
+  "$defs": {
+    "CodeHostProviderKind": {
+      "enum": [
+        "gitHub"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "host": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/CodeHostProviderKind"
+    }
+  },
+  "required": [
+    "provider",
+    "host",
+    "owner",
+    "name"
+  ],
+  "title": "CodeHostRepositoryRef",
+  "type": "object"
+}

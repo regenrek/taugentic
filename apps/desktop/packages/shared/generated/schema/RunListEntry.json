@@ -20,6 +20,99 @@
       ],
       "type": "object"
     },
+    "NativeRunRelationship": {
+      "description": "Daemon-owned native run lineage for workspace presentation.\n\nThis is deliberately a required discriminated projection: desktop surfaces\nrender relationship semantics from the daemon rather than deriving a branch\nkind from nullable parent or fork fields.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "nativeSubagent",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "freshSpawn",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "accountSwitchedContinuation",
+              "type": "string"
+            },
+            "parentEventSeq": {
+              "maxLength": 20,
+              "pattern": "^[0-9]+$",
+              "type": "string"
+            },
+            "parentRunId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "parentRunId",
+            "parentEventSeq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "OutputContractKind": {
       "enum": [
         "debug",
@@ -36,7 +129,8 @@
         "unknown",
         "native",
         "acp",
-        "codexAppServer"
+        "codexAppServer",
+        "realtimeVoice"
       ],
       "type": "string"
     },
@@ -145,17 +239,14 @@
         }
       ]
     },
-    "parentRunId": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "recipeId": {
       "type": [
         "string",
         "null"
       ]
+    },
+    "relationship": {
+      "$ref": "#/$defs/NativeRunRelationship"
     },
     "startedAtMs": {
       "anyOf": [
@@ -185,6 +276,7 @@
   },
   "required": [
     "id",
+    "relationship",
     "harness",
     "status"
   ],

@@ -223,16 +223,10 @@ fn start_run_projects_waiting_run_session_status_and_activity() {
     assert!(matches!(
         &started.deferred_records.iter().map(|event| &event.payload).collect::<Vec<_>>()[..],
         [
-            DaemonEvent::Run(crate::RunEvent {
-                run_id,
-                status,
-                detail,
-                ..
-            }),
+            DaemonEvent::Run(crate::RunEvent::Status(event)),
             DaemonEvent::Approval(crate::ApprovalEvent::Requested { request }),
-        ] if *run_id == started.body.id
-            && *status == crate::RunStatus::WaitingForApproval
-            && detail == "Waiting for approval"
+        ] if event.run_id() == &started.body.id
+            && event.status() == crate::RunStatus::WaitingForApproval
             && request.run_id == started.body.id
     ));
 }

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Adds one user message to an existing terminal native fork and starts that\nsame run again. This is deliberately distinct from `ResumeRunRequest`:\nresume observes/re-attaches lifecycle state, while continuation creates the\nnext durable user turn for an already terminal branch.",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "runId",
+    "message"
+  ],
+  "title": "ContinueRunRequest",
+  "type": "object"
+}

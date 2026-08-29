@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "workspaceId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "projectId",
+    "workspaceId",
+    "path"
+  ],
+  "title": "WorkspaceFileOpenExternalParams",
+  "type": "object"
+}

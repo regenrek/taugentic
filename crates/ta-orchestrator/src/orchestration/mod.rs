@@ -9,6 +9,7 @@ mod scheduler;
 mod service;
 #[cfg(test)]
 mod test_support;
+pub(crate) mod voice;
 
 pub(crate) use agent_runtime::*;
 pub use app::*;
@@ -19,6 +20,10 @@ pub use recipes::{
 };
 #[allow(unused_imports)]
 pub use run_events_subscribe::RunEventSubscription;
+#[cfg(test)]
+pub(crate) use run_execution::test_support::{
+    DispatchPlan, FixtureDispatcher, NoopExecutionHandle,
+};
 pub use run_execution::*;
 pub(crate) use scheduler::*;
 pub use service::*;

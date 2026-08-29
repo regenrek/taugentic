@@ -1,5 +1,8 @@
+use std::collections::{BTreeMap, BTreeSet};
 use ta_protocol::wire::{
-    NATIVE_RUN_LIST_MAX_LIMIT, RunHarnessKind, RunId, RunListFilter, RunSource, SessionId,
+    NATIVE_RUN_LIST_MAX_LIMIT, NativeRunRelationship, RUN_LINEAGE_GRAPH_MAX_BYTES,
+    RUN_LINEAGE_GRAPH_MAX_EDGES, RUN_LINEAGE_GRAPH_MAX_NODES, RunId, RunLineageGraphEdge,
+    RunLineageGraphResult, RunListEntry, RunListFilter, RunSource, SessionId,
 };
 
 use crate::RunProjection;
@@ -8,6 +11,9 @@ use crate::RunProjection;
 pub struct NativeRunListQuery {
     pub session_id: SessionId,
     pub filter: RunListFilter,
+    /// Native workspace views ask for the whole daemon-owned relationship
+    /// projection; direct repository callers can still request roots only.
+    pub include_children: bool,
     pub before: Option<NativeRunListCursor>,
     pub limit: usize,
 }
@@ -79,13 +85,223 @@ pub(crate) fn list_native_runs_from_projections(
 pub fn native_run_parent_id(run: &RunProjection) -> Option<RunId> {
     match &run.source {
         RunSource::NativeSubagent { parent_run_id, .. }
-        | RunSource::Forked { parent_run_id, .. } => Some(parent_run_id.clone()),
-        RunSource::User { .. } => None,
+        | RunSource::FreshSpawn { parent_run_id, .. }
+        | RunSource::Forked { parent_run_id, .. }
+        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
+            Some(parent_run_id.clone())
+        }
+        RunSource::ScheduledWork { .. } | RunSource::User { .. } => None,
+    }
+}
+
+/// One daemon/store-owned, parent-closed graph. Sorting and cap application are
+/// deterministic; presentation never has to walk or repair lineage.
+pub fn run_lineage_graph_from_projections(
+    runs: impl IntoIterator<Item = RunProjection>,
+    session_id: &SessionId,
+) -> RunLineageGraphResult {
+    let mut all = runs
+        .into_iter()
+        .filter(|run| &run.session_id == session_id)
+        .collect::<Vec<_>>();
+    all.sort_by(graph_priority);
+    let total_count = all.len() as u32;
+    let by_id = all
+        .iter()
+        .cloned()
+        .map(|run| (run.id.clone(), run))
+        .collect::<BTreeMap<_, _>>();
+    let mut included = BTreeSet::new();
+    for run in &all {
+        let mut chain = Vec::new();
+        let mut cursor = Some(run.id.clone());
+        let mut seen = BTreeSet::new();
+        while let Some(current) = cursor {
+            if !seen.insert(current.clone()) {
+                break;
+            }
+            if !included.contains(&current) {
+                chain.push(current.clone());
+            }
+            cursor = by_id
+                .get(&current)
+                .and_then(native_run_parent_id)
+                .filter(|parent| by_id.contains_key(parent));
+        }
+        if included.len() + chain.len() > RUN_LINEAGE_GRAPH_MAX_NODES as usize {
+            continue;
+        }
+        included.extend(chain);
+    }
+    let mut cycle_broken = false;
+    let mut edges = Vec::new();
+    let mut orphan_run_ids = Vec::new();
+    for id in &included {
+        let run = &by_id[id];
+        let Some(parent) = native_run_parent_id(run) else {
+            continue;
+        };
+        if !by_id.contains_key(&parent) {
+            orphan_run_ids.push(id.clone());
+            continue;
+        }
+        if included.contains(&parent) {
+            // The edge into the lexicographically smallest node in a cycle is
+            // always omitted, yielding one reproducible rooted tree.
+            if closes_cycle(&by_id, id, &parent) && id.as_str() <= parent.as_str() {
+                cycle_broken = true;
+                continue;
+            }
+            if edges.len() < RUN_LINEAGE_GRAPH_MAX_EDGES as usize {
+                edges.push(RunLineageGraphEdge {
+                    parent_run_id: parent,
+                    child_run_id: id.clone(),
+                });
+            }
+        }
+    }
+    let nodes = included
+        .iter()
+        .map(|id| run_list_entry(&by_id[id]))
+        .collect::<Vec<_>>();
+    let mut result = RunLineageGraphResult {
+        nodes,
+        edges,
+        orphan_run_ids,
+        total_count,
+        omitted_count: 0,
+        truncated: false,
+        cycle_broken,
+    };
+    // Result size is part of the daemon contract, not a desktop rendering concern.
+    while serde_json::to_vec(&result).map_or(true, |bytes| {
+        bytes.len() > RUN_LINEAGE_GRAPH_MAX_BYTES as usize
+    }) {
+        let children = result
+            .edges
+            .iter()
+            .map(|edge| edge.parent_run_id.clone())
+            .collect::<BTreeSet<_>>();
+        let Some(index) = result
+            .nodes
+            .iter()
+            .rposition(|node| !children.contains(&node.id))
+        else {
+            break;
+        };
+        let removed = result.nodes.remove(index).id;
+        result
+            .edges
+            .retain(|edge| edge.parent_run_id != removed && edge.child_run_id != removed);
+        result.orphan_run_ids.retain(|id| id != &removed);
+    }
+    result.omitted_count = total_count.saturating_sub(result.nodes.len() as u32);
+    result.truncated = result.omitted_count > 0;
+    result
+}
+
+fn graph_priority(left: &RunProjection, right: &RunProjection) -> std::cmp::Ordering {
+    let left_active = matches!(
+        left.status,
+        ta_protocol::wire::RunStatus::Queued
+            | ta_protocol::wire::RunStatus::Running
+            | ta_protocol::wire::RunStatus::WaitingForApproval
+    );
+    let right_active = matches!(
+        right.status,
+        ta_protocol::wire::RunStatus::Queued
+            | ta_protocol::wire::RunStatus::Running
+            | ta_protocol::wire::RunStatus::WaitingForApproval
+    );
+    right_active
+        .cmp(&left_active)
+        .then_with(|| native_run_sort_started_at(right).cmp(&native_run_sort_started_at(left)))
+        .then_with(|| left.id.as_str().cmp(right.id.as_str()))
+}
+
+fn closes_cycle(by_id: &BTreeMap<RunId, RunProjection>, child: &RunId, parent: &RunId) -> bool {
+    let mut cursor = Some(parent.clone());
+    let mut seen = BTreeSet::new();
+    while let Some(id) = cursor {
+        if !seen.insert(id.clone()) {
+            return false;
+        }
+        if &id == child {
+            return true;
+        }
+        cursor = by_id.get(&id).and_then(native_run_parent_id);
+    }
+    false
+}
+
+fn relationship(run: &RunProjection) -> NativeRunRelationship {
+    match &run.source {
+        RunSource::ScheduledWork { .. } | RunSource::User { .. } => NativeRunRelationship::Root,
+        RunSource::NativeSubagent { parent_run_id, .. } => NativeRunRelationship::NativeSubagent {
+            parent_run_id: parent_run_id.clone(),
+        },
+        RunSource::FreshSpawn { parent_run_id, .. } => NativeRunRelationship::FreshSpawn {
+            parent_run_id: parent_run_id.clone(),
+        },
+        RunSource::Forked {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        } => NativeRunRelationship::Fork {
+            parent_run_id: parent_run_id.clone(),
+            parent_event_seq: *parent_event_seq,
+        },
+        RunSource::AccountSwitchedContinuation {
+            parent_run_id,
+            parent_event_seq,
+            ..
+        } => NativeRunRelationship::AccountSwitchedContinuation {
+            parent_run_id: parent_run_id.clone(),
+            parent_event_seq: *parent_event_seq,
+        },
+    }
+}
+
+fn run_list_entry(run: &RunProjection) -> RunListEntry {
+    let (output_contract, recipe_id) = match &run.source {
+        RunSource::NativeSubagent {
+            output_contract,
+            recipe_id,
+            ..
+        }
+        | RunSource::FreshSpawn {
+            output_contract,
+            recipe_id,
+            ..
+        }
+        | RunSource::User {
+            output_contract,
+            recipe_id,
+            ..
+        } => (*output_contract, recipe_id.clone()),
+        RunSource::ScheduledWork { .. }
+        | RunSource::Forked { .. }
+        | RunSource::AccountSwitchedContinuation { .. } => (None, None),
+    };
+    RunListEntry {
+        id: run.id.clone(),
+        relationship: relationship(run),
+        output_contract,
+        recipe_id,
+        harness: run.harness,
+        status: run.status,
+        started_at_ms: run.started_at_ms,
+        ended_at_ms: run.ended_at_ms,
+        last_event_seq: run.last_event_seq,
+        objective_preview: Some(run.objective.trim().chars().take(120).collect()),
+        workspace_info: run.workspace_info.clone(),
+        claimed_files: run.claimed_files.clone(),
+        conflict_summary: run.conflict_summary.clone(),
     }
 }
 
 fn matches_native_run_query(run: &RunProjection, query: &NativeRunListQuery) -> bool {
-    if run.session_id != query.session_id || run.harness != RunHarnessKind::Native {
+    if run.session_id != query.session_id {
         return false;
     }
     if let Some(harnesses) = &query.filter.harness
@@ -103,7 +319,7 @@ fn matches_native_run_query(run: &RunProjection, query: &NativeRunListQuery) -> 
 
     match &query.filter.parent_run_id {
         Some(parent_run_id) => native_run_parent_id(run).as_ref() == Some(parent_run_id),
-        None => native_run_parent_id(run).is_none(),
+        None => query.include_children || native_run_parent_id(run).is_none(),
     }
 }
 
@@ -133,7 +349,8 @@ fn native_run_sort_started_at(run: &RunProjection) -> u64 {
 #[cfg(test)]
 mod tests {
     use ta_protocol::wire::{
-        AgentStreamTurnId, NATIVE_RUN_LIST_MAX_LIMIT, RunStatus, RuntimeProfileId, SessionStatus,
+        AgentStreamTurnId, NATIVE_RUN_LIST_MAX_LIMIT, RunHarnessKind, RunStatus, RuntimeProfileId,
+        SessionStatus,
     };
 
     use super::*;
@@ -177,6 +394,7 @@ mod tests {
                     status: Some(vec![RunStatus::Running]),
                     parent_run_id: None,
                 },
+                include_children: false,
                 before: None,
                 limit: 10,
             })
@@ -205,6 +423,7 @@ mod tests {
                     status: None,
                     parent_run_id: None,
                 },
+                include_children: false,
                 before: None,
                 limit: 2,
             })
@@ -217,6 +436,7 @@ mod tests {
                     status: None,
                     parent_run_id: None,
                 },
+                include_children: false,
                 before: first.next_cursor.clone(),
                 limit: 2,
             })
@@ -262,6 +482,7 @@ mod tests {
                     status: None,
                     parent_run_id: None,
                 },
+                include_children: false,
                 before: None,
                 limit: 10,
             })
@@ -274,6 +495,7 @@ mod tests {
                     status: None,
                     parent_run_id: Some(parent_id),
                 },
+                include_children: false,
                 before: None,
                 limit: 10,
             })
@@ -287,6 +509,48 @@ mod tests {
                 .map(|id| id.as_str()),
             Some("run-parent")
         );
+    }
+
+    #[test]
+    fn fresh_spawn_relationship_rows_include_generic_harness_children() {
+        let session_id = session_id("session-fresh");
+        let parent_id = run_id("run-parent-fresh");
+        let mut store = seeded_store(&session_id);
+        seed_run(
+            &mut store,
+            RunProjection {
+                harness: RunHarnessKind::CodexAppServer,
+                source: RunSource::FreshSpawn {
+                    route: crate::default_test_run_source().route().clone(),
+                    parent_run_id: parent_id.clone(),
+                    output_contract: None,
+                    model_id: None,
+                    recipe_id: None,
+                    workspace_scope: Default::default(),
+                    cleanup_policy: Default::default(),
+                    planned_write_files: Vec::new(),
+                },
+                ..run("run-fresh-codex", &session_id, RunStatus::Queued, 400)
+            },
+        );
+
+        let page = store
+            .list_native_runs(&NativeRunListQuery {
+                session_id,
+                filter: RunListFilter {
+                    harness: None,
+                    status: None,
+                    parent_run_id: Some(parent_id),
+                },
+                include_children: true,
+                before: None,
+                limit: 10,
+            })
+            .expect("fresh relationship row should list");
+
+        assert_eq!(run_ids(&page.runs), vec!["run-fresh-codex"]);
+        assert_eq!(page.runs[0].harness, RunHarnessKind::CodexAppServer);
+        assert!(matches!(page.runs[0].source, RunSource::FreshSpawn { .. }));
     }
 
     #[test]
@@ -313,6 +577,7 @@ mod tests {
                     status: None,
                     parent_run_id: None,
                 },
+                include_children: false,
                 before: None,
                 limit: u32::MAX as usize,
             })
@@ -321,6 +586,192 @@ mod tests {
         assert_eq!(page.runs.len(), NATIVE_RUN_LIST_MAX_LIMIT as usize);
         assert!(page.runs.capacity() <= NATIVE_RUN_LIST_MAX_LIMIT as usize);
         assert!(page.next_cursor.is_some());
+    }
+
+    #[test]
+    fn lineage_graph_is_parent_closed_and_preserves_every_relationship_kind() {
+        let session_id = session_id("session-lineage");
+        let root_id = run_id("root");
+        let mut runs = vec![run("root", &session_id, RunStatus::Completed, 10)];
+        let route = crate::default_test_run_source().route().clone();
+        runs.push(RunProjection {
+            source: RunSource::NativeSubagent {
+                route: route.clone(),
+                parent_run_id: root_id.clone(),
+                parent_turn_id: AgentStreamTurnId::new("turn-root").expect("turn"),
+                output_contract: None,
+                model_id: None,
+                recipe_id: None,
+                workspace_scope: Default::default(),
+                cleanup_policy: Default::default(),
+                planned_write_files: Vec::new(),
+            },
+            ..run("subagent", &session_id, RunStatus::Completed, 20)
+        });
+        runs.push(RunProjection {
+            source: RunSource::FreshSpawn {
+                route: route.clone(),
+                parent_run_id: root_id.clone(),
+                output_contract: None,
+                model_id: None,
+                recipe_id: None,
+                workspace_scope: Default::default(),
+                cleanup_policy: Default::default(),
+                planned_write_files: Vec::new(),
+            },
+            ..run("fresh", &session_id, RunStatus::Completed, 30)
+        });
+        runs.push(RunProjection {
+            source: RunSource::Forked {
+                route,
+                parent_run_id: root_id.clone(),
+                parent_event_seq: 7,
+            },
+            ..run("fork", &session_id, RunStatus::Completed, 40)
+        });
+        runs.push(RunProjection {
+            source: RunSource::AccountSwitchedContinuation {
+                route: crate::default_test_run_source().route().clone(),
+                parent_run_id: root_id.clone(),
+                parent_event_seq: 9,
+            },
+            ..run("account-switch", &session_id, RunStatus::Completed, 50)
+        });
+
+        let graph = run_lineage_graph_from_projections(runs, &session_id);
+        assert_eq!(graph.nodes.len(), 5);
+        assert_eq!(graph.edges.len(), 4);
+        assert!(
+            graph
+                .nodes
+                .iter()
+                .any(|node| matches!(node.relationship, NativeRunRelationship::Root))
+        );
+        assert!(graph.nodes.iter().any(|node| matches!(
+            node.relationship,
+            NativeRunRelationship::NativeSubagent { .. }
+        )));
+        assert!(
+            graph
+                .nodes
+                .iter()
+                .any(|node| matches!(node.relationship, NativeRunRelationship::FreshSpawn { .. }))
+        );
+        assert!(graph.nodes.iter().any(|node| matches!(
+            node.relationship,
+            NativeRunRelationship::Fork {
+                parent_event_seq: 7,
+                ..
+            }
+        )));
+        assert!(graph.nodes.iter().any(|node| matches!(
+            node.relationship,
+            NativeRunRelationship::AccountSwitchedContinuation {
+                parent_event_seq: 9,
+                ..
+            }
+        )));
+        assert!(graph.edges.iter().all(|edge| edge.parent_run_id == root_id));
+    }
+
+    #[test]
+    fn lineage_graph_prioritizes_active_parent_closed_chains_and_enforces_caps() {
+        let session_id = session_id("session-priority");
+        let parent_id = run_id("root-old");
+        let route = crate::default_test_run_source().route().clone();
+        let mut runs = vec![
+            run("root-old", &session_id, RunStatus::Completed, 1),
+            RunProjection {
+                source: RunSource::FreshSpawn {
+                    route,
+                    parent_run_id: parent_id.clone(),
+                    output_contract: None,
+                    model_id: None,
+                    recipe_id: None,
+                    workspace_scope: Default::default(),
+                    cleanup_policy: Default::default(),
+                    planned_write_files: Vec::new(),
+                },
+                ..run("active-child", &session_id, RunStatus::Running, 2)
+            },
+        ];
+        for index in 0..127 {
+            runs.push(run(
+                &format!("terminal-{index:03}"),
+                &session_id,
+                RunStatus::Completed,
+                100 + index,
+            ));
+        }
+
+        let graph = run_lineage_graph_from_projections(runs, &session_id);
+        assert_eq!(graph.nodes.len(), RUN_LINEAGE_GRAPH_MAX_NODES as usize);
+        assert!(graph.truncated);
+        assert!(
+            graph
+                .nodes
+                .iter()
+                .any(|node| node.id.as_str() == "active-child")
+        );
+        assert!(graph.nodes.iter().any(|node| node.id == parent_id));
+        assert!(
+            graph
+                .edges
+                .iter()
+                .any(|edge| edge.parent_run_id == parent_id
+                    && edge.child_run_id.as_str() == "active-child")
+        );
+        assert!(graph.edges.len() <= RUN_LINEAGE_GRAPH_MAX_EDGES as usize);
+        assert!(
+            serde_json::to_vec(&graph).expect("graph JSON").len()
+                <= RUN_LINEAGE_GRAPH_MAX_BYTES as usize
+        );
+    }
+
+    #[test]
+    fn lineage_graph_reports_orphans_breaks_cycles_and_never_exceeds_json_cap() {
+        let session_id = session_id("session-safety");
+        let route = crate::default_test_run_source().route().clone();
+        let runs = vec![
+            RunProjection {
+                source: RunSource::FreshSpawn {
+                    route: route.clone(),
+                    parent_run_id: run_id("missing"),
+                    output_contract: None,
+                    model_id: None,
+                    recipe_id: None,
+                    workspace_scope: Default::default(),
+                    cleanup_policy: Default::default(),
+                    planned_write_files: Vec::new(),
+                },
+                ..run("orphan", &session_id, RunStatus::Completed, 1)
+            },
+            RunProjection {
+                source: RunSource::Forked {
+                    route: route.clone(),
+                    parent_run_id: run_id("cycle-b"),
+                    parent_event_seq: 1,
+                },
+                ..run("cycle-a", &session_id, RunStatus::Completed, 2)
+            },
+            RunProjection {
+                source: RunSource::Forked {
+                    route,
+                    parent_run_id: run_id("cycle-a"),
+                    parent_event_seq: 2,
+                },
+                ..run("cycle-b", &session_id, RunStatus::Completed, 3)
+            },
+        ];
+
+        let graph = run_lineage_graph_from_projections(runs, &session_id);
+        assert_eq!(graph.orphan_run_ids, vec![run_id("orphan")]);
+        assert!(graph.cycle_broken);
+        assert!(graph.edges.len() < 2);
+        assert!(
+            serde_json::to_vec(&graph).expect("graph JSON").len()
+                <= RUN_LINEAGE_GRAPH_MAX_BYTES as usize
+        );
     }
 
     fn seeded_store(session_id: &SessionId) -> InMemoryStore {
@@ -337,6 +788,7 @@ mod tests {
                 title: "Session".to_string(),
                 status: SessionStatus::Idle,
                 workspace_id: crate::default_test_workspace_id(),
+                next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
             })
             .expect("session should seed");
         store

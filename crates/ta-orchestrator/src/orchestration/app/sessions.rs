@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ta_protocol::wire::{ConversationPlacement, ProjectId};
-use ta_store::{CommitSessionOpen, PersistenceStore};
+use ta_store::{CommitSessionOpenWithNavigation, PersistenceStore};
 use uuid::Uuid;
 
 use crate::{ListSessionsQuery, SessionAuthority, SessionSummary};
@@ -17,6 +17,26 @@ impl<S> AppService<S>
 where
     S: PersistenceStore + Send,
 {
+    pub fn set_session_next_run_selection(
+        &self,
+        session_id: &crate::SessionId,
+        selection: crate::SessionNextRunSelection,
+    ) -> Result<SessionSummary, AppServiceError> {
+        if let crate::SessionNextRunSelection::Selected { selection } = &selection {
+            self.agent_runtime.validate_run_selection(selection)?;
+        }
+        let session = self
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
+            .commit_session_next_run_selection(ta_store::CommitSessionNextRunSelection {
+                session_id: session_id.clone(),
+                selection,
+            })?
+            .session;
+        Ok(project_session_summary(session))
+    }
+
     /// Insert or replace a workspace projection. Slice 3 layers the full
     /// canonicalization + trust validation pipeline on top of this primitive
     /// from the `daemon.workspace.open` handler. Tests use it directly to
@@ -95,6 +115,20 @@ where
         )
     }
 
+    pub fn open_temporary_session(
+        &self,
+        owner_client_name: &str,
+        owner_principal_id: &str,
+        request: &OpenSessionRequest,
+    ) -> Result<OpenSessionResult, AppServiceError> {
+        self.open_session_with_placement(
+            owner_client_name,
+            owner_principal_id,
+            request,
+            ConversationPlacement::Temporary,
+        )
+    }
+
     fn open_session_with_placement(
         &self,
         owner_client_name: &str,
@@ -122,6 +156,7 @@ where
             title: title.to_string(),
             status: crate::SessionStatus::Idle,
             workspace_id: request.workspace_id.clone(),
+            next_run_selection: crate::SessionNextRunSelection::Unselected,
         };
         let summary = project_session_summary(session.clone());
 
@@ -131,21 +166,15 @@ where
                 request.workspace_id.as_str().to_string(),
             ));
         }
-        let mut navigation = if matches!(placement, ConversationPlacement::Project { .. }) {
-            let navigation = store.navigation_state(&owner_principal_id)?;
-            validate_conversation_placement(&navigation, &placement, &request.workspace_id)?;
-            Some(navigation)
-        } else {
-            None
-        };
-        store.commit_session_open(CommitSessionOpen {
+        let mut navigation = store.navigation_state(&owner_principal_id)?;
+        validate_conversation_placement(&navigation, &placement, &request.workspace_id)?;
+        upsert_conversation(&mut navigation, session.id.clone(), placement);
+        store.commit_session_open_with_navigation(CommitSessionOpenWithNavigation {
             session: session.clone(),
+            owner_principal_id: owner_principal_id.clone(),
+            navigation,
             occurred_at_ms: current_time_ms(),
         })?;
-        if let Some(mut navigation) = navigation.take() {
-            upsert_conversation(&mut navigation, session.id, placement);
-            store.save_navigation_state(&owner_principal_id, navigation)?;
-        }
         Ok(OpenSessionResult {
             session: summary,
             session_authority,

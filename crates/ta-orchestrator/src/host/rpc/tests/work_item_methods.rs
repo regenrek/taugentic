@@ -1,4 +1,4 @@
-use ta_work_source::{WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
+use ta_protocol::wire::{WorkItem, WorkItemKey, WorkItemStatus, WorkSource};
 
 use super::*;
 
@@ -6,7 +6,7 @@ use super::*;
 fn daemon_work_item_list_returns_store_items() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state(None);
+    let session_state = initialized_session_state(&state, None);
     let session = test_session();
     let item = work_item("1");
     state
@@ -36,7 +36,7 @@ fn daemon_work_item_list_returns_store_items() {
 fn daemon_work_item_dismiss_updates_store_item() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state(None);
+    let session_state = initialized_session_state(&state, None);
     let session = test_session();
     let item = work_item("2");
     state
@@ -79,14 +79,14 @@ fn daemon_work_item_trigger_reuses_run_start_path() {
         .app
         .open_session(
             TEST_CLIENT_NAME,
-            TEST_OWNER_PRINCIPAL_ID,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
                 title: "Build daemon app server".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
             },
         )
         .expect("session should open");
-    let session_state = initialized_session_state(Some(opened.id.clone()));
+    let session_state = initialized_session_state(&state, Some(opened.id.clone()));
     let session = test_session();
     let item = work_item("3");
     state
@@ -134,6 +134,105 @@ fn daemon_work_item_trigger_reuses_run_start_path() {
 }
 
 #[test]
+fn daemon_work_item_trigger_admission_is_shared_by_clones_and_releases_after_completion() {
+    let state = boot(test_config());
+    let shutdown_requested = Arc::new(AtomicBool::new(false));
+    let opened = state
+        .app
+        .open_session(
+            TEST_CLIENT_NAME,
+            &issue_test_principal_id(&state, TEST_CLIENT_NAME),
+            &OpenSessionRequest {
+                title: "Build daemon app server".to_string(),
+                workspace_id: ta_store::default_test_workspace_id(),
+            },
+        )
+        .expect("session should open");
+    let session_state = initialized_session_state(&state, Some(opened.id.clone()));
+    let session = test_session();
+    let item = work_item("admission");
+    state
+        .app
+        .seed_work_item_for_tests(item.clone())
+        .expect("work item seed");
+    load_test_workflow(&state);
+    let lease = state
+        .app
+        .clone()
+        .acquire_work_item_trigger_lease(&item.key)
+        .expect("first admission lease");
+
+    let duplicate = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(75),
+            method: METHOD_DAEMON_WORK_ITEM_TRIGGER.to_string(),
+            params: Some(
+                serde_json::to_value(WorkItemTriggerParams {
+                    key: item.key.clone(),
+                    selection: explicit_runtime_selection(&state),
+                    recipe_id: Some("debug-agent".to_string()),
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect_err("shared daemon lease rejects a concurrent trigger");
+    assert!(duplicate.message.contains("already in progress"));
+
+    drop(lease);
+    let response = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(76),
+            method: METHOD_DAEMON_WORK_ITEM_TRIGGER.to_string(),
+            params: Some(
+                serde_json::to_value(WorkItemTriggerParams {
+                    key: item.key.clone(),
+                    selection: explicit_runtime_selection(&state),
+                    recipe_id: Some("debug-agent".to_string()),
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect("released lease admits trigger");
+    let triggered: WorkItemTriggerResult =
+        serde_json::from_value(response).expect("trigger response");
+    assert_eq!(triggered.item.status, WorkItemStatus::Triggered);
+
+    let unavailable = handle_request(
+        &state,
+        &shutdown_requested,
+        &session,
+        &session_state,
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: crate::RequestId::Integer(77),
+            method: METHOD_DAEMON_WORK_ITEM_TRIGGER.to_string(),
+            params: Some(
+                serde_json::to_value(WorkItemTriggerParams {
+                    key: item.key,
+                    selection: explicit_runtime_selection(&state),
+                    recipe_id: Some("debug-agent".to_string()),
+                })
+                .expect("params"),
+            ),
+        },
+    )
+    .expect_err("triggered WorkItem is no longer available");
+    assert!(unavailable.message.contains("no longer available"));
+}
+
+#[test]
 fn daemon_work_item_trigger_requires_loaded_workflow() {
     with_test_config_home("work-item-trigger-requires-workflow", || {
         let state = boot(test_config());
@@ -142,14 +241,14 @@ fn daemon_work_item_trigger_requires_loaded_workflow() {
             .app
             .open_session(
                 TEST_CLIENT_NAME,
-                TEST_OWNER_PRINCIPAL_ID,
+                &issue_test_principal_id(&state, TEST_CLIENT_NAME),
                 &OpenSessionRequest {
                     title: "Build daemon app server".to_string(),
                     workspace_id: ta_store::default_test_workspace_id(),
                 },
             )
             .expect("session should open");
-        let session_state = initialized_session_state(Some(opened.id.clone()));
+        let session_state = initialized_session_state(&state, Some(opened.id.clone()));
         let session = test_session();
         let item = work_item("workflow-required");
         state
@@ -179,6 +278,11 @@ fn daemon_work_item_trigger_requires_loaded_workflow() {
         .expect_err("work item trigger should require workflow");
 
         assert!(error.message.contains("background workflow is not loaded"));
+        let lease = state
+            .app
+            .acquire_work_item_trigger_lease(&item.key)
+            .expect("failed trigger releases its daemon admission lease");
+        drop(lease);
     });
 }
 
@@ -186,7 +290,7 @@ fn daemon_work_item_trigger_requires_loaded_workflow() {
 fn daemon_work_item_refresh_reports_daemon_side_queue() {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
-    let session_state = initialized_session_state(None);
+    let session_state = initialized_session_state(&state, None);
     let session = test_session();
 
     let response = handle_request(
@@ -210,14 +314,15 @@ fn daemon_work_item_refresh_reports_daemon_side_queue() {
     );
 }
 
-fn initialized_session_state(session_id: Option<SessionId>) -> Arc<Mutex<DaemonRpcSessionState>> {
-    Arc::new(Mutex::new(DaemonRpcSessionState {
-        initialized: true,
-        client_name: Some(TEST_CLIENT_NAME.to_string()),
-        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
-        principal_id: Some(TEST_OWNER_PRINCIPAL_ID.to_string()),
-        attached_session_id: session_id,
-    }))
+fn initialized_session_state(
+    state: &BootstrapState,
+    session_id: Option<SessionId>,
+) -> Arc<Mutex<DaemonRpcSessionState>> {
+    initialized_test_session_state(
+        &issue_test_principal_id(state, TEST_CLIENT_NAME),
+        TEST_CLIENT_NAME,
+        session_id,
+    )
 }
 
 fn load_test_workflow<S>(state: &crate::host::bootstrap::BootstrapState<S>)
@@ -243,6 +348,7 @@ name: test-background
 source:
   kind: github_issues
   repo: regenrek/taugentic
+  code_host_account_id: code-host-account-test
   active_states: ["ready"]
   terminal_states: ["done"]
 orchestrator:

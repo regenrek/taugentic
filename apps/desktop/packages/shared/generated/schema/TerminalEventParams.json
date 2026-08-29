@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "TerminalStreamEvent": {
+      "oneOf": [
+        {
+          "properties": {
+            "dataBase64": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "output",
+              "type": "string"
+            },
+            "sequence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sequence",
+            "dataBase64"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "exited",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "event": {
+      "$ref": "#/$defs/TerminalStreamEvent"
+    },
+    "terminalId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "terminalId",
+    "event"
+  ],
+  "title": "TerminalEventParams",
+  "type": "object"
+}

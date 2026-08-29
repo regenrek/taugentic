@@ -35,6 +35,7 @@ fn rotate_session_authority_consumes_recovery_slot_once() {
             title: "Selected".to_string(),
             status: SessionStatus::Idle,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session should persist");
 
@@ -142,6 +143,7 @@ fn persists_runtime_facing_records_through_repository_traits() {
             title: "Build Taugentic".to_string(),
             status: SessionStatus::Running,
             workspace_id: crate::default_test_workspace_id(),
+            next_run_selection: ta_protocol::wire::SessionNextRunSelection::Unselected,
         })
         .expect("session projection");
     store
@@ -189,14 +191,16 @@ fn persists_runtime_facing_records_through_repository_traits() {
             sequence: 3,
             session_id: session_id.clone(),
             occurred_at_ms: 44,
-            payload: DaemonEvent::Run(RunEvent {
-                run_id: run_id.clone(),
-                status: RunStatus::WaitingForApproval,
-                detail: "waiting".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                RunEvent::active(
+                    run_id.clone(),
+                    RunStatus::WaitingForApproval,
+                    None,
+                    None,
+                    None,
+                )
+                .expect("active status"),
+            ),
         })
         .expect("run event");
     store
@@ -212,11 +216,7 @@ fn persists_runtime_facing_records_through_repository_traits() {
         .expect("other session event");
     store
         .commit_checkpoint_persist(CommitCheckpointPersist {
-            checkpoint: CheckpointRecord {
-                run_id: run_id.clone(),
-                revision: 1,
-                artifact_path: "checkpoints/run-1/rev-1.json".to_string(),
-            },
+            checkpoint: crate::test_checkpoint_record(run_id.clone(), 1),
             occurred_at_ms: 46,
         })
         .expect("checkpoint");
@@ -226,6 +226,7 @@ fn persists_runtime_facing_records_through_repository_traits() {
             session_id: session_id.clone(),
             run_id: run_id.clone(),
             kind: ArtifactKind::Patch,
+            metadata: ta_protocol::wire::ArtifactMetadata::Standard,
             storage_path: "artifacts/run-1/patch.diff".to_string(),
         })
         .expect("artifact");
@@ -263,14 +264,10 @@ fn durable_activity_and_approval_reads_are_session_scoped_and_ordered() {
             sequence: 1,
             session_id: session_a.clone(),
             occurred_at_ms: 10,
-            payload: DaemonEvent::Run(RunEvent {
-                run_id: run_a.clone(),
-                status: RunStatus::Running,
-                detail: "running-a".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                RunEvent::active(run_a.clone(), RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            ),
         })
         .expect("session a run event");
     store
@@ -387,14 +384,10 @@ fn read_run_events_filters_after_sequence_and_limits_results() {
                 sequence,
                 session_id: session_id.clone(),
                 occurred_at_ms: sequence * 10,
-                payload: DaemonEvent::Run(RunEvent {
-                    run_id: event_run_id,
-                    status: RunStatus::Running,
-                    detail: format!("event {sequence}"),
-                    output_contract: None,
-                    recipe_id: None,
-                    result: None,
-                }),
+                payload: DaemonEvent::Run(
+                    RunEvent::active(event_run_id, RunStatus::Running, None, None, None)
+                        .expect("active status"),
+                ),
             })
             .expect("run event");
     }

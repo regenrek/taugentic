@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use ta_protocol::wire::RunHarnessKind;
 use ta_protocol::wire::{
-    AgentTurnRow, ApprovalId, ApprovalRequest, ArtifactEvent, ArtifactId, ArtifactSummary,
-    ContextReceipt, DaemonEvent, ReceiptId, RunId, RunStatus, SessionId, WorkspaceId,
+    AgentTurnRow, ApprovalId, ApprovalRequest, ArtifactEvent, ArtifactId, ContextReceipt,
+    DaemonEvent, ReceiptId, RunId, RunStatus, SessionId, WorkspaceId,
 };
-use ta_work_source::{SourceCursor, WorkItem, WorkItemKey};
+use ta_protocol::wire::{SourceCursor, WorkItem, WorkItemKey};
 
 #[cfg(any(test, feature = "test-support"))]
 use crate::StoreSeedRepository;
@@ -33,17 +33,21 @@ use crate::{
 mod artifacts;
 mod auth_profiles;
 mod checkpoints;
+mod code_host_accounts;
 mod commits;
 mod events;
 mod navigation;
+mod plugins;
 mod principals;
 mod projections;
 mod receipts;
+mod scheduled_work;
 #[cfg(any(test, feature = "test-support"))]
 mod seed;
 mod sessions;
 #[cfg(test)]
 mod tests;
+mod thread_workspace;
 mod work_items;
 mod workspaces;
 
@@ -59,8 +63,23 @@ pub struct InMemoryStore {
     navigation_states: BTreeMap<String, crate::NavigationState>,
     #[serde(default)]
     auth_profiles: BTreeMap<ta_protocol::wire::AuthProfileId, crate::AuthProfileProjection>,
+    #[serde(default)]
+    code_host_accounts:
+        BTreeMap<ta_protocol::wire::CodeHostAccountId, crate::CodeHostAccountProjection>,
     sessions: BTreeMap<SessionId, SessionProjection>,
     runs: BTreeMap<RunId, RunProjection>,
+    #[serde(default)]
+    scheduled_work_definitions:
+        BTreeMap<ta_protocol::wire::ScheduledWorkId, ta_protocol::wire::ScheduledWorkDefinition>,
+    #[serde(default)]
+    scheduled_work_occurrences: BTreeMap<
+        ta_protocol::wire::ScheduledWorkOccurrenceId,
+        ta_protocol::wire::ScheduledWorkOccurrence,
+    >,
+    plugin_installations: BTreeMap<
+        (String, ta_protocol::wire::PluginId, String, String),
+        ta_protocol::wire::PluginInstallation,
+    >,
     checkpoints: BTreeMap<RunId, BTreeMap<u64, CheckpointRecord>>,
     artifacts: BTreeMap<ArtifactId, ArtifactRecord>,
     receipts: BTreeMap<ReceiptId, ContextReceipt>,
@@ -68,6 +87,10 @@ pub struct InMemoryStore {
     work_items: BTreeMap<WorkItemKey, WorkItem>,
     #[serde(default)]
     work_source_cursors: BTreeMap<String, SourceCursor>,
+    #[serde(default)]
+    thread_workspaces: BTreeMap<SessionId, crate::ThreadWorkspaceRecord>,
+    #[serde(default)]
+    thread_workspace_events: BTreeMap<SessionId, Vec<crate::ThreadWorkspaceEventRecord>>,
     #[cfg(any(test, feature = "test-support"))]
     #[serde(default, skip)]
     fail_next_receipt_create: bool,
@@ -86,13 +109,19 @@ impl InMemoryStore {
             workspaces: BTreeMap::new(),
             navigation_states: BTreeMap::new(),
             auth_profiles: BTreeMap::new(),
+            code_host_accounts: BTreeMap::new(),
             sessions: BTreeMap::new(),
             runs: BTreeMap::new(),
+            scheduled_work_definitions: BTreeMap::new(),
+            scheduled_work_occurrences: BTreeMap::new(),
+            plugin_installations: BTreeMap::new(),
             checkpoints: BTreeMap::new(),
             artifacts: BTreeMap::new(),
             receipts: BTreeMap::new(),
             work_items: BTreeMap::new(),
             work_source_cursors: BTreeMap::new(),
+            thread_workspaces: BTreeMap::new(),
+            thread_workspace_events: BTreeMap::new(),
             #[cfg(any(test, feature = "test-support"))]
             fail_next_receipt_create: false,
             agent_turn_rows: BTreeMap::new(),
@@ -166,6 +195,7 @@ impl InMemoryStore {
     }
 
     fn save_seed_artifact(&mut self, artifact: ArtifactRecord) -> Result<(), StoreError> {
+        artifact.validate_metadata()?;
         if self.artifacts.contains_key(&artifact.id) {
             return Err(StoreError::DuplicateRecord {
                 entity: "artifact",

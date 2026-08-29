@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "ActivityCursor": {
+      "description": "Durable paging cursor for `daemon.activity.page`.\n\nThis is session-scoped durable paging only. It is not the live resume cursor\nused by `daemon.subscribe`.",
+      "properties": {
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "type": "object"
+    },
+    "ThreadWorkspacePin": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "cursor"
+      ],
+      "type": "object"
+    },
+    "ThreadWorkspaceWorkLogEntry": {
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ThreadWorkspaceWorkLogKind"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "sequence": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "occurredAtMs",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "ThreadWorkspaceWorkLogKind": {
+      "enum": [
+        "goalSet",
+        "planSet",
+        "notesSet",
+        "recapSet",
+        "pinAdded",
+        "pinRemoved"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "goal": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "pins": {
+      "items": {
+        "$ref": "#/$defs/ThreadWorkspacePin"
+      },
+      "type": "array"
+    },
+    "plan": {
+      "type": "string"
+    },
+    "recap": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "workLog": {
+      "items": {
+        "$ref": "#/$defs/ThreadWorkspaceWorkLogEntry"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "sessionId",
+    "goal",
+    "plan",
+    "notes",
+    "recap",
+    "pins",
+    "workLog"
+  ],
+  "title": "ThreadWorkspaceResult",
+  "type": "object"
+}

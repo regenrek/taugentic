@@ -432,14 +432,10 @@ mod tests {
             sequence,
             session_id: session_id.clone(),
             occurred_at_ms: sequence * 10,
-            payload: DaemonEvent::Run(crate::RunEvent {
-                run_id: run_id.clone(),
-                status: RunStatus::Running,
-                detail: detail.to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                crate::RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            ),
         }
     }
 

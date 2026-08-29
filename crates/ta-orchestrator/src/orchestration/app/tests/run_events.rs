@@ -41,14 +41,10 @@ fn subscribe_run_events_replays_native_events_after_sequence() {
                     sequence,
                     session_id: session.id.clone(),
                     occurred_at_ms: sequence * 10,
-                    payload: DaemonEvent::Run(crate::RunEvent {
-                        run_id: event_run_id,
-                        status: RunStatus::Running,
-                        detail: format!("event {sequence}"),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    }),
+                    payload: DaemonEvent::Run(
+                        crate::RunEvent::active(event_run_id, RunStatus::Running, None, None, None)
+                            .expect("active status"),
+                    ),
                 })
                 .expect("event should seed");
         }
@@ -370,14 +366,16 @@ fn subscribe_run_events_paginates_replay_before_live_forward() {
                     sequence,
                     session_id: session.id.clone(),
                     occurred_at_ms: sequence * 10,
-                    payload: DaemonEvent::Run(crate::RunEvent {
-                        run_id: run_id.clone(),
-                        status: RunStatus::Running,
-                        detail: format!("paged replay {offset}"),
-                        output_contract: None,
-                        recipe_id: None,
-                        result: None,
-                    }),
+                    payload: DaemonEvent::Run(
+                        crate::RunEvent::active(
+                            run_id.clone(),
+                            RunStatus::Running,
+                            None,
+                            None,
+                            None,
+                        )
+                        .expect("active status"),
+                    ),
                 })
                 .expect("run event should append");
         }
@@ -452,14 +450,10 @@ fn subscribe_run_events_dedupes_replay_boundary() {
         sequence: boundary,
         session_id: session.id.clone(),
         occurred_at_ms: boundary * 10,
-        payload: DaemonEvent::Run(crate::RunEvent {
-            run_id: run.body.id.clone(),
-            status: RunStatus::Running,
-            detail: "duplicate boundary".to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        }),
+        payload: DaemonEvent::Run(
+            crate::RunEvent::active(run.body.id.clone(), RunStatus::Running, None, None, None)
+                .expect("active status"),
+        ),
     };
     service.runtime.publish_record(&duplicate);
     append_and_publish_run_event(
@@ -510,14 +504,10 @@ fn subscribe_run_events_emits_lagged_before_overflow_close() {
             sequence,
             session_id: session.id.clone(),
             occurred_at_ms: sequence * 10,
-            payload: DaemonEvent::Run(crate::RunEvent {
-                run_id: run.body.id.clone(),
-                status: RunStatus::Running,
-                detail: "overflow live run subscriber".to_string(),
-                output_contract: None,
-                recipe_id: None,
-                result: None,
-            }),
+            payload: DaemonEvent::Run(
+                crate::RunEvent::active(run.body.id.clone(), RunStatus::Running, None, None, None)
+                    .expect("active status"),
+            ),
         });
     };
 

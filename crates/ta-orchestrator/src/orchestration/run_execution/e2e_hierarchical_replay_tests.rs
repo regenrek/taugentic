@@ -11,7 +11,8 @@ use taugentic_agent::{ExecutionSink, NativeChildRunRequest};
 
 use super::test_support::{
     app_and_execution_with_runtime, approval_actor, attach_noop_handle, attach_recording_handle,
-    open_session, provider_sink, set_default_test_workspace_root, validated_runtime_selection,
+    open_session, provider_sink, set_default_test_workspace_root, start_native_child_run_for_tests,
+    validated_runtime_selection,
 };
 use super::*;
 
@@ -217,8 +218,7 @@ fn start_child(
     if let Some(file) = planned_file {
         request = request.with_planned_write_files(vec![file.to_string()]);
     }
-    execution
-        .start_native_child_run(session_id.clone(), request)
+    start_native_child_run_for_tests(execution, session_id, request)
         .expect("child run should start through orchestrator")
 }
 
@@ -240,15 +240,13 @@ fn mark_child_running(
                     status: RunStatus::Running,
                     ..existing
                 },
-                events: vec![DaemonEvent::Run(RunEvent {
-                    run_id: run_id.clone(),
-                    status: RunStatus::Running,
-                    detail: "Smoke child running through production preflight".to_string(),
-                    output_contract: None,
-                    recipe_id,
-                    result: None,
-                })],
+                user_turn: ta_store::UserTurnCommit::NoUserTurn,
+                events: vec![DaemonEvent::Run(
+                    RunEvent::active(run_id.clone(), RunStatus::Running, None, recipe_id, None)
+                        .expect("active status"),
+                )],
                 occurred_at_ms: current_time_ms(),
+                auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
             })
             .expect("child running transition should commit");
     }
@@ -296,10 +294,12 @@ fn review_result() -> CapsuleResult {
 
 fn recipe_id_for_run(run: &ta_store::RunProjection) -> Option<String> {
     match &run.source {
-        RunSource::NativeSubagent { recipe_id, .. } | RunSource::User { recipe_id, .. } => {
-            recipe_id.clone()
-        }
-        RunSource::Forked { .. } => None,
+        RunSource::NativeSubagent { recipe_id, .. }
+        | RunSource::FreshSpawn { recipe_id, .. }
+        | RunSource::User { recipe_id, .. } => recipe_id.clone(),
+        RunSource::ScheduledWork { .. }
+        | RunSource::Forked { .. }
+        | RunSource::AccountSwitchedContinuation { .. } => None,
     }
 }
 

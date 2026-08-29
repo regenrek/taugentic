@@ -1,5 +1,61 @@
 {
   "$defs": {
+    "AgentRuntimeSelection": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId"
+      ],
+      "type": "object"
+    },
+    "SessionNextRunSelection": {
+      "description": "The daemon-owned route selection for a session's next execution.\n\nThis is deliberately an explicit closed state: a session either has no\nexecutable route yet or records the exact selection that the next run must\nagree with. It is not a desktop draft and it never alters an existing run.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unselected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "selected",
+              "type": "string"
+            },
+            "selection": {
+              "$ref": "#/$defs/AgentRuntimeSelection"
+            }
+          },
+          "required": [
+            "kind",
+            "selection"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "SessionStatus": {
       "enum": [
         "idle",
@@ -16,6 +72,9 @@
     "id": {
       "type": "string"
     },
+    "nextRunSelection": {
+      "$ref": "#/$defs/SessionNextRunSelection"
+    },
     "status": {
       "$ref": "#/$defs/SessionStatus"
     },
@@ -26,7 +85,8 @@
   "required": [
     "id",
     "title",
-    "status"
+    "status",
+    "nextRunSelection"
   ],
   "title": "SessionSummary",
   "type": "object"

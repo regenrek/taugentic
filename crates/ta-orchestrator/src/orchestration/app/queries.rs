@@ -5,7 +5,7 @@ use ta_store::{
 
 use crate::{
     ActivityCursor, ActivityPageQuery, AgentTurnsPageQuery, AgentTurnsPageResult,
-    ApprovalAttentionState, ArtifactSnapshotResult, ArtifactSummary, CapsuleRecipe,
+    ApprovalAttentionState, ArtifactContentResult, ArtifactSnapshotResult, CapsuleRecipe,
     GetArtifactQuery, GetRunQuery, ListArtifactsQuery, PublicActivityPageItem,
     PublicActivityPageResult, PublicDaemonEventEnvelope, ReceiptState, RunDetail, RunSummary,
     SessionOverview, SessionOverviewLaneStatus, SessionOverviewQuery, SessionOverviewResult,
@@ -14,8 +14,8 @@ use crate::{
 
 use super::{
     AppService, AppServiceError, clamp_session_overview_recent_activity_limit,
-    index_run_summaries_by_session, project_artifact_summary, project_latest_run_for_session,
-    project_run_detail, project_session_overview_lane_status, project_session_summary,
+    index_run_summaries_by_session, project_latest_run_for_session, project_run_detail,
+    project_session_overview_lane_status, project_session_summary,
     sanitize_session_owner_client_name, sanitize_session_owner_principal_id,
     session_overview_recent_activity_kinds, summarize_event_preview,
 };
@@ -240,7 +240,7 @@ where
                     artifact_id: query.artifact_id.clone(),
                 })?
                 .into_iter()
-                .map(project_artifact_summary)
+                .map(|artifact| ta_store::project_artifact_summary(&artifact))
                 .collect::<Vec<_>>(),
             latest_cursor: page
                 .latest_sequence
@@ -252,15 +252,28 @@ where
         &self,
         session_id: &crate::SessionId,
         query: &GetArtifactQuery,
-    ) -> Result<Option<ArtifactSummary>, AppServiceError> {
-        let store = self.store.lock().expect("app store should not be poisoned");
-        Ok(store
+    ) -> Result<Option<ArtifactContentResult>, AppServiceError> {
+        let artifact = self
+            .store
+            .lock()
+            .expect("app store should not be poisoned")
             .artifact_for_session(&SessionArtifactQuery {
                 session_id: session_id.clone(),
                 run_id: None,
                 artifact_id: Some(query.artifact_id.clone()),
-            })?
-            .map(project_artifact_summary))
+            })?;
+        let Some(artifact) = artifact else {
+            return Ok(None);
+        };
+        let content = crate::workspace::files::read_artifact_file(
+            self.run_execution.artifact_root(),
+            &artifact.storage_path,
+            query.pdf_page_index,
+        )?;
+        Ok(Some(ArtifactContentResult {
+            artifact: ta_store::project_artifact_summary(&artifact),
+            content,
+        }))
     }
 
     pub fn get_run(
@@ -286,33 +299,37 @@ where
             })?
             .into_iter()
             .next();
-        let token_usage = aggregate_run_token_usage(&*store, session_id, &run.id)?;
+        let events = store.read_run_events(&ta_store::RunEventRangeQuery {
+            session_id: session_id.clone(),
+            run_id: run.id.clone(),
+            after_sequence: None,
+            limit: 10_000,
+        })?;
+        let token_usage = aggregate_run_token_usage_from_records(&events.records);
+        let auth_profile_exhaustion = events.records.iter().rev().find_map(|record| match &record
+            .payload
+        {
+            crate::DaemonEvent::Run(crate::RunEvent::Status(event)) => {
+                event.auth_profile_exhaustion()
+            }
+            _ => None,
+        });
 
         Ok(Some(project_run_detail(
             &run,
             quarantine_receipt,
             token_usage,
+            auth_profile_exhaustion,
         )))
     }
 }
 
-fn aggregate_run_token_usage<S>(
-    store: &S,
-    session_id: &crate::SessionId,
-    run_id: &crate::RunId,
-) -> Result<Option<TokenUsageTotals>, ta_store::StoreError>
-where
-    S: PersistenceStore + Send,
-{
-    let range = store.read_run_events(&ta_store::RunEventRangeQuery {
-        session_id: session_id.clone(),
-        run_id: run_id.clone(),
-        after_sequence: None,
-        limit: 10_000,
-    })?;
+fn aggregate_run_token_usage_from_records(
+    records: &[ta_store::EventRecord],
+) -> Option<TokenUsageTotals> {
     let mut totals = TokenUsageTotals::default();
-    for record in range.records {
-        let crate::DaemonEvent::TokenUsageRecorded(event) = record.payload else {
+    for record in records {
+        let crate::DaemonEvent::TokenUsageRecorded(event) = &record.payload else {
             continue;
         };
         totals.prompt_tokens = totals.prompt_tokens.saturating_add(event.prompt_tokens);
@@ -326,5 +343,5 @@ where
             .reasoning_tokens
             .saturating_add(event.reasoning_tokens.unwrap_or(0));
     }
-    Ok((!totals.is_zero()).then_some(totals))
+    (!totals.is_zero()).then_some(totals)
 }

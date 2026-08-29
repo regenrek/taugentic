@@ -21,6 +21,12 @@
       },
       "type": "array"
     },
+    "code_host_account_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "kind": {
       "$ref": "#/$defs/WorkflowSourceKind"
     },

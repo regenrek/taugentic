@@ -12,24 +12,24 @@ pub(super) use super::{
 };
 pub(super) use crate::{
     ActivityPageQuery, AgentRuntimeModelId, AgentRuntimeSelection, AgentRuntimeSnapshot,
-    AgentStreamEvent, AgentStreamFrame, ApprovalDecision, ApprovalSnapshotResult, ArtifactId,
-    ArtifactKind, ArtifactSnapshotResult, ArtifactSummary, AuthProfileId, ContextReceipt,
-    DAEMON_DEFAULT_SOCKET_NAME, DAEMON_PROTOCOL_VERSION, DEFAULT_OUTBOUND_QUEUE_DEPTH,
-    DaemonApprovalDecideParams, DaemonApprovalDecideResult, DaemonControlStatusResult,
-    DaemonDiagnostics, DaemonEventCursor, DaemonEventKind, DaemonInitializeResult,
-    DaemonNavigationSubscribeResult, DaemonRunCancelParams, DaemonSessionAttachParams,
-    DaemonSessionAttachResult, DaemonSessionOpenParams, DaemonSessionOpenResult,
-    DaemonStatusResult, DaemonSubscribeResult, GetAgentRuntimeQuery, GetArtifactQuery, GetRunQuery,
-    GetRunTimelineQuery, GetSessionQuery, HANDOFF_CLIENT_NAME, JsonRpcConnectionRuntime,
-    JsonRpcMessage, JsonRpcRequest, JsonRpcServerSession, ListApprovalsQuery, ListArtifactsQuery,
-    ListReceiptsRequest, ListReceiptsResult, ListRunsQuery, ListSessionsQuery,
-    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
-    METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
-    METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
-    METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST,
-    METHOD_DAEMON_CONTEXT_RECEIPTS_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE,
-    METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE, METHOD_DAEMON_CONTROL_STATUS,
-    METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_INITIALIZE,
+    AgentStreamEvent, AgentStreamFrame, ApprovalDecision, ApprovalSnapshotResult,
+    ArtifactContentResult, ArtifactId, ArtifactKind, ArtifactSnapshotResult, AuthProfileId,
+    ContextReceipt, DAEMON_DEFAULT_SOCKET_NAME, DAEMON_PROTOCOL_VERSION,
+    DEFAULT_OUTBOUND_QUEUE_DEPTH, DaemonApprovalDecideParams, DaemonApprovalDecideResult,
+    DaemonControlStatusResult, DaemonDiagnostics, DaemonEventCursor, DaemonEventKind,
+    DaemonInitializeResult, DaemonNavigationSubscribeResult, DaemonRunCancelParams,
+    DaemonSessionAttachParams, DaemonSessionAttachResult, DaemonSessionOpenParams,
+    DaemonSessionOpenResult, DaemonStatusResult, DaemonSubscribeResult, GetAgentRuntimeQuery,
+    GetArtifactQuery, GetRunQuery, GetRunTimelineQuery, GetSessionQuery, HANDOFF_CLIENT_NAME,
+    JsonRpcConnectionRuntime, JsonRpcMessage, JsonRpcRequest, JsonRpcServerSession,
+    ListApprovalsQuery, ListArtifactsQuery, ListReceiptsRequest, ListReceiptsResult, ListRunsQuery,
+    ListSessionsQuery, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT, METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET,
+    METHOD_DAEMON_AGENT_RUNTIME_GET, METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH,
+    METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET,
+    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_LIST,
+    METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE, METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE,
+    METHOD_DAEMON_CONTROL_STATUS, METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT, METHOD_DAEMON_INITIALIZE,
     METHOD_DAEMON_NAVIGATION_INVALIDATED, METHOD_DAEMON_NAVIGATION_SUBSCRIBE,
     METHOD_DAEMON_RECIPES_LIST, METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_EVENT,
     METHOD_DAEMON_RUN_GET, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_START,
@@ -50,12 +50,12 @@ pub(super) use crate::{
     WorkflowStatusResult, WorkflowValidateParams, WorkflowValidationReport, WorkspaceSelector,
     host::config::ControlToken,
     host::{
-        bootstrap::{BootstrapState, boot},
+        bootstrap::{BootstrapState, boot, boot_with_store_and_dispatcher},
         config::{test_config, with_test_config_home},
         internal_stop::{InternalDaemonStopResult, METHOD_DAEMON_INTERNAL_STOP},
     },
 };
-pub(super) use ta_store::{ArtifactRecord, EventRecord};
+pub(super) use ta_store::{ArtifactRecord, EventRecord, SqliteStore};
 
 fn handle_request(
     state: &BootstrapState,
@@ -82,6 +82,28 @@ const TEST_OWNER_PRINCIPAL_ID: &str =
     "c368bf31655d0b8d69f400a61d9ddaeaaa8641f41bb58b4b575ca3962c9f792d";
 const OTHER_TEST_OWNER_PRINCIPAL_ID: &str =
     "f8a18565ee66711156e616ec3ccdc29fb936e5a0a86543122d6bb175d2fe3dab";
+
+fn issue_test_principal_id(state: &BootstrapState, client_name: &str) -> String {
+    state
+        .app
+        .resolve_or_issue_session_principal(client_name, None)
+        .expect("test principal should issue")
+        .principal_id
+}
+
+fn initialized_test_session_state(
+    principal_id: &str,
+    client_name: &str,
+    session_id: Option<SessionId>,
+) -> Arc<Mutex<DaemonRpcSessionState>> {
+    Arc::new(Mutex::new(DaemonRpcSessionState {
+        initialized: true,
+        client_name: Some(client_name.to_string()),
+        client_credential: Some(TEST_CLIENT_CREDENTIAL.to_string()),
+        principal_id: Some(principal_id.to_string()),
+        attached_session_id: session_id,
+    }))
+}
 
 fn test_session_authority() -> crate::SessionAuthority {
     crate::SessionAuthority::new("session-authority-1session-authority-1")
@@ -117,22 +139,46 @@ fn explicit_runtime_selection(state: &BootstrapState) -> AgentRuntimeSelection {
     }
 }
 
+fn codex_runtime_selection(state: &BootstrapState) -> AgentRuntimeSelection {
+    state
+        .app
+        .seed_auth_profile_for_tests(ta_store::connected_test_auth_profile(
+            "profile-codex-test",
+            "codex-chatgpt",
+            "codex",
+        ))
+        .expect("test auth profile should persist");
+    AgentRuntimeSelection {
+        runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe")
+            .expect("runtime profile id"),
+        auth_profile_id: Some(AuthProfileId::new("profile-codex-test").expect("auth profile id")),
+        model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+    }
+}
+
 fn start_run_command(state: &BootstrapState, objective: &str) -> StartRunCommand {
     StartRunCommand::new(objective, explicit_runtime_selection(state))
 }
 
 mod approval_methods;
 mod artifact_methods;
+mod code_host_methods;
 mod control_events;
+mod git_methods;
 mod initialize_sessions;
+mod plugins;
 mod receipt_methods;
 mod recipe_methods;
 mod run_methods;
+mod scheduled_work_methods;
 mod session_reads;
 mod status_runtime;
 mod subscribe_methods;
+mod terminal_methods;
+mod thread_workspace_methods;
 mod work_item_methods;
 mod workflow_methods;
+mod workspace_file_methods;
 
 fn test_session() -> JsonRpcServerSession {
     let (outbound_tx, _outbound_rx) = tokio::sync::mpsc::channel(1);

@@ -30,6 +30,88 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
     ("METHOD_DAEMON_WORKSPACE_OPEN", METHOD_DAEMON_WORKSPACE_OPEN),
     ("METHOD_DAEMON_WORKSPACE_LIST", METHOD_DAEMON_WORKSPACE_LIST),
     ("METHOD_DAEMON_WORKSPACE_GET", METHOD_DAEMON_WORKSPACE_GET),
+    ("METHOD_DAEMON_GIT_SNAPSHOT", METHOD_DAEMON_GIT_SNAPSHOT),
+    ("METHOD_DAEMON_GIT_DIFF", METHOD_DAEMON_GIT_DIFF),
+    ("METHOD_DAEMON_GIT_STAGE", METHOD_DAEMON_GIT_STAGE),
+    ("METHOD_DAEMON_GIT_UNSTAGE", METHOD_DAEMON_GIT_UNSTAGE),
+    ("METHOD_DAEMON_GIT_COMMIT", METHOD_DAEMON_GIT_COMMIT),
+    (
+        "METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST",
+        METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT",
+        METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT",
+        METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT",
+        METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PUSH_PREPARE",
+        METHOD_DAEMON_CODE_HOST_PUSH_PREPARE,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PUSH_APPLY",
+        METHOD_DAEMON_CODE_HOST_PUSH_APPLY,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY,
+    ),
+    (
+        "METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE",
+        METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
+    ),
+    (
+        "METHOD_DAEMON_GIT_CHECKPOINT_LIST",
+        METHOD_DAEMON_GIT_CHECKPOINT_LIST,
+    ),
+    (
+        "METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT",
+        METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT,
+    ),
+    (
+        "METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT",
+        METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT,
+    ),
+    ("METHOD_DAEMON_TERMINAL_SPAWN", METHOD_DAEMON_TERMINAL_SPAWN),
+    ("METHOD_DAEMON_TERMINAL_LIST", METHOD_DAEMON_TERMINAL_LIST),
+    (
+        "METHOD_DAEMON_TERMINAL_ATTACH",
+        METHOD_DAEMON_TERMINAL_ATTACH,
+    ),
+    ("METHOD_DAEMON_TERMINAL_INPUT", METHOD_DAEMON_TERMINAL_INPUT),
+    (
+        "METHOD_DAEMON_TERMINAL_RESIZE",
+        METHOD_DAEMON_TERMINAL_RESIZE,
+    ),
+    (
+        "METHOD_DAEMON_TERMINAL_DETACH",
+        METHOD_DAEMON_TERMINAL_DETACH,
+    ),
+    ("METHOD_DAEMON_TERMINAL_CLOSE", METHOD_DAEMON_TERMINAL_CLOSE),
+    ("METHOD_DAEMON_TERMINAL_EVENT", METHOD_DAEMON_TERMINAL_EVENT),
     ("METHOD_DAEMON_ACTIVITY_PAGE", METHOD_DAEMON_ACTIVITY_PAGE),
     (
         "METHOD_DAEMON_AGENT_TURNS_PAGE",
@@ -79,6 +161,7 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
     ("METHOD_DAEMON_RUN_CANCEL", METHOD_DAEMON_RUN_CANCEL),
     ("METHOD_DAEMON_RUN_RESUME", METHOD_DAEMON_RUN_RESUME),
     ("METHOD_DAEMON_RUN_FORK", METHOD_DAEMON_RUN_FORK),
+    ("METHOD_DAEMON_RUN_CONTINUE", METHOD_DAEMON_RUN_CONTINUE),
     (
         "METHOD_DAEMON_RUN_REPLAY_EVENTS",
         METHOD_DAEMON_RUN_REPLAY_EVENTS,
@@ -89,6 +172,25 @@ const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
     ),
     ("METHOD_DAEMON_RUN_EVENT", METHOD_DAEMON_RUN_EVENT),
     ("METHOD_DAEMON_RUN_LIST", METHOD_DAEMON_RUN_LIST),
+    (
+        "METHOD_DAEMON_SCHEDULED_WORK_CREATE",
+        METHOD_DAEMON_SCHEDULED_WORK_CREATE,
+    ),
+    (
+        "METHOD_DAEMON_SCHEDULED_WORK_LIST",
+        METHOD_DAEMON_SCHEDULED_WORK_LIST,
+    ),
+    ("METHOD_DAEMON_PLUGIN_INSPECT", METHOD_DAEMON_PLUGIN_INSPECT),
+    ("METHOD_DAEMON_PLUGIN_INSTALL", METHOD_DAEMON_PLUGIN_INSTALL),
+    ("METHOD_DAEMON_PLUGIN_LIST", METHOD_DAEMON_PLUGIN_LIST),
+    (
+        "METHOD_DAEMON_PLUGIN_UNINSTALL",
+        METHOD_DAEMON_PLUGIN_UNINSTALL,
+    ),
+    (
+        "METHOD_DAEMON_SCHEDULED_WORK_CANCEL",
+        METHOD_DAEMON_SCHEDULED_WORK_CANCEL,
+    ),
     (
         "METHOD_DAEMON_RUN_LIST_NATIVE",
         METHOD_DAEMON_RUN_LIST_NATIVE,
@@ -133,6 +235,25 @@ const PROTOCOL_TS_NUMBER_CONSTS: &[(&str, u32)] = &[
         NATIVE_RUN_LIST_DEFAULT_LIMIT,
     ),
     ("NATIVE_RUN_LIST_MAX_LIMIT", NATIVE_RUN_LIST_MAX_LIMIT),
+    ("TERMINAL_MIN_ROWS", TERMINAL_MIN_ROWS as u32),
+    ("TERMINAL_MAX_ROWS", TERMINAL_MAX_ROWS as u32),
+    ("TERMINAL_MIN_COLS", TERMINAL_MIN_COLS as u32),
+    ("TERMINAL_MAX_COLS", TERMINAL_MAX_COLS as u32),
+    ("TERMINAL_INPUT_MAX_BYTES", TERMINAL_INPUT_MAX_BYTES as u32),
+    ("GIT_PATCH_MAX_BYTES", GIT_PATCH_MAX_BYTES as u32),
+    ("GIT_STATUS_MAX_ENTRIES", GIT_STATUS_MAX_ENTRIES as u32),
+    (
+        "GIT_COMMIT_MESSAGE_MAX_BYTES",
+        GIT_COMMIT_MESSAGE_MAX_BYTES as u32,
+    ),
+    (
+        "TERMINAL_OUTPUT_CHUNK_MAX_BYTES",
+        TERMINAL_OUTPUT_CHUNK_MAX_BYTES as u32,
+    ),
+    (
+        "TERMINAL_SNAPSHOT_MAX_BYTES",
+        TERMINAL_SNAPSHOT_MAX_BYTES as u32,
+    ),
     (
         "RUN_TIMELINE_EVENT_DEFAULT_LIMIT",
         RUN_TIMELINE_EVENT_DEFAULT_LIMIT,
@@ -182,6 +303,9 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<AgentStreamEvent>(cfg)?;
     export_ts::<StreamEmission>(cfg)?;
     export_ts::<AgentStreamFrame>(cfg)?;
+    export_ts::<VoicePermissionState>(cfg)?;
+    export_ts::<VoicePhase>(cfg)?;
+    export_ts::<VoiceEvent>(cfg)?;
     export_ts::<BudgetScope>(cfg)?;
     export_ts::<BudgetMetric>(cfg)?;
     export_ts::<BudgetBreach>(cfg)?;
@@ -190,8 +314,13 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<BudgetEvent>(cfg)?;
     export_ts::<ArtifactId>(cfg)?;
     export_ts::<ArtifactKind>(cfg)?;
+    export_ts::<ArtifactMetadata>(cfg)?;
+    export_ts::<ImageMediaType>(cfg)?;
+    export_ts::<ImageArtifactProvenance>(cfg)?;
+    export_ts::<ImageArtifactMetadata>(cfg)?;
     export_ts::<ArtifactEvent>(cfg)?;
     export_ts::<ArtifactSummary>(cfg)?;
+    export_ts::<ArtifactContentResult>(cfg)?;
     export_ts::<ApprovalDecision>(cfg)?;
     export_ts::<ApprovalResolutionReason>(cfg)?;
     export_ts::<ApprovalTarget>(cfg)?;
@@ -202,11 +331,19 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<PublicActivityPageItem>(cfg)?;
     export_ts::<PublicActivityPageResult>(cfg)?;
     export_ts::<AgentTurnsPageQuery>(cfg)?;
+    export_ts::<AgentUserRow>(cfg)?;
     export_ts::<AgentAssistantRow>(cfg)?;
     export_ts::<AgentToolCallRow>(cfg)?;
     export_ts::<AgentPendingStateRow>(cfg)?;
     export_ts::<AgentTurnRow>(cfg)?;
     export_ts::<AgentTurnsPageResult>(cfg)?;
+    export_ts::<ThreadWorkspaceQuery>(cfg)?;
+    export_ts::<ThreadWorkspaceUpdateCommand>(cfg)?;
+    export_ts::<ThreadWorkspaceMutation>(cfg)?;
+    export_ts::<ThreadWorkspacePin>(cfg)?;
+    export_ts::<ThreadWorkspaceWorkLogEntry>(cfg)?;
+    export_ts::<ThreadWorkspaceWorkLogKind>(cfg)?;
+    export_ts::<ThreadWorkspaceResult>(cfg)?;
     export_ts::<DaemonEventCursor>(cfg)?;
     export_ts::<PublicApprovalEvent>(cfg)?;
     export_ts::<ContextReceipt>(cfg)?;
@@ -217,6 +354,35 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<ReceiptProvenance>(cfg)?;
     export_ts::<ReceiptState>(cfg)?;
     export_ts::<RunFailureKind>(cfg)?;
+    export_ts::<RunStatusReason>(cfg)?;
+    export_ts::<RunStatusEvent>(cfg)?;
+    export_ts::<ScheduledWorkId>(cfg)?;
+    export_ts::<ScheduledWorkOccurrenceId>(cfg)?;
+    export_ts::<ScheduledWorkExecutionRequest>(cfg)?;
+    export_ts::<ScheduledWorkUnpublishedResource>(cfg)?;
+    export_ts::<ScheduledWorkAttentionPolicy>(cfg)?;
+    export_ts::<ScheduledWorkDefinition>(cfg)?;
+    export_ts::<ScheduledWorkOccurrenceState>(cfg)?;
+    export_ts::<ScheduledWorkPreparationTerminal>(cfg)?;
+    export_ts::<ScheduledWorkOccurrence>(cfg)?;
+    export_ts::<CreateScheduledWorkRequest>(cfg)?;
+    export_ts::<CreateScheduledWorkResult>(cfg)?;
+    export_ts::<ListScheduledWorkRequest>(cfg)?;
+    export_ts::<ListScheduledWorkResult>(cfg)?;
+    export_ts::<CancelScheduledWorkRequest>(cfg)?;
+    export_ts::<PluginId>(cfg)?;
+    export_ts::<PluginCapability>(cfg)?;
+    export_ts::<PluginLifecycleState>(cfg)?;
+    export_ts::<PluginLifecycleFailure>(cfg)?;
+    export_ts::<PluginInspection>(cfg)?;
+    export_ts::<PluginInstallation>(cfg)?;
+    export_ts::<InspectPluginPackageRequest>(cfg)?;
+    export_ts::<InstallPluginPackageRequest>(cfg)?;
+    export_ts::<InstallPluginPackageResult>(cfg)?;
+    export_ts::<ListPluginInstallationsRequest>(cfg)?;
+    export_ts::<ListPluginInstallationsResult>(cfg)?;
+    export_ts::<UninstallPluginRequest>(cfg)?;
+    export_ts::<RunEvent>(cfg)?;
     export_ts::<RunReconciledOnStartupEvent>(cfg)?;
     export_ts::<TokenUsageRecordedEvent>(cfg)?;
     export_ts::<TokenUsageTotals>(cfg)?;
@@ -244,6 +410,97 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<DaemonWorkspaceListResult>(cfg)?;
     export_ts::<DaemonWorkspaceGetParams>(cfg)?;
     export_ts::<DaemonWorkspaceGetResult>(cfg)?;
+    export_ts::<WorkspaceFileKind>(cfg)?;
+    export_ts::<WorkspaceFileEntry>(cfg)?;
+    export_ts::<WorkspaceFileAttachmentRequest>(cfg)?;
+    export_ts::<WorkspaceFileAttachment>(cfg)?;
+    export_ts::<NativeImagePreview>(cfg)?;
+    export_ts::<WorkspaceFileTreeParams>(cfg)?;
+    export_ts::<WorkspaceFileTreeResult>(cfg)?;
+    export_ts::<WorkspaceFileReadParams>(cfg)?;
+    export_ts::<BoundedFileContent>(cfg)?;
+    export_ts::<WorkspaceFileReadResult>(cfg)?;
+    export_ts::<WorkspaceFileWriteParams>(cfg)?;
+    export_ts::<WorkspaceFileWriteResult>(cfg)?;
+    export_ts::<WorkspaceFileOpenExternalParams>(cfg)?;
+    export_ts::<WorkspaceFileOpenExternalResult>(cfg)?;
+    export_ts::<GitChangeKind>(cfg)?;
+    export_ts::<GitFileStatus>(cfg)?;
+    export_ts::<GitWorktreeSummary>(cfg)?;
+    export_ts::<GitRepositorySnapshot>(cfg)?;
+    export_ts::<GitRepositorySnapshotParams>(cfg)?;
+    export_ts::<GitRepositorySnapshotResult>(cfg)?;
+    export_ts::<GitDiffScope>(cfg)?;
+    export_ts::<GitDiffParams>(cfg)?;
+    export_ts::<GitDiffResult>(cfg)?;
+    export_ts::<GitPathsMutationParams>(cfg)?;
+    export_ts::<GitCommitParams>(cfg)?;
+    export_ts::<GitMutationResult>(cfg)?;
+    export_ts::<GitCheckpointPhase>(cfg)?;
+    export_ts::<GitCheckpointSummary>(cfg)?;
+    export_ts::<GitCheckpointListParams>(cfg)?;
+    export_ts::<GitCheckpointListResult>(cfg)?;
+    export_ts::<GitCheckpointPrepareRevertParams>(cfg)?;
+    export_ts::<GitCheckpointPrepareRevertResult>(cfg)?;
+    export_ts::<GitCheckpointApplyRevertParams>(cfg)?;
+    export_ts::<CodeHostAccountId>(cfg)?;
+    export_ts::<CodeHostPullRequestId>(cfg)?;
+    export_ts::<CodeHostProviderKind>(cfg)?;
+    export_ts::<CodeHostAccount>(cfg)?;
+    export_ts::<CodeHostAccountListParams>(cfg)?;
+    export_ts::<CodeHostAccountListResult>(cfg)?;
+    export_ts::<CodeHostAccountConnectParams>(cfg)?;
+    export_ts::<CodeHostAccountConnectResult>(cfg)?;
+    export_ts::<CodeHostAccountDisconnectParams>(cfg)?;
+    export_ts::<CodeHostAccountDisconnectResult>(cfg)?;
+    export_ts::<CodeHostRepositoryRef>(cfg)?;
+    export_ts::<CodeHostRemote>(cfg)?;
+    export_ts::<CodeHostRepositoryContextParams>(cfg)?;
+    export_ts::<CodeHostRepositoryContextResult>(cfg)?;
+    export_ts::<CodeHostCommitSummary>(cfg)?;
+    export_ts::<CodeHostPushPrepareParams>(cfg)?;
+    export_ts::<CodeHostPushPrepareResult>(cfg)?;
+    export_ts::<CodeHostPushApplyParams>(cfg)?;
+    export_ts::<CodeHostPushApplyResult>(cfg)?;
+    export_ts::<CodeHostPullRequestState>(cfg)?;
+    export_ts::<CodeHostPullRequestSummary>(cfg)?;
+    export_ts::<CodeHostPullRequestDetail>(cfg)?;
+    export_ts::<CodeHostPage>(cfg)?;
+    export_ts::<CodeHostPullRequestListParams>(cfg)?;
+    export_ts::<CodeHostPullRequestDetailParams>(cfg)?;
+    export_ts::<CodeHostPullRequestEnsureParams>(cfg)?;
+    export_ts::<CodeHostPullRequestEnsureResult>(cfg)?;
+    export_ts::<CodeHostCheckStatus>(cfg)?;
+    export_ts::<CodeHostCheck>(cfg)?;
+    export_ts::<CodeHostPullRequestChecksResult>(cfg)?;
+    export_ts::<CodeHostPullRequestChecksParams>(cfg)?;
+    export_ts::<CodeHostCommentKind>(cfg)?;
+    export_ts::<CodeHostComment>(cfg)?;
+    export_ts::<CodeHostReview>(cfg)?;
+    export_ts::<CodeHostTimelineItem>(cfg)?;
+    export_ts::<CodeHostPullRequestActivityResult>(cfg)?;
+    export_ts::<CodeHostPullRequestActivityParams>(cfg)?;
+    export_ts::<CodeHostPullRequestCommentCreateParams>(cfg)?;
+    export_ts::<CodeHostPullRequestCommentCreateResult>(cfg)?;
+    export_ts::<TerminalSessionId>(cfg)?;
+    export_ts::<TerminalSessionStatus>(cfg)?;
+    export_ts::<TerminalSessionSummary>(cfg)?;
+    export_ts::<TerminalSpawnParams>(cfg)?;
+    export_ts::<TerminalSpawnResult>(cfg)?;
+    export_ts::<TerminalListParams>(cfg)?;
+    export_ts::<TerminalListResult>(cfg)?;
+    export_ts::<TerminalAttachParams>(cfg)?;
+    export_ts::<TerminalAttachResult>(cfg)?;
+    export_ts::<TerminalInputParams>(cfg)?;
+    export_ts::<TerminalInputResult>(cfg)?;
+    export_ts::<TerminalResizeParams>(cfg)?;
+    export_ts::<TerminalResizeResult>(cfg)?;
+    export_ts::<TerminalDetachParams>(cfg)?;
+    export_ts::<TerminalDetachResult>(cfg)?;
+    export_ts::<TerminalCloseParams>(cfg)?;
+    export_ts::<TerminalCloseResult>(cfg)?;
+    export_ts::<TerminalStreamEvent>(cfg)?;
+    export_ts::<TerminalEventParams>(cfg)?;
     export_ts::<TrustState>(cfg)?;
     export_ts::<ExecutionContext>(cfg)?;
     export_ts::<WorkspaceScope>(cfg)?;
@@ -309,12 +566,12 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<GetSessionQuery>(cfg)?;
     export_ts::<ListApprovalsQuery>(cfg)?;
     export_ts::<ApprovalSnapshotResult>(cfg)?;
-    export_ts::<ta_work_source::WorkItemKey>(cfg)?;
-    export_ts::<ta_work_source::WorkSourceKind>(cfg)?;
-    export_ts::<ta_work_source::WorkSource>(cfg)?;
-    export_ts::<ta_work_source::WorkItemStatus>(cfg)?;
-    export_ts::<ta_work_source::WorkItem>(cfg)?;
-    export_ts::<ta_work_source::SourceCursor>(cfg)?;
+    export_ts::<crate::wire::WorkItemKey>(cfg)?;
+    export_ts::<crate::wire::WorkSourceKind>(cfg)?;
+    export_ts::<crate::wire::WorkSource>(cfg)?;
+    export_ts::<crate::wire::WorkItemStatus>(cfg)?;
+    export_ts::<crate::wire::WorkItem>(cfg)?;
+    export_ts::<crate::wire::SourceCursor>(cfg)?;
     export_ts::<WorkItemListQuery>(cfg)?;
     export_ts::<WorkItemListResult>(cfg)?;
     export_ts::<WorkSourceSyncStatus>(cfg)?;
@@ -331,6 +588,9 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<ListNativeRunsRequest>(cfg)?;
     export_ts::<RunListEntry>(cfg)?;
     export_ts::<ListNativeRunsResult>(cfg)?;
+    export_ts::<RunLineageGraphRequest>(cfg)?;
+    export_ts::<RunLineageGraphEdge>(cfg)?;
+    export_ts::<RunLineageGraphResult>(cfg)?;
     export_ts::<GetRunTimelineQuery>(cfg)?;
     export_ts::<RunTimeline>(cfg)?;
     export_ts::<RunTimelineRun>(cfg)?;
@@ -371,6 +631,14 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<ResumeRunState>(cfg)?;
     export_ts::<ForkRunRequest>(cfg)?;
     export_ts::<ForkRunResult>(cfg)?;
+    export_ts::<ContinueRunRequest>(cfg)?;
+    export_ts::<ContinueRunResult>(cfg)?;
+    export_ts::<SwitchAccountAndResumeRequest>(cfg)?;
+    export_ts::<SwitchAccountAndResumeResult>(cfg)?;
+    export_ts::<SpawnRunRequest>(cfg)?;
+    export_ts::<SpawnRunResult>(cfg)?;
+    export_ts::<JoinRunRequest>(cfg)?;
+    export_ts::<JoinRunResult>(cfg)?;
     export_ts::<SubscribeRunEventsRequest>(cfg)?;
     export_ts::<RunEventDelta>(cfg)?;
     export_ts::<RunEventStreamError>(cfg)?;
@@ -410,6 +678,8 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<AgentRuntimeStrategyId>(cfg)?;
     export_ts::<AgentRuntimeModelId>(cfg)?;
     export_ts::<AgentRuntimeModelRef>(cfg)?;
+    export_ts::<AgentRuntimeMediaCapability>(cfg)?;
+    export_ts::<AgentRuntimeMediaCapabilities>(cfg)?;
     export_ts::<AgentRuntimeStrategyHealthStatus>(cfg)?;
     export_ts::<AgentRuntimeStrategyHealth>(cfg)?;
     export_ts::<AgentRuntimeStrategyInfo>(cfg)?;
@@ -419,6 +689,9 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<AuthProfileConnectionState>(cfg)?;
     export_ts::<AuthProfileLoginMethod>(cfg)?;
     export_ts::<AuthProfileRef>(cfg)?;
+    export_ts::<AuthProfilePreferences>(cfg)?;
+    export_ts::<AuthProfileUsage>(cfg)?;
+    export_ts::<AuthProfileUsageWindow>(cfg)?;
     export_ts::<AuthProfileState>(cfg)?;
     export_ts::<AuthProfileLoginChallenge>(cfg)?;
     export_ts::<AuthProfileLoginResult>(cfg)?;
@@ -434,6 +707,7 @@ fn export_agent_runtime_types(cfg: &TsConfig) -> Result<(), ProtocolExportError>
     export_ts::<RuntimeExtensionState>(cfg)?;
     export_ts::<RuntimeProfileId>(cfg)?;
     export_ts::<RuntimePolicyMode>(cfg)?;
+    export_ts::<RuntimeProfileExecutionKind>(cfg)?;
     export_ts::<RuntimeProfileSummary>(cfg)?;
     export_ts::<RuntimeProfilePatch>(cfg)?;
     export_ts::<AgentRuntimeSelection>(cfg)?;
@@ -514,15 +788,28 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "PublicActivityPageItem",
         "PublicActivityPageResult",
         "AgentTurnsPageQuery",
+        "AgentUserRow",
         "AgentAssistantRow",
         "AgentToolCallRow",
         "AgentPendingStateRow",
         "AgentTurnRow",
         "AgentTurnsPageResult",
+        "ThreadWorkspaceQuery",
+        "ThreadWorkspaceUpdateCommand",
+        "ThreadWorkspaceMutation",
+        "ThreadWorkspacePin",
+        "ThreadWorkspaceWorkLogEntry",
+        "ThreadWorkspaceWorkLogKind",
+        "ThreadWorkspaceResult",
         "ArtifactId",
         "ArtifactKind",
+        "ArtifactMetadata",
+        "ImageMediaType",
+        "ImageArtifactProvenance",
+        "ImageArtifactMetadata",
         "ArtifactEvent",
         "ArtifactSummary",
+        "ArtifactContentResult",
         "ContextReceipt",
         "DaemonActualRuntimeMode",
         "DaemonClientCapabilities",
@@ -536,6 +823,34 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "ReceiptProvenance",
         "ReceiptState",
         "RunFailureKind",
+        "RunStatusReason",
+        "RunStatusEvent",
+        "ScheduledWorkId",
+        "ScheduledWorkOccurrenceId",
+        "ScheduledWorkExecutionRequest",
+        "ScheduledWorkUnpublishedResource",
+        "ScheduledWorkAttentionPolicy",
+        "ScheduledWorkDefinition",
+        "ScheduledWorkOccurrenceState",
+        "ScheduledWorkPreparationTerminal",
+        "ScheduledWorkOccurrence",
+        "CreateScheduledWorkRequest",
+        "CreateScheduledWorkResult",
+        "ListScheduledWorkRequest",
+        "ListScheduledWorkResult",
+        "CancelScheduledWorkRequest",
+        "PluginId",
+        "PluginCapability",
+        "PluginLifecycleState",
+        "PluginLifecycleFailure",
+        "PluginInspection",
+        "PluginInstallation",
+        "InspectPluginPackageRequest",
+        "InstallPluginPackageRequest",
+        "InstallPluginPackageResult",
+        "ListPluginInstallationsRequest",
+        "ListPluginInstallationsResult",
+        "UninstallPluginRequest",
         "RunReconciledOnStartupEvent",
         "TokenUsageRecordedEvent",
         "TokenUsageTotals",
@@ -563,6 +878,97 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "DaemonWorkspaceListResult",
         "DaemonWorkspaceGetParams",
         "DaemonWorkspaceGetResult",
+        "WorkspaceFileKind",
+        "WorkspaceFileEntry",
+        "WorkspaceFileAttachmentRequest",
+        "WorkspaceFileAttachment",
+        "NativeImagePreview",
+        "WorkspaceFileTreeParams",
+        "WorkspaceFileTreeResult",
+        "WorkspaceFileReadParams",
+        "BoundedFileContent",
+        "WorkspaceFileReadResult",
+        "WorkspaceFileWriteParams",
+        "WorkspaceFileWriteResult",
+        "WorkspaceFileOpenExternalParams",
+        "WorkspaceFileOpenExternalResult",
+        "GitChangeKind",
+        "GitFileStatus",
+        "GitWorktreeSummary",
+        "GitRepositorySnapshot",
+        "GitRepositorySnapshotParams",
+        "GitRepositorySnapshotResult",
+        "GitDiffScope",
+        "GitDiffParams",
+        "GitDiffResult",
+        "GitPathsMutationParams",
+        "GitCommitParams",
+        "GitMutationResult",
+        "GitCheckpointPhase",
+        "GitCheckpointSummary",
+        "GitCheckpointListParams",
+        "GitCheckpointListResult",
+        "GitCheckpointPrepareRevertParams",
+        "GitCheckpointPrepareRevertResult",
+        "GitCheckpointApplyRevertParams",
+        "CodeHostAccountId",
+        "CodeHostPullRequestId",
+        "CodeHostProviderKind",
+        "CodeHostAccount",
+        "CodeHostAccountListParams",
+        "CodeHostAccountListResult",
+        "CodeHostAccountConnectParams",
+        "CodeHostAccountConnectResult",
+        "CodeHostAccountDisconnectParams",
+        "CodeHostAccountDisconnectResult",
+        "CodeHostRepositoryRef",
+        "CodeHostRemote",
+        "CodeHostRepositoryContextParams",
+        "CodeHostRepositoryContextResult",
+        "CodeHostCommitSummary",
+        "CodeHostPushPrepareParams",
+        "CodeHostPushPrepareResult",
+        "CodeHostPushApplyParams",
+        "CodeHostPushApplyResult",
+        "CodeHostPullRequestState",
+        "CodeHostPullRequestSummary",
+        "CodeHostPullRequestDetail",
+        "CodeHostPage",
+        "CodeHostPullRequestListParams",
+        "CodeHostPullRequestDetailParams",
+        "CodeHostPullRequestEnsureParams",
+        "CodeHostPullRequestEnsureResult",
+        "CodeHostCheckStatus",
+        "CodeHostCheck",
+        "CodeHostPullRequestChecksResult",
+        "CodeHostPullRequestChecksParams",
+        "CodeHostCommentKind",
+        "CodeHostComment",
+        "CodeHostReview",
+        "CodeHostTimelineItem",
+        "CodeHostPullRequestActivityResult",
+        "CodeHostPullRequestActivityParams",
+        "CodeHostPullRequestCommentCreateParams",
+        "CodeHostPullRequestCommentCreateResult",
+        "TerminalSessionId",
+        "TerminalSessionStatus",
+        "TerminalSessionSummary",
+        "TerminalSpawnParams",
+        "TerminalSpawnResult",
+        "TerminalListParams",
+        "TerminalListResult",
+        "TerminalAttachParams",
+        "TerminalAttachResult",
+        "TerminalInputParams",
+        "TerminalInputResult",
+        "TerminalResizeParams",
+        "TerminalResizeResult",
+        "TerminalDetachParams",
+        "TerminalDetachResult",
+        "TerminalCloseParams",
+        "TerminalCloseResult",
+        "TerminalStreamEvent",
+        "TerminalEventParams",
         "TrustState",
         "ExecutionContext",
         "WorkspaceScope",
@@ -645,6 +1051,9 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "ListNativeRunsRequest",
         "RunListEntry",
         "ListNativeRunsResult",
+        "RunLineageGraphRequest",
+        "RunLineageGraphEdge",
+        "RunLineageGraphResult",
         "GetRunTimelineQuery",
         "RunTimeline",
         "RunTimelineRun",
@@ -669,6 +1078,9 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "PlanResult",
         "PlanStep",
         "ValidationError",
+        "VoicePermissionState",
+        "VoicePhase",
+        "VoiceEvent",
         "CapsuleRecipe",
         "ListRecipesParams",
         "RecipeListResponse",
@@ -691,6 +1103,14 @@ fn append_core_generated_exports(lines: &mut Vec<String>) {
         "ResumeRunState",
         "ForkRunRequest",
         "ForkRunResult",
+        "ContinueRunRequest",
+        "ContinueRunResult",
+        "SwitchAccountAndResumeRequest",
+        "SwitchAccountAndResumeResult",
+        "SpawnRunRequest",
+        "SpawnRunResult",
+        "JoinRunRequest",
+        "JoinRunResult",
         "SubscribeRunEventsRequest",
         "SubscribeRunEventsResult",
         "SessionAuthority",
@@ -741,6 +1161,8 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "AgentRuntimeStrategyId",
         "AgentRuntimeModelId",
         "AgentRuntimeModelRef",
+        "AgentRuntimeMediaCapability",
+        "AgentRuntimeMediaCapabilities",
         "AgentRuntimeStrategyHealthStatus",
         "AgentRuntimeStrategyHealth",
         "AgentRuntimeStrategyInfo",
@@ -748,6 +1170,9 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "AuthProfileConnectionState",
         "AuthProfileLoginMethod",
         "AuthProfileRef",
+        "AuthProfilePreferences",
+        "AuthProfileUsage",
+        "AuthProfileUsageWindow",
         "AuthProfileState",
         "AuthProfileLoginChallenge",
         "AuthProfileLoginResult",
@@ -763,6 +1188,7 @@ fn append_agent_runtime_generated_exports(lines: &mut Vec<String>) {
         "RuntimeExtensionState",
         "RuntimeProfileId",
         "RuntimePolicyMode",
+        "RuntimeProfileExecutionKind",
         "RuntimeProfileSummary",
         "RuntimeProfilePatch",
         "AgentRuntimeSelection",
@@ -872,4 +1298,54 @@ fn rewrite_typescript_import_line(line: &str) -> String {
     }
 
     format!("{}.js\";", &line[..line.len() - IMPORT_SUFFIX.len()])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{append_core_generated_consts, append_core_generated_exports};
+
+    #[test]
+    fn export_protocol_artifacts_include_complete_scheduled_work_public_barrel() {
+        let scheduled_work_types = [
+            "ScheduledWorkId",
+            "ScheduledWorkOccurrenceId",
+            "ScheduledWorkExecutionRequest",
+            "ScheduledWorkUnpublishedResource",
+            "ScheduledWorkAttentionPolicy",
+            "ScheduledWorkDefinition",
+            "ScheduledWorkOccurrenceState",
+            "ScheduledWorkPreparationTerminal",
+            "ScheduledWorkOccurrence",
+            "CreateScheduledWorkRequest",
+            "CreateScheduledWorkResult",
+            "ListScheduledWorkRequest",
+            "ListScheduledWorkResult",
+            "CancelScheduledWorkRequest",
+        ];
+        let scheduled_work_methods = [
+            "METHOD_DAEMON_SCHEDULED_WORK_CREATE",
+            "METHOD_DAEMON_SCHEDULED_WORK_LIST",
+            "METHOD_DAEMON_SCHEDULED_WORK_CANCEL",
+        ];
+
+        let mut type_barrel = Vec::new();
+        append_core_generated_exports(&mut type_barrel);
+        let type_barrel = type_barrel.join("\n");
+        for name in scheduled_work_types {
+            assert!(
+                type_barrel.contains(&format!("export type {{ {name} }} from \"./{name}.js\";")),
+                "generated index.ts must export {name}"
+            );
+        }
+
+        let mut runtime_barrel = Vec::new();
+        append_core_generated_consts(&mut runtime_barrel);
+        let runtime_barrel = runtime_barrel.join("\n");
+        for name in scheduled_work_methods {
+            assert!(
+                runtime_barrel.contains(&format!("export const {name} = ")),
+                "generated index.js must export {name}"
+            );
+        }
+    }
 }

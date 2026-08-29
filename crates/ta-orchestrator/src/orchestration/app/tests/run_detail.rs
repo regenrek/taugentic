@@ -1,7 +1,8 @@
 use super::*;
 use crate::{OpenSessionRequest, SessionSummary};
 use ta_protocol::wire::{
-    CapsuleResult, OutputContractKind, PatchResult, ReceiptProvenance, ValidationError,
+    AuthProfileExhaustion, CapsuleResult, OutputContractKind, PatchResult, ReceiptProvenance,
+    RunEvent, RunStatusReason, ValidationError,
 };
 use ta_store::{CreateReceipt, ReceiptRepository};
 
@@ -19,6 +20,40 @@ fn run_detail_maps_running_run_without_completion_fields() {
     assert_eq!(detail.result, None);
     assert_eq!(detail.contract_violation, None);
     assert_eq!(detail.quarantine_receipt, None);
+}
+
+#[test]
+fn run_detail_projects_the_typed_selected_account_exhaustion_from_durable_status_history() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let session = open_test_session(&service, "Exhausted detail");
+    let run = native_run_projection("run-exhausted-detail", &session.id, RunStatus::Failed, 100);
+    seed_run_projection(&service, run.clone());
+    service
+        .store
+        .lock()
+        .expect("app store should not be poisoned")
+        .append_event(EventRecord {
+            sequence: 2,
+            session_id: session.id.clone(),
+            occurred_at_ms: 100,
+            payload: DaemonEvent::Run(
+                RunEvent::terminal_with_auth_profile_exhaustion(
+                    run.id.clone(),
+                    RunStatusReason::new("The selected account has exhausted its credits.")
+                        .expect("sanitized exhaustion reason"),
+                    AuthProfileExhaustion::CreditsExhausted,
+                )
+                .expect("typed exhaustion status"),
+            ),
+        })
+        .expect("durable exhaustion event should append");
+
+    let detail = get_detail(&service, &session.id, &run.id);
+
+    assert_eq!(
+        detail.auth_profile_exhaustion,
+        Some(AuthProfileExhaustion::CreditsExhausted)
+    );
 }
 
 #[test]
@@ -105,9 +140,11 @@ fn run_detail_preserves_non_native_parent_and_omits_native_contract_fields() {
         status: RunStatus::Completed,
         harness: RunHarnessKind::Native,
         source: RunSource::Forked {
+            route: ta_store::default_test_run_source().route().clone(),
             parent_run_id: parent_run_id.clone(),
             parent_event_seq: 7,
         },
+        execution_context: ta_store::default_test_execution_context(),
         result: None,
         contract_violation: None,
         started_at_ms: Some(100),
@@ -124,6 +161,95 @@ fn run_detail_preserves_non_native_parent_and_omits_native_contract_fields() {
     assert_eq!(detail.parent_run_id, Some(parent_run_id));
     assert_eq!(detail.output_contract, None);
     assert_eq!(detail.recipe_id, None);
+}
+
+#[test]
+fn native_run_list_projects_fork_boundary_without_reclassifying_native_subagents() {
+    let service = AppService::bootstrap().expect("app service should boot");
+    let session = open_test_session(&service, "Fork list boundary");
+    let parent_run_id = RunId::new("run-parent-fork-list").expect("parent run id");
+    let fork = RunProjection {
+        id: RunId::new("run-fork-list").expect("run id"),
+        session_id: session.id.clone(),
+        runtime_profile_id: RuntimeProfileId::new("runtime-openai-safe")
+            .expect("runtime profile id"),
+        objective: "Forked list entry".to_string(),
+        status: RunStatus::Running,
+        harness: RunHarnessKind::Native,
+        source: RunSource::Forked {
+            route: ta_store::default_test_run_source().route().clone(),
+            parent_run_id: parent_run_id.clone(),
+            parent_event_seq: 42,
+        },
+        execution_context: ta_store::default_test_execution_context(),
+        result: None,
+        contract_violation: None,
+        started_at_ms: Some(100),
+        ended_at_ms: None,
+        last_event_seq: Some(42),
+        workspace_info: None,
+        claimed_files: Vec::new(),
+        conflict_summary: None,
+    };
+    let child = native_child_projection(
+        &session.id,
+        &parent_run_id,
+        NativeChildProjectionInput {
+            run_id: "run-native-child-list",
+            status: RunStatus::Running,
+            output_contract: None,
+            recipe_id: None,
+            result: None,
+            contract_violation: None,
+        },
+    );
+
+    let fork_entry = project_run_list_entry(fork);
+    let child_entry = project_run_list_entry(child);
+
+    let fresh_entry = project_run_list_entry(RunProjection {
+        id: RunId::new("run-fresh-list").expect("fresh run id"),
+        session_id: session.id,
+        runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe").expect("profile"),
+        objective: "Independent fresh child".to_string(),
+        status: RunStatus::Queued,
+        harness: RunHarnessKind::CodexAppServer,
+        source: RunSource::FreshSpawn {
+            route: ta_store::default_test_run_source().route().clone(),
+            parent_run_id: RunId::new("run-parent-fork-list").expect("parent"),
+            output_contract: None,
+            model_id: None,
+            recipe_id: None,
+            workspace_scope: crate::WorkspaceMode::WorkspaceWrite,
+            cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
+            planned_write_files: Vec::new(),
+        },
+        execution_context: ta_store::default_test_execution_context(),
+        result: None,
+        contract_violation: None,
+        started_at_ms: None,
+        ended_at_ms: None,
+        last_event_seq: None,
+        workspace_info: None,
+        claimed_files: Vec::new(),
+        conflict_summary: None,
+    });
+
+    assert!(matches!(
+        fork_entry.relationship,
+        crate::NativeRunRelationship::Fork {
+            parent_event_seq: 42,
+            ..
+        }
+    ));
+    assert!(matches!(
+        child_entry.relationship,
+        crate::NativeRunRelationship::NativeSubagent { .. }
+    ));
+    assert!(matches!(
+        fresh_entry.relationship,
+        crate::NativeRunRelationship::FreshSpawn { parent_run_id } if parent_run_id.as_str() == "run-parent-fork-list"
+    ));
 }
 
 fn open_test_session(service: &AppService, title: &str) -> SessionSummary {
@@ -175,6 +301,7 @@ fn native_child_projection(
         status: input.status,
         harness: RunHarnessKind::Native,
         source: RunSource::NativeSubagent {
+            route: ta_store::default_test_run_source().route().clone(),
             parent_run_id: parent_run_id.clone(),
             parent_turn_id: AgentStreamTurnId::new("turn-run-detail").expect("turn id"),
             output_contract: input.output_contract,
@@ -184,6 +311,7 @@ fn native_child_projection(
             cleanup_policy: crate::WorktreeCleanupPolicy::DeleteOnSuccess,
             planned_write_files: Vec::new(),
         },
+        execution_context: ta_store::default_test_execution_context(),
         result: input.result,
         contract_violation: input.contract_violation,
         started_at_ms: Some(100),

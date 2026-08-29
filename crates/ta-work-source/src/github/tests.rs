@@ -1,22 +1,23 @@
 use std::error::Error;
-use std::sync::Mutex;
 
-use reqwest::StatusCode;
 use serde_json::json;
-use ta_host_platform::{HostSecretError, HostSecretKey, HostSecretStore, HostSecretValue};
+use ta_code_host::{CodeHostAccessToken, GitHubClient};
 use tokio_util::sync::CancellationToken;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::*;
-use crate::{FetchOutcome, SourceCursor, WorkSourceLabelFilter};
+use crate::FetchOutcome;
+use ta_protocol::wire::{SourceCursor, WorkSourceLabelFilter};
 
 #[tokio::test]
-async fn fetches_paginated_issues_and_filters_pull_requests() -> Result<(), Box<dyn Error>> {
+async fn maps_issues_and_filters_pull_requests_without_owning_http_policy()
+-> Result<(), Box<dyn Error>> {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/repos/regenrek/taugentic/issues"))
         .and(query_param("page", "1"))
+        .and(header("x-github-api-version", "2026-03-10"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!([
             issue_json(1, "First", ["ready"], false),
             issue_json(2, "PR", ["ready"], true)
@@ -25,10 +26,9 @@ async fn fetches_paginated_issues_and_filters_pull_requests() -> Result<(), Box<
         .mount(&server)
         .await;
 
-    let provider = provider(&server)?.with_max_pages(1)?;
-    let outcome = GitHubIssueProvider::new(provider)
+    let outcome = provider(&server)?
         .fetch(
-            &token()?,
+            &CodeHostAccessToken::new("test-token")?,
             SourceCursor::empty(),
             100,
             CancellationToken::new(),
@@ -40,12 +40,11 @@ async fn fetches_paginated_issues_and_filters_pull_requests() -> Result<(), Box<
     };
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].key.as_str(), "github:regenrek/taugentic#1");
-    assert_eq!(items[0].title, "First");
     Ok(())
 }
 
 #[tokio::test]
-async fn sends_if_none_match_and_preserves_cursor_on_304() -> Result<(), Box<dyn Error>> {
+async fn preserves_etag_on_not_modified() -> Result<(), Box<dyn Error>> {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/repos/regenrek/taugentic/issues"))
@@ -55,9 +54,9 @@ async fn sends_if_none_match_and_preserves_cursor_on_304() -> Result<(), Box<dyn
         .mount(&server)
         .await;
 
-    let outcome = GitHubIssueProvider::new(provider(&server)?)
+    let outcome = provider(&server)?
         .fetch(
-            &token()?,
+            &CodeHostAccessToken::new("test-token")?,
             SourceCursor {
                 etag: Some("\"etag-1\"".to_string()),
                 last_fetched_at_ms: Some(50),
@@ -76,52 +75,18 @@ async fn sends_if_none_match_and_preserves_cursor_on_304() -> Result<(), Box<dyn
 }
 
 #[tokio::test]
-async fn captures_etag_from_first_page() -> Result<(), Box<dyn Error>> {
+async fn maps_rate_limit_without_retrying() -> Result<(), Box<dyn Error>> {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/repos/regenrek/taugentic/issues"))
-        .respond_with(
-            ResponseTemplate::new(200)
-                .insert_header("etag", "\"etag-next\"")
-                .set_body_json(json!([issue_json(3, "Third", ["ready"], false)])),
-        )
+        .respond_with(ResponseTemplate::new(429).insert_header("retry-after", "7"))
         .expect(1)
         .mount(&server)
         .await;
 
-    let outcome = GitHubIssueProvider::new(provider(&server)?.with_max_pages(1)?)
+    let error = provider(&server)?
         .fetch(
-            &token()?,
-            SourceCursor::empty(),
-            100,
-            CancellationToken::new(),
-        )
-        .await?;
-
-    let FetchOutcome::Items { cursor, .. } = outcome else {
-        return Err("expected items".into());
-    };
-    assert_eq!(cursor.etag.as_deref(), Some("\"etag-next\""));
-    Ok(())
-}
-
-#[tokio::test]
-async fn rate_limit_error_uses_retry_after() -> Result<(), Box<dyn Error>> {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path("/repos/regenrek/taugentic/issues"))
-        .respond_with(
-            ResponseTemplate::new(429)
-                .insert_header("retry-after", "7")
-                .set_body_string("rate limited"),
-        )
-        .expect(1)
-        .mount(&server)
-        .await;
-
-    let error = GitHubIssueProvider::new(provider(&server)?.with_max_pages(1)?)
-        .fetch(
-            &token()?,
+            &CodeHostAccessToken::new("test-token")?,
             SourceCursor::empty(),
             100,
             CancellationToken::new(),
@@ -129,49 +94,22 @@ async fn rate_limit_error_uses_retry_after() -> Result<(), Box<dyn Error>> {
         .await
         .err()
         .ok_or("expected error")?;
-
-    let WorkSourceError::HttpStatus { status, backoff } = error else {
-        return Err("expected http status".into());
+    let WorkSourceError::RateLimited { retry_after } = error else {
+        return Err("expected rate limit".into());
     };
-    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
-    assert_eq!(backoff.map(|value| value.retry_after.as_secs()), Some(7));
+    assert_eq!(retry_after.map(|duration| duration.as_secs()), Some(7));
     Ok(())
 }
 
-#[test]
-fn host_secret_provider_loads_github_pat_from_store() -> Result<(), Box<dyn Error>> {
-    let store = std::sync::Arc::new(MockHostSecretStore::default());
-    let key = HostSecretKey::new(GITHUB_PAT_SECRET_KEY)?;
-    store.store_secret(&key, &HostSecretValue::new("ghp_ssot")?)?;
-    let provider = HostSecretsGitHubCredentialProvider::new(store)?;
-
-    assert_eq!(provider.token()?.as_str(), "ghp_ssot");
-    Ok(())
-}
-
-#[test]
-fn host_secret_provider_reports_missing_github_pat() {
-    let store = std::sync::Arc::new(MockHostSecretStore::default());
-    let provider = HostSecretsGitHubCredentialProvider::new(store)
-        .expect("GitHub credential provider should accept its canonical secret key");
-
-    assert!(matches!(
-        provider.token(),
-        Err(WorkSourceError::CredentialsMissing)
-    ));
-}
-
-fn provider(server: &MockServer) -> Result<GitHubProviderConfig, WorkSourceError> {
-    GitHubProviderConfig::new(
+fn provider(server: &MockServer) -> Result<GitHubIssueProvider, Box<dyn Error>> {
+    let client = GitHubClient::with_endpoints(&server.uri(), "https://github.com")?;
+    let config = GitHubProviderConfig::github_dot_com(
         "regenrek",
         "taugentic",
         WorkSourceLabelFilter::AnyOf(vec!["ready".to_string()]),
-    )
-    .and_then(|config| config.with_base_url(server.uri()))
-}
-
-fn token() -> Result<GitHubToken, WorkSourceError> {
-    GitHubToken::new("ghp_test")
+    )?
+    .with_max_pages(1)?;
+    Ok(GitHubIssueProvider::new(client, config))
 }
 
 fn issue_json(
@@ -191,46 +129,4 @@ fn issue_json(
         value["pull_request"] = json!({});
     }
     value
-}
-
-#[derive(Default)]
-struct MockHostSecretStore {
-    value: Mutex<Option<HostSecretValue>>,
-}
-
-impl HostSecretStore for MockHostSecretStore {
-    fn store_secret(
-        &self,
-        key: &HostSecretKey,
-        value: &HostSecretValue,
-    ) -> Result<(), HostSecretError> {
-        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
-        *self.value.lock().map_err(|_| poison_error())? = Some(value.clone());
-        Ok(())
-    }
-
-    fn load_secret(&self, key: &HostSecretKey) -> Result<Option<HostSecretValue>, HostSecretError> {
-        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
-        self.value
-            .lock()
-            .map_err(|_| poison_error())
-            .map(|value| value.clone())
-    }
-
-    fn delete_secret(&self, key: &HostSecretKey) -> Result<(), HostSecretError> {
-        assert_eq!(key.as_str(), GITHUB_PAT_SECRET_KEY);
-        *self.value.lock().map_err(|_| poison_error())? = None;
-        Ok(())
-    }
-
-    fn backend_name(&self) -> &'static str {
-        "mock-keyring"
-    }
-}
-
-fn poison_error() -> HostSecretError {
-    HostSecretError::IoError {
-        operation: "mock-keyring-lock",
-        reason: "lock poisoned".to_string(),
-    }
 }

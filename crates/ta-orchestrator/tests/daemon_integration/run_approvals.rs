@@ -73,9 +73,9 @@ fn real_daemon_approval_decide_resolves_pending_request_over_canonical_protocol(
     let terminal_envelope = read_public_terminal_run_event(&JsonLineCodec, &mut stream, &run.id);
     assert!(matches!(
         terminal_envelope.event,
-        PublicDaemonEvent::Run(ta_protocol::wire::RunEvent { run_id, status, .. })
-            if run_id == run.id
-                && status == ta_protocol::wire::RunStatus::Failed
+        PublicDaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == ta_protocol::wire::RunStatus::Failed
     ));
 
     let approvals = list_approvals(
@@ -107,9 +107,9 @@ fn real_daemon_approval_decide_resolves_pending_request_over_canonical_protocol(
     );
     assert!(matches!(
         &activity_page.items[0].event,
-        PublicDaemonEvent::Run(ta_protocol::wire::RunEvent { run_id, status, .. })
-            if *run_id == run.id
-                && *status == ta_protocol::wire::RunStatus::Failed
+        PublicDaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+            if event.run_id() == &run.id
+                && event.status() == ta_protocol::wire::RunStatus::Failed
     ));
     assert!(activity_page.items.iter().any(|item| {
         matches!(
@@ -235,9 +235,9 @@ fn real_daemon_approval_decide_rejects_foreign_attached_session_without_mutation
     assert!(activity_page.items.iter().all(|item| {
         !matches!(
             &item.event,
-            PublicDaemonEvent::Run(ta_protocol::wire::RunEvent { run_id, status, .. })
-                if *run_id == owner_run.id
-                    && *status == ta_protocol::wire::RunStatus::Running
+            PublicDaemonEvent::Run(ta_protocol::wire::RunEvent::Status(event))
+                if event.run_id() == &owner_run.id
+                    && event.status() == ta_protocol::wire::RunStatus::Running
         )
     }));
 

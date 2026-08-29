@@ -1,4 +1,7 @@
 pub mod claims;
+pub(crate) mod files;
+pub(crate) mod git;
+pub(crate) mod terminal;
 pub mod worktree;
 
 pub use claims::{

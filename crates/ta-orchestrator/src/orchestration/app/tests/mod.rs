@@ -25,12 +25,19 @@ pub(crate) use ta_store::{
 mod activity_pages;
 mod approvals;
 mod artifacts;
+mod code_host;
+mod git;
 mod native_runs;
+mod run_detail;
 mod run_events;
 mod runs;
+mod scheduled_work;
 mod session_overview;
 mod sessions;
+mod terminals;
+mod thread_workspace;
 mod timeline;
+mod workspace_files;
 mod workspaces;
 
 pub(crate) const RUN_EVENT_REPLAY_BATCH_LIMIT: usize =
@@ -143,6 +150,24 @@ pub(crate) fn commit_agent_stream_events(
     occurred_at_ms: u64,
     events: Vec<DaemonEvent>,
 ) {
+    commit_agent_stream_events_with_user_turn(
+        service,
+        session_id,
+        run_id,
+        occurred_at_ms,
+        ta_store::UserTurnCommit::NoUserTurn,
+        events,
+    );
+}
+
+pub(crate) fn commit_agent_stream_events_with_user_turn(
+    service: &AppService,
+    session_id: &SessionId,
+    run_id: &crate::RunId,
+    occurred_at_ms: u64,
+    user_turn: ta_store::UserTurnCommit,
+    events: Vec<DaemonEvent>,
+) {
     let mut store = service
         .store
         .lock()
@@ -155,8 +180,10 @@ pub(crate) fn commit_agent_stream_events(
         .commit_run_transition(CommitRunTransition {
             session_id: session_id.clone(),
             run: RunProjection { ..run },
+            user_turn,
             events,
             occurred_at_ms,
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         })
         .expect("agent stream transition should commit");
 }
@@ -172,14 +199,10 @@ pub(crate) fn append_and_publish_run_event(
         sequence,
         session_id: session_id.clone(),
         occurred_at_ms: sequence * 10,
-        payload: DaemonEvent::Run(crate::RunEvent {
-            run_id: run_id.clone(),
-            status: RunStatus::Running,
-            detail: detail.to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        }),
+        payload: DaemonEvent::Run(
+            crate::RunEvent::active(run_id.clone(), RunStatus::Running, None, None, None)
+                .expect("active status"),
+        ),
     };
     {
         let mut store = service

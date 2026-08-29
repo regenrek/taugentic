@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
@@ -91,8 +92,14 @@ fn run_codex_app_server(
         })
         .map_err(map_codex_error)?;
     sink.push_activity("codex app-server session started")?;
+    let local_images = request
+        .attachments
+        .iter()
+        .filter(|attachment| attachment.kind == ta_protocol::wire::WorkspaceFileKind::Image)
+        .map(|attachment| request.effective_cwd().join(&attachment.path))
+        .collect::<Vec<PathBuf>>();
     session
-        .send_user_turn(&request.objective)
+        .send_user_turn(&request.objective, &local_images)
         .map_err(map_codex_error)?;
     // The app-server transport is blocking JSONL, so cancellation is polled in
     // the provider stream loop instead of using tokio::select! here.
@@ -192,6 +199,15 @@ fn push_event(event: CodexAppServerEvent, sink: &dyn ExecutionSink) -> Result<()
             item_id.unwrap_or_else(|| "unknown".to_string())
         )),
         CodexAppServerEvent::Activity { message } => sink.push_activity(&message),
+        CodexAppServerEvent::ImageGenerated {
+            turn_id,
+            item_id,
+            data_base64,
+        } => sink.record_image_artifact(
+            turn_id_from_string(turn_id)?,
+            item_id_from_string(item_id)?,
+            &data_base64,
+        ),
     }
 }
 

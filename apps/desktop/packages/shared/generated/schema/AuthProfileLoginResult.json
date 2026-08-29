@@ -33,6 +33,14 @@
       ],
       "type": "string"
     },
+    "AuthProfileExhaustion": {
+      "description": "Sanitized account-availability fact recorded when a selected provider\naccount cannot continue a run. It deliberately excludes provider payloads.",
+      "enum": [
+        "rateLimited",
+        "creditsExhausted"
+      ],
+      "type": "string"
+    },
     "AuthProfileLoginChallenge": {
       "properties": {
         "authProfileId": {
@@ -104,6 +112,28 @@
       ],
       "type": "object"
     },
+    "AuthProfilePreferences": {
+      "description": "Daemon-owned presentation preferences for one concrete external account.\nThe credential backend never receives these fields.",
+      "properties": {
+        "isDefault": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "label",
+        "order",
+        "isDefault"
+      ],
+      "type": "object"
+    },
     "AuthProfileRef": {
       "properties": {
         "accountHint": {
@@ -160,6 +190,16 @@
         "connectionState": {
           "$ref": "#/$defs/AuthProfileConnectionState"
         },
+        "exhaustion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthProfileExhaustion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "lastError": {
           "type": [
             "string",
@@ -181,6 +221,9 @@
             "null"
           ]
         },
+        "preferences": {
+          "$ref": "#/$defs/AuthProfilePreferences"
+        },
         "profile": {
           "$ref": "#/$defs/AuthProfileRef"
         },
@@ -189,14 +232,89 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "usage": {
+          "$ref": "#/$defs/AuthProfileUsage"
         }
       },
       "required": [
         "profile",
+        "preferences",
+        "usage",
         "connectionState",
         "managementMode",
         "canLogin",
         "canLogout"
+      ],
+      "type": "object"
+    },
+    "AuthProfileUsage": {
+      "description": "Account-scoped provider usage. Providers that do not expose a supported\naccount-usage contract are explicitly unavailable rather than reported as\nzero or inferred from local run history.",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "unavailable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "observed",
+              "type": "string"
+            },
+            "observedAtMs": {
+              "type": "string"
+            },
+            "windows": {
+              "items": {
+                "$ref": "#/$defs/AuthProfileUsageWindow"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "observedAtMs",
+            "windows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AuthProfileUsageWindow": {
+      "description": "A usage window reported directly by the authenticated provider account.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "limit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resetsAtMs": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
       ],
       "type": "object"
     }

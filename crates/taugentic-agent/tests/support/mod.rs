@@ -3,16 +3,16 @@
 use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use ta_protocol::wire::{
-    AgentRuntimeModelId, ApprovalRequest, ApprovalResolution, ArtifactKind, AuthProfileId,
-    EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy, ProcessExecPolicy,
-    RuntimeProfileId, SandboxProfile, SessionId, StreamEmission, WorkspaceId, WorkspacePath,
-    WorkspaceScope,
+    AgentRuntimeModelId, AgentStreamItemId, AgentStreamTurnId, ApprovalRequest, ApprovalResolution,
+    ArtifactKind, AuthProfileId, EnvPolicy, ExecutionContext, NetworkPolicy, PermissionPolicy,
+    ProcessExecPolicy, RuntimeProfileId, SandboxProfile, SessionId, StreamEmission, WorkspaceId,
+    WorkspacePath, WorkspaceScope,
 };
 use ta_provider_llm::client::{
     LlmClient, LlmStream, StopReason, StreamEvent, StreamMessage, StreamRequest, VecLlmStream,
@@ -90,6 +90,7 @@ pub struct TestSink {
     pub approval_resolutions: Mutex<Vec<ApprovalResolution>>,
     pub artifacts: Mutex<Vec<(ArtifactKind, String)>>,
     pub completed: Mutex<Vec<String>>,
+    completion_signal: Condvar,
     pub failed: Mutex<Vec<ExecutionError>>,
     fail_approval_resolution: AtomicBool,
 }
@@ -132,6 +133,21 @@ impl TestSink {
             .lock()
             .map(|artifacts| artifacts.clone())
             .unwrap_or_default()
+    }
+
+    /// Waits for the execution boundary that the test double owns. This is a
+    /// completion signal, not a timed observation of implementation progress.
+    pub fn wait_for_completion(&self) {
+        let mut completed = self
+            .completed
+            .lock()
+            .expect("completion sink lock should not be poisoned");
+        while completed.is_empty() {
+            completed = self
+                .completion_signal
+                .wait(completed)
+                .expect("completion sink lock should not be poisoned");
+        }
     }
 
     pub fn set_approval_resolution_failure(&self, fail: bool) {
@@ -204,11 +220,25 @@ impl ExecutionSink for TestSink {
         Ok(())
     }
 
+    fn record_image_artifact(
+        &self,
+        _: AgentStreamTurnId,
+        _: AgentStreamItemId,
+        data_base64: &str,
+    ) -> Result<(), ExecutionError> {
+        self.artifacts
+            .lock()
+            .map_err(|_| ExecutionError::ProcessFailed("artifact lock poisoned".to_string()))?
+            .push((ArtifactKind::Image, data_base64.to_string()));
+        Ok(())
+    }
+
     fn complete(&self, detail: &str) -> Result<(), ExecutionError> {
         self.completed
             .lock()
             .map_err(|_| ExecutionError::ProcessFailed("complete lock poisoned".to_string()))?
             .push(detail.to_string());
+        self.completion_signal.notify_all();
         Ok(())
     }
 
@@ -467,9 +497,10 @@ pub fn request() -> ExecutionRequest {
         resume_provider_session_id: None,
         runtime_extensions: Vec::new(),
         execution_context: Arc::new(test_execution_context(Path::new("/tmp"))),
-        fork_initial_state: None,
+        native_history: None,
         output_contract: None,
         subagent_recipes: Vec::new(),
+        attachments: Vec::new(),
     }
 }
 

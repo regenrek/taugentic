@@ -207,6 +207,8 @@ impl SessionRunSchedule {
 
 fn scheduling_policy_for_run(run: &ta_store::RunProjection) -> RunSchedulingPolicy {
     match &run.source {
+        ta_protocol::wire::RunSource::ScheduledWork { .. } => RunSchedulingPolicy::QueueIfBusy,
+        ta_protocol::wire::RunSource::FreshSpawn { .. } => RunSchedulingPolicy::ParallelIfBusy,
         ta_protocol::wire::RunSource::NativeSubagent {
             workspace_scope: ta_protocol::wire::WorkspaceMode::WorktreeWrite,
             ..
@@ -222,8 +224,138 @@ fn first_run_event_sequence(events: &[ta_store::EventRecord]) -> HashMap<RunId, 
             continue;
         };
         sequences
-            .entry(run_event.run_id.clone())
+            .entry(run_event.run_id().clone())
             .or_insert(record.sequence);
     }
     sequences
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ta_protocol::wire::{
+        RunHarnessKind, RunSource, RuntimeProfileId, WorkspaceMode, WorktreeCleanupPolicy,
+    };
+    use ta_store::{InMemoryStore, RunProjection, StoreSeedRepository};
+
+    fn run_projection(run_id: &str, session_id: &SessionId, source: RunSource) -> RunProjection {
+        RunProjection {
+            id: RunId::new(run_id).expect("run id"),
+            session_id: session_id.clone(),
+            runtime_profile_id: RuntimeProfileId::new("runtime-test").expect("runtime profile"),
+            objective: run_id.to_string(),
+            status: RunStatus::WaitingForApproval,
+            harness: RunHarnessKind::Native,
+            source,
+            execution_context: ta_store::default_test_execution_context(),
+            result: None,
+            contract_violation: None,
+            started_at_ms: None,
+            ended_at_ms: None,
+            last_event_seq: None,
+            workspace_info: None,
+            claimed_files: Vec::new(),
+            conflict_summary: None,
+        }
+    }
+
+    #[test]
+    fn fresh_spawn_direct_and_rehydrate_scheduler_on_boot_use_parallel_if_busy() {
+        let session_id = SessionId::new("session-fresh-scheduler").expect("session id");
+        let parent_id = RunId::new("run-a-parent-scheduler").expect("parent id");
+        let parent = run_projection(
+            parent_id.as_str(),
+            &session_id,
+            ta_store::default_test_run_source(),
+        );
+        let fresh = run_projection(
+            "run-z-fresh-scheduler",
+            &session_id,
+            RunSource::FreshSpawn {
+                route: ta_store::default_test_run_source().route().clone(),
+                parent_run_id: parent_id.clone(),
+                output_contract: None,
+                model_id: None,
+                recipe_id: None,
+                workspace_scope: WorkspaceMode::WorkspaceWrite,
+                cleanup_policy: WorktreeCleanupPolicy::DeleteOnSuccess,
+                planned_write_files: Vec::new(),
+            },
+        );
+
+        let direct = RunScheduler::new();
+        assert_eq!(
+            direct
+                .schedule_start_with_policy(
+                    &session_id,
+                    parent.id.clone(),
+                    scheduling_policy_for_run(&parent),
+                )
+                .expect("parent schedule"),
+            RunScheduleDisposition::StartNow
+        );
+        assert_eq!(
+            direct
+                .schedule_start_with_policy(
+                    &session_id,
+                    fresh.id.clone(),
+                    scheduling_policy_for_run(&fresh),
+                )
+                .expect("fresh schedule"),
+            RunScheduleDisposition::StartNow
+        );
+
+        let mut store = InMemoryStore::default();
+        store.save_run(parent).expect("parent persists");
+        store.save_run(fresh).expect("fresh persists");
+        let boot = RunScheduler::new();
+        let plan = boot.rehydrate_from_store(&store).expect("boot rehydrate");
+        assert!(plan.demote_to_queued.is_empty());
+        assert!(plan.promote_from_queue.is_empty());
+    }
+
+    #[test]
+    fn scheduled_work_uses_queue_if_busy() {
+        let session_id = SessionId::new("session-scheduled-queue").expect("session id");
+        let scheduler = RunScheduler::new();
+        let route = ta_store::default_test_run_source().route().clone();
+        let first = run_projection(
+            "run-scheduled-first",
+            &session_id,
+            ta_store::default_test_run_source(),
+        );
+        let scheduled = run_projection(
+            "run-scheduled-second",
+            &session_id,
+            RunSource::ScheduledWork {
+                route,
+                scheduled_work_id: ta_protocol::wire::ScheduledWorkId::new("schedule-queue")
+                    .expect("schedule"),
+                occurrence_id: ta_protocol::wire::ScheduledWorkOccurrenceId::new(
+                    "occurrence-queue",
+                )
+                .expect("occurrence"),
+            },
+        );
+        assert_eq!(
+            scheduling_policy_for_run(&scheduled),
+            RunSchedulingPolicy::QueueIfBusy
+        );
+        assert_eq!(
+            scheduler
+                .schedule_start(&session_id, first.id)
+                .expect("first"),
+            RunScheduleDisposition::StartNow
+        );
+        assert!(matches!(
+            scheduler
+                .schedule_start_with_policy(
+                    &session_id,
+                    scheduled.id.clone(),
+                    scheduling_policy_for_run(&scheduled)
+                )
+                .expect("scheduled"),
+            RunScheduleDisposition::Queued { .. }
+        ));
+    }
 }

@@ -30,6 +30,7 @@ where
     pub config: DaemonConfig,
     pub runtime: RuntimeService,
     pub app: AppService<S>,
+    pub scheduled_work_deadline: super::lifecycle::ScheduledWorkDeadline,
     pub recipe_registry: Arc<RecipeRegistry>,
     started_at_ms: u64,
     in_flight_rpc_count: Arc<AtomicUsize>,
@@ -44,6 +45,7 @@ where
             config: self.config.clone(),
             runtime: self.runtime.clone(),
             app: self.app.clone(),
+            scheduled_work_deadline: self.scheduled_work_deadline.clone(),
             recipe_registry: Arc::clone(&self.recipe_registry),
             started_at_ms: self.started_at_ms,
             in_flight_rpc_count: Arc::clone(&self.in_flight_rpc_count),
@@ -81,7 +83,43 @@ pub fn boot_with_store<S>(
 where
     S: PersistenceStore + Send + 'static,
 {
-    reconcile_orphaned_running_runs(&store)?;
+    boot_with_store_using_runtime(config, store, |config| {
+        RuntimeService::from_host_platform_with_paths(
+            ta_host_platform::detect_current_platform(),
+            RuntimeExecutionPaths {
+                artifact_root: config.artifact_root(),
+            },
+        )
+    })
+}
+
+pub(crate) fn boot_with_store_and_dispatcher<S>(
+    config: DaemonConfig,
+    store: Arc<Mutex<S>>,
+    dispatcher: Arc<dyn crate::RunExecutionDispatcher>,
+) -> Result<BootstrapState<S>, BootstrapStateError>
+where
+    S: PersistenceStore + Send + 'static,
+{
+    boot_with_store_using_runtime(config, store, move |config| {
+        RuntimeService::from_host_platform_with_paths_and_dispatcher(
+            ta_host_platform::detect_current_platform(),
+            RuntimeExecutionPaths {
+                artifact_root: config.artifact_root(),
+            },
+            dispatcher,
+        )
+    })
+}
+
+fn boot_with_store_using_runtime<S>(
+    config: DaemonConfig,
+    store: Arc<Mutex<S>>,
+    build_runtime: impl FnOnce(&DaemonConfig) -> RuntimeService,
+) -> Result<BootstrapState<S>, BootstrapStateError>
+where
+    S: PersistenceStore + Send + 'static,
+{
     let recipe_registry_outcome = RecipeRegistry::load_with_user_dir(
         ta_host_platform::taugentic_user_recipe_dir().as_deref(),
     )?;
@@ -93,26 +131,19 @@ where
         );
     }
     let recipe_registry = Arc::new(recipe_registry_outcome.registry);
-    let runtime = RuntimeService::from_host_platform_with_paths(
-        ta_host_platform::detect_current_platform(),
-        RuntimeExecutionPaths {
-            artifact_root: config.artifact_root(),
-        },
-    );
+    let runtime = build_runtime(&config);
     let app = AppService::from_runtime_with_recipes(store, &runtime, Arc::clone(&recipe_registry));
-    load_default_workflow_if_present(&app);
-    app.rehydrate_run_scheduler_on_boot()
-        .map_err(|error| match error {
-            crate::orchestration::AppServiceError::Store(error) => error,
-            other => StoreError::ApprovalLifecycleViolation {
-                approval_id: "run-scheduler-bootstrap".to_string(),
-                detail: other.to_string(),
-            },
+    app.recover_on_boot()
+        .map_err(|error| StoreError::ApprovalLifecycleViolation {
+            approval_id: "boot-recovery".to_string(),
+            detail: error.to_string(),
         })?;
+    load_default_workflow_if_present(&app);
     Ok(BootstrapState {
         config,
         runtime,
         app,
+        scheduled_work_deadline: super::lifecycle::ScheduledWorkDeadline::new(),
         recipe_registry,
         started_at_ms: current_time_ms(),
         in_flight_rpc_count: Arc::new(AtomicUsize::new(0)),
@@ -182,7 +213,7 @@ impl Drop for InFlightRpcGuard {
     }
 }
 
-fn reconcile_orphaned_running_runs<S>(store: &Arc<Mutex<S>>) -> Result<(), StoreError>
+pub(crate) fn reconcile_orphaned_running_runs<S>(store: &Arc<Mutex<S>>) -> Result<(), StoreError>
 where
     S: PersistenceStore + Send,
 {
@@ -214,14 +245,17 @@ where
             age_ms,
             "reconciled active run after daemon restart"
         );
-        let mut events = vec![DaemonEvent::Run(crate::RunEvent {
-            run_id: run.id.clone(),
-            status: RunStatus::Failed,
-            detail: RESTART_RECONCILE_DETAIL.to_string(),
-            output_contract: None,
-            recipe_id: None,
-            result: None,
-        })];
+        let mut events = vec![DaemonEvent::Run(
+            crate::RunEvent::terminal(
+                run.id.clone(),
+                RunStatus::Failed,
+                crate::RunStatusReason::new(RESTART_RECONCILE_DETAIL).expect("restart reason"),
+                None,
+                None,
+                None,
+            )
+            .expect("failed is terminal"),
+        )];
         events.extend(
             store
                 .approvals_for_session(&SessionApprovalQuery {
@@ -256,8 +290,10 @@ where
                 status: RunStatus::Failed,
                 ..run.clone()
             },
+            user_turn: ta_store::UserTurnCommit::NoUserTurn,
             events,
             occurred_at_ms,
+            auth_profile_mutation: ta_store::AuthProfileCommitMutation::Unchanged,
         });
     }
     store.commit_startup_reconciliation(CommitStartupReconciliation { transitions })?;
@@ -270,10 +306,10 @@ fn daemon_startup_actor() -> ApprovalActor {
 }
 
 fn is_active_status(run: &ta_store::RunProjection) -> bool {
-    matches!(
-        run.status,
-        RunStatus::Running | RunStatus::WaitingForApproval
-    )
+    // A persisted approval request is not opaque provider execution. The
+    // scheduler rehydrates it as the existing approval owner; only a running
+    // provider process has to be terminalized on daemon loss.
+    run.status == RunStatus::Running
 }
 
 fn current_time_ms() -> u64 {
@@ -292,9 +328,13 @@ mod tests {
     };
     use ta_protocol::wire::{
         AgentRuntimeModelId, AgentRuntimeSelection, ApprovalDecision, AuthProfileId,
-        RuntimeProfileId,
+        CreateScheduledWorkRequest, PermissionPolicy, RuntimeProfileId,
+        ScheduledWorkOccurrenceState,
     };
-    use ta_store::{CheckpointRecord, CommitCheckpointPersist, CommitRepository};
+    use ta_store::{
+        AuthProfileCommitMutation, CommitCheckpointPersist, CommitRepository, ProjectionRepository,
+        ScheduledWorkRepository, UserTurnCommit,
+    };
 
     const TEST_OWNER_PRINCIPAL_ID: &str = "bootstrap-owner-credential-hash";
     const TEST_CLIENT_NAME: &str = "bootstrap-tests";
@@ -321,6 +361,65 @@ mod tests {
         }
     }
 
+    fn codex_runtime_selection<S>(
+        app: &crate::orchestration::AppService<S>,
+    ) -> AgentRuntimeSelection
+    where
+        S: ta_store::PersistenceStore + Send + 'static,
+    {
+        app.seed_auth_profile_for_tests(ta_store::connected_test_auth_profile(
+            "profile-codex-test",
+            "codex-chatgpt",
+            "codex",
+        ))
+        .expect("test auth profile should persist");
+        AgentRuntimeSelection {
+            runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe")
+                .expect("runtime profile id"),
+            auth_profile_id: Some(
+                AuthProfileId::new("profile-codex-test").expect("auth profile id"),
+            ),
+            model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model id")),
+        }
+    }
+
+    fn scheduled_work_request(
+        state: &BootstrapState,
+        objective: &str,
+        due_at_ms: u64,
+        _permission_policy: PermissionPolicy,
+    ) -> CreateScheduledWorkRequest {
+        let selection = explicit_runtime_selection(&state.app);
+        CreateScheduledWorkRequest {
+            objective: objective.to_string(),
+            selection,
+            due_at_ms,
+        }
+    }
+
+    fn open_scheduled_work_session(state: &BootstrapState) -> crate::SessionSummary {
+        state
+            .app
+            .upsert_workspace(ta_store::default_test_workspace())
+            .expect("seed workspace");
+        let principal = state
+            .app
+            .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+            .expect("test principal should persist");
+        state
+            .app
+            .open_session(
+                &principal.client_name,
+                &principal.principal_id,
+                &OpenSessionRequest {
+                    title: "Scheduled work restart".to_string(),
+                    workspace_id: ta_store::default_test_workspace_id(),
+                },
+            )
+            .expect("session should persist")
+            .session
+    }
+
     #[test]
     fn boot_uses_runtime_owned_capability_derivation() {
         crate::host::config::with_test_config_home("boot-runtime-capabilities", || {
@@ -344,11 +443,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let created = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Persist me".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -360,8 +463,8 @@ mod tests {
             let sessions = second
                 .app
                 .list_sessions(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &crate::ListSessionsQuery {},
                 )
                 .expect("sessions should load");
@@ -381,11 +484,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let session = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Persist me".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -411,7 +518,7 @@ mod tests {
                         .app
                         .decide_approval(
                             &session.id,
-                            &ta_protocol::wire::ApprovalActor::new(TEST_OWNER_PRINCIPAL_ID)
+                            &ta_protocol::wire::ApprovalActor::new(&principal.principal_id)
                                 .expect("approval actor"),
                             &DaemonApprovalDecideParams {
                                 approval_id,
@@ -426,7 +533,7 @@ mod tests {
                         .app
                         .cancel_run(
                             &session.id,
-                            &ta_protocol::wire::ApprovalActor::new(TEST_OWNER_PRINCIPAL_ID)
+                            &ta_protocol::wire::ApprovalActor::new(&principal.principal_id)
                                 .expect("approval actor"),
                             &started.body.id,
                             Some("keep reboot proof non-live".to_string()),
@@ -440,8 +547,8 @@ mod tests {
             let sessions = second
                 .app
                 .list_sessions(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &crate::ListSessionsQuery {},
                 )
                 .expect("sessions should load");
@@ -468,11 +575,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let session = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Reconcile me".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -493,8 +604,8 @@ mod tests {
             let sessions = second
                 .app
                 .list_sessions(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &ListSessionsQuery {},
                 )
                 .expect("sessions should load");
@@ -519,22 +630,17 @@ mod tests {
             assert!(activity.items.iter().any(|item| {
                 matches!(
                     &item.event,
-                    crate::PublicDaemonEvent::Run(crate::RunEvent {
-                        run_id,
-                        status,
-                        detail,
-                        ..
-                    })
-                        if *run_id == running_run_id
-                            && *status == RunStatus::Failed
-                            && detail == RESTART_RECONCILE_DETAIL
+                    crate::PublicDaemonEvent::Run(crate::RunEvent::Status(event))
+                        if event.run_id() == &running_run_id
+                            && event.status() == RunStatus::Failed
+                            && event.reason().is_some_and(|reason| reason.as_str() == RESTART_RECONCILE_DETAIL)
                 )
             }));
         });
     }
 
     #[test]
-    fn boot_reconciles_waiting_for_approval_runs_after_restart() {
+    fn scheduled_work_approval_recovery_preserves_waiting_for_approval_runs_after_restart() {
         crate::host::config::with_test_config_home("boot-reconciles-waiting-approvals", || {
             let config = crate::host::config::test_config();
             let first = open_bootstrap_state(config.clone()).expect("first boot should succeed");
@@ -542,11 +648,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let session = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Preserve pending approval".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -591,10 +701,163 @@ mod tests {
 
             assert_eq!(runs.len(), 1);
             assert_eq!(runs[0].id, started.body.id);
-            assert_eq!(runs[0].status, RunStatus::Failed);
-            assert!(approvals.items.is_empty());
+            assert_eq!(runs[0].status, RunStatus::WaitingForApproval);
+            assert_eq!(approvals.items.len(), 1);
             assert!(approvals.latest_cursor.is_some());
         });
+    }
+
+    #[test]
+    fn scheduled_work_boot_recovery_preserves_claimed_waiting_and_queued_runs() {
+        crate::host::config::with_test_config_home(
+            "scheduled-work-restart-preserves-published",
+            || {
+                let config = crate::host::config::test_config();
+                let first =
+                    open_bootstrap_state(config.clone()).expect("first boot should succeed");
+                let session = open_scheduled_work_session(&first);
+                let due_at_ms = current_time_ms().saturating_sub(1);
+                let waiting = first
+                    .app
+                    .create_scheduled_work(
+                        &session.id,
+                        scheduled_work_request(
+                            &first,
+                            "Waiting approval survives restart",
+                            due_at_ms,
+                            PermissionPolicy::WorkspaceWriteWithApproval,
+                        ),
+                    )
+                    .expect("waiting scheduled work should persist");
+                let queued = first
+                    .app
+                    .create_scheduled_work(
+                        &session.id,
+                        scheduled_work_request(
+                            &first,
+                            "Queued work survives restart",
+                            due_at_ms,
+                            PermissionPolicy::WorkspaceWriteWithApproval,
+                        ),
+                    )
+                    .expect("queued scheduled work should persist");
+                first
+                    .app
+                    .process_due_scheduled_work()
+                    .expect("due work should publish");
+
+                let first_runs = first.app.list_runs(&session.id).expect("runs should load");
+                assert_eq!(first_runs.len(), 2);
+                assert!(
+                    first_runs
+                        .iter()
+                        .any(|run| run.status == RunStatus::WaitingForApproval)
+                );
+                assert!(first_runs.iter().any(|run| run.status == RunStatus::Queued));
+
+                let second = open_bootstrap_state(config.clone())
+                    .expect("fresh runtime boot should succeed");
+                let runs = second.app.list_runs(&session.id).expect("runs should load");
+                assert_eq!(runs.len(), 2);
+                assert!(
+                    runs.iter()
+                        .any(|run| run.status == RunStatus::WaitingForApproval)
+                );
+                assert!(runs.iter().any(|run| run.status == RunStatus::Queued));
+                let store = SqliteStore::open(config.store_path()).expect("store should reopen");
+                for occurrence_id in [&waiting.occurrence.id, &queued.occurrence.id] {
+                    assert!(matches!(
+                        store
+                            .scheduled_work_occurrence(occurrence_id)
+                            .expect("occurrence query")
+                            .expect("occurrence exists")
+                            .state,
+                        ScheduledWorkOccurrenceState::Claimed { .. }
+                    ));
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn scheduled_work_opaque_running_is_failed_before_scheduler_rehydrate() {
+        crate::host::config::with_test_config_home(
+            "scheduled-work-restart-fails-opaque-running",
+            || {
+                let config = crate::host::config::test_config();
+                let first =
+                    open_bootstrap_state(config.clone()).expect("first boot should succeed");
+                let session = open_scheduled_work_session(&first);
+                let created = first
+                    .app
+                    .create_scheduled_work(
+                        &session.id,
+                        scheduled_work_request(
+                            &first,
+                            "Opaque running must not replay",
+                            current_time_ms().saturating_sub(1),
+                            PermissionPolicy::WorkspaceWriteWithApproval,
+                        ),
+                    )
+                    .expect("scheduled work should persist");
+                first
+                    .app
+                    .process_due_scheduled_work()
+                    .expect("due work should publish");
+                let queued = first
+                    .app
+                    .list_runs(&session.id)
+                    .expect("runs should load")
+                    .into_iter()
+                    .next()
+                    .expect("published run");
+                assert_eq!(queued.status, RunStatus::WaitingForApproval);
+
+                {
+                    let mut store =
+                        SqliteStore::open(config.store_path()).expect("store should reopen");
+                    let mut opaque = store
+                        .run(&queued.id)
+                        .expect("run query")
+                        .expect("run exists");
+                    opaque.status = RunStatus::Running;
+                    store
+                        .commit_run_transition(CommitRunTransition {
+                            session_id: session.id.clone(),
+                            run: opaque.clone(),
+                            user_turn: UserTurnCommit::NoUserTurn,
+                            events: vec![DaemonEvent::Run(
+                                crate::RunEvent::active(
+                                    opaque.id.clone(),
+                                    RunStatus::Running,
+                                    None,
+                                    None,
+                                    None,
+                                )
+                                .expect("running event"),
+                            )],
+                            occurred_at_ms: current_time_ms(),
+                            auth_profile_mutation: AuthProfileCommitMutation::Unchanged,
+                        })
+                        .expect("opaque running projection should persist");
+                }
+
+                let second = open_bootstrap_state(config.clone())
+                    .expect("fresh runtime boot should reconcile opaque run");
+                let runs = second.app.list_runs(&session.id).expect("runs should load");
+                assert_eq!(runs.len(), 1);
+                assert_eq!(runs[0].id, queued.id);
+                assert_eq!(runs[0].status, RunStatus::Failed);
+                let store = SqliteStore::open(config.store_path()).expect("store should reopen");
+                let occurrence = store
+                    .scheduled_work_occurrence(&created.occurrence.id)
+                    .expect("occurrence query")
+                    .expect("occurrence exists");
+                assert!(
+                    matches!(occurrence.state, ScheduledWorkOccurrenceState::Failed { run_id } if run_id == queued.id)
+                );
+            },
+        );
     }
 
     #[test]
@@ -606,11 +869,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let session = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Promote queued run".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -672,11 +939,15 @@ mod tests {
                 .app
                 .upsert_workspace(ta_store::default_test_workspace())
                 .expect("seed workspace");
+            let principal = first
+                .app
+                .resolve_or_issue_session_principal(TEST_CLIENT_NAME, None)
+                .expect("test principal should persist");
             let session = first
                 .app
                 .open_session(
-                    TEST_CLIENT_NAME,
-                    TEST_OWNER_PRINCIPAL_ID,
+                    &principal.client_name,
+                    &principal.principal_id,
                     &OpenSessionRequest {
                         title: "Resume checkpointed run".to_string(),
                         workspace_id: ta_store::default_test_workspace_id(),
@@ -696,14 +967,7 @@ mod tests {
             SqliteStore::open(config.store_path())
                 .expect("sqlite store should reopen")
                 .commit_checkpoint_persist(CommitCheckpointPersist {
-                    checkpoint: CheckpointRecord {
-                        run_id: running_run_id.clone(),
-                        revision: 1,
-                        artifact_path: format!(
-                            "checkpoints/{}/rev-1.json",
-                            running_run_id.as_str()
-                        ),
-                    },
+                    checkpoint: ta_store::test_checkpoint_record(running_run_id.clone(), 1),
                     occurred_at_ms: 42,
                 })
                 .expect("checkpoint should persist");
@@ -730,15 +994,10 @@ mod tests {
             assert!(activity.items.iter().any(|item| {
                 matches!(
                     &item.event,
-                    crate::PublicDaemonEvent::Run(crate::RunEvent {
-                        run_id,
-                        status,
-                        detail,
-                        ..
-                    })
-                        if *run_id == running_run_id
-                            && *status == RunStatus::Failed
-                            && detail == RESTART_RECONCILE_DETAIL
+                    crate::PublicDaemonEvent::Run(crate::RunEvent::Status(event))
+                        if event.run_id() == &running_run_id
+                            && event.status() == RunStatus::Failed
+                            && event.reason().is_some_and(|reason| reason.as_str() == RESTART_RECONCILE_DETAIL)
                 )
             }));
         });

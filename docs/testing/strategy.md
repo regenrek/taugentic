@@ -166,7 +166,7 @@ cargo xtask smoke-local-daemon
 Foundation freeze gate:
 
 ```sh
-cargo xtask export-protocol
+cargo xtask export-protocol --expect-write generated/ChangedType.ts --expect-delete generated/RemovedType.ts
 cargo xtask check-protocol
 cargo xtask check-daemon-foundation
 cargo test -p ta-orchestrator --test daemon_integration

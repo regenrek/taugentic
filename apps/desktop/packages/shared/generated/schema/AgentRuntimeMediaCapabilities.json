@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "AgentRuntimeMediaCapability": {
+      "description": "Closed capabilities for the selected runtime model.",
+      "enum": [
+        "unsupported",
+        "supported"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "imageInput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "imageOutput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "voiceInput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    },
+    "voiceOutput": {
+      "$ref": "#/$defs/AgentRuntimeMediaCapability"
+    }
+  },
+  "required": [
+    "imageInput",
+    "imageOutput",
+    "voiceInput",
+    "voiceOutput"
+  ],
+  "title": "AgentRuntimeMediaCapabilities",
+  "type": "object"
+}

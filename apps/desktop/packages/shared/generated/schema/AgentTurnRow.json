@@ -157,6 +157,42 @@
       ],
       "type": "object"
     },
+    "AgentUserRow": {
+      "properties": {
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/WorkspaceFileAttachment"
+          },
+          "type": "array"
+        },
+        "cursor": {
+          "$ref": "#/$defs/ActivityCursor"
+        },
+        "occurredAtMs": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cursor",
+        "sessionId",
+        "runId",
+        "occurredAtMs",
+        "text",
+        "attachments"
+      ],
+      "type": "object"
+    },
     "RuntimeLanePendingState": {
       "enum": [
         "queued",
@@ -164,10 +200,58 @@
         "waitingForInput"
       ],
       "type": "string"
+    },
+    "WorkspaceFileAttachment": {
+      "properties": {
+        "byteLen": {
+          "maxLength": 20,
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/WorkspaceFileKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "kind",
+        "byteLen"
+      ],
+      "type": "object"
+    },
+    "WorkspaceFileKind": {
+      "enum": [
+        "directory",
+        "text",
+        "image",
+        "pdf",
+        "binary"
+      ],
+      "type": "string"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "oneOf": [
+    {
+      "$ref": "#/$defs/AgentUserRow",
+      "properties": {
+        "kind": {
+          "const": "user",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
     {
       "$ref": "#/$defs/AgentAssistantRow",
       "properties": {

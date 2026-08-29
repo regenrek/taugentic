@@ -157,14 +157,8 @@ fn approving_pending_run_resumes_run_and_clears_approval() {
     )));
     assert!(decided.deferred_records.iter().any(|event| matches!(
         &event.payload,
-        DaemonEvent::Run(crate::RunEvent {
-            run_id,
-            status,
-            detail,
-            ..
-        }) if *run_id == started.body.id
-            && *status == crate::RunStatus::Running
-            && detail == "Approval granted"
+        DaemonEvent::Run(crate::RunEvent::Status(event)) if event.run_id() == &started.body.id
+            && event.status() == crate::RunStatus::Running
     )));
     let _activity_resolution = activity
         .items
@@ -359,17 +353,12 @@ fn cancel_run_projects_cancelled_run_and_clears_pending_approval() {
         &cancelled.deferred_records.iter().map(|event| &event.payload).collect::<Vec<_>>()[..],
         [
             DaemonEvent::Approval(crate::ApprovalEvent::Resolved { resolution }),
-            DaemonEvent::Run(crate::RunEvent {
-                run_id,
-                status,
-                detail,
-                ..
-            }),
+            DaemonEvent::Run(crate::RunEvent::Status(event)),
         ] if resolution.run_id == started.body.id
             && resolution.decision == crate::ApprovalDecision::Rejected
             && resolution.commentary.as_deref() == Some("operator stopped run")
-            && *run_id == started.body.id
-            && *status == crate::RunStatus::Cancelled
-            && detail == "operator stopped run"
+            && event.run_id() == &started.body.id
+            && event.status() == crate::RunStatus::Cancelled
+            && event.reason().is_some_and(|reason| reason.as_str() == "operator stopped run")
     ));
 }

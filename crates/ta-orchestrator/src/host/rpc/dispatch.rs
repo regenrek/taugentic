@@ -11,23 +11,44 @@ use crate::{
     DaemonWorkspaceOpenResult, JsonRpcHandlerResult, JsonRpcRequest, JsonRpcServerSession,
     METHOD_DAEMON_ACTIVITY_PAGE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN,
     METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGIN_COMPLETE, METHOD_DAEMON_AGENT_RUNTIME_AUTH_LOGOUT,
+    METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET,
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
     METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
     METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST,
+    METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT, METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT,
+    METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE,
+    METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST, METHOD_DAEMON_CODE_HOST_PUSH_APPLY,
+    METHOD_DAEMON_CODE_HOST_PUSH_PREPARE, METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT,
     METHOD_DAEMON_CONTEXT_RECEIPTS_LIST, METHOD_DAEMON_CONTEXT_RECEIPTS_PROMOTE,
     METHOD_DAEMON_CONTEXT_RECEIPTS_QUARANTINE, METHOD_DAEMON_DIAGNOSTICS_SNAPSHOT,
+    METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT, METHOD_DAEMON_GIT_CHECKPOINT_LIST,
+    METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT, METHOD_DAEMON_GIT_COMMIT, METHOD_DAEMON_GIT_DIFF,
+    METHOD_DAEMON_GIT_SNAPSHOT, METHOD_DAEMON_GIT_STAGE, METHOD_DAEMON_GIT_UNSTAGE,
     METHOD_DAEMON_NAVIGATION_INTENT, METHOD_DAEMON_NAVIGATION_SNAPSHOT,
-    METHOD_DAEMON_NAVIGATION_SUBSCRIBE, METHOD_DAEMON_PROJECT_OPEN, METHOD_DAEMON_RECIPES_LIST,
-    METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT, METHOD_DAEMON_RUN_FORK,
-    METHOD_DAEMON_RUN_GET, METHOD_DAEMON_RUN_LIST, METHOD_DAEMON_RUN_LIST_NATIVE,
-    METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_RESUME, METHOD_DAEMON_RUN_START,
-    METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS, METHOD_DAEMON_RUN_TIMELINE, METHOD_DAEMON_SESSION_ATTACH,
-    METHOD_DAEMON_SESSION_GET, METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN,
-    METHOD_DAEMON_SESSION_OVERVIEW, METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST,
-    METHOD_DAEMON_WORK_ITEM_REFRESH, METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_DAEMON_WORKSPACE_GET,
-    METHOD_DAEMON_WORKSPACE_LIST, METHOD_DAEMON_WORKSPACE_OPEN, METHOD_WORKFLOW_LOAD,
-    METHOD_WORKFLOW_RELOAD, METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest,
-    OpenWorkspaceRequest, RecipeListResponse, WorkspaceSelector,
+    METHOD_DAEMON_NAVIGATION_SUBSCRIBE, METHOD_DAEMON_PLUGIN_INSPECT, METHOD_DAEMON_PLUGIN_INSTALL,
+    METHOD_DAEMON_PLUGIN_LIST, METHOD_DAEMON_PLUGIN_UNINSTALL, METHOD_DAEMON_PROJECT_OPEN,
+    METHOD_DAEMON_RECIPES_LIST, METHOD_DAEMON_RUN_CANCEL, METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT,
+    METHOD_DAEMON_RUN_CONTINUE, METHOD_DAEMON_RUN_FORK, METHOD_DAEMON_RUN_GET,
+    METHOD_DAEMON_RUN_JOIN, METHOD_DAEMON_RUN_LINEAGE_GRAPH, METHOD_DAEMON_RUN_LIST,
+    METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_RESUME,
+    METHOD_DAEMON_RUN_SPAWN, METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
+    METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
+    METHOD_DAEMON_SCHEDULED_WORK_CANCEL, METHOD_DAEMON_SCHEDULED_WORK_CREATE,
+    METHOD_DAEMON_SCHEDULED_WORK_LIST, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
+    METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
+    METHOD_DAEMON_SESSION_SET_NEXT_RUN_SELECTION, METHOD_DAEMON_TERMINAL_ATTACH,
+    METHOD_DAEMON_TERMINAL_CLOSE, METHOD_DAEMON_TERMINAL_DETACH, METHOD_DAEMON_TERMINAL_INPUT,
+    METHOD_DAEMON_TERMINAL_LIST, METHOD_DAEMON_TERMINAL_RESIZE, METHOD_DAEMON_TERMINAL_SPAWN,
+    METHOD_DAEMON_WORK_ITEM_DISMISS, METHOD_DAEMON_WORK_ITEM_LIST, METHOD_DAEMON_WORK_ITEM_REFRESH,
+    METHOD_DAEMON_WORK_ITEM_TRIGGER, METHOD_DAEMON_WORKSPACE_FILE_OPEN_EXTERNAL,
+    METHOD_DAEMON_WORKSPACE_FILE_READ, METHOD_DAEMON_WORKSPACE_FILE_TREE,
+    METHOD_DAEMON_WORKSPACE_FILE_WRITE, METHOD_DAEMON_WORKSPACE_GET, METHOD_DAEMON_WORKSPACE_LIST,
+    METHOD_DAEMON_WORKSPACE_OPEN, METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD,
+    METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE, OpenSessionRequest, OpenWorkspaceRequest,
+    RecipeListResponse, WorkspaceSelector,
     host::{
         bootstrap::BootstrapState,
         control::rpc::handle_control_status_request,
@@ -46,8 +67,14 @@ use super::state::{
 use super::{
     daemon_status_result, defer_navigation_invalidation, json_deferred_mutation_result,
     json_result, spawn_event_forwarder, spawn_navigation_invalidation_forwarder,
-    spawn_run_event_forwarder, wake_local_server_accept_loop,
+    spawn_run_event_forwarder, spawn_terminal_event_forwarder, wake_local_server_accept_loop,
 };
+
+enum SessionOpenPlacement {
+    Standalone,
+    Project(crate::ProjectId),
+    Temporary,
+}
 
 pub(super) async fn handle_request(
     state: &BootstrapState,
@@ -122,8 +149,8 @@ pub(super) async fn handle_request(
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let client_name = require_client_name(session_state, METHOD_DAEMON_SESSION_OPEN)?;
             let principal_id = require_principal_id(session_state, METHOD_DAEMON_SESSION_OPEN)?;
-            let (workspace_id, project_id) = match params.workspace {
-                WorkspaceSelector::ById { id } => (id, None),
+            let (workspace_id, placement) = match params.workspace {
+                WorkspaceSelector::ById { id } => (id, SessionOpenPlacement::Standalone),
                 WorkspaceSelector::ByPath {
                     path,
                     trust_acknowledged,
@@ -136,25 +163,37 @@ pub(super) async fn handle_request(
                         })
                         .map_err(map_app_service_error)?
                         .id,
-                    None,
+                    SessionOpenPlacement::Standalone,
                 ),
                 WorkspaceSelector::ByProject {
                     project_id,
                     workspace_id,
-                } => (workspace_id, Some(project_id)),
+                } => (workspace_id, SessionOpenPlacement::Project(project_id)),
+                WorkspaceSelector::ByTemporary { workspace_id } => {
+                    (workspace_id, SessionOpenPlacement::Temporary)
+                }
             };
             let request = OpenSessionRequest {
                 title: params.title,
                 workspace_id,
             };
-            let opened_session = if let Some(project_id) = project_id {
-                state
-                    .app
-                    .open_project_session(&client_name, &principal_id, &request, project_id)
-            } else {
-                state
-                    .app
-                    .open_session(&client_name, &principal_id, &request)
+            let opened_session = match placement {
+                SessionOpenPlacement::Standalone => {
+                    state
+                        .app
+                        .open_session(&client_name, &principal_id, &request)
+                }
+                SessionOpenPlacement::Project(project_id) => state.app.open_project_session(
+                    &client_name,
+                    &principal_id,
+                    &request,
+                    project_id,
+                ),
+                SessionOpenPlacement::Temporary => {
+                    state
+                        .app
+                        .open_temporary_session(&client_name, &principal_id, &request)
+                }
             }
             .map_err(map_app_service_error)?;
             let latest_cursor = state
@@ -199,6 +238,342 @@ pub(super) async fn handle_request(
                 .map_err(map_app_service_error)?;
             json_result(DaemonWorkspaceGetResult { workspace })
         }
+        DaemonRpcRequest::WorkspaceFileTree(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_FILE_TREE)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_WORKSPACE_FILE_TREE)?;
+            let result = state
+                .app
+                .workspace_file_tree(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::WorkspaceFileRead(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_FILE_READ)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_WORKSPACE_FILE_READ)?;
+            let result = state
+                .app
+                .read_workspace_file(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::WorkspaceFileWrite(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_FILE_WRITE)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_WORKSPACE_FILE_WRITE)?;
+            let result = state
+                .app
+                .write_workspace_file(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::WorkspaceFileOpenExternal(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_WORKSPACE_FILE_OPEN_EXTERNAL)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_WORKSPACE_FILE_OPEN_EXTERNAL)?;
+            let result = state
+                .app
+                .workspace_file_open_external(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::CodeHostAccountList(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST)?;
+            json_result(
+                state
+                    .app
+                    .code_host_accounts(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostAccountConnect(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT)?;
+            json_result(
+                state
+                    .app
+                    .connect_code_host_account(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostAccountDisconnect(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT)?;
+            json_result(
+                state
+                    .app
+                    .disconnect_code_host_account(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostRepositoryContext(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_REPOSITORY_CONTEXT)?;
+            json_result(
+                state
+                    .app
+                    .code_host_repository_context(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPushPrepare(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PUSH_PREPARE)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PUSH_PREPARE)?;
+            json_result(
+                state
+                    .app
+                    .prepare_code_host_push(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPushApply(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PUSH_APPLY)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PUSH_APPLY)?;
+            json_result(
+                state
+                    .app
+                    .apply_code_host_push(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestList(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_LIST)?;
+            json_result(
+                state
+                    .app
+                    .list_code_host_pull_requests(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestDetail(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_DETAIL)?;
+            json_result(
+                state
+                    .app
+                    .code_host_pull_request_detail(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestEnsure(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ENSURE)?;
+            json_result(
+                state
+                    .app
+                    .ensure_code_host_pull_request(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestChecks(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS)?;
+            json_result(
+                state
+                    .app
+                    .code_host_pull_request_checks(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestActivity(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY)?;
+            json_result(
+                state
+                    .app
+                    .code_host_pull_request_activity(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::CodeHostPullRequestCommentCreate(params) => {
+            ensure_initialized(
+                session_state,
+                METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
+            )?;
+            let principal_id = require_principal_id(
+                session_state,
+                METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
+            )?;
+            json_result(
+                state
+                    .app
+                    .create_code_host_pull_request_comment(&principal_id, &params)
+                    .await
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitSnapshot(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_SNAPSHOT)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_GIT_SNAPSHOT)?;
+            json_result(
+                state
+                    .app
+                    .git_repository_snapshot(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitDiff(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_DIFF)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_GIT_DIFF)?;
+            json_result(
+                state
+                    .app
+                    .git_diff(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitStage(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_STAGE)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_GIT_STAGE)?;
+            json_result(
+                state
+                    .app
+                    .git_stage_paths(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitUnstage(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_UNSTAGE)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_GIT_UNSTAGE)?;
+            json_result(
+                state
+                    .app
+                    .git_unstage_paths(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitCommit(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_COMMIT)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_GIT_COMMIT)?;
+            json_result(
+                state
+                    .app
+                    .git_commit(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitCheckpointList(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_CHECKPOINT_LIST)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_GIT_CHECKPOINT_LIST)?;
+            json_result(
+                state
+                    .app
+                    .git_checkpoints(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitCheckpointPrepareRevert(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_GIT_CHECKPOINT_PREPARE_REVERT)?;
+            json_result(
+                state
+                    .app
+                    .git_prepare_checkpoint_revert(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::GitCheckpointApplyRevert(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_GIT_CHECKPOINT_APPLY_REVERT)?;
+            json_result(
+                state
+                    .app
+                    .git_apply_checkpoint_revert(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::TerminalSpawn(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_SPAWN)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_SPAWN)?;
+            let result = state
+                .app
+                .spawn_terminal(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalList(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_LIST)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_LIST)?;
+            let result = state
+                .app
+                .list_terminals(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalAttach(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_ATTACH)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_ATTACH)?;
+            let subscription = state
+                .app
+                .attach_terminal(&principal_id, &params, session.connection_id())
+                .map_err(map_app_service_error)?;
+            let result = subscription.result.clone();
+            let terminal_id = params.terminal_id;
+            let forwarder_session = session.clone();
+            session.defer_until_response(Box::new(move || {
+                spawn_terminal_event_forwarder(forwarder_session, terminal_id, subscription);
+            }));
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalInput(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_INPUT)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_INPUT)?;
+            let result = state
+                .app
+                .terminal_input(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalResize(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_RESIZE)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_RESIZE)?;
+            let result = state
+                .app
+                .resize_terminal(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalDetach(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_DETACH)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_DETACH)?;
+            let result = state
+                .app
+                .detach_terminal(&principal_id, &params, session.connection_id())
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
+        DaemonRpcRequest::TerminalClose(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_TERMINAL_CLOSE)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_TERMINAL_CLOSE)?;
+            let result = state
+                .app
+                .close_terminal(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(result)
+        }
         DaemonRpcRequest::ProjectOpen(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_PROJECT_OPEN)?;
             let principal_id = require_principal_id(session_state, METHOD_DAEMON_PROJECT_OPEN)?;
@@ -239,6 +614,19 @@ pub(super) async fn handle_request(
                 session_authority: attached_session.session_authority,
             })
         }
+        DaemonRpcRequest::SessionSetNextRunSelection(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_SESSION_SET_NEXT_RUN_SELECTION)?;
+            let session_id = require_attached_session(
+                session_state,
+                METHOD_DAEMON_SESSION_SET_NEXT_RUN_SELECTION,
+            )?;
+            json_result(
+                state
+                    .app
+                    .set_session_next_run_selection(&session_id, params.selection)
+                    .map_err(map_app_service_error)?,
+            )
+        }
         DaemonRpcRequest::ActivityPage(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_ACTIVITY_PAGE)?;
             let attached_session_id =
@@ -258,6 +646,30 @@ pub(super) async fn handle_request(
                 .agent_turns_page(&attached_session_id, &params)
                 .map_err(map_app_service_error)?;
             json_result(page)
+        }
+        DaemonRpcRequest::ThreadWorkspaceGet(params) => {
+            ensure_initialized(session_state, crate::METHOD_DAEMON_THREAD_WORKSPACE_GET)?;
+            let session_id =
+                require_attached_session(session_state, crate::METHOD_DAEMON_THREAD_WORKSPACE_GET)?;
+            json_result(
+                state
+                    .app
+                    .thread_workspace(&session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::ThreadWorkspaceUpdate(params) => {
+            ensure_initialized(session_state, crate::METHOD_DAEMON_THREAD_WORKSPACE_UPDATE)?;
+            let session_id = require_attached_session(
+                session_state,
+                crate::METHOD_DAEMON_THREAD_WORKSPACE_UPDATE,
+            )?;
+            json_result(
+                state
+                    .app
+                    .update_thread_workspace(&session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
         }
         DaemonRpcRequest::SessionList(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_SESSION_LIST)?;
@@ -385,6 +797,84 @@ pub(super) async fn handle_request(
                 result.body
             })
         }
+        DaemonRpcRequest::ScheduledWorkCreate(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_SCHEDULED_WORK_CREATE)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_SCHEDULED_WORK_CREATE)?;
+            let control = crate::read_persisted_runtime_control_state()
+                .map_err(|error| internal_error(error.to_string()))?;
+            if !control.background_opt_in {
+                return Err(invalid_params(
+                    "scheduled work requires explicit background opt-in",
+                ));
+            }
+            let created = state
+                .app
+                .create_scheduled_work(&attached_session_id, params)
+                .map_err(map_app_service_error)?;
+            state.scheduled_work_deadline.rearm();
+            json_result(created)
+        }
+        DaemonRpcRequest::ScheduledWorkList(_params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_SCHEDULED_WORK_LIST)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_SCHEDULED_WORK_LIST)?;
+            json_result(
+                state
+                    .app
+                    .list_scheduled_work(&attached_session_id)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::ScheduledWorkCancel(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_SCHEDULED_WORK_CANCEL)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_SCHEDULED_WORK_CANCEL)?;
+            let actor =
+                approval_actor_from_session(session_state, METHOD_DAEMON_SCHEDULED_WORK_CANCEL)?;
+            state
+                .app
+                .cancel_scheduled_work(&attached_session_id, &actor, &params)
+                .map_err(map_app_service_error)?;
+            state.scheduled_work_deadline.rearm();
+            json_result(serde_json::json!({}))
+        }
+        DaemonRpcRequest::PluginInspect(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_PLUGIN_INSPECT)?;
+            let inspected = state
+                .app
+                .inspect_plugin_package(&params)
+                .map_err(map_app_service_error)?;
+            json_result(inspected)
+        }
+        DaemonRpcRequest::PluginInstall(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_PLUGIN_INSTALL)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_PLUGIN_INSTALL)?;
+            let installed = state
+                .app
+                .install_plugin_package(&principal_id, &params, &state.config.plugin_root())
+                .map_err(map_app_service_error)?;
+            json_result(installed)
+        }
+        DaemonRpcRequest::PluginList(_params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_PLUGIN_LIST)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_PLUGIN_LIST)?;
+            json_result(
+                state
+                    .app
+                    .list_plugin_installations(&principal_id)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::PluginUninstall(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_PLUGIN_UNINSTALL)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_PLUGIN_UNINSTALL)?;
+            state
+                .app
+                .uninstall_plugin(&principal_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(serde_json::json!({}))
+        }
         DaemonRpcRequest::WorkflowLoad(params) => {
             ensure_initialized(session_state, METHOD_WORKFLOW_LOAD)?;
             let status = state
@@ -420,7 +910,7 @@ pub(super) async fn handle_request(
             let artifact = state
                 .app
                 .get_artifact(&attached_session_id, &params)
-                .map_err(|error| internal_error(error.to_string()))?;
+                .map_err(map_app_service_error)?;
             json_result(artifact)
         }
         DaemonRpcRequest::ArtifactList(params) => {
@@ -511,6 +1001,48 @@ pub(super) async fn handle_request(
                 .map_err(map_app_service_error)?;
             json_result(forked)
         }
+        DaemonRpcRequest::RunContinue(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_CONTINUE)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_RUN_CONTINUE)?;
+            let continued = state
+                .app
+                .continue_run(&attached_session_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(continued)
+        }
+        DaemonRpcRequest::RunSwitchAccountAndResume(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME)?;
+            let attached_session_id = require_attached_session(
+                session_state,
+                METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME,
+            )?;
+            let continued = state
+                .app
+                .switch_account_and_resume(&attached_session_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(continued)
+        }
+        DaemonRpcRequest::RunSpawn(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_SPAWN)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_RUN_SPAWN)?;
+            let spawned = state
+                .app
+                .spawn_run(&attached_session_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(spawned)
+        }
+        DaemonRpcRequest::RunJoin(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_JOIN)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_RUN_JOIN)?;
+            let joined = state
+                .app
+                .join_run(&attached_session_id, &params)
+                .map_err(map_app_service_error)?;
+            json_result(joined)
+        }
         DaemonRpcRequest::RunReplayEvents(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_RUN_REPLAY_EVENTS)?;
             let attached_session_id =
@@ -573,6 +1105,17 @@ pub(super) async fn handle_request(
                 .map_err(map_app_service_error)?;
             json_result(runs)
         }
+        DaemonRpcRequest::RunLineageGraph(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_LINEAGE_GRAPH)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_RUN_LINEAGE_GRAPH)?;
+            json_result(
+                state
+                    .app
+                    .run_lineage_graph(&attached_session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
         DaemonRpcRequest::RunGet(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_RUN_GET)?;
             let attached_session_id =
@@ -592,6 +1135,39 @@ pub(super) async fn handle_request(
                 .run_timeline(&attached_session_id, &params)
                 .map_err(map_app_service_error)?;
             json_result(timeline)
+        }
+        DaemonRpcRequest::VoiceOpen(params) => {
+            ensure_initialized(session_state, crate::METHOD_DAEMON_VOICE_OPEN)?;
+            let session_id =
+                require_attached_session(session_state, crate::METHOD_DAEMON_VOICE_OPEN)?;
+            json_result(
+                state
+                    .app
+                    .open_voice_stream(&session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::VoiceExchange(params) => {
+            ensure_initialized(session_state, crate::METHOD_DAEMON_VOICE_EXCHANGE)?;
+            let session_id =
+                require_attached_session(session_state, crate::METHOD_DAEMON_VOICE_EXCHANGE)?;
+            json_result(
+                state
+                    .app
+                    .exchange_voice_stream(&session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::VoiceEnd(params) => {
+            ensure_initialized(session_state, crate::METHOD_DAEMON_VOICE_END)?;
+            let session_id =
+                require_attached_session(session_state, crate::METHOD_DAEMON_VOICE_END)?;
+            json_result(
+                state
+                    .app
+                    .end_voice_stream(&session_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
         }
         DaemonRpcRequest::RecipesList => {
             ensure_initialized(session_state, METHOD_DAEMON_RECIPES_LIST)?;
@@ -644,6 +1220,17 @@ pub(super) async fn handle_request(
                 .await
                 .map_err(map_app_service_error)?;
             json_result(result)
+        }
+        DaemonRpcRequest::AgentRuntimeAuthProfilePreferencesSet(params) => {
+            ensure_initialized(
+                session_state,
+                METHOD_DAEMON_AGENT_RUNTIME_AUTH_PROFILE_PREFERENCES_SET,
+            )?;
+            let snapshot = state
+                .app
+                .replace_agent_runtime_auth_profile_preferences(&params)
+                .map_err(map_app_service_error)?;
+            json_result(snapshot)
         }
         DaemonRpcRequest::AgentRuntimeExtensionSet(params) => {
             ensure_initialized(session_state, METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET)?;

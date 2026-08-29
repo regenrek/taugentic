@@ -196,7 +196,11 @@ impl CodexAppServerClient {
 
 impl CodexAppServerSession {
     #[tracing::instrument(skip(self, objective), fields(thread_id = %self.thread_id))]
-    pub fn send_user_turn(&mut self, objective: &str) -> Result<(), CodexLlmClientError> {
+    pub fn send_user_turn(
+        &mut self,
+        objective: &str,
+        local_images: &[std::path::PathBuf],
+    ) -> Result<(), CodexLlmClientError> {
         if objective.trim().is_empty() {
             return Err(CodexLlmClientError::InvalidConfig(
                 "codex app-server objective must not be empty".to_string(),
@@ -208,16 +212,23 @@ impl CodexAppServerSession {
             )
         })?;
         let id = self.next_request_id();
+        let mut input = vec![json!({
+            "type": "text",
+            "text": objective,
+            "textElements": []
+        })];
+        input.extend(local_images.iter().map(|path| {
+            json!({
+                "type": "localImage",
+                "path": path,
+            })
+        }));
         self.send(json!({
             "id": id,
             "method": "turn/start",
             "params": {
                 "threadId": self.thread_id,
-                "input": [{
-                    "type": "text",
-                    "text": objective,
-                    "textElements": []
-                }],
+                "input": input,
                 "approvalPolicy": turn_policy.approval_policy,
                 "sandboxPolicy": turn_policy.sandbox_policy
             }

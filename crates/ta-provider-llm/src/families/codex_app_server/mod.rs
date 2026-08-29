@@ -9,6 +9,8 @@ mod process;
 mod search_path;
 mod types;
 
+pub(crate) use process::run_on_control_thread;
+
 pub use client::{CodexAppServerClient, CodexAppServerInput};
 pub use events::{CodexAppServerEvent, CodexToolCallOutcome};
 pub use models::{CodexModelCatalog, model_catalog};

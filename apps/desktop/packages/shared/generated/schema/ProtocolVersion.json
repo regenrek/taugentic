@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "const": "2026-04-stage3",
+  "const": "2026-08-stage5",
   "title": "ProtocolVersion",
   "type": "string"
 }
