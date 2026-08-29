@@ -1,7 +1,7 @@
 import type { StyleDesc } from "@regenrek/gpuix-react"
 import type { ReactNode } from "react"
 
-type PressableRole = "button" | "checkbox" | "option" | "radio" | "tab"
+type PressableRole = "button" | "checkbox" | "menuitem" | "option" | "radio" | "tab" | "treeitem"
 
 export type PressableProps = {
   children: ReactNode

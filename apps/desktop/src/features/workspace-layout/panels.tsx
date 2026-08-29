@@ -3,6 +3,7 @@ import type { AgentTurnRow, ArtifactSummary, BoundedFileContent, CapsuleRecipe, 
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { palette } from "../../app/theme.js"
+import { Pressable } from "../../ui/pressable.js"
 import { ArtifactsPanel, artifactDisplayName, type ArtifactPanelState } from "../artifacts/artifacts-panel.js"
 import { PullRequestsPanel } from "../code-host/pull-requests-panel.js"
 import { RunActivityPanel } from "../run-activity/run-activity-panel.js"
@@ -21,8 +22,6 @@ import { ConversationBranchGraph } from "../conversation-branches/branch-graph.j
 import { VoicePanel, type VoicePanelProps } from "../voice/voice-panel.js"
 
 export type AssistantMessage = { id: string; text: string }
-
-function activates(event: { key?: string }): boolean { return event.key === "enter" || event.key === "space" }
 
 export type ConversationPanelProps = {
   title: string
@@ -236,13 +235,13 @@ export function ConversationPanel(props: ConversationPanelProps) {
         </div>}
       </div>
     </div>
-    {!!props.attachments.length && <div testId="run-attachments" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{props.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.expectedRevision}`}><div style={{ display: "flex", alignItems: "center", gap: 6, padding: 6, borderWidth: 1, borderColor: palette.border, borderRadius: 6 }}><text style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>{attachment.path}</text><div testId={`remove-attachment-${attachment.path}`} tabIndex={0} accessibilityRole="button" accessibilityName={`Remove attachment ${attachment.path}`} accessibilityDisabled={false} onClick={() => props.onRemoveAttachment(attachment.path)} onKeyDown={(event) => { if (activates(event)) props.onRemoveAttachment(attachment.path) }} style={{ cursor: "pointer" }}><text style={{ color: palette.textFaint, fontSize: 10 }}>×</text></div></div></Fragment>)}</div>}
+    {!!props.attachments.length && <div testId="run-attachments" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{props.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.expectedRevision}`}><div style={{ display: "flex", alignItems: "center", gap: 6, padding: 6, borderWidth: 1, borderColor: palette.border, borderRadius: 6 }}><text style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>{attachment.path}</text><Pressable testId={`remove-attachment-${attachment.path}`} name={`Remove attachment ${attachment.path}`} onPress={() => props.onRemoveAttachment(attachment.path)} style={{ cursor: "pointer" }}><text style={{ color: palette.textFaint, fontSize: 10 }}>×</text></Pressable></div></Fragment>)}</div>}
     <RecipeComposer recipes={props.recipes} loading={props.recipesLoading} error={props.recipesError} selectedRecipeId={props.selectedRecipeId} onSelectRecipe={props.onSelectRecipe} />
     <Combobox open={slashOpen} onOpenChange={(open) => { if (!open) closeSlash() }} items={[]}><textarea ref={composer} testId="run-objective" autoFocus value={props.objective} placeholder="Describe the work to run" minRows={2} maxRows={8} onKeyDown={(event) => { if (event.key === "escape" && slashOpen) closeSlash() }} onChange={(event) => props.onObjectiveChange(event.value ?? "")} style={{ minHeight: 54, padding: 10, borderWidth: 1, borderColor: palette.border, borderRadius: 8, color: palette.text, backgroundColor: palette.panel }} />
-      {slashOpen && <ComboboxContent testId="composer-slash-completion" side="top" onMouseDownOutside={closeSlash} accessibilityRole="menu" accessibilityName="Composer slash commands" style={{ padding: 4, backgroundColor: palette.panelRaised }}>{slashCommands.map((command) => { const enabled = props.commands.enabled(command.id); const dispatch = () => { if (enabled && props.commands.dispatch(command.id)) closeSlash() }; return <Fragment key={command.id}><div testId={`composer-command-${command.id}`} tabIndex={enabled ? 0 : -1} accessibilityRole="menuitem" accessibilityName={command.title} accessibilityDisabled={!enabled} onClick={dispatch} onKeyDown={(event) => { if (event.key === "escape") closeSlash(); if (activates(event)) dispatch() }} style={{ padding: 6, cursor: enabled ? "pointer" : "default" }}><text>{command.title}</text></div></Fragment> })}</ComboboxContent>}
+      {slashOpen && <ComboboxContent testId="composer-slash-completion" side="top" onMouseDownOutside={closeSlash} onKeyDown={(event) => { if (event.key === "escape") closeSlash() }} accessibilityRole="menu" accessibilityName="Composer slash commands" style={{ padding: 4, backgroundColor: palette.panelRaised }}>{slashCommands.map((command) => { const enabled = props.commands.enabled(command.id); const dispatch = () => { if (enabled && props.commands.dispatch(command.id)) closeSlash() }; return <Fragment key={command.id}><Pressable testId={`composer-command-${command.id}`} role="menuitem" name={command.title} disabled={!enabled} onPress={dispatch} style={{ padding: 6, cursor: enabled ? "pointer" : "default" }}><text>{command.title}</text></Pressable></Fragment> })}</ComboboxContent>}
     </Combobox>
     <div style={{ display: "flex", gap: 8 }}>
-      {(["start-run", "cancel-run"] as const).map((id) => { const enabled = props.commands.enabled(id); const title = commandById(id)!.title; const dispatch = () => { if (enabled) props.commands.dispatch(id) }; return <Fragment key={id}><div testId={id} tabIndex={enabled ? 0 : -1} accessibilityRole="button" accessibilityName={title} accessibilityDisabled={!enabled} onClick={dispatch} onKeyDown={(event) => { if (activates(event)) dispatch() }} style={{ padding: 8, backgroundColor: enabled ? palette.accentDim : palette.panelRaised, color: enabled ? palette.text : palette.textFaint, cursor: enabled ? "pointer" : "default" }}><text>{title}</text></div></Fragment> })}
+      {(["start-run", "cancel-run"] as const).map((id) => { const enabled = props.commands.enabled(id); const title = commandById(id)!.title; const dispatch = () => { if (enabled) props.commands.dispatch(id) }; return <Fragment key={id}><Pressable testId={id} name={title} disabled={!enabled} onPress={dispatch} style={{ padding: 8, backgroundColor: enabled ? palette.accentDim : palette.panelRaised, color: enabled ? palette.text : palette.textFaint, cursor: enabled ? "pointer" : "default" }}><text>{title}</text></Pressable></Fragment> })}
     </div>
   </div>
 }
@@ -263,10 +262,10 @@ function RecipeComposer(props: {
   return <div testId="recipe-composer" style={{ display: "flex", flexDirection: "column", gap: 5, padding: 8, borderWidth: 1, borderColor: palette.border, borderRadius: 8, backgroundColor: palette.panel }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <text style={{ color: palette.textMuted, fontSize: 10 }}>Recipe</text>
-      <div testId="recipe-picker" tabIndex={canSelect ? 0 : -1} accessibilityRole="button" accessibilityName="Choose run recipe" accessibilityExpanded={open} accessibilityDisabled={!canSelect} onClick={() => { if (canSelect) setOpen((value) => !value) }} onKeyDown={(event) => { if (activates(event) && canSelect) setOpen((value) => !value) }} style={{ flexGrow: 1, minWidth: 0, cursor: canSelect ? "pointer" : "default", padding: 5, backgroundColor: palette.panelRaised }}><text style={{ color: selected ? palette.text : unavailableSelection ? "#f0b060" : palette.textMuted, fontSize: 11 }}>{selected?.name ?? (unavailableSelection ? `Unavailable recipe: ${props.selectedRecipeId}` : "No recipe")}</text></div>
-      <div testId="clear-recipe" tabIndex={canClear ? 0 : -1} accessibilityRole="button" accessibilityName="Clear recipe" accessibilityDisabled={!canClear} onClick={() => { if (canClear) props.onSelectRecipe?.(undefined) }} onKeyDown={(event) => { if (activates(event) && canClear) props.onSelectRecipe?.(undefined) }} style={{ cursor: canClear ? "pointer" : "default", padding: 5, backgroundColor: canClear ? palette.panelRaised : palette.panel, color: canClear ? palette.textMuted : palette.textFaint }}><text>Clear</text></div>
+      <Pressable testId="recipe-picker" name="Choose run recipe" expanded={open} disabled={!canSelect} onPress={() => { if (canSelect) setOpen((value) => !value) }} style={{ flexGrow: 1, minWidth: 0, cursor: canSelect ? "pointer" : "default", padding: 5, backgroundColor: palette.panelRaised }}><text style={{ color: selected ? palette.text : unavailableSelection ? "#f0b060" : palette.textMuted, fontSize: 11 }}>{selected?.name ?? (unavailableSelection ? `Unavailable recipe: ${props.selectedRecipeId}` : "No recipe")}</text></Pressable>
+      <Pressable testId="clear-recipe" name="Clear recipe" disabled={!canClear} onPress={() => { if (canClear) props.onSelectRecipe?.(undefined) }} style={{ cursor: canClear ? "pointer" : "default", padding: 5, backgroundColor: canClear ? palette.panelRaised : palette.panel, color: canClear ? palette.textMuted : palette.textFaint }}><text>Clear</text></Pressable>
     </div>
-    {open && <div testId="recipe-options" accessibilityRole="listbox" accessibilityName="Run recipes" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{recipes.map((recipe) => <Fragment key={recipe.id}><div testId={`recipe-option-${recipe.id}`} tabIndex={0} accessibilityRole="option" accessibilityName={recipe.name} accessibilitySelected={recipe.id === props.selectedRecipeId} onClick={() => { props.onSelectRecipe?.(recipe.id); setOpen(false) }} onKeyDown={(event) => { if (activates(event)) { props.onSelectRecipe?.(recipe.id); setOpen(false) } }} style={{ cursor: "pointer", padding: 5, backgroundColor: recipe.id === props.selectedRecipeId ? palette.accentDim : palette.panelRaised }}><text style={{ color: palette.text, fontSize: 11 }}>{recipe.name}</text></div></Fragment>)}</div>}
+    {open && <div testId="recipe-options" accessibilityRole="listbox" accessibilityName="Run recipes" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{recipes.map((recipe) => <Fragment key={recipe.id}><Pressable testId={`recipe-option-${recipe.id}`} role="option" name={recipe.name} selected={recipe.id === props.selectedRecipeId} onPress={() => { props.onSelectRecipe?.(recipe.id); setOpen(false) }} style={{ cursor: "pointer", padding: 5, backgroundColor: recipe.id === props.selectedRecipeId ? palette.accentDim : palette.panelRaised }}><text style={{ color: palette.text, fontSize: 11 }}>{recipe.name}</text></Pressable></Fragment>)}</div>}
     {props.loading && <text testId="recipe-loading" style={{ color: palette.textFaint, fontSize: 10 }}>Loading recipes...</text>}
     {props.error && <text testId="recipe-error" accessibilityRole="alert" accessibilityName={props.error} style={{ color: "#f08080", fontSize: 10 }}>{props.error}</text>}
     {unavailableSelection && <text testId="recipe-unavailable" accessibilityRole="alert" accessibilityName={`Selected recipe ${props.selectedRecipeId} is unavailable`} style={{ color: "#f0b060", fontSize: 10 }}>The selected recipe is unavailable. Clear it or choose a listed recipe.</text>}
@@ -314,9 +313,9 @@ const Transcript = memo(function Transcript(props: {
   const itemCount = rows.length + loadOlderOffset
   const renderItem = useCallback((index: number) => {
     if (props.hasOlder && index === 0) {
-      return <Fragment key="load-older"><div testId="load-older-transcript" tabIndex={props.loadingOlder ? -1 : 0} accessibilityRole="button" accessibilityName="Load earlier messages" accessibilityDisabled={props.loadingOlder} onClick={() => { if (!props.loadingOlder) props.onLoadOlder() }} onKeyDown={(event) => { if (activates(event) && !props.loadingOlder) props.onLoadOlder() }} style={{ display: "flex", justifyContent: "center", padding: 12, cursor: props.loadingOlder ? "default" : "pointer" }}>
+      return <Fragment key="load-older"><Pressable testId="load-older-transcript" name="Load earlier messages" disabled={props.loadingOlder} onPress={() => { if (!props.loadingOlder) props.onLoadOlder() }} style={{ display: "flex", justifyContent: "center", padding: 12, cursor: props.loadingOlder ? "default" : "pointer" }}>
         <text style={{ color: palette.textMuted, fontSize: 11 }}>{props.loadingOlder ? "Loading earlier messages..." : "Load earlier messages"}</text>
-      </div></Fragment>
+      </Pressable></Fragment>
     }
     const item = rows[index - loadOlderOffset]
     return item ? <TranscriptRow key={item.key} item={item} onOpenSideChat={props.onOpenSideChat} onOpenFreshSpawn={props.onOpenFreshSpawn} onPinThreadWorkspace={props.onPinThreadWorkspace} /> : null
@@ -341,7 +340,7 @@ const Transcript = memo(function Transcript(props: {
       }}
       style={{ flexGrow: 1, minHeight: 0, width: "100%" }}
     />
-    {!followTail && <div testId="jump-to-latest" tabIndex={0} accessibilityRole="button" accessibilityName="Jump to latest" accessibilityDisabled={false} onClick={() => setFollowTail(true)} onKeyDown={(event) => { if (activates(event)) setFollowTail(true) }} style={{ position: "absolute", right: 14, bottom: 10, padding: 7, borderRadius: 7, backgroundColor: palette.panelRaised, cursor: "pointer" }}><text style={{ color: palette.text, fontSize: 11 }}>Jump to latest</text></div>}
+    {!followTail && <Pressable testId="jump-to-latest" name="Jump to latest" onPress={() => setFollowTail(true)} style={{ position: "absolute", right: 14, bottom: 10, padding: 7, borderRadius: 7, backgroundColor: palette.panelRaised, cursor: "pointer" }}><text style={{ color: palette.text, fontSize: 11 }}>Jump to latest</text></Pressable>}
   </div>
 })
 
@@ -354,13 +353,13 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
   }
   const row = item.row
   const sideChat = onOpenSideChat
-    ? <div testId={`side-chat-${row.cursor.sequence}`} tabIndex={0} accessibilityRole="button" accessibilityName="Open side chat" accessibilityDisabled={false} onClick={() => onOpenSideChat(row.runId, row.cursor.sequence)} onKeyDown={(event) => { if (activates(event)) onOpenSideChat(row.runId, row.cursor.sequence) }} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Side Chat</text></div>
+    ? <Pressable testId={`side-chat-${row.cursor.sequence}`} name="Open side chat" onPress={() => onOpenSideChat(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Side Chat</text></Pressable>
     : null
   const freshSpawn = onOpenFreshSpawn
-    ? <div testId={`fresh-spawn-${row.cursor.sequence}`} tabIndex={0} accessibilityRole="button" accessibilityName="Create fresh spawn" accessibilityDisabled={false} onClick={() => onOpenFreshSpawn(row.runId)} onKeyDown={(event) => { if (activates(event)) onOpenFreshSpawn(row.runId) }} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Fresh Spawn</text></div>
+    ? <Pressable testId={`fresh-spawn-${row.cursor.sequence}`} name="Create fresh spawn" onPress={() => onOpenFreshSpawn(row.runId)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Fresh Spawn</text></Pressable>
     : null
   const pin = onPinThreadWorkspace
-    ? <div testId={`pin-thread-workspace-${row.cursor.sequence}`} tabIndex={0} accessibilityRole="button" accessibilityName="Pin to thread workspace" accessibilityDisabled={false} onClick={() => onPinThreadWorkspace(row.runId, row.cursor.sequence)} onKeyDown={(event) => { if (activates(event)) onPinThreadWorkspace(row.runId, row.cursor.sequence) }} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Pin</text></div>
+    ? <Pressable testId={`pin-thread-workspace-${row.cursor.sequence}`} name="Pin to thread workspace" onPress={() => onPinThreadWorkspace(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Pin</text></Pressable>
     : null
   if (row.kind === "user") {
     return <div testId={`user-message-${row.cursor.sequence}`} style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, paddingBottom: 12, paddingLeft: 56, paddingRight: 8 }}>
@@ -398,12 +397,17 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
 function FreshSpawnComposer(props: { parentRunId: string; onDismiss(): void; onSpawn?(parentRunId: string, objective: string): Promise<void> }) {
   const [draft, setDraft] = useState("")
   const enabled = Boolean(props.onSpawn && draft.trim())
+  const spawn = () => {
+    const objective = draft.trim()
+    if (!objective || !props.onSpawn) return
+    void props.onSpawn(props.parentRunId, objective).then(() => { setDraft(""); props.onDismiss() })
+  }
   return <div testId={`fresh-spawn-composer-${props.parentRunId}`} style={{ display: "flex", flexDirection: "column", gap: 7, padding: 10, borderWidth: 1, borderColor: palette.accentDim, borderRadius: 8, backgroundColor: palette.panel }}>
     <text style={{ color: palette.textMuted, fontSize: 10 }}>Fresh Spawn from {props.parentRunId}</text>
     <input testId={`fresh-spawn-objective-${props.parentRunId}`} value={draft} onChange={(event) => setDraft(event.value ?? "")} placeholder="Independent task with fresh context" />
     <div style={{ display: "flex", gap: 6 }}>
-      <div testId={`spawn-fresh-run-${props.parentRunId}`} tabIndex={enabled ? 0 : -1} accessibilityRole="button" accessibilityName="Spawn fresh run" accessibilityDisabled={!enabled} onClick={() => { const objective = draft.trim(); if (!objective || !props.onSpawn) return; void props.onSpawn(props.parentRunId, objective).then(() => { setDraft(""); props.onDismiss() }) }} onKeyDown={(event) => { if (activates(event)) { const objective = draft.trim(); if (!objective || !props.onSpawn) return; void props.onSpawn(props.parentRunId, objective).then(() => { setDraft(""); props.onDismiss() }) } }} style={{ cursor: enabled ? "pointer" : "default", padding: 6, backgroundColor: enabled ? palette.accentDim : palette.panelRaised }}><text style={{ color: enabled ? palette.text : palette.textFaint, fontSize: 10 }}>Spawn</text></div>
-      <div testId={`dismiss-fresh-spawn-${props.parentRunId}`} tabIndex={0} accessibilityRole="button" accessibilityName="Cancel fresh spawn" accessibilityDisabled={false} onClick={props.onDismiss} onKeyDown={(event) => { if (activates(event)) props.onDismiss() }} style={{ cursor: "pointer", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Cancel</text></div>
+      <Pressable testId={`spawn-fresh-run-${props.parentRunId}`} name="Spawn fresh run" disabled={!enabled} onPress={spawn} style={{ cursor: enabled ? "pointer" : "default", padding: 6, backgroundColor: enabled ? palette.accentDim : palette.panelRaised }}><text style={{ color: enabled ? palette.text : palette.textFaint, fontSize: 10 }}>Spawn</text></Pressable>
+      <Pressable testId={`dismiss-fresh-spawn-${props.parentRunId}`} name="Cancel fresh spawn" onPress={props.onDismiss} style={{ cursor: "pointer", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Cancel</text></Pressable>
     </div>
   </div>
 }
@@ -412,10 +416,14 @@ function FreshSpawnPanel(props: { run: RunListEntry; onJoin?(parentRunId: string
   const [joined, setJoined] = useState<JoinRunResult>()
   if (props.run.relationship.kind !== "freshSpawn") return null
   const parentRunId = props.run.relationship.parentRunId
+  const join = () => {
+    if (!props.onJoin) return
+    void props.onJoin(parentRunId, props.run.id).then((result) => { if (result) setJoined(result) })
+  }
   return <div testId={`fresh-spawn-panel-${props.run.id}`} style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10, borderWidth: 1, borderColor: palette.border, borderRadius: 8, backgroundColor: palette.panel }}>
     <text style={{ color: palette.text, fontSize: 11, fontWeight: 650 }}>Fresh Spawn</text>
     <text testId={`fresh-spawn-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Status: {runStatusLabel(props.run.status)}</text>
-    <div testId={`join-fresh-run-${props.run.id}`} tabIndex={props.onJoin ? 0 : -1} accessibilityRole="button" accessibilityName="Join fresh run" accessibilityDisabled={!props.onJoin} onClick={() => { if (!props.onJoin) return; void props.onJoin(parentRunId, props.run.id).then((result) => { if (result) setJoined(result) }) }} onKeyDown={(event) => { if (activates(event) && props.onJoin) void props.onJoin(parentRunId, props.run.id).then((result) => { if (result) setJoined(result) }) }} style={{ cursor: props.onJoin ? "pointer" : "default", padding: 6, backgroundColor: props.onJoin ? palette.accentDim : palette.panelRaised }}><text style={{ color: props.onJoin ? palette.text : palette.textFaint, fontSize: 10 }}>Join</text></div>
+    <Pressable testId={`join-fresh-run-${props.run.id}`} name="Join fresh run" disabled={!props.onJoin} onPress={join} style={{ cursor: props.onJoin ? "pointer" : "default", padding: 6, backgroundColor: props.onJoin ? palette.accentDim : palette.panelRaised }}><text style={{ color: props.onJoin ? palette.text : palette.textFaint, fontSize: 10 }}>Join</text></Pressable>
     {joined && <div testId={`fresh-join-links-${props.run.id}`} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <text testId={`fresh-join-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Daemon status: {runStatusLabel(joined.run.status)}</text>
       <text testId={`fresh-join-result-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>{joined.result ? "Result available" : "Result pending"}</text>
@@ -442,11 +450,11 @@ function SideChatPanel(props: { run: RunListEntry; rows: readonly AgentTurnRow[]
     {props.rows.slice(-3).map((row) => <Fragment key={`${row.cursor.sequence}-${row.kind}`}><text style={{ color: palette.textMuted, fontSize: 11 }}>[{row.kind}]</text></Fragment>)}
     {canContinue && <div style={{ display: "flex", gap: 8 }}>
       <input testId={`continue-side-chat-input-${props.run.id}`} value={draft} onChange={(event) => setDraft(event.value ?? "")} placeholder="Continue this side chat" style={{ flexGrow: 1, minWidth: 0 }} />
-      <div testId={`continue-side-chat-${props.run.id}`} tabIndex={continuation ? 0 : -1} accessibilityRole="button" accessibilityName="Send side chat message" accessibilityDisabled={!continuation} onClick={sendContinuation} onKeyDown={(event) => { if (activates(event)) sendContinuation() }} style={{ cursor: continuation ? "pointer" : "default", padding: 6, backgroundColor: continuation ? palette.accentDim : palette.panelRaised }}><text style={{ color: continuation ? palette.text : palette.textFaint, fontSize: 10 }}>Send</text></div>
+      <Pressable testId={`continue-side-chat-${props.run.id}`} name="Send side chat message" disabled={!continuation} onPress={sendContinuation} style={{ cursor: continuation ? "pointer" : "default", padding: 6, backgroundColor: continuation ? palette.accentDim : palette.panelRaised }}><text style={{ color: continuation ? palette.text : palette.textFaint, fontSize: 10 }}>Send</text></Pressable>
     </div>}
     <div style={{ display: "flex", gap: 8 }}>
-      <div testId={`cancel-side-chat-${props.run.id}`} tabIndex={canCancel && props.onCancel ? 0 : -1} accessibilityRole="button" accessibilityName="Cancel side chat" accessibilityDisabled={!canCancel || !props.onCancel} onClick={() => { if (canCancel && props.onCancel) props.onCancel(props.run.id) }} onKeyDown={(event) => { if (activates(event) && canCancel && props.onCancel) props.onCancel(props.run.id) }} style={{ cursor: canCancel && props.onCancel ? "pointer" : "default", padding: 6, backgroundColor: canCancel && props.onCancel ? palette.accentDim : palette.panelRaised }}><text style={{ color: canCancel && props.onCancel ? palette.text : palette.textFaint, fontSize: 10 }}>Cancel</text></div>
-      <div testId={`close-side-chat-${props.run.id}`} tabIndex={props.onClose ? 0 : -1} accessibilityRole="button" accessibilityName="Close side chat" accessibilityDisabled={!props.onClose} onClick={() => { if (props.onClose) props.onClose(props.run.id) }} onKeyDown={(event) => { if (activates(event) && props.onClose) props.onClose(props.run.id) }} style={{ cursor: props.onClose ? "pointer" : "default", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: props.onClose ? palette.textMuted : palette.textFaint, fontSize: 10 }}>Close</text></div>
+      <Pressable testId={`cancel-side-chat-${props.run.id}`} name="Cancel side chat" disabled={!canCancel || !props.onCancel} onPress={() => { if (canCancel && props.onCancel) props.onCancel(props.run.id) }} style={{ cursor: canCancel && props.onCancel ? "pointer" : "default", padding: 6, backgroundColor: canCancel && props.onCancel ? palette.accentDim : palette.panelRaised }}><text style={{ color: canCancel && props.onCancel ? palette.text : palette.textFaint, fontSize: 10 }}>Cancel</text></Pressable>
+      <Pressable testId={`close-side-chat-${props.run.id}`} name="Close side chat" disabled={!props.onClose} onPress={() => { if (props.onClose) props.onClose(props.run.id) }} style={{ cursor: props.onClose ? "pointer" : "default", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: props.onClose ? palette.textMuted : palette.textFaint, fontSize: 10 }}>Close</text></Pressable>
     </div>
   </div>
 }

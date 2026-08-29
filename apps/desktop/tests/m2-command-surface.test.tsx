@@ -189,6 +189,12 @@ describe("M2 command surface", () => {
       desktopSettings.saveLayout("workspace-command-conversation", { kind: "tabs", id: "root", panels: ["conversation"], active: "conversation" })
       render(<ComposerHarness />)
       expect(renderer.getAutomationTree()).toContain("Composer slash commands")
+      const slashMenuItem = renderer.findByTestId("composer-command-focus-git")!
+      expect(renderer.getAutomationTree()).toContain('"role":"menuitem"')
+      renderer.nativeSimulateKeystrokes(slashMenuItem.id, "escape")
+      expect(renderer.findByTestId("composer-slash-completion")).toBeUndefined()
+      expect(renderer.getPaintedText()).toContain("empty")
+      renderer.nativeSimulateInput(renderer.findByTestId("run-objective")!.id, "/focus")
       click("composer-command-focus-git")
       expect(calls).toEqual(["focus:git"])
       expect(renderer.getPaintedText()).toContain("empty")

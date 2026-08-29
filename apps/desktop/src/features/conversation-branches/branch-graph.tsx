@@ -1,6 +1,7 @@
 import type { RunLineageGraphResult, RunListEntry } from "@taugentic/desktop-protocol"
 import { Fragment, useState } from "react"
 import { palette } from "../../app/theme.js"
+import { Pressable } from "../../ui/pressable.js"
 
 type CortexState = "loading" | "offline" | "error" | "ready"
 export type CortexCanvasCommand =
@@ -42,6 +43,6 @@ export function ConversationBranchGraph(props: { graph?: RunLineageGraphResult; 
     {graph.truncated && <text testId="cortex-truncated" style={{ color: palette.warning, fontSize: 10 }}>Showing {nodes.length} of {graph.totalCount} runs.</text>}
     {!!graph.orphanRunIds.length && <text testId="cortex-orphans" style={{ color: palette.warning, fontSize: 10 }}>Missing parent for {graph.orphanRunIds.length} run(s).</text>}
     {graph.cycleBroken && <text testId="cortex-cycle" style={{ color: palette.warning, fontSize: 10 }}>A lineage cycle was safely broken.</text>}
-    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><div testId={`branch-node-${node.id}`} tabIndex={0} accessibilityRole="treeitem" accessibilityName={`${label(node)} ${node.id}. Open`} accessibilitySelected={selectedRunId === node.id} onClick={() => open(node.id)} onKeyDown={(event) => { if (event.key === "enter" || event.key === "space") open(node.id) }} style={{ display: "flex", gap: 6, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><text style={{ color: palette.textMuted, fontSize: 10 }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{node.status}</text></div></Fragment>)}</div>
+    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><Pressable testId={`branch-node-${node.id}`} role="treeitem" name={`${label(node)} ${node.id}. Open`} selected={selectedRunId === node.id} onPress={() => open(node.id)} style={{ display: "flex", gap: 6, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><text style={{ color: palette.textMuted, fontSize: 10 }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{node.status}</text></Pressable></Fragment>)}</div>
   </div>
 }

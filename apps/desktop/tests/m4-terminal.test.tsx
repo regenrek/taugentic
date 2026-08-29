@@ -200,20 +200,23 @@ describe("M4 native terminal workbench", () => {
   })
 
   it("routes native keyboard bytes and resize measurements to the selected daemon terminal", async () => {
+    const attached = attachmentSignal()
     const record = { spawns: [], inputs: [], resizes: [], attachments: 0, releases: 0 } as {
       spawns: TerminalSpawnParams[]
       inputs: TerminalInputParams[]
       resizes: TerminalResizeParams[]
       attachments: number
       releases: number
+      attachmentSignals?: Array<() => void>
     }
+    record.attachmentSignals = [attached.resolve]
     const runtime = fakeRuntime(record)
     const root = createTestRoot()
     try {
       root.render(<Harness runtime={runtime} renderer={root.renderer} show />)
       await settle()
       click(root.renderer, "new-terminal")
-      await settle()
+      await attached.settled
       const surface = root.renderer.findByTestId("terminal-surface")!
 
       root.renderer.nativeSimulateKeystrokes(surface.id, "h i enter")
