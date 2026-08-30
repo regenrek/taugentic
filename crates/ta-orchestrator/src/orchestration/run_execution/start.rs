@@ -394,6 +394,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::SessionId;
     use crate::orchestration::run_execution::test_support::*;
@@ -765,7 +767,8 @@ mod tests {
 
     #[test]
     fn start_run_with_allow_mode_runs_without_approval() {
-        let runtime = crate::RuntimeService::bootstrap();
+        let (runtime, dispatcher) =
+            runtime_with_dispatch_plans([DispatchPlan::Succeed(Arc::new(NoopExecutionHandle))]);
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = app
             .open_session(
@@ -787,11 +790,18 @@ mod tests {
 
         assert_ne!(started.run.status, RunStatus::WaitingForApproval);
         assert!(started.requested_approval_id().is_none());
+        let requests = dispatcher.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].runtime_profile_id.as_str(),
+            "runtime-codex-allow"
+        );
     }
 
     #[test]
     fn start_run_resolves_recipe_before_provider_execution() {
-        let runtime = crate::RuntimeService::bootstrap();
+        let (runtime, dispatcher) =
+            runtime_with_dispatch_plans([DispatchPlan::Succeed(Arc::new(NoopExecutionHandle))]);
         let (app, execution) = app_and_execution_with_runtime(runtime);
         let session = app
             .open_session(
@@ -830,6 +840,9 @@ mod tests {
                 ..
             } if recipe_id == "debug-agent"
         ));
+        let requests = dispatcher.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].output_contract, Some(OutputContractKind::Debug));
     }
 
     #[test]
