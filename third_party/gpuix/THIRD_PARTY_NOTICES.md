@@ -21,6 +21,28 @@ are ported from **[Comet](https://github.com/zeronsh/comet)** (MIT, Copyright (c
 | `packages/native/src/custom_elements/input.rs` | caret blink sections of `crates/ui/src/composer.rs` |
 | `packages/native/src/theme.rs` | `crates/ui/src/theme.rs` |
 
+## Browser compositor contract
+
+The nested GPUI macOS Base / Native / Overlay compositor contract is adapted
+from Zed's [GPUI PR #61945](https://github.com/zed-industries/zed/pull/61945)
+at pinned commit
+[`20a699acac7b5bceea8e8fe6ba257a61ad47fb09`](https://github.com/zed-industries/zed/commit/20a699acac7b5bceea8e8fe6ba257a61ad47fb09).
+The adapted `crates/gpui`, `crates/gpui_apple`, and `crates/gpui_macos`
+packages each declare **Apache-2.0**. GPUIX retains this notice for the
+adapted compositor contract.
+
+Copyright 2022-2025 Zed Industries, Inc.
+
+The GPUIX fork modifies these Apache-2.0 files:
+
+| File | GPUIX modification |
+| --- | --- |
+| `zed/crates/gpui/src/platform.rs` | Defines the native-surface platform contract. |
+| `zed/crates/gpui/src/scene.rs` | Splits base and overlay scene ranges. |
+| `zed/crates/gpui/src/window.rs` | Draws the layered scene. |
+| `zed/crates/gpui_apple/src/metal_renderer.rs` | Adds the transparent overlay renderer. |
+| `zed/crates/gpui_macos/src/window.rs` | Hosts native views between GPUI render planes. |
+
 ## Example icons
 
 The chat example uses **[Lucide](https://github.com/lucide-icons/lucide)** SVG
