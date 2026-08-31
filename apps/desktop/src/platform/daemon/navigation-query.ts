@@ -20,6 +20,12 @@ export function invalidateNavigation(): Promise<void> {
   return desktopQueryClient.invalidateQueries({ queryKey: navigationQueryKey })
 }
 
+/** Refresh and publish the authoritative daemon navigation projection. */
+export async function refreshNavigationSnapshot(runtime: DesktopRuntime): Promise<NavigationSnapshot> {
+  await invalidateNavigation()
+  return desktopQueryClient.fetchQuery(navigationQuery(runtime))
+}
+
 /** Publish an authoritative daemon mutation result into the sole navigation projection. */
 export function updateNavigationSnapshot(snapshot: NavigationSnapshot): void {
   desktopQueryClient.setQueryData(navigationQueryKey, snapshot)

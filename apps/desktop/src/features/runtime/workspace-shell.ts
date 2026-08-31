@@ -24,7 +24,7 @@ import type {
   WorkspaceFileAttachmentRequest,
   WorkItemKey,
 } from "@taugentic/desktop-protocol"
-import { invalidateNavigation, navigationQuery, navigationQueryKey, updateNavigationSnapshot } from "../../platform/daemon/navigation-query.js"
+import { invalidateNavigation, navigationQuery, navigationQueryKey, refreshNavigationSnapshot, updateNavigationSnapshot } from "../../platform/daemon/navigation-query.js"
 import { conversationBranchesQueryKey, invalidateConversationBranchesForLifecycleRecovery } from "../../platform/daemon/conversation-branches-query.js"
 import { createDesktopRuntime } from "../../platform/daemon/desktop-runtime.js"
 import { desktopQueryClient } from "../../platform/daemon/query-client.js"
@@ -326,14 +326,21 @@ async function createConversation(
       await desktopRuntime.bridge.openSession(JSON.stringify({ title: trimmedTitle, workspace } satisfies DaemonSessionOpenParams)),
     )
     if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return false
-    await invalidateNavigation()
+    const navigation = await refreshNavigationSnapshot(desktopRuntime)
     if (!isShellReady() || requestId !== selectionRequestId || navigationEpoch !== navigationRequestId) return false
+    if (!navigation.conversations?.some((conversation) => conversation.sessionId === session.id)) {
+      workspaceShell.send({
+        type: "ERROR",
+        message: "The conversation was created, but it is not available in navigation. Refresh navigation and try again.",
+      })
+      return false
+    }
     workspaceShell.send({ type: "SELECTED", sessionId: session.id })
     navigationRecovery.persist()
     return true
   } catch {
     if (isShellReady() && requestId === selectionRequestId && navigationEpoch === navigationRequestId) {
-      workspaceShell.send({ type: "ERROR", message: "The conversation could not be created. The daemon is still safe to use." })
+      workspaceShell.send({ type: "ERROR", message: "The conversation could not be created or refreshed. Refresh navigation and try again." })
     }
     return false
   }

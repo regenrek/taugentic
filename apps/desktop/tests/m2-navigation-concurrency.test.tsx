@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 import { createTestRoot } from "@regenrek/gpuix-react/testing"
 import { QueryClientProvider } from "@tanstack/react-query"
 
-import type { AgentRuntimeSnapshot, DesktopDaemonLifecycleProjection, RunEventDelta, RunStatus } from "@taugentic/desktop-protocol"
+import type { AgentRuntimeSnapshot, DesktopDaemonLifecycleProjection, NavigationSnapshot, RunEventDelta, RunStatus } from "@taugentic/desktop-protocol"
 import type { NativeDaemonBridge } from "@taugentic/desktop-daemon-native"
 
 import { commandRegistry, createCommandDispatcher } from "../src/features/commands/registry.js"
@@ -26,6 +26,24 @@ function lifecycle(
   invalidated = status !== "ready",
 ): DesktopDaemonLifecycleProjection {
   return { status, invalidated, foreignRuntimeRestricted: false }
+}
+
+function navigationSnapshot(...sessionIds: string[]): NavigationSnapshot {
+  return {
+    spaces: [],
+    projects: [],
+    agents: [],
+    conversations: sessionIds.map((sessionId) => ({
+      sessionId,
+      workspaceId: `workspace-${sessionId}`,
+      title: sessionId,
+      status: "idle" as const,
+      attention: { pendingApproval: false, scheduledWorkRequiresAction: false },
+      placement: { kind: "standalone" as const },
+      archived: false,
+      pinned: false,
+    })),
+  }
 }
 
 function assistantDelta(seq: string, delta: string, identity: { itemId?: string; turnId?: string } = { itemId: "item-one", turnId: "turn-one" }): RunEventDelta {
@@ -266,9 +284,11 @@ describe("M2 navigation concurrency", () => {
     const bridge = desktopRuntime.bridge as unknown as {
       navigationIntent(intentJson: string): Promise<string>
       openSession(paramsJson: string): Promise<string>
+      navigationSnapshot(): Promise<string>
     }
     const originalIntent = bridge.navigationIntent
     const originalOpenSession = bridge.openSession
+    const originalNavigationSnapshot = bridge.navigationSnapshot
     let resolveIntent!: (value: string) => void
     let resolveSession!: (value: string) => void
     const baseline = { spaces: [], projects: [], agents: [], conversations: [{ sessionId: "baseline", title: "Baseline", status: "idle", attention: { pendingApproval: false, scheduledWorkRequiresAction: false }, placement: { kind: "standalone" }, archived: false, pinned: false }] }
@@ -278,6 +298,7 @@ describe("M2 navigation concurrency", () => {
       workspaceShell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
       bridge.navigationIntent = () => new Promise<string>((resolve) => { resolveIntent = resolve })
       bridge.openSession = () => new Promise<string>((resolve) => { resolveSession = resolve })
+      bridge.navigationSnapshot = () => Promise.resolve(JSON.stringify(navigationSnapshot("created")))
 
       const pin = setConversationPinned("conversation-stale", true)
       const create = createProjectConversation("project-a", "workspace-a", "Created")
@@ -289,13 +310,80 @@ describe("M2 navigation concurrency", () => {
     } finally {
       bridge.navigationIntent = originalIntent
       bridge.openSession = originalOpenSession
+      bridge.navigationSnapshot = originalNavigationSnapshot
+      workspaceShell.stop()
+    }
+  })
+
+  it("publishes the authoritative navigation snapshot before selecting a created conversation", async () => {
+    const bridge = desktopRuntime.bridge as unknown as {
+      openSession(paramsJson: string): Promise<string>
+      navigationSnapshot(): Promise<string>
+    }
+    const originalOpenSession = bridge.openSession
+    const originalNavigationSnapshot = bridge.navigationSnapshot
+    let resolveNavigation!: (value: string) => void
+    let markNavigationRequested!: () => void
+    const navigationRequested = new Promise<void>((resolve) => { markNavigationRequested = resolve })
+    workspaceShell.start()
+    try {
+      workspaceShell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
+      workspaceShell.send({ type: "SELECTED", sessionId: "existing" })
+      bridge.openSession = () => Promise.resolve(JSON.stringify({ id: "created", nextRunSelection: { kind: "none" } }))
+      bridge.navigationSnapshot = () => {
+        markNavigationRequested()
+        return new Promise<string>((resolve) => { resolveNavigation = resolve })
+      }
+
+      const creation = createProjectConversation("project-a", "workspace-a", "Created")
+      await navigationRequested
+      expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("existing")
+
+      const authoritativeSnapshot = navigationSnapshot("existing", "created")
+      resolveNavigation(JSON.stringify(authoritativeSnapshot))
+      expect(await creation).toBe(true)
+      expect(desktopQueryClient.getQueryData<NavigationSnapshot>(navigationQueryKey)).toEqual(authoritativeSnapshot)
+      expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("created")
+    } finally {
+      bridge.openSession = originalOpenSession
+      bridge.navigationSnapshot = originalNavigationSnapshot
+      workspaceShell.stop()
+    }
+  })
+
+  it("preserves the selected conversation when the authoritative create refresh fails", async () => {
+    const bridge = desktopRuntime.bridge as unknown as {
+      openSession(paramsJson: string): Promise<string>
+      navigationSnapshot(): Promise<string>
+    }
+    const originalOpenSession = bridge.openSession
+    const originalNavigationSnapshot = bridge.navigationSnapshot
+    workspaceShell.start()
+    try {
+      workspaceShell.send({ type: "LIFECYCLE", projection: lifecycle("ready", false) })
+      workspaceShell.send({ type: "SELECTED", sessionId: "existing" })
+      bridge.openSession = () => Promise.resolve(JSON.stringify({ id: "created", nextRunSelection: { kind: "none" } }))
+      bridge.navigationSnapshot = () => Promise.reject(new Error("navigation unavailable"))
+
+      expect(await createProjectConversation("project-a", "workspace-a", "Created")).toBe(false)
+      expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("existing")
+      expect(workspaceShell.getSnapshot().context.error).toBe(
+        "The conversation could not be created or refreshed. Refresh navigation and try again.",
+      )
+    } finally {
+      bridge.openSession = originalOpenSession
+      bridge.navigationSnapshot = originalNavigationSnapshot
       workspaceShell.stop()
     }
   })
 
   it("commits only the newest concurrent project conversation creation", async () => {
-    const bridge = desktopRuntime.bridge as unknown as { openSession(paramsJson: string): Promise<string> }
+    const bridge = desktopRuntime.bridge as unknown as {
+      openSession(paramsJson: string): Promise<string>
+      navigationSnapshot(): Promise<string>
+    }
     const originalOpenSession = bridge.openSession
+    const originalNavigationSnapshot = bridge.navigationSnapshot
     let resolveFirst!: (value: string) => void
     let resolveSecond!: (value: string) => void
     workspaceShell.start()
@@ -305,6 +393,7 @@ describe("M2 navigation concurrency", () => {
         if (JSON.parse(paramsJson).title === "First") resolveFirst = resolve
         else resolveSecond = resolve
       })
+      bridge.navigationSnapshot = () => Promise.resolve(JSON.stringify(navigationSnapshot("second")))
 
       const first = createProjectConversation("project-a", "workspace-a", "First")
       const second = createProjectConversation("project-a", "workspace-a", "Second")
@@ -316,13 +405,18 @@ describe("M2 navigation concurrency", () => {
       expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("second")
     } finally {
       bridge.openSession = originalOpenSession
+      bridge.navigationSnapshot = originalNavigationSnapshot
       workspaceShell.stop()
     }
   })
 
   it("opens standalone conversations by workspace id and keeps only the current temporary creation selected", async () => {
-    const bridge = desktopRuntime.bridge as unknown as { openSession(paramsJson: string): Promise<string> }
+    const bridge = desktopRuntime.bridge as unknown as {
+      openSession(paramsJson: string): Promise<string>
+      navigationSnapshot(): Promise<string>
+    }
     const originalOpenSession = bridge.openSession
+    const originalNavigationSnapshot = bridge.navigationSnapshot
     const requests: unknown[] = []
     let resolveFirstTemporary!: (value: string) => void
     let resolveSecondTemporary!: (value: string) => void
@@ -338,6 +432,7 @@ describe("M2 navigation concurrency", () => {
           else resolveSecondTemporary = resolve
         })
       }
+      bridge.navigationSnapshot = () => Promise.resolve(JSON.stringify(navigationSnapshot("standalone", "temporary-second")))
 
       expect(await createStandaloneConversation("workspace-standalone", " Standalone ")).toBe(true)
       const first = createTemporaryConversation("workspace-temporary", "First temporary")
@@ -355,6 +450,7 @@ describe("M2 navigation concurrency", () => {
       expect(workspaceShell.getSnapshot().context.sidebar.selectedConversationId).toBe("temporary-second")
     } finally {
       bridge.openSession = originalOpenSession
+      bridge.navigationSnapshot = originalNavigationSnapshot
       workspaceShell.stop()
     }
   })
