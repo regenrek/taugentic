@@ -108,6 +108,7 @@ export function macosDevelopmentAppLaunch({
   daemonSocketName,
   hot,
   applicationArguments = [],
+  forwardStandardStreams = false,
 }) {
   const runtimeArguments = developmentApp.entrypointPath
     ? [
@@ -122,6 +123,9 @@ export function macosDevelopmentAppLaunch({
     arguments: [
       "-n",
       "-W",
+      ...(forwardStandardStreams
+        ? ["--stdout", "/dev/fd/1", "--stderr", "/dev/fd/2"]
+        : []),
       ...(daemonBinary
         ? ["--env", `TAUGENTIC_DAEMON_BINARY=${daemonBinary}`]
         : []),

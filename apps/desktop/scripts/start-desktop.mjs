@@ -78,6 +78,7 @@ if (!process.argv.includes("--check")) {
     daemonBinary,
     daemonSocketName: process.env.TAUGENTIC_DAEMON_SOCKET_NAME,
     hot,
+    forwardStandardStreams: true,
   });
   const desktop = spawn(launch.command, launch.arguments, {
     cwd: desktopRoot,

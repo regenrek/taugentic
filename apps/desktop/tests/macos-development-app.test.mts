@@ -130,11 +130,40 @@ describe("macOS development app materializer", () => {
       ),
     ).toBe(false);
 
+    expect(
+      macosDevelopmentAppLaunch({
+        developmentApp,
+        desktopRoot: "/workspace/desktop",
+        daemonBinary: "/workspace/ta-daemon",
+        daemonSocketName: "taugentic-fresh-test-socket",
+        hot: true,
+        forwardStandardStreams: true,
+      }).arguments,
+    ).toEqual([
+      "-n",
+      "-W",
+      "--stdout",
+      "/dev/fd/1",
+      "--stderr",
+      "/dev/fd/2",
+      "--env",
+      "TAUGENTIC_DAEMON_BINARY=/workspace/ta-daemon",
+      "--env",
+      "TAUGENTIC_DAEMON_SOCKET_NAME=taugentic-fresh-test-socket",
+      "/tmp/Taugentic Development.app",
+      "--args",
+      "--cwd",
+      "/workspace/desktop",
+      "--hot",
+      "/workspace/desktop/src/main.tsx",
+    ]);
+
     const launcherSource = await readFile(
       new URL("../scripts/start-desktop.mjs", import.meta.url),
       "utf8",
     );
     expect(launcherSource).toContain("spawn(launch.command, launch.arguments");
+    expect(launcherSource).toContain("forwardStandardStreams: true");
     expect(launcherSource).not.toContain("spawn(developmentApp.executablePath");
   });
 
