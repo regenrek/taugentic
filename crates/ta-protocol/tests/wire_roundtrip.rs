@@ -4,9 +4,9 @@ use ta_protocol::wire::{
     AgentStreamEvent, AgentStreamFrame, AgentStreamItemId, AgentStreamTurnId, AgentToolCallOutcome,
     ApprovalActor, ApprovalDecision, ApprovalRequest, ApprovalResolution, ApprovalResolutionReason,
     ApprovalScope, ApprovalSnapshotResult, ApprovalTarget, ArtifactEvent, ArtifactId, ArtifactKind,
-    ArtifactMetadata, ArtifactSnapshotResult, ArtifactSummary, CapsuleResult, ContinueRunRequest,
-    ContinueRunResult, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope, DaemonEventKind,
-    DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeParams,
+    ArtifactMetadata, ArtifactSnapshotResult, ArtifactSummary, AuthProfileId, CapsuleResult,
+    ContinueRunRequest, ContinueRunResult, DaemonEvent, DaemonEventCursor, DaemonEventEnvelope,
+    DaemonEventKind, DaemonNavigationInvalidatedParams, DaemonNavigationSubscribeParams,
     DaemonNavigationSubscribeResult, DaemonProjectOpenParams, DaemonProjectOpenResult,
     DaemonRunCompleteWithResultParams, DaemonSessionAttachParams, DaemonSessionAttachResult,
     DaemonSessionOpenParams, DaemonSessionOpenResult, DaemonSubscribeParams, DaemonSubscribeResult,
@@ -748,8 +748,15 @@ fn list_native_runs_contract_roundtrips_with_cursor_and_parent_filter() {
 }
 
 #[test]
-fn account_switched_continuation_relationship_roundtrips_distinctly_from_a_fork() {
-    let relationship = NativeRunRelationship::AccountSwitchedContinuation {
+fn route_switched_continuation_relationship_roundtrips_distinctly_from_a_fork() {
+    let relationship = NativeRunRelationship::RouteSwitchedContinuation {
+        route: RunExecutionRoute {
+            runtime_profile_id: RuntimeProfileId::new("runtime-codex-safe").expect("runtime"),
+            provider_id: AgentRuntimeStrategyId::new("codex").expect("provider"),
+            harness: RunHarnessKind::CodexAppServer,
+            model_id: Some(AgentRuntimeModelId::new("gpt-5.6-sol").expect("model")),
+            auth_profile_id: Some(AuthProfileId::new("profile-codex-test").expect("profile")),
+        },
         parent_run_id: RunId::new("run-exhausted-parent").expect("parent run id"),
         parent_event_seq: 42,
     };
@@ -757,7 +764,14 @@ fn account_switched_continuation_relationship_roundtrips_distinctly_from_a_fork(
     assert_eq!(
         encoded,
         serde_json::json!({
-            "kind": "accountSwitchedContinuation",
+            "kind": "routeSwitchedContinuation",
+            "route": {
+                "runtimeProfileId": "runtime-codex-safe",
+                "providerId": "codex",
+                "harness": "codexAppServer",
+                "modelId": "gpt-5.6-sol",
+                "authProfileId": "profile-codex-test"
+            },
             "parentRunId": "run-exhausted-parent",
             "parentEventSeq": "42"
         })

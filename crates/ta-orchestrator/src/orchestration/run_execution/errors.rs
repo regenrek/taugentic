@@ -24,10 +24,10 @@ pub enum RunExecutionError {
     RunNotNativeHarness(String),
     #[error("run is not resumable: {0}")]
     RunNotResumable(String),
-    #[error("run did not fail with typed account exhaustion: {0}")]
-    RunNotAccountExhausted(String),
-    #[error("replacement account must differ from the exhausted route account: {0}")]
-    ReplacementAuthProfileMustDiffer(String),
+    #[error("run did not fail with typed route exhaustion: {0}")]
+    RunNotRouteExhausted(String),
+    #[error("replacement route must differ from the exhausted route")]
+    ReplacementRouteMustDiffer,
     #[error("run fork point does not exist: {0}")]
     RunForkPointNotFound(String),
     #[error("run fork point is not a completed turn boundary: {0}")]

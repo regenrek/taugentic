@@ -297,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn account_switched_history_does_not_append_the_persisted_objective_again() {
+    fn route_switched_history_does_not_append_the_persisted_objective_again() {
         let objective = "repeat this exact text";
         let history = history_for_native_history(
             crate::NativeHistoryInitialState {

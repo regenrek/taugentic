@@ -95,7 +95,7 @@ fn build_native_history_initial_state(
             native_history_for_dispatch(store, run)?,
             NativeHistoryObjectivePolicy::AppendNextObjective,
         ),
-        RunSource::AccountSwitchedContinuation { .. } => (
+        RunSource::RouteSwitchedContinuation { .. } => (
             native_history_until(store, run, u64::MAX)?,
             NativeHistoryObjectivePolicy::ObjectiveAlreadyInHistory,
         ),
@@ -188,7 +188,7 @@ fn native_history_until(
             parent_event_seq,
             ..
         }
-        | RunSource::AccountSwitchedContinuation {
+        | RunSource::RouteSwitchedContinuation {
             parent_run_id,
             parent_event_seq,
             ..

@@ -1,16 +1,16 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 
-import type { AgentRuntimeSelection, ApprovalDecision, ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId, SwitchAccountAndResumeRequest } from "@taugentic/desktop-protocol"
+import type { AgentRuntimeSelection, ApprovalDecision, ApprovalId, ApprovalRequest, ArtifactId, RunId, SessionId, SwitchRouteAndResumeRequest } from "@taugentic/desktop-protocol"
 
 import type { DesktopRuntime } from "../../platform/daemon/desktop-runtime.js"
 import { getActivityPage, getNativeRunsPage, runActivityQueryRoot, runDetailQuery, runReplayQuery, runTimelineQuery } from "../../platform/daemon/run-activity-query.js"
 
 const NO_SESSION = "session-not-selected" as SessionId
 
-/** The one desktop-side owner for the explicit account replacement request. */
-export async function requestSwitchAccountAndResume(
-  runtime: Pick<DesktopRuntime, "switchAccountAndResume">,
+/** The one desktop-side owner for the explicit replacement-route intent. */
+export async function requestSwitchRouteAndResume(
+  runtime: Pick<DesktopRuntime, "switchRouteAndResume">,
   input: {
     sessionId?: SessionId
     parentRunId?: RunId
@@ -21,12 +21,12 @@ export async function requestSwitchAccountAndResume(
   if (!input.sessionId || !input.parentRunId || !input.exhausted || !input.replacementSelection) {
     return false
   }
-  const request: SwitchAccountAndResumeRequest = {
+  const request: SwitchRouteAndResumeRequest = {
     sessionId: input.sessionId,
     parentRunId: input.parentRunId,
     selection: input.replacementSelection,
   }
-  await runtime.switchAccountAndResume(request)
+  await runtime.switchRouteAndResume(request)
   return true
 }
 
@@ -81,8 +81,8 @@ export function useRunActivity(input: { runtime: DesktopRuntime; sessionId?: Ses
     refresh,
     decide: input.decideApproval,
     cancel: async (runId: RunId) => { await input.runtime.bridge.cancelRun(runId); refresh() },
-    switchAccountAndResume: async () => {
-      const started = await requestSwitchAccountAndResume(input.runtime, {
+    switchRouteAndResume: async () => {
+      const started = await requestSwitchRouteAndResume(input.runtime, {
         sessionId: input.sessionId,
         parentRunId: selectedRunId,
         exhausted: Boolean(detail.data?.authProfileExhaustion),

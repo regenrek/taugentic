@@ -102,8 +102,7 @@ pub const METHOD_DAEMON_RUN_COMPLETE_WITH_RESULT: &str = "daemon.run.complete_wi
 pub const METHOD_DAEMON_RUN_RESUME: &str = "daemon.run.resume";
 pub const METHOD_DAEMON_RUN_FORK: &str = "daemon.run.fork";
 pub const METHOD_DAEMON_RUN_CONTINUE: &str = "daemon.run.continue";
-pub const METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME: &str =
-    "daemon.run.switch_account_and_resume";
+pub const METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME: &str = "daemon.run.switch_route_and_resume";
 pub const METHOD_DAEMON_RUN_SPAWN: &str = "daemon.run.spawn";
 pub const METHOD_DAEMON_RUN_JOIN: &str = "daemon.run.join";
 /// Replays already-durable run events only.

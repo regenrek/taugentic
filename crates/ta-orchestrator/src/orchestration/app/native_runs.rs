@@ -4,7 +4,7 @@ use crate::{
     ContinueRunRequest, ContinueRunResult, ForkRunRequest, ForkRunResult, JoinRunRequest,
     JoinRunResult, ListNativeRunsRequest, ListNativeRunsResult, NATIVE_RUN_LIST_MAX_LIMIT,
     RunHarnessKind, RunLineageGraphRequest, RunLineageGraphResult, RunListFilter, SpawnRunRequest,
-    SpawnRunResult, SwitchAccountAndResumeRequest, SwitchAccountAndResumeResult,
+    SpawnRunResult, SwitchRouteAndResumeRequest, SwitchRouteAndResumeResult,
 };
 
 use super::{AppService, AppServiceError, map_run_execution_error, project_run_list_entry};
@@ -82,13 +82,13 @@ where
             .map_err(map_run_execution_error)
     }
 
-    pub fn switch_account_and_resume(
+    pub fn switch_route_and_resume(
         &self,
         session_id: &crate::SessionId,
-        request: &SwitchAccountAndResumeRequest,
-    ) -> Result<SwitchAccountAndResumeResult, AppServiceError> {
+        request: &SwitchRouteAndResumeRequest,
+    ) -> Result<SwitchRouteAndResumeResult, AppServiceError> {
         self.run_execution
-            .switch_account_and_resume(session_id.clone(), request.clone())
+            .switch_route_and_resume(session_id.clone(), request.clone())
             .map_err(map_run_execution_error)
     }
 

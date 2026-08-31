@@ -658,8 +658,8 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<ForkRunResult>(cfg)?;
     export_ts::<ContinueRunRequest>(cfg)?;
     export_ts::<ContinueRunResult>(cfg)?;
-    export_ts::<SwitchAccountAndResumeRequest>(cfg)?;
-    export_ts::<SwitchAccountAndResumeResult>(cfg)?;
+    export_ts::<SwitchRouteAndResumeRequest>(cfg)?;
+    export_ts::<SwitchRouteAndResumeResult>(cfg)?;
     export_ts::<SpawnRunRequest>(cfg)?;
     export_ts::<SpawnRunResult>(cfg)?;
     export_ts::<JoinRunRequest>(cfg)?;

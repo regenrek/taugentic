@@ -589,10 +589,10 @@
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -854,6 +854,6 @@
   "required": [
     "run"
   ],
-  "title": "SwitchAccountAndResumeResult",
+  "title": "SwitchRouteAndResumeResult",
   "type": "object"
 }

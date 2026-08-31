@@ -36,7 +36,7 @@ use crate::{
     METHOD_DAEMON_RUN_JOIN, METHOD_DAEMON_RUN_LINEAGE_GRAPH, METHOD_DAEMON_RUN_LIST,
     METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_RESUME,
     METHOD_DAEMON_RUN_SPAWN, METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
-    METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
+    METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
     METHOD_DAEMON_SCHEDULED_WORK_CANCEL, METHOD_DAEMON_SCHEDULED_WORK_CREATE,
     METHOD_DAEMON_SCHEDULED_WORK_LIST, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
     METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
@@ -1043,15 +1043,13 @@ pub(super) async fn handle_request(
                 .map_err(map_app_service_error)?;
             json_result(continued)
         }
-        DaemonRpcRequest::RunSwitchAccountAndResume(params) => {
-            ensure_initialized(session_state, METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME)?;
-            let attached_session_id = require_attached_session(
-                session_state,
-                METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME,
-            )?;
+        DaemonRpcRequest::RunSwitchRouteAndResume(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME)?;
+            let attached_session_id =
+                require_attached_session(session_state, METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME)?;
             let continued = state
                 .app
-                .switch_account_and_resume(&attached_session_id, &params)
+                .switch_route_and_resume(&attached_session_id, &params)
                 .map_err(map_app_service_error)?;
             json_result(continued)
         }

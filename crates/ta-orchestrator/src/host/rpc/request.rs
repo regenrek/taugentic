@@ -49,7 +49,7 @@ use crate::{
     METHOD_DAEMON_RUN_JOIN, METHOD_DAEMON_RUN_LINEAGE_GRAPH, METHOD_DAEMON_RUN_LIST,
     METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_RESUME,
     METHOD_DAEMON_RUN_SPAWN, METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
-    METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
+    METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
     METHOD_DAEMON_SCHEDULED_WORK_CANCEL, METHOD_DAEMON_SCHEDULED_WORK_CREATE,
     METHOD_DAEMON_SCHEDULED_WORK_LIST, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_GET,
     METHOD_DAEMON_SESSION_LIST, METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
@@ -65,7 +65,7 @@ use crate::{
     METHOD_WORKFLOW_LOAD, METHOD_WORKFLOW_RELOAD, METHOD_WORKFLOW_STATUS, METHOD_WORKFLOW_VALIDATE,
     PromoteReceiptRequest, QuarantineReceiptRequest, ResumeRunRequest, RunLineageGraphRequest,
     SessionOverviewQuery, SpawnRunRequest, StartRunCommand, SubscribeRunEventsRequest,
-    SwitchAccountAndResumeRequest, TerminalAttachParams, TerminalCloseParams, TerminalDetachParams,
+    SwitchRouteAndResumeRequest, TerminalAttachParams, TerminalCloseParams, TerminalDetachParams,
     TerminalInputParams, TerminalListParams, TerminalResizeParams, TerminalSpawnParams,
     ThreadWorkspaceQuery, ThreadWorkspaceUpdateCommand, UninstallPluginRequest,
     VoiceStreamEndParams, VoiceStreamExchangeParams, VoiceStreamOpenParams, WorkItemDismissParams,
@@ -156,7 +156,7 @@ pub(super) enum DaemonRpcRequest {
     RunResume(ResumeRunRequest),
     RunFork(ForkRunRequest),
     RunContinue(ContinueRunRequest),
-    RunSwitchAccountAndResume(SwitchAccountAndResumeRequest),
+    RunSwitchRouteAndResume(SwitchRouteAndResumeRequest),
     RunSpawn(SpawnRunRequest),
     RunJoin(JoinRunRequest),
     RunReplayEvents(SubscribeRunEventsRequest),
@@ -338,8 +338,8 @@ impl DaemonRpcRequest {
             METHOD_DAEMON_RUN_RESUME => Ok(Self::RunResume(parse_params(request)?)),
             METHOD_DAEMON_RUN_FORK => Ok(Self::RunFork(parse_params(request)?)),
             METHOD_DAEMON_RUN_CONTINUE => Ok(Self::RunContinue(parse_params(request)?)),
-            METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME => {
-                Ok(Self::RunSwitchAccountAndResume(parse_params(request)?))
+            METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME => {
+                Ok(Self::RunSwitchRouteAndResume(parse_params(request)?))
             }
             METHOD_DAEMON_RUN_SPAWN => Ok(Self::RunSpawn(parse_params(request)?)),
             METHOD_DAEMON_RUN_JOIN => Ok(Self::RunJoin(parse_params(request)?)),

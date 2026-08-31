@@ -1,12 +1,11 @@
 use ta_policy::{Operation, evaluate_execution_context};
 use ta_protocol::wire::{
-    ApprovalScope, RunHarnessKind, RunSource, RunStatus, SwitchAccountAndResumeRequest,
-    SwitchAccountAndResumeResult,
+    ApprovalScope, RunHarnessKind, RunSource, RunStatus, SwitchRouteAndResumeRequest,
+    SwitchRouteAndResumeResult,
 };
 use ta_store::{
     CommitRunTransition, PersistenceStore, RunEventRangeQuery, RunProjection, UserTurnCommit,
 };
-use taugentic_agent::AgentExecutionHarness;
 use uuid::Uuid;
 
 use super::*;
@@ -15,11 +14,11 @@ impl<S> RunExecutionService<S>
 where
     S: PersistenceStore + Send + 'static,
 {
-    pub fn switch_account_and_resume(
+    pub fn switch_route_and_resume(
         &self,
         session_id: crate::SessionId,
-        request: SwitchAccountAndResumeRequest,
-    ) -> Result<SwitchAccountAndResumeResult, RunExecutionError> {
+        request: SwitchRouteAndResumeRequest,
+    ) -> Result<SwitchRouteAndResumeResult, RunExecutionError> {
         if request.session_id != session_id {
             return Err(RunExecutionError::RunSessionMismatch(
                 request.parent_run_id.as_str().to_string(),
@@ -42,15 +41,15 @@ where
                     parent.source,
                     RunSource::User { .. }
                         | RunSource::Forked { .. }
-                        | RunSource::AccountSwitchedContinuation { .. }
+                        | RunSource::RouteSwitchedContinuation { .. }
                 )
             {
-                return Err(RunExecutionError::RunNotAccountExhausted(
+                return Err(RunExecutionError::RunNotRouteExhausted(
                     parent.id.as_str().to_string(),
                 ));
             }
             let parent_event_seq = parent.last_event_seq.ok_or_else(|| {
-                RunExecutionError::RunNotAccountExhausted(parent.id.as_str().to_string())
+                RunExecutionError::RunNotRouteExhausted(parent.id.as_str().to_string())
             })?;
             let events = store.read_run_events(&RunEventRangeQuery {
                 session_id: session_id.clone(),
@@ -67,47 +66,20 @@ where
                 )
             });
             if !exhausted {
-                return Err(RunExecutionError::RunNotAccountExhausted(
+                return Err(RunExecutionError::RunNotRouteExhausted(
                     parent.id.as_str().to_string(),
                 ));
             }
             (parent, parent_event_seq)
         };
 
-        let parent_route = parent.source.route();
-        let exhausted_profile = parent_route.auth_profile_id.as_ref().ok_or_else(|| {
-            RunExecutionError::RunNotAccountExhausted(parent.id.as_str().to_string())
-        })?;
-        let replacement_auth_profile_id =
-            request.selection.auth_profile_id.as_ref().ok_or_else(|| {
-                RunExecutionError::RunNotAccountExhausted(parent.id.as_str().to_string())
-            })?;
-        if *replacement_auth_profile_id == *exhausted_profile {
-            return Err(RunExecutionError::ReplacementAuthProfileMustDiffer(
-                exhausted_profile.as_str().to_string(),
-            ));
-        }
         let replacement = self
             .agent_runtime
             .validate_agent_run_selection(&request.selection)
             .map_err(map_agent_runtime_error)?;
         let replacement_route = replacement.route();
-        if replacement_route.runtime_profile_id != parent_route.runtime_profile_id
-            || replacement_route.provider_id != parent_route.provider_id
-            || replacement_route.harness != parent_route.harness
-            || replacement_route.model_id != parent_route.model_id
-        {
-            return Err(RunExecutionError::RunNotAccountExhausted(
-                parent.id.as_str().to_string(),
-            ));
-        }
-        if !matches!(
-            replacement.execution_harness(),
-            AgentExecutionHarness::NativeLoop
-        ) {
-            return Err(RunExecutionError::RunNotNativeHarness(
-                parent.id.as_str().to_string(),
-            ));
+        if replacement_route == parent.source.route() {
+            return Err(RunExecutionError::ReplacementRouteMustDiffer);
         }
 
         let child_run_id = crate::RunId::new(format!("run-{}", Uuid::new_v4().simple()))
@@ -129,7 +101,7 @@ where
             &parent.execution_context,
             &Operation::new(
                 ApprovalScope::ProcessExec,
-                "resume with selected replacement account",
+                "continue on selected replacement route",
             ),
         );
 
@@ -149,8 +121,8 @@ where
                 runtime_profile_id: replacement.runtime_profile().id.clone(),
                 objective: parent.objective.clone(),
                 status,
-                harness: RunHarnessKind::Native,
-                source: RunSource::AccountSwitchedContinuation {
+                harness: run_harness_kind(replacement.execution_harness()),
+                source: RunSource::RouteSwitchedContinuation {
                     route: replacement_route.clone(),
                     parent_run_id: parent.id.clone(),
                     parent_event_seq,
@@ -207,7 +179,7 @@ where
                 run = latest;
             }
         }
-        Ok(SwitchAccountAndResumeResult {
+        Ok(SwitchRouteAndResumeResult {
             run: project_run_record(run),
         })
     }
@@ -224,11 +196,11 @@ mod tests {
     use taugentic_agent::{ExecutionError, ExecutionSink};
 
     #[test]
-    fn typed_exhaustion_creates_an_immutable_replacement_route_child() {
+    fn typed_exhaustion_creates_an_immutable_generic_route_successor() {
         let (runtime, _dispatcher) =
             runtime_with_dispatch_plans([DispatchPlan::Succeed(Arc::new(NoopExecutionHandle))]);
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        let session = open_session(&app, "Switch account and resume");
+        let session = open_session(&app, "Switch route and resume");
         let parent_id = start_production_shaped_running_run(
             &app,
             &execution,
@@ -237,43 +209,18 @@ mod tests {
         );
         let parent_before = execution.load_run_projection(&parent_id).expect("parent");
         let previous_route = parent_before.source.route().clone();
-        let replacement = AuthProfileId::new("profile-replacement-test").expect("replacement");
-        {
-            let mut store = execution.store.lock().expect("store");
-            let parent_auth_method_id = store
-                .auth_profile(
-                    previous_route
-                        .auth_profile_id
-                        .as_ref()
-                        .expect("parent account"),
-                )
-                .expect("parent profile")
-                .expect("parent profile")
-                .auth_method_id()
-                .clone();
-            store
-                .save_auth_profile(ta_store::connected_test_auth_profile(
-                    replacement.as_str(),
-                    parent_auth_method_id.as_str(),
-                    previous_route.provider_id.as_str(),
-                ))
-                .expect("replacement profile");
-        }
+        let replacement = crate::orchestration::test_runtime_selection(&app, "runtime-codex-safe");
         provider_sink(&execution, &session.id, &parent_id)
             .fail(ExecutionError::CreditsExhausted("redacted".to_string()))
             .expect("typed exhaustion");
 
         let switched = execution
-            .switch_account_and_resume(
+            .switch_route_and_resume(
                 session.id.clone(),
-                SwitchAccountAndResumeRequest {
+                SwitchRouteAndResumeRequest {
                     session_id: session.id.clone(),
                     parent_run_id: parent_id.clone(),
-                    selection: AgentRuntimeSelection {
-                        runtime_profile_id: previous_route.runtime_profile_id.clone(),
-                        auth_profile_id: Some(replacement.clone()),
-                        model_id: previous_route.model_id.clone(),
-                    },
+                    selection: replacement.clone(),
                 },
             )
             .expect("switch should create a child");
@@ -302,17 +249,17 @@ mod tests {
         assert_eq!(child.claimed_files, parent_before.claimed_files);
         assert_eq!(child.conflict_summary, parent_before.conflict_summary);
         match &child.source {
-            RunSource::AccountSwitchedContinuation {
+            RunSource::RouteSwitchedContinuation {
                 route,
                 parent_run_id,
                 parent_event_seq,
             } => {
                 assert_eq!(parent_run_id, &parent_id);
-                assert_eq!(route.auth_profile_id.as_ref(), Some(&replacement));
-                assert_eq!(route.runtime_profile_id, previous_route.runtime_profile_id);
-                assert_eq!(route.provider_id, previous_route.provider_id);
-                assert_eq!(route.harness, previous_route.harness);
-                assert_eq!(route.model_id, previous_route.model_id);
+                assert_eq!(route.auth_profile_id, replacement.auth_profile_id);
+                assert_eq!(route.runtime_profile_id, replacement.runtime_profile_id);
+                assert_eq!(route.model_id, replacement.model_id);
+                assert_ne!(route.provider_id, previous_route.provider_id);
+                assert_ne!(route.harness, previous_route.harness);
                 assert_eq!(
                     *parent_event_seq,
                     parent_after.last_event_seq.expect("terminal event")
@@ -340,7 +287,7 @@ mod tests {
         let history = execution
             .native_history_initial_state_for_run(&session.id, &child.id)
             .expect("history should build")
-            .expect("account-switched child uses native history");
+            .expect("route-switched child uses native history");
         assert_eq!(
             history.objective_policy,
             taugentic_agent::NativeHistoryObjectivePolicy::ObjectiveAlreadyInHistory
@@ -356,10 +303,10 @@ mod tests {
     }
 
     #[test]
-    fn same_or_unexhausted_route_rejects_without_creating_a_child() {
+    fn unexhausted_route_rejects_without_creating_a_child() {
         let runtime = crate::RuntimeService::bootstrap();
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        let session = open_session(&app, "No unsafe account switch");
+        let session = open_session(&app, "No unsafe route switch");
         let parent = ensure_running_run(&app, &execution, &session.id, "do not mutate");
         let route = execution
             .load_run_projection(&parent.id)
@@ -375,9 +322,9 @@ mod tests {
             .expect("events")
             .len();
         let error = execution
-            .switch_account_and_resume(
+            .switch_route_and_resume(
                 session.id.clone(),
-                SwitchAccountAndResumeRequest {
+                SwitchRouteAndResumeRequest {
                     session_id: session.id.clone(),
                     parent_run_id: parent.id,
                     selection: AgentRuntimeSelection {
@@ -388,10 +335,7 @@ mod tests {
                 },
             )
             .expect_err("non-terminal run must reject");
-        assert!(matches!(
-            error,
-            RunExecutionError::RunNotAccountExhausted(_)
-        ));
+        assert!(matches!(error, RunExecutionError::RunNotRouteExhausted(_)));
         assert_eq!(
             execution
                 .store
@@ -401,6 +345,69 @@ mod tests {
                 .expect("events")
                 .len(),
             before
+        );
+    }
+
+    #[test]
+    fn typed_exhaustion_with_equal_route_rejects_without_scheduling_or_durable_mutation() {
+        let runtime = crate::RuntimeService::bootstrap();
+        let (app, execution) = app_and_execution_with_runtime(runtime);
+        let session = open_session(&app, "Equal route must not continue");
+        let parent = ensure_running_run(&app, &execution, &session.id, "keep parent unchanged");
+        let route = execution
+            .load_run_projection(&parent.id)
+            .expect("parent")
+            .source
+            .route()
+            .clone();
+        provider_sink(&execution, &session.id, &parent.id)
+            .fail(ExecutionError::CreditsExhausted("redacted".to_string()))
+            .expect("typed exhaustion");
+        let before_parent = execution.load_run_projection(&parent.id).expect("parent");
+        let before_runs = app.list_runs(&session.id).expect("runs");
+        let before_events = execution
+            .store
+            .lock()
+            .expect("store")
+            .events_for_session(&session.id)
+            .expect("events")
+            .len();
+
+        let error = execution
+            .switch_route_and_resume(
+                session.id.clone(),
+                SwitchRouteAndResumeRequest {
+                    session_id: session.id.clone(),
+                    parent_run_id: parent.id,
+                    selection: AgentRuntimeSelection {
+                        runtime_profile_id: route.runtime_profile_id,
+                        auth_profile_id: route.auth_profile_id,
+                        model_id: route.model_id,
+                    },
+                },
+            )
+            .expect_err("equal route must reject before scheduling");
+
+        assert!(matches!(
+            error,
+            RunExecutionError::ReplacementRouteMustDiffer
+        ));
+        assert_eq!(
+            execution
+                .load_run_projection(&before_parent.id)
+                .expect("parent"),
+            before_parent
+        );
+        assert_eq!(app.list_runs(&session.id).expect("runs"), before_runs);
+        assert_eq!(
+            execution
+                .store
+                .lock()
+                .expect("store")
+                .events_for_session(&session.id)
+                .expect("events")
+                .len(),
+            before_events
         );
     }
 
@@ -446,9 +453,9 @@ mod tests {
             .len();
 
         let error = execution
-            .switch_account_and_resume(
+            .switch_route_and_resume(
                 session.id.clone(),
-                SwitchAccountAndResumeRequest {
+                SwitchRouteAndResumeRequest {
                     session_id: session.id.clone(),
                     parent_run_id: parent.id.clone(),
                     selection: AgentRuntimeSelection {
@@ -483,11 +490,11 @@ mod tests {
     }
 
     #[test]
-    fn queued_account_switch_rehydrates_with_the_same_canonical_history() {
+    fn queued_route_switch_rehydrates_with_the_same_canonical_history() {
         let (runtime, _dispatcher) =
             runtime_with_dispatch_plans([DispatchPlan::Succeed(Arc::new(NoopExecutionHandle))]);
         let (app, execution) = app_and_execution_with_runtime(runtime);
-        let session = open_session(&app, "Queued account switch rehydration");
+        let session = open_session(&app, "Queued route switch rehydration");
         let parent_id =
             start_production_shaped_running_run(&app, &execution, &session.id, "replay this once");
         let route = execution
@@ -518,9 +525,9 @@ mod tests {
             .expect("typed exhaustion");
         let blocker = ensure_running_run(&app, &execution, &session.id, "occupy queue slot");
         let switched = execution
-            .switch_account_and_resume(
+            .switch_route_and_resume(
                 session.id.clone(),
-                SwitchAccountAndResumeRequest {
+                SwitchRouteAndResumeRequest {
                     session_id: session.id.clone(),
                     parent_run_id: parent_id.clone(),
                     selection: AgentRuntimeSelection {

@@ -24,7 +24,14 @@ function label(node: RunListEntry): string {
   if (node.relationship.kind === "root") return "Root run"
   if (node.relationship.kind === "nativeSubagent") return "Subagent"
   if (node.relationship.kind === "freshSpawn") return "Fresh Spawn"
-  return `Side Chat at turn ${node.relationship.parentEventSeq}`
+  if (node.relationship.kind === "fork") return `Side Chat at turn ${node.relationship.parentEventSeq}`
+  return `Route switch at turn ${node.relationship.parentEventSeq}`
+}
+
+function routeIdentity(node: RunListEntry): string | undefined {
+  if (node.relationship.kind !== "routeSwitchedContinuation") return undefined
+  const { route } = node.relationship
+  return `Provider: ${route.providerId} · Harness: ${route.harness} · Model: ${route.modelId ?? "not selected"} · Auth profile: ${route.authProfileId ?? "not selected"}`
 }
 
 /** Passive Canvas picture; the adjacent tree is the only semantic interaction surface. */
@@ -43,6 +50,6 @@ export function ConversationBranchGraph(props: { graph?: RunLineageGraphResult; 
     {graph.truncated && <text testId="cortex-truncated" style={{ color: palette.warning, fontSize: 10 }}>Showing {nodes.length} of {graph.totalCount} runs.</text>}
     {!!graph.orphanRunIds.length && <text testId="cortex-orphans" style={{ color: palette.warning, fontSize: 10 }}>Missing parent for {graph.orphanRunIds.length} run(s).</text>}
     {graph.cycleBroken && <text testId="cortex-cycle" style={{ color: palette.warning, fontSize: 10 }}>A lineage cycle was safely broken.</text>}
-    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><Pressable testId={`branch-node-${node.id}`} role="treeitem" name={`${label(node)} ${node.id}. Open`} selected={selectedRunId === node.id} onPress={() => open(node.id)} style={{ display: "flex", gap: 6, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><text style={{ color: palette.textMuted, fontSize: 10 }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{node.status}</text></Pressable></Fragment>)}</div>
+    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><Pressable testId={`branch-node-${node.id}`} role="treeitem" name={`${label(node)} ${node.id}. Open`} selected={selectedRunId === node.id} onPress={() => open(node.id)} style={{ display: "flex", flexDirection: "column", gap: 3, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><div style={{ display: "flex", gap: 6 }}><text style={{ color: palette.textMuted, fontSize: 10 }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{node.status}</text></div>{routeIdentity(node) && <text testId={`branch-route-${node.id}`} style={{ color: palette.textFaint, fontSize: 10 }}>{routeIdentity(node)}</text>}</Pressable></Fragment>)}</div>
   </div>
 }

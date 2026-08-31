@@ -306,9 +306,7 @@ fn artifact_receipt_create_input(
         RunSource::NativeSubagent { parent_run_id, .. }
         | RunSource::FreshSpawn { parent_run_id, .. }
         | RunSource::Forked { parent_run_id, .. }
-        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
-            Some(parent_run_id.clone())
-        }
+        | RunSource::RouteSwitchedContinuation { parent_run_id, .. } => Some(parent_run_id.clone()),
     };
     Some(CreateReceipt {
         session_id: artifact.session_id.clone(),

@@ -95,7 +95,7 @@ fn daemon_run_start_requires_attached_session() {
 }
 
 #[test]
-fn daemon_run_switch_account_and_resume_forwards_the_complete_selection_without_mutation_on_invalid_parent()
+fn daemon_run_switch_route_and_resume_forwards_the_complete_selection_without_mutation_on_invalid_parent()
  {
     let state = boot(test_config());
     let shutdown_requested = Arc::new(AtomicBool::new(false));
@@ -105,7 +105,7 @@ fn daemon_run_switch_account_and_resume_forwards_the_complete_selection_without_
             TEST_CLIENT_NAME,
             &issue_test_principal_id(&state, TEST_CLIENT_NAME),
             &OpenSessionRequest {
-                title: "Switch account RPC".to_string(),
+                title: "Switch route RPC".to_string(),
                 workspace_id: ta_store::default_test_workspace_id(),
             },
         )
@@ -129,9 +129,9 @@ fn daemon_run_switch_account_and_resume_forwards_the_complete_selection_without_
         JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: crate::RequestId::Integer(351),
-            method: crate::METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME.to_string(),
+            method: crate::METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME.to_string(),
             params: Some(
-                serde_json::to_value(crate::SwitchAccountAndResumeRequest {
+                serde_json::to_value(crate::SwitchRouteAndResumeRequest {
                     session_id: opened.id.clone(),
                     parent_run_id: parent.body.id,
                     selection,
@@ -143,7 +143,7 @@ fn daemon_run_switch_account_and_resume_forwards_the_complete_selection_without_
     .expect_err("a non-terminal parent must reject through RPC");
 
     assert_eq!(error.code, crate::INVALID_PARAMS_ERROR_CODE);
-    assert!(error.message.contains("typed account exhaustion"));
+    assert!(error.message.contains("typed route exhaustion"));
     assert_eq!(
         state.app.list_runs(&opened.id).expect("runs should list"),
         before

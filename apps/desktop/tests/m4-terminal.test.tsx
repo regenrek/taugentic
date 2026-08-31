@@ -64,8 +64,8 @@ function fakeRuntime(record: {
     async continueRun() {
       throw new Error("Continuing runs is outside the terminal fixture.")
     },
-    async switchAccountAndResume() {
-      throw new Error("Switching accounts is outside the terminal fixture.")
+    async switchRouteAndResume() {
+      throw new Error("Switching routes is outside the terminal fixture.")
     },
     async spawnRun() {
       throw new Error("Fresh spawning is outside the terminal fixture.")

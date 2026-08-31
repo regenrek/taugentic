@@ -324,7 +324,7 @@ where
             | RunSource::NativeSubagent { .. }
             | RunSource::FreshSpawn { .. }
             | RunSource::Forked { .. }
-            | RunSource::AccountSwitchedContinuation { .. } => (run.objective.clone(), Vec::new()),
+            | RunSource::RouteSwitchedContinuation { .. } => (run.objective.clone(), Vec::new()),
         };
         let image_attachments = attachments
             .iter()

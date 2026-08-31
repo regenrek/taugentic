@@ -33,7 +33,7 @@ mod run_fork;
 mod run_fork_replay_tests;
 mod scheduled_work;
 mod start;
-mod switch_account_and_resume;
+mod switch_route_and_resume;
 #[cfg(test)]
 pub(crate) mod test_support;
 
@@ -330,9 +330,7 @@ fn project_run_record(run: RunProjection) -> RunRecord {
         RunSource::NativeSubagent { parent_run_id, .. }
         | RunSource::FreshSpawn { parent_run_id, .. }
         | RunSource::Forked { parent_run_id, .. }
-        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
-            Some(parent_run_id.clone())
-        }
+        | RunSource::RouteSwitchedContinuation { parent_run_id, .. } => Some(parent_run_id.clone()),
         RunSource::ScheduledWork { .. } | RunSource::User { .. } => None,
     };
     RunRecord {
@@ -367,7 +365,7 @@ fn output_contract_for_run(run: &RunProjection) -> Option<OutputContractKind> {
         } => *output_contract,
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => None,
+        | RunSource::RouteSwitchedContinuation { .. } => None,
     }
 }
 
@@ -378,7 +376,7 @@ fn recipe_id_for_run(run: &RunProjection) -> Option<String> {
         | RunSource::User { recipe_id, .. } => recipe_id.clone(),
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => None,
+        | RunSource::RouteSwitchedContinuation { .. } => None,
     }
 }
 

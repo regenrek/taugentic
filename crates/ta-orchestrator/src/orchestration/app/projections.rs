@@ -158,11 +158,13 @@ fn native_run_relationship(run: &ta_store::RunProjection) -> crate::NativeRunRel
             parent_run_id: parent_run_id.clone(),
             parent_event_seq: *parent_event_seq,
         },
-        RunSource::AccountSwitchedContinuation {
+        RunSource::RouteSwitchedContinuation {
+            route,
             parent_run_id,
             parent_event_seq,
             ..
-        } => crate::NativeRunRelationship::AccountSwitchedContinuation {
+        } => crate::NativeRunRelationship::RouteSwitchedContinuation {
+            route: route.clone(),
             parent_run_id: parent_run_id.clone(),
             parent_event_seq: *parent_event_seq,
         },
@@ -190,7 +192,7 @@ fn native_run_contract_fields(
         } => (*output_contract, recipe_id.clone()),
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => (None, None),
+        | RunSource::RouteSwitchedContinuation { .. } => (None, None),
     }
 }
 

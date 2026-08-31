@@ -3,7 +3,7 @@ import { describe, expect, it } from "bun:test"
 
 import { RunActivityPanel } from "../src/features/run-activity/run-activity-panel.js"
 import { getNativeRunsPage, nativeRunHistoryPageSize } from "../src/platform/daemon/run-activity-query.js"
-import { requestSwitchAccountAndResume } from "../src/features/run-activity/use-run-activity.js"
+import { requestSwitchRouteAndResume } from "../src/features/run-activity/use-run-activity.js"
 import type { ReturnTypeUseRunActivity } from "../src/features/run-activity/types.js"
 
 function click(root: ReturnType<typeof createTestRoot>, testId: string) {
@@ -43,10 +43,10 @@ describe("M4 run activity", () => {
     ])
   })
 
-  it("sends one complete explicit account-replacement request and leaves invalid input untouched", async () => {
+  it("sends one complete explicit route-replacement request and leaves invalid input untouched", async () => {
     const requests: unknown[] = []
     const runtime = {
-      switchAccountAndResume: async (request: unknown) => { requests.push(request) },
+      switchRouteAndResume: async (request: unknown) => { requests.push(request) },
     } as never
     const selection = {
       runtimeProfileId: "runtime-openai-safe",
@@ -54,7 +54,7 @@ describe("M4 run activity", () => {
       modelId: "gpt-5.6-sol",
     } as never
 
-    expect(await requestSwitchAccountAndResume(runtime, {
+    expect(await requestSwitchRouteAndResume(runtime, {
       sessionId: "session-one" as never,
       parentRunId: "run-parent" as never,
       exhausted: true,
@@ -66,7 +66,7 @@ describe("M4 run activity", () => {
       selection,
     }])
 
-    expect(await requestSwitchAccountAndResume(runtime, {
+    expect(await requestSwitchRouteAndResume(runtime, {
       sessionId: "session-one" as never,
       parentRunId: "run-parent" as never,
       exhausted: false,
@@ -110,7 +110,7 @@ describe("M4 run activity", () => {
       cancel: async (id: string) => { cancelled.push(id) },
       openArtifact: (id: string) => artifacts.push(id),
       switchEligible: true,
-      switchAccountAndResume: async () => { switches.push("switch") },
+      switchRouteAndResume: async () => { switches.push("switch") },
     } as unknown as ReturnTypeUseRunActivity
     const root = createTestRoot()
     try {
@@ -139,7 +139,7 @@ describe("M4 run activity", () => {
       root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("cancel-selected-run")!.id, "space")
       root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("approve-approval-one")!.id, "enter")
       root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("open-artifact-artifact-one")!.id, "space")
-      root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("switch-account-and-resume")!.id, "enter")
+      root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("switch-route-and-resume")!.id, "enter")
       root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("run-run-child")!.id, "space")
       root.renderer.nativeSimulateKeystrokes(root.renderer.findByTestId("load-older-runs")!.id, "enter")
       const activityPanel = root.renderer.findByTestId("run-activity-content")!
@@ -159,7 +159,7 @@ describe("M4 run activity", () => {
       expect(root.renderer.findByTestId("cancel-selected-run")).toBeUndefined()
       state.switchEligible = false
       root.render(<div style={{ width: 800, height: 760 }}><RunActivityPanel activity={state} /></div>)
-      expect(root.renderer.findByTestId("switch-account-and-resume")).toBeUndefined()
+      expect(root.renderer.findByTestId("switch-route-and-resume")).toBeUndefined()
     } finally {
       root.unmount()
     }
@@ -170,7 +170,7 @@ describe("M4 run activity", () => {
     const state = {
       runs: [], selectedRunId: undefined, selectRun: () => {}, detail: undefined, timeline: undefined, replay: [], activity: [], approvals: [], loading: false,
       hasOlderRuns: false, loadingOlderRuns: false, loadOlderRuns: () => {},
-      hasOlderActivity: true, loadingOlderActivity: true, loadOlderActivity: () => { olderActivityRequests.push("older") }, error: undefined, refresh: () => {}, decide: async () => {}, cancel: async () => {}, openArtifact: () => {}, switchEligible: false, switchAccountAndResume: async () => {},
+      hasOlderActivity: true, loadingOlderActivity: true, loadOlderActivity: () => { olderActivityRequests.push("older") }, error: undefined, refresh: () => {}, decide: async () => {}, cancel: async () => {}, openArtifact: () => {}, switchEligible: false, switchRouteAndResume: async () => {},
     } as unknown as ReturnTypeUseRunActivity
     const root = createTestRoot()
     try {

@@ -81,7 +81,7 @@ export declare class NativeDaemonBridge {
   subscribeVoiceState(callback: (eventJson: string) => void): string;
   forkRun(requestJson: string): Promise<string>;
   continueRun(requestJson: string): Promise<string>;
-  switchAccountAndResume(requestJson: string): Promise<string>;
+  switchRouteAndResume(requestJson: string): Promise<string>;
   spawnRun(requestJson: string): Promise<string>;
   joinRun(requestJson: string): Promise<string>;
   listNativeRuns(sessionId: string, requestJson: string): Promise<string>;

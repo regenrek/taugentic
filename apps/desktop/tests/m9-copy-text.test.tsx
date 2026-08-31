@@ -68,7 +68,7 @@ describe("M9 copy text", () => {
       approvals: [{ id: "approval-detail", runId: "run-copy", scope: "processExec", requestedAtMs: "1", target: { kind: "processExec" }, reason: "Detail approval reason" }],
       loading: false, loadingOlderActivity: false, loadOlderActivity() {}, hasOlderActivity: false,
       loadingOlderRuns: false, loadOlderRuns() {}, hasOlderRuns: false,
-      error: undefined, refresh() {}, cancel: async () => {}, switchEligible: false, switchAccountAndResume: async () => {}, openArtifact() {}, decide: async () => {},
+      error: undefined, refresh() {}, cancel: async () => {}, switchEligible: false, switchRouteAndResume: async () => {}, openArtifact() {}, decide: async () => {},
     } as never
     const copyText = (text: string) => root.renderer.writeClipboardText(text)
     try {

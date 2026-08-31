@@ -87,9 +87,7 @@ pub fn native_run_parent_id(run: &RunProjection) -> Option<RunId> {
         RunSource::NativeSubagent { parent_run_id, .. }
         | RunSource::FreshSpawn { parent_run_id, .. }
         | RunSource::Forked { parent_run_id, .. }
-        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
-            Some(parent_run_id.clone())
-        }
+        | RunSource::RouteSwitchedContinuation { parent_run_id, .. } => Some(parent_run_id.clone()),
         RunSource::ScheduledWork { .. } | RunSource::User { .. } => None,
     }
 }
@@ -251,11 +249,13 @@ fn relationship(run: &RunProjection) -> NativeRunRelationship {
             parent_run_id: parent_run_id.clone(),
             parent_event_seq: *parent_event_seq,
         },
-        RunSource::AccountSwitchedContinuation {
+        RunSource::RouteSwitchedContinuation {
+            route,
             parent_run_id,
             parent_event_seq,
             ..
-        } => NativeRunRelationship::AccountSwitchedContinuation {
+        } => NativeRunRelationship::RouteSwitchedContinuation {
+            route: route.clone(),
             parent_run_id: parent_run_id.clone(),
             parent_event_seq: *parent_event_seq,
         },
@@ -281,7 +281,7 @@ fn run_list_entry(run: &RunProjection) -> RunListEntry {
         } => (*output_contract, recipe_id.clone()),
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => (None, None),
+        | RunSource::RouteSwitchedContinuation { .. } => (None, None),
     };
     RunListEntry {
         id: run.id.clone(),
@@ -630,12 +630,12 @@ mod tests {
             ..run("fork", &session_id, RunStatus::Completed, 40)
         });
         runs.push(RunProjection {
-            source: RunSource::AccountSwitchedContinuation {
+            source: RunSource::RouteSwitchedContinuation {
                 route: crate::default_test_run_source().route().clone(),
                 parent_run_id: root_id.clone(),
                 parent_event_seq: 9,
             },
-            ..run("account-switch", &session_id, RunStatus::Completed, 50)
+            ..run("route-switch", &session_id, RunStatus::Completed, 50)
         });
 
         let graph = run_lineage_graph_from_projections(runs, &session_id);
@@ -666,7 +666,7 @@ mod tests {
         )));
         assert!(graph.nodes.iter().any(|node| matches!(
             node.relationship,
-            NativeRunRelationship::AccountSwitchedContinuation {
+            NativeRunRelationship::RouteSwitchedContinuation {
                 parent_event_seq: 9,
                 ..
             }

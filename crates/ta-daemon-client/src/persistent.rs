@@ -71,7 +71,7 @@ use ta_protocol::wire::{
     METHOD_DAEMON_RUN_JOIN, METHOD_DAEMON_RUN_LINEAGE_GRAPH, METHOD_DAEMON_RUN_LIST,
     METHOD_DAEMON_RUN_LIST_NATIVE, METHOD_DAEMON_RUN_REPLAY_EVENTS, METHOD_DAEMON_RUN_SPAWN,
     METHOD_DAEMON_RUN_START, METHOD_DAEMON_RUN_SUBSCRIBE_EVENTS,
-    METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
+    METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME, METHOD_DAEMON_RUN_TIMELINE,
     METHOD_DAEMON_SCHEDULED_WORK_CANCEL, METHOD_DAEMON_SCHEDULED_WORK_CREATE,
     METHOD_DAEMON_SCHEDULED_WORK_LIST, METHOD_DAEMON_SESSION_ATTACH, METHOD_DAEMON_SESSION_LIST,
     METHOD_DAEMON_SESSION_OPEN, METHOD_DAEMON_SESSION_OVERVIEW,
@@ -89,7 +89,7 @@ use ta_protocol::wire::{
     RunEventStreamPayload, RunLineageGraphRequest, RunLineageGraphResult, RunSummary, RunTimeline,
     SessionOverviewQuery, SessionOverviewResult, SessionSummary, SpawnRunRequest, SpawnRunResult,
     StartRunCommand, SubscribeRunEventsRequest, SubscribeRunEventsResult,
-    SwitchAccountAndResumeRequest, SwitchAccountAndResumeResult, TerminalAttachParams,
+    SwitchRouteAndResumeRequest, SwitchRouteAndResumeResult, TerminalAttachParams,
     TerminalAttachResult, TerminalCloseParams, TerminalCloseResult, TerminalDetachParams,
     TerminalDetachResult, TerminalEventParams, TerminalInputParams, TerminalInputResult,
     TerminalListParams, TerminalListResult, TerminalResizeParams, TerminalResizeResult,
@@ -999,11 +999,11 @@ impl PersistentDaemonClient {
         self.call(METHOD_DAEMON_RUN_CONTINUE, &request)
     }
 
-    pub fn switch_account_and_resume(
+    pub fn switch_route_and_resume(
         &mut self,
-        request: SwitchAccountAndResumeRequest,
-    ) -> Result<SwitchAccountAndResumeResult, JsonRpcClientError> {
-        self.call(METHOD_DAEMON_RUN_SWITCH_ACCOUNT_AND_RESUME, &request)
+        request: SwitchRouteAndResumeRequest,
+    ) -> Result<SwitchRouteAndResumeResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_RUN_SWITCH_ROUTE_AND_RESUME, &request)
     }
 
     pub fn spawn_run(

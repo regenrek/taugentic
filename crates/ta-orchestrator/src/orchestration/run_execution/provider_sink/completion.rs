@@ -434,7 +434,7 @@ where
         let parent_run_id = match &run.source {
             RunSource::NativeSubagent { parent_run_id, .. }
             | RunSource::Forked { parent_run_id, .. }
-            | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
+            | RunSource::RouteSwitchedContinuation { parent_run_id, .. } => {
                 Some(parent_run_id.clone())
             }
             RunSource::ScheduledWork { .. }
@@ -446,7 +446,7 @@ where
             RunSource::ScheduledWork { .. }
             | RunSource::User { .. }
             | RunSource::Forked { .. }
-            | RunSource::AccountSwitchedContinuation { .. }
+            | RunSource::RouteSwitchedContinuation { .. }
             | RunSource::FreshSpawn { .. } => None,
         };
         let provenance = ReceiptProvenance {

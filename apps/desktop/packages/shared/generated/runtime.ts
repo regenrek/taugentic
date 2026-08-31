@@ -28016,7 +28016,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         {
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -28026,10 +28026,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -28047,6 +28051,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
     },
     "RunHarnessKind": {
       "enum": [
@@ -28301,7 +28336,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         {
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -28311,10 +28346,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -28332,6 +28371,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
     },
     "RunHarnessKind": {
       "enum": [
@@ -28628,7 +28698,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         {
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -28638,10 +28708,14 @@ export const PROTOCOL_JSON_SCHEMAS = {
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -28659,6 +28733,37 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "custom"
       ],
       "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
     },
     "RunHarnessKind": {
       "enum": [
@@ -32453,10 +32558,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -33481,10 +33586,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -34394,10 +34499,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -35275,10 +35380,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -35543,7 +35648,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "ContinueRunResult",
   "type": "object"
 },
-  SwitchAccountAndResumeRequest: {
+  SwitchRouteAndResumeRequest: {
   "$defs": {
     "AgentRuntimeSelection": {
       "properties": {
@@ -35570,7 +35675,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Creates a new native continuation from a failed, account-exhausted parent.\nThe replacement account is mandatory and is validated against the exact\nparent runtime/provider/harness/model route before any state is written.",
+  "description": "Creates a new native continuation from a failed, typed-exhausted parent.\nThe selected route is validated before any successor state is written.",
   "properties": {
     "parentRunId": {
       "type": "string"
@@ -35587,10 +35692,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "parentRunId",
     "selection"
   ],
-  "title": "SwitchAccountAndResumeRequest",
+  "title": "SwitchRouteAndResumeRequest",
   "type": "object"
 },
-  SwitchAccountAndResumeResult: {
+  SwitchRouteAndResumeResult: {
   "$defs": {
     "ConflictSummary": {
       "properties": {
@@ -36181,10 +36286,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -36446,7 +36551,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "required": [
     "run"
   ],
-  "title": "SwitchAccountAndResumeResult",
+  "title": "SwitchRouteAndResumeResult",
   "type": "object"
 },
   SpawnRunRequest: {
@@ -37153,10 +37258,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -38620,10 +38725,10 @@ export const PROTOCOL_JSON_SCHEMAS = {
           "type": "object"
         },
         {
-          "description": "A new native continuation created only after the parent failed with a\ntyped account-exhaustion fact and the user explicitly selected another\nconnected account. The parent itself is never resumed or mutated.",
+          "description": "A new native continuation created only after the parent failed with a\ntyped exhaustion fact and the user explicitly selected a validated\nreplacement route. The parent itself is never resumed or mutated.",
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {

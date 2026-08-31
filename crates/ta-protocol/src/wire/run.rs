@@ -130,9 +130,9 @@ pub enum RunSource {
         parent_event_seq: u64,
     },
     /// A new native continuation created only after the parent failed with a
-    /// typed account-exhaustion fact and the user explicitly selected another
-    /// connected account. The parent itself is never resumed or mutated.
-    AccountSwitchedContinuation {
+    /// typed exhaustion fact and the user explicitly selected a validated
+    /// replacement route. The parent itself is never resumed or mutated.
+    RouteSwitchedContinuation {
         route: RunExecutionRoute,
         #[serde(rename = "parentRunId")]
         #[ts(rename = "parentRunId")]
@@ -154,7 +154,7 @@ impl RunSource {
             | Self::NativeSubagent { route, .. }
             | Self::FreshSpawn { route, .. }
             | Self::Forked { route, .. }
-            | Self::AccountSwitchedContinuation { route, .. } => route,
+            | Self::RouteSwitchedContinuation { route, .. } => route,
         }
     }
 }
@@ -350,7 +350,8 @@ pub enum NativeRunRelationship {
         #[ts(type = "string")]
         parent_event_seq: u64,
     },
-    AccountSwitchedContinuation {
+    RouteSwitchedContinuation {
+        route: RunExecutionRoute,
         #[serde(rename = "parentRunId")]
         #[ts(rename = "parentRunId")]
         parent_run_id: RunId,
@@ -535,13 +536,12 @@ pub struct ContinueRunResult {
     pub run: RunRecord,
 }
 
-/// Creates a new native continuation from a failed, account-exhausted parent.
-/// The replacement account is mandatory and is validated against the exact
-/// parent runtime/provider/harness/model route before any state is written.
+/// Creates a new native continuation from a failed, typed-exhausted parent.
+/// The selected route is validated before any successor state is written.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
-pub struct SwitchAccountAndResumeRequest {
+pub struct SwitchRouteAndResumeRequest {
     pub session_id: SessionId,
     pub parent_run_id: RunId,
     pub selection: AgentRuntimeSelection,
@@ -550,7 +550,7 @@ pub struct SwitchAccountAndResumeRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "generated/")]
-pub struct SwitchAccountAndResumeResult {
+pub struct SwitchRouteAndResumeResult {
     pub run: RunRecord,
 }
 

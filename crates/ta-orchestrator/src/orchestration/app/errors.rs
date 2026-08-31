@@ -186,10 +186,10 @@ pub enum AppServiceError {
     RunNotNativeHarness(String),
     #[error("run is not resumable: {0}")]
     RunNotResumable(String),
-    #[error("run did not fail with typed account exhaustion: {0}")]
-    RunNotAccountExhausted(String),
-    #[error("replacement account must differ from the exhausted route account: {0}")]
-    ReplacementAuthProfileMustDiffer(String),
+    #[error("run did not fail with typed route exhaustion: {0}")]
+    RunNotRouteExhausted(String),
+    #[error("replacement route must differ from the exhausted route")]
+    ReplacementRouteMustDiffer,
     #[error("run fork point does not exist: {0}")]
     RunForkPointNotFound(String),
     #[error("run fork point is not a completed turn boundary: {0}")]
@@ -288,11 +288,11 @@ pub(super) fn map_run_execution_error(error: RunExecutionError) -> AppServiceErr
             AppServiceError::RunNotNativeHarness(run_id)
         }
         RunExecutionError::RunNotResumable(run_id) => AppServiceError::RunNotResumable(run_id),
-        RunExecutionError::RunNotAccountExhausted(run_id) => {
-            AppServiceError::RunNotAccountExhausted(run_id)
+        RunExecutionError::RunNotRouteExhausted(run_id) => {
+            AppServiceError::RunNotRouteExhausted(run_id)
         }
-        RunExecutionError::ReplacementAuthProfileMustDiffer(profile_id) => {
-            AppServiceError::ReplacementAuthProfileMustDiffer(profile_id)
+        RunExecutionError::ReplacementRouteMustDiffer => {
+            AppServiceError::ReplacementRouteMustDiffer
         }
         RunExecutionError::RunForkPointNotFound(run_id) => {
             AppServiceError::RunForkPointNotFound(run_id)

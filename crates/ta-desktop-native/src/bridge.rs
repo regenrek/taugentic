@@ -35,7 +35,7 @@ use ta_protocol::wire::{
     InstallPluginPackageRequest, JoinRunRequest, ListApprovalsQuery, ListArtifactsQuery,
     ListNativeRunsRequest, METHOD_DAEMON_RUN_CANCEL, NativeImagePreview, RunId,
     RunLineageGraphRequest, SessionId, SpawnRunRequest, StartRunCommand, SubscribeRunEventsRequest,
-    SwitchAccountAndResumeRequest, ThreadWorkspaceUpdateCommand, UninstallPluginRequest,
+    SwitchRouteAndResumeRequest, ThreadWorkspaceUpdateCommand, UninstallPluginRequest,
     VoicePermissionState, WorkItemDismissParams, WorkItemListQuery, WorkItemRefreshParams,
     WorkItemTriggerParams, WorkspaceFileOpenExternalParams, WorkspaceFileReadParams,
     WorkspaceFileTreeParams, WorkspaceFileWriteParams, WorkspacePath,
@@ -861,11 +861,11 @@ impl NativeDaemonBridge {
         })
     }
     #[napi]
-    pub fn switch_account_and_resume(
+    pub fn switch_route_and_resume(
         &self,
         request_json: String,
-    ) -> AsyncTask<SwitchAccountAndResumeTask> {
-        AsyncTask::new(SwitchAccountAndResumeTask {
+    ) -> AsyncTask<SwitchRouteAndResumeTask> {
+        AsyncTask::new(SwitchRouteAndResumeTask {
             client: get(&self.state),
             request_json,
         })
@@ -2039,14 +2039,14 @@ task!(ContinueRunTask, |this: &mut ContinueRunTask| {
     session_client.close();
     json(&result?)
 });
-struct SwitchAccountAndResumeTask {
+struct SwitchRouteAndResumeTask {
     client: Result<PersistentDaemonClient>,
     request_json: String,
 }
 task!(
-    SwitchAccountAndResumeTask,
-    |this: &mut SwitchAccountAndResumeTask| {
-        let request: SwitchAccountAndResumeRequest =
+    SwitchRouteAndResumeTask,
+    |this: &mut SwitchRouteAndResumeTask| {
+        let request: SwitchRouteAndResumeRequest =
             serde_json::from_str(&this.request_json).map_err(fail)?;
         let client = this
             .client
@@ -2057,7 +2057,7 @@ task!(
             .fork_session_connection(request.session_id.clone())
             .map_err(fail)?;
         let result = session_client
-            .switch_account_and_resume(request)
+            .switch_route_and_resume(request)
             .map_err(fail);
         session_client.close();
         json(&result?)

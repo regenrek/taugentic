@@ -338,8 +338,8 @@ pub(super) fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExport
     write_schema::<ForkRunResult>(schema_dir)?;
     write_schema::<ContinueRunRequest>(schema_dir)?;
     write_schema::<ContinueRunResult>(schema_dir)?;
-    write_schema::<SwitchAccountAndResumeRequest>(schema_dir)?;
-    write_schema::<SwitchAccountAndResumeResult>(schema_dir)?;
+    write_schema::<SwitchRouteAndResumeRequest>(schema_dir)?;
+    write_schema::<SwitchRouteAndResumeResult>(schema_dir)?;
     write_schema::<SpawnRunRequest>(schema_dir)?;
     write_schema::<SpawnRunResult>(schema_dir)?;
     write_schema::<JoinRunRequest>(schema_dir)?;

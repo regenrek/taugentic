@@ -403,7 +403,7 @@ fn run_recipe_id(run: &RunProjection) -> Option<String> {
         | RunSource::User { recipe_id, .. } => recipe_id.clone(),
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => None,
+        | RunSource::RouteSwitchedContinuation { .. } => None,
     }
 }
 
@@ -420,6 +420,6 @@ fn run_output_contract(run: &RunProjection) -> Option<OutputContractKind> {
         } => *output_contract,
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => None,
+        | RunSource::RouteSwitchedContinuation { .. } => None,
     }
 }

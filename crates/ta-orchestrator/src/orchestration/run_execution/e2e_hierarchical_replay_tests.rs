@@ -299,7 +299,7 @@ fn recipe_id_for_run(run: &ta_store::RunProjection) -> Option<String> {
         | RunSource::User { recipe_id, .. } => recipe_id.clone(),
         RunSource::ScheduledWork { .. }
         | RunSource::Forked { .. }
-        | RunSource::AccountSwitchedContinuation { .. } => None,
+        | RunSource::RouteSwitchedContinuation { .. } => None,
     }
 }
 

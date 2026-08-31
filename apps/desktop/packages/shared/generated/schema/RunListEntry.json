@@ -92,7 +92,7 @@
         {
           "properties": {
             "kind": {
-              "const": "accountSwitchedContinuation",
+              "const": "routeSwitchedContinuation",
               "type": "string"
             },
             "parentEventSeq": {
@@ -102,10 +102,14 @@
             },
             "parentRunId": {
               "type": "string"
+            },
+            "route": {
+              "$ref": "#/$defs/RunExecutionRoute"
             }
           },
           "required": [
             "kind",
+            "route",
             "parentRunId",
             "parentEventSeq"
           ],
@@ -123,6 +127,37 @@
         "custom"
       ],
       "type": "string"
+    },
+    "RunExecutionRoute": {
+      "properties": {
+        "authProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "$ref": "#/$defs/RunHarnessKind"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "runtimeProfileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtimeProfileId",
+        "providerId",
+        "harness"
+      ],
+      "type": "object"
     },
     "RunHarnessKind": {
       "enum": [

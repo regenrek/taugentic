@@ -81,7 +81,7 @@ test("native bridge declaration never accepts or returns secret arguments", asyn
   expect(declaration).not.toContain("updateThreadWorkspace(sessionId:");
   expect(declaration).toContain("agentTurnsPage(sessionId: string, queryJson: string)");
   expect(declaration).toContain("forkRun(requestJson: string)");
-  expect(declaration).toContain("switchAccountAndResume(requestJson: string)");
+  expect(declaration).toContain("switchRouteAndResume(requestJson: string)");
   expect(declaration).toContain("listNativeRuns(sessionId: string, requestJson: string)");
   expect(declaration).toContain("runLineageGraph(sessionId: string, requestJson: string)");
   expect(declaration).toContain("getRun(sessionId: string, queryJson: string)");
@@ -160,7 +160,7 @@ test("loads and invokes the real native module", async () => {
   expect(typeof bridge.updateThreadWorkspace).toBe("function");
   expect(typeof bridge.agentTurnsPage).toBe("function");
   expect(typeof bridge.forkRun).toBe("function");
-  expect(typeof bridge.switchAccountAndResume).toBe("function");
+  expect(typeof bridge.switchRouteAndResume).toBe("function");
   expect(typeof bridge.listNativeRuns).toBe("function");
   expect(typeof bridge.runLineageGraph).toBe("function");
   expect(typeof bridge.getRun).toBe("function");

@@ -227,8 +227,8 @@ pub(super) fn map_app_service_error(
         crate::orchestration::AppServiceError::RunNotResumable(_) => {
             invalid_params(error.to_string())
         }
-        crate::orchestration::AppServiceError::RunNotAccountExhausted(_)
-        | crate::orchestration::AppServiceError::ReplacementAuthProfileMustDiffer(_) => {
+        crate::orchestration::AppServiceError::RunNotRouteExhausted(_)
+        | crate::orchestration::AppServiceError::ReplacementRouteMustDiffer => {
             invalid_params(error.to_string())
         }
         crate::orchestration::AppServiceError::RunForkPointNotFound(_) => {

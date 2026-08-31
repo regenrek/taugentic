@@ -290,9 +290,7 @@ fn parent_run_id(run: &RunProjection) -> Option<RunId> {
     match &run.source {
         RunSource::NativeSubagent { parent_run_id, .. }
         | RunSource::Forked { parent_run_id, .. }
-        | RunSource::AccountSwitchedContinuation { parent_run_id, .. } => {
-            Some(parent_run_id.clone())
-        }
+        | RunSource::RouteSwitchedContinuation { parent_run_id, .. } => Some(parent_run_id.clone()),
         RunSource::ScheduledWork { .. } | RunSource::User { .. } | RunSource::FreshSpawn { .. } => {
             None
         }

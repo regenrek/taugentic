@@ -7,8 +7,8 @@ import type {
   ForkRunResult,
   ContinueRunRequest,
   ContinueRunResult,
-  SwitchAccountAndResumeRequest,
-  SwitchAccountAndResumeResult,
+  SwitchRouteAndResumeRequest,
+  SwitchRouteAndResumeResult,
   JoinRunRequest,
   JoinRunResult,
   ListNativeRunsRequest,
@@ -67,7 +67,7 @@ export type DesktopRuntime = {
   subscribeLifecycle(listener: (projection: DesktopDaemonLifecycleProjection) => void): Promise<DesktopDaemonLifecycleProjection>
   forkRun(request: ForkRunRequest): Promise<ForkRunResult>
   continueRun(request: ContinueRunRequest): Promise<ContinueRunResult>
-  switchAccountAndResume(request: SwitchAccountAndResumeRequest): Promise<SwitchAccountAndResumeResult>
+  switchRouteAndResume(request: SwitchRouteAndResumeRequest): Promise<SwitchRouteAndResumeResult>
   spawnRun(request: SpawnRunRequest): Promise<SpawnRunResult>
   joinRun(request: JoinRunRequest): Promise<JoinRunResult>
   navigationIntent(intent: DaemonNavigationIntent): Promise<NavigationSnapshot>
@@ -147,8 +147,8 @@ export function createDesktopRuntime(bridge: NativeDaemonBridge = new NativeDaem
     async continueRun(request) {
       return decodeProtocolJson<ContinueRunResult>(await bridge.continueRun(JSON.stringify(request)))
     },
-    async switchAccountAndResume(request) {
-      return decodeProtocolJson<SwitchAccountAndResumeResult>(await bridge.switchAccountAndResume(JSON.stringify(request)))
+    async switchRouteAndResume(request) {
+      return decodeProtocolJson<SwitchRouteAndResumeResult>(await bridge.switchRouteAndResume(JSON.stringify(request)))
     },
     async spawnRun(request) {
       return decodeProtocolJson<SpawnRunResult>(await bridge.spawnRun(JSON.stringify(request)))

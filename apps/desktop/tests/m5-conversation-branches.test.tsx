@@ -35,6 +35,18 @@ const grandchild: RunListEntry = {
   harness: "native",
 }
 
+const routeSwitchedChild: RunListEntry = {
+  id: "run-route-switched-child",
+  relationship: {
+    kind: "routeSwitchedContinuation",
+    parentRunId: "run-parent",
+    parentEventSeq: "44",
+    route: { runtimeProfileId: "runtime-codex", providerId: "codex", harness: "codexAppServer", modelId: "gpt-5.6-sol", authProfileId: "codex-chatgpt" },
+  },
+  status: "queued",
+  harness: "native",
+}
+
 function conversation(props: Partial<WorkbenchPanelProps>) {
   const graph = props.branchGraph ?? { nodes: props.branches ?? [], edges: [], orphanRunIds: [], totalCount: (props.branches ?? []).length, omittedCount: 0, truncated: false, cycleBroken: false }
   return panelRegistry({
@@ -137,6 +149,19 @@ describe("M5 conversation branches", () => {
     } finally {
       unsubscribe()
       client.clear()
+    }
+  })
+
+  it("renders a daemon-projected route-switched continuation with its selected route", () => {
+    const root = createTestRoot()
+    try {
+      root.render(<div style={{ width: 1200, height: 760 }}>{conversation({ branches: [routeSwitchedChild] })}</div>)
+      expect(root.renderer.getPaintedText()).toContain("Route switch at turn 44")
+      expect(root.renderer.getPaintedText()).not.toContain("Side Chat at turn 44")
+      expect(root.renderer.findByTestId("branch-route-run-route-switched-child")).toBeDefined()
+      expect(root.renderer.getPaintedText()).toContain("Provider: codex · Harness: codexAppServer · Model: gpt-5.6-sol · Auth profile: codex-chatgpt")
+    } finally {
+      root.unmount()
     }
   })
 
