@@ -1,11 +1,11 @@
 import type { DesktopSettings } from "../../platform/settings/desktop-settings.js"
 
 export type FocusablePanelId = "conversation" | "activity" | "thread-workspace" | "git" | "pull-requests" | "terminal" | "image"
-export const commandIds = ["open-settings", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "toggle-theme", "start-run", "cancel-run"] as const
+export const commandIds = ["open-settings", "open-browser", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "toggle-theme", "start-run", "cancel-run"] as const
 export type CommandId = typeof commandIds[number]
 export type CommandContext = { canStart: boolean; canCancel: boolean }
 export type DesktopCommand = { id: CommandId; title: string; defaultShortcut?: string; panelId?: FocusablePanelId; enabled(context: CommandContext): boolean }
-export type CommandActions = { openSettings(): void; focusPanel(panelId: FocusablePanelId): void; toggleTheme(): void; startRun(): void; cancelRun(): void }
+export type CommandActions = { openSettings(): void; openBrowser(): void; focusPanel(panelId: FocusablePanelId): void; toggleTheme(): void; startRun(): void; cancelRun(): void }
 export type CommandDispatcher = { dispatch(id: CommandId): boolean; shortcutFor(id: CommandId): string | undefined; commandForShortcut(shortcut: string): CommandId | undefined; enabled(id: CommandId): boolean }
 
 /** The sole command contract: ids, labels, enablement, and default shortcuts. */
@@ -17,6 +17,7 @@ export const commandRegistry: readonly DesktopCommand[] = [
   { id: "focus-git", title: "Focus Git", panelId: "git", defaultShortcut: "mod+3", enabled: () => true },
   { id: "focus-pull-requests", title: "Focus pull requests", panelId: "pull-requests", defaultShortcut: "mod+4", enabled: () => true },
   { id: "focus-terminal", title: "Focus terminal", panelId: "terminal", defaultShortcut: "mod+5", enabled: () => true },
+  { id: "open-browser", title: "Open browser", enabled: () => true },
   { id: "toggle-theme", title: "Toggle theme", defaultShortcut: "mod+shift+t", enabled: () => true },
   { id: "start-run", title: "Start run", defaultShortcut: "mod+enter", enabled: (context) => context.canStart },
   { id: "cancel-run", title: "Cancel run", defaultShortcut: "mod+shift+enter", enabled: (context) => context.canCancel },
@@ -33,7 +34,7 @@ export function eventShortcut(event: { key?: string; modifiers?: { cmd: boolean;
 export function createCommandDispatcher(settings: DesktopSettings, context: () => CommandContext, actions: CommandActions): CommandDispatcher {
   const shortcutFor = (id: CommandId) => settings.shortcut(id) ?? commandById(id)?.defaultShortcut
   return {
-    dispatch(id) { const current = commandById(id); if (!current || !current.enabled(context())) return false; if (current.panelId) actions.focusPanel(current.panelId); else if (id === "open-settings") actions.openSettings(); else if (id === "toggle-theme") actions.toggleTheme(); else if (id === "start-run") actions.startRun(); else if (id === "cancel-run") actions.cancelRun(); return true },
+    dispatch(id) { const current = commandById(id); if (!current || !current.enabled(context())) return false; if (current.panelId) actions.focusPanel(current.panelId); else if (id === "open-settings") actions.openSettings(); else if (id === "open-browser") actions.openBrowser(); else if (id === "toggle-theme") actions.toggleTheme(); else if (id === "start-run") actions.startRun(); else if (id === "cancel-run") actions.cancelRun(); return true },
     shortcutFor,
     commandForShortcut(shortcut) {
       const normalized = normalizeShortcut(shortcut)

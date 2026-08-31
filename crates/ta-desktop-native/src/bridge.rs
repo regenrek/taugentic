@@ -1190,6 +1190,7 @@ macro_rules! json_client_task {
     };
 }
 
+mod browser;
 mod code_host;
 mod terminal;
 

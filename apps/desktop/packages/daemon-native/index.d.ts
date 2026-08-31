@@ -54,6 +54,9 @@ export declare class NativeDaemonBridge {
   materializeArtifactImage(sessionId: string, queryJson: string): Promise<string>;
   decideApproval(paramsJson: string): Promise<string>;
   listRecipes(): Promise<string>;
+  browserProfile(): Promise<string>;
+  browserAction(paramsJson: string): Promise<string>;
+  clearBrowserData(paramsJson: string): Promise<string>;
   listWorkItems(queryJson: string): Promise<string>;
   refreshWorkItems(paramsJson: string): Promise<string>;
   dismissWorkItem(paramsJson: string): Promise<string>;

@@ -70,7 +70,7 @@ function workbenchProps(overrides: Partial<WorkbenchPanelProps> = {}): Workbench
     attachments: [],
     onObjectiveChange: () => {},
     onRemoveAttachment: () => {},
-    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
+    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
     onDecideApproval: () => {},
     files: {} as WorkbenchPanelProps["files"],
     artifacts: {} as WorkbenchPanelProps["artifacts"],
@@ -78,6 +78,7 @@ function workbenchProps(overrides: Partial<WorkbenchPanelProps> = {}): Workbench
     git: {} as WorkbenchPanelProps["git"],
     codeHost: {} as WorkbenchPanelProps["codeHost"],
     threadWorkspace: state(),
+    closeBrowser: () => {},
     openUrl: () => {},
     ...overrides,
   }

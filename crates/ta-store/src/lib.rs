@@ -1,6 +1,7 @@
 mod agent_turns;
 mod approval_lifecycle;
 pub mod artifacts;
+pub mod browser_profiles;
 pub mod checkpoints;
 mod code_host_accounts;
 pub mod commits;
@@ -23,6 +24,7 @@ mod work_items;
 
 pub use agent_turns::*;
 pub use artifacts::*;
+pub use browser_profiles::*;
 pub use checkpoints::*;
 pub use code_host_accounts::*;
 pub use commits::*;

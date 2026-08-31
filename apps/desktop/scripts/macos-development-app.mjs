@@ -105,6 +105,7 @@ export function macosDevelopmentAppLaunch({
   developmentApp,
   desktopRoot,
   daemonBinary,
+  daemonSocketName,
   hot,
   applicationArguments = [],
 }) {
@@ -123,6 +124,9 @@ export function macosDevelopmentAppLaunch({
       "-W",
       ...(daemonBinary
         ? ["--env", `TAUGENTIC_DAEMON_BINARY=${daemonBinary}`]
+        : []),
+      ...(daemonSocketName
+        ? ["--env", `TAUGENTIC_DAEMON_SOCKET_NAME=${daemonSocketName}`]
         : []),
       developmentApp.bundlePath,
       "--args",

@@ -10,6 +10,7 @@ use crate::{RecipeRegistry, RuntimeService, SessionAuthority, SessionSummary, Wo
 
 mod agent_runtime;
 mod approvals;
+mod browser;
 mod code_host;
 mod diagnostics;
 mod errors;

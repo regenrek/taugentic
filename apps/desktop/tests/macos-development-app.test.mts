@@ -86,6 +86,7 @@ describe("macOS development app materializer", () => {
         developmentApp,
         desktopRoot: "/workspace/desktop",
         daemonBinary: "/workspace/ta-daemon",
+        daemonSocketName: "taugentic-fresh-test-socket",
         hot: true,
       }),
     ).toEqual({
@@ -95,6 +96,8 @@ describe("macOS development app materializer", () => {
         "-W",
         "--env",
         "TAUGENTIC_DAEMON_BINARY=/workspace/ta-daemon",
+        "--env",
+        "TAUGENTIC_DAEMON_SOCKET_NAME=taugentic-fresh-test-socket",
         "/tmp/Taugentic Development.app",
         "--args",
         "--cwd",
@@ -109,9 +112,23 @@ describe("macOS development app materializer", () => {
         developmentApp,
         desktopRoot: "/workspace/desktop",
         daemonBinary: "/workspace/ta-daemon",
+        daemonSocketName: undefined,
         hot: false,
       }).arguments,
     ).not.toContain("--hot");
+
+    const launchWithoutSocket = macosDevelopmentAppLaunch({
+      developmentApp,
+      desktopRoot: "/workspace/desktop",
+      daemonBinary: "/workspace/ta-daemon",
+      daemonSocketName: undefined,
+      hot: false,
+    });
+    expect(
+      launchWithoutSocket.arguments.some((argument) =>
+        argument.startsWith("TAUGENTIC_DAEMON_SOCKET_NAME="),
+      ),
+    ).toBe(false);
 
     const launcherSource = await readFile(
       new URL("../scripts/start-desktop.mjs", import.meta.url),

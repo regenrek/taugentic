@@ -4,8 +4,9 @@ use ta_protocol::wire::{
 };
 
 use crate::{
-    ArtifactPublishCommitResult, ArtifactRecord, CheckpointPersistCommitResult, CheckpointRecord,
-    CommitArtifactPublish, CommitCheckpointPersist, CommitReceiptEvent, CommitRunTransition,
+    ArtifactPublishCommitResult, ArtifactRecord, BrowserProfileRepository,
+    CheckpointPersistCommitResult, CheckpointRecord, CommitArtifactPublish,
+    CommitCheckpointPersist, CommitReceiptEvent, CommitRunTransition,
     CommitSessionNextRunSelection, CommitSessionOpen, CommitSessionOpenWithNavigation,
     CommitStartupReconciliation, EventRecord, NativeRunListPage, NativeRunListQuery,
     PluginRepository, ReceiptEventCommitResult, RunEventRange, RunEventRangeQuery, RunProjection,
@@ -255,6 +256,7 @@ pub trait PersistenceStore:
     + ThreadWorkspaceRepository
     + ScheduledWorkRepository
     + PluginRepository
+    + BrowserProfileRepository
 {
 }
 
@@ -275,5 +277,6 @@ impl<T> PersistenceStore for T where
         + ThreadWorkspaceRepository
         + ScheduledWorkRepository
         + PluginRepository
+        + BrowserProfileRepository
 {
 }

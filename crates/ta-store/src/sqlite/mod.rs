@@ -35,6 +35,7 @@ use crate::{
 mod agent_turns;
 mod artifacts;
 mod auth_profiles;
+mod browser_profiles;
 mod checkpoints;
 mod code_host_accounts;
 mod commits;

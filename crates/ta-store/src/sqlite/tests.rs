@@ -42,6 +42,7 @@ fn test_db_path(label: &str) -> PathBuf {
 
 mod agent_turns;
 mod artifacts;
+mod browser_profiles;
 mod checkpoints;
 mod code_host_accounts;
 mod commits;

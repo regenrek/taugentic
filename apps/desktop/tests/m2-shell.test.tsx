@@ -13,7 +13,7 @@ import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.
 import { App, Workbench, workbenchSelection } from "../src/app/App.js"
 import { workspaceShellMachine } from "../src/features/runtime/workspace-shell-machine.js"
 import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, openProject, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, triggerWorkItem, workspaceShell } from "../src/features/runtime/workspace-shell.js"
-import { defaultWorkspaceLayout, resetWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
+import { closeDockPanel, defaultWorkspaceLayout, hasDockPanel, openDockPanel, resetWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
 import { archivedProjectConversations, projectConversations, sidebarReduce, Sidebar, standaloneConversations, temporaryConversations, type SidebarState } from "../src/features/sidebar/sidebar.js"
 import { createDesktopRuntime } from "../src/platform/daemon/desktop-runtime.js"
 import { navigationQuery, navigationQueryKey } from "../src/platform/daemon/navigation-query.js"
@@ -59,7 +59,7 @@ describe("M2 desktop shell ownership", () => {
     const firstProject = createTestRoot()
     const workspaceId = "workspace-presentation-first-native-render"
     const commands = createCommandDispatcher(desktopSettings, () => ({ canStart: false, canCancel: false }), {
-      openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
+      openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
     })
 
     try {
@@ -115,6 +115,42 @@ describe("M2 desktop shell ownership", () => {
       desktopSettings.saveAppearance(originalAppearance)
       desktopSettings.saveShortcut("focus-git", originalShortcut ?? "")
     }
+  })
+
+  it("reopens a closed Browser in the canonical dock tree without duplicating it", () => {
+    if (defaultWorkspaceLayout.kind !== "split" || defaultWorkspaceLayout.second.kind !== "split") throw new Error("Default workspace layout is malformed.")
+    const closed: DockLayout = {
+      ...defaultWorkspaceLayout,
+      zoomed: "conversation",
+      second: {
+        ...defaultWorkspaceLayout.second,
+        first: { kind: "tabs", id: "workspace-primary", panels: ["conversation", "source", "diff"], active: "conversation" },
+      },
+    }
+
+    const opened = openDockPanel(closed, "browser", "workspace-primary")
+    const reopened = openDockPanel(opened, "browser", "workspace-primary")
+
+    expect(hasDockPanel(closed, "browser")).toBe(false)
+    expect(hasDockPanel(opened, "browser")).toBe(true)
+    expect(JSON.stringify(opened).match(/\"browser\"/g)).toHaveLength(2)
+    expect(reopened).toEqual(opened)
+    expect(opened.zoomed).toBeUndefined()
+    expect(opened.kind === "split" && opened.second.kind === "split" && opened.second.first).toEqual({
+      kind: "tabs",
+      id: "workspace-primary",
+      panels: ["conversation", "source", "diff", "browser"],
+      active: "browser",
+    })
+  })
+
+  it("closes and reopens Browser through the same persisted dock tree", () => {
+    const closed = closeDockPanel(defaultWorkspaceLayout, "browser")
+    const reopened = openDockPanel(closed, "browser", "workspace-primary")
+
+    expect(hasDockPanel(closed, "browser")).toBe(false)
+    expect(hasDockPanel(reopened, "browser")).toBe(true)
+    expect(JSON.stringify(reopened).match(/"browser"/g)).toHaveLength(2)
   })
 
   it("selects the exact Scheduled Work linked run through Run Activity before focusing Activity", async () => {
@@ -298,7 +334,7 @@ describe("M2 desktop shell ownership", () => {
     expect(desktopSettings.presentation(workspaceId)).toBeUndefined()
     desktopSettings.saveLayout(workspaceId, { kind: "tabs", id: "root", panels: ["conversation"], active: "conversation" })
     expect(desktopSettings.presentation(workspaceId)?.layout.kind).toBe("tabs")
-    expect(commandRegistry.map((command) => command.id)).toEqual(["open-settings", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "toggle-theme", "start-run", "cancel-run"])
+    expect(commandRegistry.map((command) => command.id)).toEqual(["open-settings", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "open-browser", "toggle-theme", "start-run", "cancel-run"])
   })
 
   it("stores project selection explicitly instead of deriving it from navigation order", () => {

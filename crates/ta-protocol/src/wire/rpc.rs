@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::wire::{
-    AgentRuntimeModelId, AuthMethodId, AuthProfileId, AuthProfilePreferences, CapsuleRecipe,
-    DaemonEventCursor, DaemonEventKind, DaemonRuntimeMode, OutputContractKind, RuntimeExtensionId,
-    RuntimeProfileId, RuntimeProfilePatch, WorkspaceMode, WorktreeCleanupPolicy,
+    AgentRuntimeModelId, AuthMethodId, AuthProfileId, AuthProfilePreferences, BrowserActionRequest,
+    BrowserActionResult, BrowserClearDataRequest, BrowserProfileRequest, BrowserProfileResult,
+    CapsuleRecipe, DaemonEventCursor, DaemonEventKind, DaemonRuntimeMode, OutputContractKind,
+    RuntimeExtensionId, RuntimeProfileId, RuntimeProfilePatch, WorkspaceMode,
+    WorktreeCleanupPolicy,
 };
 
 pub const DAEMON_DEFAULT_SOCKET_NAME: &str = "ta-daemon";
@@ -87,6 +89,9 @@ pub const METHOD_DAEMON_PLUGIN_INSPECT: &str = "daemon.plugin.inspect";
 pub const METHOD_DAEMON_PLUGIN_INSTALL: &str = "daemon.plugin.install";
 pub const METHOD_DAEMON_PLUGIN_LIST: &str = "daemon.plugin.list";
 pub const METHOD_DAEMON_PLUGIN_UNINSTALL: &str = "daemon.plugin.uninstall";
+pub const METHOD_DAEMON_BROWSER_PROFILE: &str = "daemon.browser.profile";
+pub const METHOD_DAEMON_BROWSER_ACTION: &str = "daemon.browser.action";
+pub const METHOD_DAEMON_BROWSER_CLEAR_DATA: &str = "daemon.browser.clear_data";
 pub const METHOD_DAEMON_ARTIFACT_GET: &str = "daemon.artifact.get";
 pub const METHOD_DAEMON_ARTIFACT_LIST: &str = "daemon.artifact.list";
 pub const METHOD_DAEMON_CONTEXT_RECEIPTS_LIST: &str = "daemon.context.receipts.list";

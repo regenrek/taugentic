@@ -13,6 +13,7 @@ import { useWorkbenchFiles } from "../features/files/use-workbench-files.js"
 import { useWorkbenchGit } from "../features/git/use-workbench-git.js"
 import { useRunActivity } from "../features/run-activity/use-run-activity.js"
 import { useWorkbenchTerminal } from "../features/terminal/use-workbench-terminal.js"
+import { useWorkbenchBrowser } from "../features/browser/use-workbench-browser.js"
 import { useThreadWorkspace } from "../features/thread-workspace/use-thread-workspace.js"
 import { WorkInboxPanel } from "../features/work-items/work-inbox-panel.js"
 import { useWorkInbox } from "../features/work-items/use-work-inbox.js"
@@ -23,7 +24,7 @@ import { usePlugins } from "../features/plugins/use-plugins.js"
 import { DiagnosticsPanel } from "../features/diagnostics/diagnostics-panel.js"
 import { applySidebarAction, archiveConversation, cancelSelectedRun, cancelSideChat, closeSideChat, closeTemporaryConversation, closeWorkspaceShell, continueSideChat, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, joinFreshRun, loginAuthMethod, logoutAuthProfile, openProject, openSideChat, openSideChatPanel, removeRunAttachment, replaceAuthProfilePreferences, requestVoicePermission, restoreConversation, selectConversation, selectProject, setConversationPinned, setProjectSpace, spawnFreshRun, startSelectedRun, toggleRunAttachment, triggerWorkItem, updateRuntimeDraft, workspaceShell } from "../features/runtime/workspace-shell.js"
 import { Sidebar } from "../features/sidebar/sidebar.js"
-import { isDockPanelVisible, resetWorkspaceLayout, saveDesktopTheme, saveWorkspaceLayout, workspacePresentation } from "../features/workspace-layout/layout-store.js"
+import { closeDockPanel, hasDockPanel, isDockPanelVisible, openDockPanel, resetWorkspaceLayout, saveDesktopTheme, saveWorkspaceLayout, workspacePresentation } from "../features/workspace-layout/layout-store.js"
 import { panelRegistry } from "../features/workspace-layout/panels.js"
 import { navigationQuery } from "../platform/daemon/navigation-query.js"
 import { diagnosticsQuery } from "../platform/daemon/diagnostics-query.js"
@@ -136,6 +137,7 @@ export function App() {
     : undefined
   const commands = useMemo(() => selectedWorkspaceId ? createCommandDispatcher(desktopSettings, () => ({ canStart, canCancel }), {
     openSettings: () => setSettingsOpen(true),
+    openBrowser: () => saveWorkspaceLayout(selectedWorkspaceId, openDockPanel(workspacePresentation(selectedWorkspaceId).layout, "browser", "workspace-primary")),
     focusPanel: (panelId) => workspaceShell.send({ type: "FOCUS_PANEL", panelId }),
     toggleTheme: () => saveDesktopTheme(desktopSettings.appearance().theme === "dark" ? "light" : "dark"),
     startRun: () => void startSelectedRun(desktopRuntime, workspaceShell, selectedRecipeId),
@@ -170,6 +172,7 @@ export function App() {
     sessionId: selectedSessionId,
     enabled: shell.context.phase === "ready",
   })
+  const browser = useWorkbenchBrowser(desktopRuntime, shell.context.phase === "ready")
   const runActivity = useRunActivity({
     runtime: desktopRuntime,
     sessionId: selectedSessionId,
@@ -301,6 +304,11 @@ export function App() {
     threadWorkspace,
     runActivity,
     approvalsInbox,
+    browser: hasDockPanel(presentation.layout, "browser") ? browser : undefined,
+    browserVisible: isDockPanelVisible(presentation.layout, "browser"),
+    closeBrowser: () => {
+      if (selectedWorkspaceId) saveWorkspaceLayout(selectedWorkspaceId, closeDockPanel(presentation.layout, "browser"))
+    },
     openUrl: (url) => renderer.openUrl(url),
     copyText: (text) => renderer.writeClipboardText(text),
   })

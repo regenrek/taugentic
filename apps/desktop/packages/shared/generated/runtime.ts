@@ -6664,6 +6664,259 @@ export const PROTOCOL_JSON_SCHEMAS = {
   "title": "ArtifactContentResult",
   "type": "object"
 },
+  BrowserProfileId: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "string",
+  "type": "string"
+},
+  BrowserProfile: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "title": "BrowserProfile",
+  "type": "object"
+},
+  BrowserNavigationKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "navigate",
+    "back",
+    "forward",
+    "reload"
+  ],
+  "title": "BrowserNavigationKind",
+  "type": "string"
+},
+  BrowserNavigationRequest: {
+  "$defs": {
+    "BrowserNavigationKind": {
+      "enum": [
+        "navigate",
+        "back",
+        "forward",
+        "reload"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/BrowserNavigationKind"
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "BrowserNavigationRequest",
+  "type": "object"
+},
+  BrowserActionKind: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "navigationIntent",
+    "navigationAction",
+    "navigationResponse",
+    "downloadDestination"
+  ],
+  "title": "BrowserActionKind",
+  "type": "string"
+},
+  BrowserActionRequest: {
+  "$defs": {
+    "BrowserActionKind": {
+      "enum": [
+        "navigationIntent",
+        "navigationAction",
+        "navigationResponse",
+        "downloadDestination"
+      ],
+      "type": "string"
+    },
+    "BrowserNavigationKind": {
+      "enum": [
+        "navigate",
+        "back",
+        "forward",
+        "reload"
+      ],
+      "type": "string"
+    },
+    "BrowserNavigationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/BrowserNavigationKind"
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact native BrowserSurface action families. The daemon owns the decision\nfor each family; downloadDestination never shares navigation semantics.",
+  "properties": {
+    "canShowMimeType": {
+      "description": "Present only for a native navigationResponse. A missing value must be\ncancelled by policy rather than guessed by a desktop client.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "kind": {
+      "$ref": "#/$defs/BrowserActionKind"
+    },
+    "navigation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BrowserNavigationRequest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profileId": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "shouldPerformDownload": {
+      "description": "Present only for a native navigationAction. A missing value must be\ncancelled by policy rather than guessed by a desktop client.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "requestId",
+    "profileId",
+    "kind"
+  ],
+  "title": "BrowserActionRequest",
+  "type": "object"
+},
+  BrowserActionDecision: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "enum": [
+    "allow",
+    "cancel",
+    "download"
+  ],
+  "title": "BrowserActionDecision",
+  "type": "string"
+},
+  BrowserActionResult: {
+  "$defs": {
+    "BrowserActionDecision": {
+      "enum": [
+        "allow",
+        "cancel",
+        "download"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/BrowserActionDecision"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requestId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "requestId",
+    "decision"
+  ],
+  "title": "BrowserActionResult",
+  "type": "object"
+},
+  BrowserProfileRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "title": "BrowserProfileRequest",
+  "type": "object"
+},
+  BrowserProfileResult: {
+  "$defs": {
+    "BrowserProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "$ref": "#/$defs/BrowserProfile"
+    }
+  },
+  "required": [
+    "profile"
+  ],
+  "title": "BrowserProfileResult",
+  "type": "object"
+},
+  BrowserClearDataRequest: {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "profileId": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "requestId",
+    "profileId"
+  ],
+  "title": "BrowserClearDataRequest",
+  "type": "object"
+},
   DaemonClientCapabilities: {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {

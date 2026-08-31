@@ -82,6 +82,15 @@ function fakeRuntime(record: {
     async diagnosticsSnapshot() {
       throw new Error("Diagnostics are outside the terminal fixture.")
     },
+    async browserProfile() {
+      throw new Error("Browser profiles are outside the terminal fixture.")
+    },
+    async browserAction() {
+      throw new Error("Browser actions are outside the terminal fixture.")
+    },
+    async clearBrowserData() {
+      throw new Error("Browser data clearing is outside the terminal fixture.")
+    },
     async listWorkItems() {
       throw new Error("Work Inbox is outside the terminal fixture.")
     },

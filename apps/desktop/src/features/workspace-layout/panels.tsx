@@ -21,6 +21,8 @@ import type { ThreadWorkspacePanelState } from "../thread-workspace/use-thread-w
 import { commandById, commandRegistry, type CommandDispatcher } from "../commands/registry.js"
 import { ConversationBranchGraph } from "../conversation-branches/branch-graph.js"
 import { VoicePanel, type VoicePanelProps } from "../voice/voice-panel.js"
+import { BrowserPanel } from "../browser/browser-panel.js"
+import type { WorkbenchBrowser } from "../browser/use-workbench-browser.js"
 
 export type AssistantMessage = { id: string; text: string }
 
@@ -73,6 +75,9 @@ export type WorkbenchPanelProps = ConversationPanelProps & {
   codeHost: WorkbenchCodeHostState
   threadWorkspace: ThreadWorkspacePanelState
   runActivity?: ReturnTypeUseRunActivity | undefined
+  browser?: WorkbenchBrowser
+  browserVisible?: boolean
+  closeBrowser(): void
   approvalsInbox?: ApprovalsInboxState | undefined
   openUrl(url: string): void
   artifacts: ArtifactPanelState & {
@@ -124,6 +129,7 @@ export function panelRegistry(props: WorkbenchPanelProps): readonly DockPanel[] 
     ? preview
     : { ...preview, content: undefined }
   return [
+    ...(props.browser ? [{ id: "browser", label: "Browser", content: <BrowserPanel browser={props.browser} visible={Boolean(props.browserVisible)} onClose={props.closeBrowser} />, closable: false }] : []),
     {
       id: "files",
       label: "Files",

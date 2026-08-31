@@ -32,8 +32,9 @@ function props(rows: readonly AgentTurnRow[], overrides: Partial<ConversationPan
     onLoadOlderTranscript: () => {},
     onObjectiveChange: () => {},
     onRemoveAttachment: () => {},
-    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
+    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
     onDecideApproval: () => {},
+    closeBrowser: () => {},
     files: {
       entries: [],
       treeTruncated: false,

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@regenrek/gpuix-react':
-        specifier: 0.5.0-regenrek.4
-        version: 0.5.0-regenrek.4(react@19.2.4)
+        specifier: 0.5.0-regenrek.7
+        version: 0.5.0-regenrek.7(react@19.2.4)
       '@tanstack/react-query':
         specifier: 5.66.8
         version: 5.66.8(react@19.2.4)
@@ -50,21 +50,21 @@ importers:
 
 packages:
 
-  '@regenrek/gpuix-native-darwin-arm64@0.5.0-regenrek.4':
-    resolution: {integrity: sha512-SjXe12vgf/I1c853gw6YfwZRVNQHum70YsFCam0vor2xNec6lwzojZ8A165Rys2eAsHV62MlHHNOzVY1ACS73g==}
+  '@regenrek/gpuix-native-darwin-arm64@0.5.0-regenrek.7':
+    resolution: {integrity: sha512-EDPDS+F/bUNJ5TM1jCzmq7/l7miMxQXA+zhIlyBpaVTPLVar9d4XPZDvY3k6VbCQcOJqp5MBJo3hCA1FoxlZEA==}
     cpu: [arm64]
     os: [darwin]
 
-  '@regenrek/gpuix-native-darwin-x64@0.5.0-regenrek.4':
-    resolution: {integrity: sha512-uTuKgjdgWbAuZID8bOIsDECUK/lJ3FpuXe51pXgfj3/ROTJKC/QeH8bLFY6XzB029e31GTeKDH5MX7IQ3VtNUg==}
+  '@regenrek/gpuix-native-darwin-x64@0.5.0-regenrek.7':
+    resolution: {integrity: sha512-D+QmMo8yMm5w2Q5VITKU07L3Yyw28z3agYww5HHTG1StCC3fuGhnPuwx89oa0rETYu56H178fy97zIke26RLkg==}
     cpu: [x64]
     os: [darwin]
 
-  '@regenrek/gpuix-native@0.5.0-regenrek.4':
-    resolution: {integrity: sha512-XEU9enMuSxBCviLCAUDFbCy0tBcLPf/cuSg9d1SnHZsAEm0pXzl5u6n+RwkW2wtTHNhqRA88as2hC5ltcpSvxQ==}
+  '@regenrek/gpuix-native@0.5.0-regenrek.7':
+    resolution: {integrity: sha512-Ju/+D+XUl9MWhiqq9BRLeaP9h1wnIAdUIQJgX4wSvG94T3NiPYISczdEEuIVVBx4gG5PE104m0dZ2bkEwMjOjA==}
 
-  '@regenrek/gpuix-react@0.5.0-regenrek.4':
-    resolution: {integrity: sha512-jTJXWE88uGxLJiQ8bexJlOg/desdc1AnN72InNsQeVYZDe8b0lDyqG/V+WTeEOt5X8zutb1y04alznTRV8paNw==}
+  '@regenrek/gpuix-react@0.5.0-regenrek.7':
+    resolution: {integrity: sha512-QdIszhIURP8njWdibzyeJntJBlzJKKOPK0EyXMBRFSNqrrKRvJty+q+wi3vZZ/tu0nG5+Tzgun6rRngOCZgY1w==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
@@ -124,20 +124,20 @@ packages:
 
 snapshots:
 
-  '@regenrek/gpuix-native-darwin-arm64@0.5.0-regenrek.4':
+  '@regenrek/gpuix-native-darwin-arm64@0.5.0-regenrek.7':
     optional: true
 
-  '@regenrek/gpuix-native-darwin-x64@0.5.0-regenrek.4':
+  '@regenrek/gpuix-native-darwin-x64@0.5.0-regenrek.7':
     optional: true
 
-  '@regenrek/gpuix-native@0.5.0-regenrek.4':
+  '@regenrek/gpuix-native@0.5.0-regenrek.7':
     optionalDependencies:
-      '@regenrek/gpuix-native-darwin-arm64': 0.5.0-regenrek.4
-      '@regenrek/gpuix-native-darwin-x64': 0.5.0-regenrek.4
+      '@regenrek/gpuix-native-darwin-arm64': 0.5.0-regenrek.7
+      '@regenrek/gpuix-native-darwin-x64': 0.5.0-regenrek.7
 
-  '@regenrek/gpuix-react@0.5.0-regenrek.4(react@19.2.4)':
+  '@regenrek/gpuix-react@0.5.0-regenrek.7(react@19.2.4)':
     dependencies:
-      '@regenrek/gpuix-native': 0.5.0-regenrek.4
+      '@regenrek/gpuix-native': 0.5.0-regenrek.7
       eventsource-parser: 4.1.0
       react: 19.2.4
       react-reconciler: 0.31.0(react@19.2.4)

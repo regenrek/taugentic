@@ -16,6 +16,15 @@ pub(super) const PROTOCOL_TS_CONSTS: &[(&str, &str)] = &[
     ("DAEMON_DEFAULT_SOCKET_NAME", DAEMON_DEFAULT_SOCKET_NAME),
     ("DAEMON_SOCKET_NAME_ENV_VAR", DAEMON_SOCKET_NAME_ENV_VAR),
     ("METHOD_DAEMON_EVENT", METHOD_DAEMON_EVENT),
+    (
+        "METHOD_DAEMON_BROWSER_PROFILE",
+        METHOD_DAEMON_BROWSER_PROFILE,
+    ),
+    ("METHOD_DAEMON_BROWSER_ACTION", METHOD_DAEMON_BROWSER_ACTION),
+    (
+        "METHOD_DAEMON_BROWSER_CLEAR_DATA",
+        METHOD_DAEMON_BROWSER_CLEAR_DATA,
+    ),
     ("METHOD_DAEMON_INITIALIZE", METHOD_DAEMON_INITIALIZE),
     ("METHOD_DAEMON_STATUS", METHOD_DAEMON_STATUS),
     ("METHOD_DAEMON_CONTROL_STATUS", METHOD_DAEMON_CONTROL_STATUS),
@@ -375,6 +384,17 @@ fn export_core_types(cfg: &TsConfig) -> Result<(), ProtocolExportError> {
     export_ts::<ListScheduledWorkResult>(cfg)?;
     export_ts::<CancelScheduledWorkRequest>(cfg)?;
     export_ts::<PluginId>(cfg)?;
+    export_ts::<BrowserProfileId>(cfg)?;
+    export_ts::<BrowserProfile>(cfg)?;
+    export_ts::<BrowserNavigationKind>(cfg)?;
+    export_ts::<BrowserNavigationRequest>(cfg)?;
+    export_ts::<BrowserActionKind>(cfg)?;
+    export_ts::<BrowserActionRequest>(cfg)?;
+    export_ts::<BrowserActionDecision>(cfg)?;
+    export_ts::<BrowserActionResult>(cfg)?;
+    export_ts::<BrowserProfileRequest>(cfg)?;
+    export_ts::<BrowserProfileResult>(cfg)?;
+    export_ts::<BrowserClearDataRequest>(cfg)?;
     export_ts::<PluginCapability>(cfg)?;
     export_ts::<PluginLifecycleState>(cfg)?;
     export_ts::<PluginLifecycleFailure>(cfg)?;

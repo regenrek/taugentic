@@ -15,6 +15,7 @@ describe("M2 command surface", () => {
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: true, canCancel: true }), {
       openSettings: () => calls.push("settings"),
+      openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`),
       toggleTheme: () => calls.push("theme"),
       startRun: () => calls.push("start"),
@@ -23,15 +24,16 @@ describe("M2 command surface", () => {
 
     expect(dispatcher.commandForShortcut(eventShortcut({ key: "1", modifiers: { cmd: true, ctrl: false, shift: false } }))).toBe("focus-conversation")
     expect(dispatcher.dispatch("focus-conversation")).toBe(true)
+    expect(dispatcher.dispatch("open-browser")).toBe(true)
     expect(dispatcher.dispatch("start-run")).toBe(true)
     expect(dispatcher.dispatch("cancel-run")).toBe(true)
-    expect(calls).toEqual(["focus:conversation", "start", "cancel"])
+    expect(calls).toEqual(["focus:conversation", "browser", "start", "cancel"])
   })
 
   it("keeps shortcut overrides device-local presentation settings", () => {
     const settings = new DesktopSettings()
     settings.saveShortcut("focus-git", "mod+g")
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
 
     expect(dispatcher.shortcutFor("focus-git")).toBe("mod+g")
     expect(dispatcher.commandForShortcut("mod+g")).toBe("focus-git")
@@ -52,6 +54,7 @@ describe("M2 command surface", () => {
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), {
       openSettings: () => calls.push("settings"),
+      openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => calls.push("start"), cancelRun: () => calls.push("cancel"),
     })
     const { render, renderer, unmount } = createTestRoot()
@@ -68,6 +71,7 @@ describe("M2 command surface", () => {
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), {
       openSettings: () => calls.push("settings"),
+      openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => calls.push("start"), cancelRun: () => calls.push("cancel"),
     })
     const { render, renderer, unmount } = createTestRoot()
@@ -114,7 +118,7 @@ describe("M2 command surface", () => {
   it("derives every mutable settings control from the settings error while Close remains available", async () => {
     const settings = new DesktopSettings()
     await settings.initialize({ read: async () => "{", write: async () => {} })
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const { render, renderer, unmount } = createTestRoot()
     const click = (testId: string) => { const element = renderer.findByTestId(testId)!; const [x = 0, y = 0, width = 0, height = 0] = renderer.getElementBounds(element.id)!; renderer.nativeSimulateClick(x + width / 2, y + height / 2) }
     let closed = 0
@@ -141,7 +145,7 @@ describe("M2 command surface", () => {
 
   it("keeps settings controls native-operable when settings are healthy", () => {
     const settings = new DesktopSettings()
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const { render, renderer, unmount } = createTestRoot()
     try {
       render(<CommandSurface dispatcher={dispatcher} settings={settings} settingsOpen onSettingsOpenChange={() => {}} />)
@@ -159,7 +163,7 @@ describe("M2 command surface", () => {
 
   it("requires confirmation before resetting only the selected workspace layout", () => {
     const settings = new DesktopSettings()
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const resets: string[] = []
     const { render, renderer, unmount } = createTestRoot()
     const click = (testId: string) => { const element = renderer.findByTestId(testId)!; const [x = 0, y = 0, width = 0, height = 0] = renderer.getElementBounds(element.id)!; renderer.nativeSimulateClick(x + width / 2, y + height / 2) }
@@ -184,6 +188,7 @@ describe("M2 command surface", () => {
         const [canStart, setCanStart] = useState(true)
         const dispatcher = useMemo(() => createCommandDispatcher(new DesktopSettings(), () => ({ canStart, canCancel: !canStart }), {
           openSettings: () => calls.push("settings"),
+          openBrowser: () => calls.push("browser"),
           focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => { calls.push("start"); setCanStart(false) }, cancelRun: () => { calls.push("cancel"); setCanStart(true) },
         }), [canStart])
         const panels = [{ id: "conversation", label: "Conversation", content: <ConversationPanel

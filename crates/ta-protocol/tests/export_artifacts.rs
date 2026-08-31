@@ -20,6 +20,8 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(index.contains("export type { PublicApprovalResolution }"));
     assert!(index.contains("export type { ArtifactEvent }"));
     assert!(index.contains("export type { ArtifactSummary }"));
+    assert!(index.contains("export type { BrowserActionRequest }"));
+    assert!(index.contains("export type { BrowserActionKind }"));
     assert!(index.contains("export type { DaemonApprovalDecideParams }"));
     assert!(index.contains("export type { DaemonApprovalDecideResult }"));
     assert!(index.contains("export type { GetArtifactQuery }"));
@@ -102,6 +104,25 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(workspace_selector.contains("projectId: ProjectId"));
     assert!(workspace_selector.contains("workspaceId: WorkspaceId"));
 
+    let browser_action = fs::read_to_string(export_root.join("generated/BrowserActionRequest.ts"))
+        .expect("browser action binding should exist");
+    assert!(browser_action.contains("downloadDestination"));
+    assert!(browser_action.contains("shouldPerformDownload?: boolean | null"));
+    assert!(browser_action.contains("canShowMimeType?: boolean | null"));
+    let browser_decision =
+        fs::read_to_string(export_root.join("generated/BrowserActionDecision.ts"))
+            .expect("browser action decision binding should exist");
+    assert!(browser_decision.contains("\"download\""));
+    let browser_action_schema =
+        fs::read_to_string(export_root.join("generated/schema/BrowserActionRequest.json"))
+            .expect("browser action schema should exist");
+    assert!(browser_action_schema.contains("\"shouldPerformDownload\""));
+    assert!(browser_action_schema.contains("\"canShowMimeType\""));
+    let browser_decision_schema =
+        fs::read_to_string(export_root.join("generated/schema/BrowserActionDecision.json"))
+            .expect("browser action decision schema should exist");
+    assert!(browser_decision_schema.contains("\"download\""));
+
     let runtime = fs::read_to_string(export_root.join("generated/runtime.ts"))
         .expect("generated runtime schema module should exist");
     assert!(runtime.contains("PublicApprovalResolution"));
@@ -137,6 +158,9 @@ fn export_protocol_artifacts_write_generated_index_and_schema_files() {
     assert!(runtime.contains("RuntimeProfilePatch"));
     assert!(runtime.contains("AgentRuntimeStrategyInfo"));
     assert!(runtime.contains("AuthProfileState"));
+    assert!(runtime.contains("\"shouldPerformDownload\""));
+    assert!(runtime.contains("\"canShowMimeType\""));
+    assert!(runtime.contains("\"download\""));
     assert!(runtime.contains("Workspace"));
     assert!(runtime.contains("ExecutionContext"));
     assert!(runtime.contains("WorkspaceScope"));

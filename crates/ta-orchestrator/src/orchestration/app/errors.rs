@@ -45,6 +45,10 @@ pub enum AppServiceError {
     PluginStageFailed,
     #[error("plugin installation does not exist")]
     PluginInstallationNotFound,
+    #[error("browser profile is invalid")]
+    BrowserProfileInvalid,
+    #[error("browser profile does not belong to this daemon principal")]
+    BrowserProfileForbidden,
     #[error("daemon.session.open requires a workspace selector; call daemon.workspace.open first")]
     #[allow(dead_code)]
     SessionWorkspaceMissing,

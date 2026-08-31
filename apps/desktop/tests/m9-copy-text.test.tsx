@@ -31,7 +31,7 @@ function conversationProps(rows: readonly AgentTurnRow[], copyText: (text: strin
     onObjectiveChange() {},
     onRemoveAttachment() {},
     copyText,
-    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
+    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
   }
 }
 

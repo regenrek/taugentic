@@ -1,5 +1,6 @@
 pub mod agent_runtime;
 pub mod approval;
+pub mod browser;
 pub mod budget;
 pub mod decision;
 pub mod engine;
@@ -8,6 +9,7 @@ pub mod rules;
 
 pub use agent_runtime::*;
 pub use approval::*;
+pub use browser::*;
 pub use budget::*;
 pub use decision::*;
 pub use engine::*;

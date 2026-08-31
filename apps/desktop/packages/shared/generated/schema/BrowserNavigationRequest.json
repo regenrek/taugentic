@@ -1,0 +1,31 @@
+{
+  "$defs": {
+    "BrowserNavigationKind": {
+      "enum": [
+        "navigate",
+        "back",
+        "forward",
+        "reload"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/BrowserNavigationKind"
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "BrowserNavigationRequest",
+  "type": "object"
+}

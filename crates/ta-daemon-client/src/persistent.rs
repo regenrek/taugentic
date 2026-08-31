@@ -10,10 +10,11 @@ use ta_jsonrpc::{
 use ta_protocol::wire::{
     ActivityPageQuery, AgentRuntimeSnapshot, AgentTurnsPageQuery, AgentTurnsPageResult,
     ApprovalSnapshotResult, ArtifactContentResult, ArtifactSnapshotResult, AuthProfileLoginResult,
-    AuthProfileLogoutResult, CancelScheduledWorkRequest, CodeHostAccountConnectParams,
-    CodeHostAccountConnectResult, CodeHostAccountDisconnectParams, CodeHostAccountDisconnectResult,
-    CodeHostAccountListParams, CodeHostAccountListResult, CodeHostPage,
-    CodeHostPullRequestActivityParams, CodeHostPullRequestActivityResult,
+    AuthProfileLogoutResult, BrowserActionRequest, BrowserActionResult, BrowserClearDataRequest,
+    BrowserProfileRequest, BrowserProfileResult, CancelScheduledWorkRequest,
+    CodeHostAccountConnectParams, CodeHostAccountConnectResult, CodeHostAccountDisconnectParams,
+    CodeHostAccountDisconnectResult, CodeHostAccountListParams, CodeHostAccountListResult,
+    CodeHostPage, CodeHostPullRequestActivityParams, CodeHostPullRequestActivityResult,
     CodeHostPullRequestChecksParams, CodeHostPullRequestChecksResult,
     CodeHostPullRequestCommentCreateParams, CodeHostPullRequestCommentCreateResult,
     CodeHostPullRequestDetail, CodeHostPullRequestDetailParams, CodeHostPullRequestEnsureParams,
@@ -50,7 +51,8 @@ use ta_protocol::wire::{
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
     METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_AGENT_TURNS_PAGE,
     METHOD_DAEMON_APPROVAL_DECIDE, METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET,
-    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT,
+    METHOD_DAEMON_ARTIFACT_LIST, METHOD_DAEMON_BROWSER_ACTION, METHOD_DAEMON_BROWSER_CLEAR_DATA,
+    METHOD_DAEMON_BROWSER_PROFILE, METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT,
     METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT, METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST,
     METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS,
     METHOD_DAEMON_CODE_HOST_PULL_REQUEST_COMMENT_CREATE,
@@ -865,6 +867,22 @@ impl PersistentDaemonClient {
 
     pub fn list_recipes(&mut self) -> Result<RecipeListResponse, JsonRpcClientError> {
         self.call(METHOD_DAEMON_RECIPES_LIST, &ListRecipesParams {})
+    }
+
+    pub fn browser_profile(&mut self) -> Result<BrowserProfileResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_BROWSER_PROFILE, &BrowserProfileRequest {})
+    }
+    pub fn browser_action(
+        &mut self,
+        request: BrowserActionRequest,
+    ) -> Result<BrowserActionResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_BROWSER_ACTION, &request)
+    }
+    pub fn clear_browser_data(
+        &mut self,
+        request: BrowserClearDataRequest,
+    ) -> Result<BrowserActionResult, JsonRpcClientError> {
+        self.call(METHOD_DAEMON_BROWSER_CLEAR_DATA, &request)
     }
 
     pub fn list_work_items(

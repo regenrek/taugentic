@@ -52,6 +52,10 @@ import type {
   PluginInspection,
   UninstallPluginRequest,
   DaemonDiagnostics,
+  BrowserActionRequest,
+  BrowserActionResult,
+  BrowserClearDataRequest,
+  BrowserProfileResult,
 } from "@taugentic/desktop-protocol"
 
 import { decodeProtocolJson } from "./protocol-json.js"
@@ -68,6 +72,9 @@ export type DesktopRuntime = {
   joinRun(request: JoinRunRequest): Promise<JoinRunResult>
   navigationIntent(intent: DaemonNavigationIntent): Promise<NavigationSnapshot>
   diagnosticsSnapshot(): Promise<DaemonDiagnostics>
+  browserProfile(): Promise<BrowserProfileResult>
+  browserAction(request: BrowserActionRequest): Promise<BrowserActionResult>
+  clearBrowserData(request: BrowserClearDataRequest): Promise<BrowserActionResult>
   listRecipes(): Promise<RecipeListResponse>
   listWorkItems(query?: WorkItemListQuery): Promise<WorkItemListResult>
   refreshWorkItems(params?: WorkItemRefreshParams): Promise<WorkItemListResult>
@@ -155,6 +162,9 @@ export function createDesktopRuntime(bridge: NativeDaemonBridge = new NativeDaem
     async diagnosticsSnapshot() {
       return decodeProtocolJson<DaemonDiagnostics>(await bridge.diagnosticsSnapshot())
     },
+    async browserProfile() { return decodeProtocolJson<BrowserProfileResult>(await bridge.browserProfile()) },
+    async browserAction(request) { return decodeProtocolJson<BrowserActionResult>(await bridge.browserAction(JSON.stringify(request))) },
+    async clearBrowserData(request) { return decodeProtocolJson<BrowserActionResult>(await bridge.clearBrowserData(JSON.stringify(request))) },
     async listRecipes() {
       return decodeProtocolJson<RecipeListResponse>(await bridge.listRecipes())
     },

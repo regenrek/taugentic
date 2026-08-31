@@ -29,6 +29,7 @@ fn agent_stream_event(run_id: &RunId, frame: AgentStreamFrame) -> DaemonEvent {
 
 mod agent_turns;
 mod artifacts;
+mod browser_profiles;
 mod code_host_accounts;
 mod commits;
 mod plugins;

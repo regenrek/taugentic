@@ -29,7 +29,7 @@ SOFTWARE.
 ## GPUIX
 
 The Taugentic desktop uses `@regenrek/gpuix-react` version
-`0.5.0-regenrek.3` and its matching native packages. These packages are
+`0.5.0-regenrek.7` and its matching native packages. These packages are
 published from the [regenrek/gpuix](https://github.com/regenrek/gpuix) fork
 because Taugentic requires additional native desktop features. The fork is
 based on the upstream `@gpuix/react` and `@gpuix/native` packages from

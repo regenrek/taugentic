@@ -82,6 +82,17 @@ pub(super) fn write_core_schemas(schema_dir: &Path) -> Result<(), ProtocolExport
     write_schema::<ListScheduledWorkResult>(schema_dir)?;
     write_schema::<CancelScheduledWorkRequest>(schema_dir)?;
     write_schema::<PluginId>(schema_dir)?;
+    write_schema::<BrowserProfileId>(schema_dir)?;
+    write_schema::<BrowserProfile>(schema_dir)?;
+    write_schema::<BrowserNavigationKind>(schema_dir)?;
+    write_schema::<BrowserNavigationRequest>(schema_dir)?;
+    write_schema::<BrowserActionKind>(schema_dir)?;
+    write_schema::<BrowserActionRequest>(schema_dir)?;
+    write_schema::<BrowserActionDecision>(schema_dir)?;
+    write_schema::<BrowserActionResult>(schema_dir)?;
+    write_schema::<BrowserProfileRequest>(schema_dir)?;
+    write_schema::<BrowserProfileResult>(schema_dir)?;
+    write_schema::<BrowserClearDataRequest>(schema_dir)?;
     write_schema::<PluginCapability>(schema_dir)?;
     write_schema::<PluginLifecycleState>(schema_dir)?;
     write_schema::<PluginLifecycleFailure>(schema_dir)?;

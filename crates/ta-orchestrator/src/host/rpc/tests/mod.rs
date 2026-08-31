@@ -57,6 +57,8 @@ pub(super) use crate::{
 };
 pub(super) use ta_store::{ArtifactRecord, EventRecord, SqliteStore};
 
+mod browser;
+
 fn handle_request(
     state: &BootstrapState,
     shutdown_requested: &Arc<AtomicBool>,

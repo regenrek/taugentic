@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "BrowserActionKind": {
+      "enum": [
+        "navigationIntent",
+        "navigationAction",
+        "navigationResponse",
+        "downloadDestination"
+      ],
+      "type": "string"
+    },
+    "BrowserNavigationKind": {
+      "enum": [
+        "navigate",
+        "back",
+        "forward",
+        "reload"
+      ],
+      "type": "string"
+    },
+    "BrowserNavigationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/BrowserNavigationKind"
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact native BrowserSurface action families. The daemon owns the decision\nfor each family; downloadDestination never shares navigation semantics.",
+  "properties": {
+    "canShowMimeType": {
+      "description": "Present only for a native navigationResponse. A missing value must be\ncancelled by policy rather than guessed by a desktop client.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "kind": {
+      "$ref": "#/$defs/BrowserActionKind"
+    },
+    "navigation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BrowserNavigationRequest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profileId": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "shouldPerformDownload": {
+      "description": "Present only for a native navigationAction. A missing value must be\ncancelled by policy rather than guessed by a desktop client.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "requestId",
+    "profileId",
+    "kind"
+  ],
+  "title": "BrowserActionRequest",
+  "type": "object"
+}

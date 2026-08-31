@@ -32,6 +32,7 @@ use crate::{
 
 mod artifacts;
 mod auth_profiles;
+mod browser_profiles;
 mod checkpoints;
 mod code_host_accounts;
 mod commits;
@@ -66,6 +67,8 @@ pub struct InMemoryStore {
     #[serde(default)]
     code_host_accounts:
         BTreeMap<ta_protocol::wire::CodeHostAccountId, crate::CodeHostAccountProjection>,
+    #[serde(default)]
+    browser_profiles: BTreeMap<String, ta_protocol::wire::BrowserProfile>,
     sessions: BTreeMap<SessionId, SessionProjection>,
     runs: BTreeMap<RunId, RunProjection>,
     #[serde(default)]
@@ -110,6 +113,7 @@ impl InMemoryStore {
             navigation_states: BTreeMap::new(),
             auth_profiles: BTreeMap::new(),
             code_host_accounts: BTreeMap::new(),
+            browser_profiles: BTreeMap::new(),
             sessions: BTreeMap::new(),
             runs: BTreeMap::new(),
             scheduled_work_definitions: BTreeMap::new(),

@@ -83,6 +83,11 @@ impl SqliteStore {
                     data_json TEXT NOT NULL,
                     PRIMARY KEY (owner_principal_id, plugin_id, version, digest_sha256)
                 );
+                CREATE TABLE IF NOT EXISTS browser_profiles (
+                    owner_principal_id TEXT PRIMARY KEY,
+                    profile_id TEXT NOT NULL UNIQUE,
+                    data_json TEXT NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS idx_code_host_accounts_owner_provider_name
                     ON code_host_accounts (owner_principal_id, provider, display_name, id);
                 CREATE INDEX IF NOT EXISTS idx_workspaces_root_realpath

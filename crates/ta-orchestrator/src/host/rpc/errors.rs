@@ -75,6 +75,11 @@ pub(super) fn map_app_service_error(
         crate::orchestration::AppServiceError::PluginStageFailed => {
             internal_error(error.to_string())
         }
+        crate::orchestration::AppServiceError::BrowserProfileInvalid
+        | crate::orchestration::AppServiceError::BrowserProfileForbidden => {
+            invalid_params("browser request is not authorized".to_string())
+                .with_data(serde_json::json!({ "code": "BrowserDenied" }))
+        }
         crate::orchestration::AppServiceError::SessionWorkspaceMissing => {
             invalid_params(error.to_string())
                 .with_data(serde_json::json!({ "code": "SessionWorkspaceMissing" }))

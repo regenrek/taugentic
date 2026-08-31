@@ -34,7 +34,7 @@ export const defaultWorkspaceLayout: DockLayout = {
     first: {
       kind: "tabs",
       id: "workspace-primary",
-      panels: ["conversation", "source", "diff"],
+      panels: ["conversation", "source", "diff", "browser"],
       active: "conversation",
     },
     second: {
@@ -56,12 +56,74 @@ export function saveWorkspaceLayout(workspaceId: WorkspaceId, layout: DockLayout
   desktopSettings.saveLayout(workspaceId, layout)
 }
 
+/** Opens one panel through the persisted dock tree without creating parallel visibility state. */
+export function openDockPanel(layout: DockLayout, panelId: string, targetTabsId: string): DockLayout {
+  let found = false
+  const activate = (node: DockLayout): DockLayout => {
+    if (node.kind === "tabs") {
+      if (!node.panels.includes(panelId)) return node.zoomed === undefined ? node : { ...node, zoomed: undefined }
+      found = true
+      return { ...node, active: panelId, zoomed: undefined }
+    }
+    return { ...node, zoomed: undefined, first: activate(node.first), second: activate(node.second) }
+  }
+  const activated = activate(layout)
+  if (found) return activated
+
+  let inserted = false
+  const insert = (node: DockLayout): DockLayout => {
+    if (node.kind === "tabs") {
+      if (node.id !== targetTabsId) return node
+      inserted = true
+      return { ...node, panels: [...node.panels, panelId], active: panelId }
+    }
+    return { ...node, first: insert(node.first), second: insert(node.second) }
+  }
+  const opened = insert(activated)
+  if (!inserted) throw new Error(`Dock target ${targetTabsId} is missing.`)
+  return opened
+}
+
+/** Removes one panel from the persisted dock tree and collapses empty branches. */
+export function closeDockPanel(layout: DockLayout, panelId: string): DockLayout {
+  const remove = (node: DockLayout): DockLayout | undefined => {
+    if (node.kind === "tabs") {
+      if (!node.panels.includes(panelId)) return node
+      const panels = node.panels.filter((candidate) => candidate !== panelId)
+      if (panels.length === 0) return undefined
+      return {
+        ...node,
+        panels,
+        active: node.active === panelId ? panels[0] : node.active,
+        zoomed: node.zoomed === panelId ? undefined : node.zoomed,
+      }
+    }
+    const first = remove(node.first)
+    const second = remove(node.second)
+    if (!first) return second
+    if (!second) return first
+    return {
+      ...node,
+      zoomed: node.zoomed === panelId ? undefined : node.zoomed,
+      first,
+      second,
+    }
+  }
+  return remove(layout) ?? layout
+}
+
 export function resetWorkspaceLayout(workspaceId: WorkspaceId): void {
   desktopSettings.deleteLayout(workspaceId)
 }
 
 export function saveDesktopTheme(theme: DesktopTheme): void {
   desktopSettings.saveAppearance({ theme })
+}
+
+/** The persisted dock tree is also the single owner of panel mount lifetime. */
+export function hasDockPanel(layout: DockLayout, panelId: string): boolean {
+  if (layout.kind === "tabs") return layout.panels.includes(panelId)
+  return hasDockPanel(layout.first, panelId) || hasDockPanel(layout.second, panelId)
 }
 
 /** The persisted dock tree is the single owner of panel visibility. */

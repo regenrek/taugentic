@@ -53,3 +53,4 @@ identifier!(ArtifactId, "artifact");
 identifier!(ScheduledWorkId, "scheduled work");
 identifier!(ScheduledWorkOccurrenceId, "scheduled work occurrence");
 identifier!(PluginId, "plugin");
+identifier!(BrowserProfileId, "browser profile");

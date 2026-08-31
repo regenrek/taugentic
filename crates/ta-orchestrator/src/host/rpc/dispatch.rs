@@ -15,6 +15,7 @@ use crate::{
     METHOD_DAEMON_AGENT_RUNTIME_EXTENSION_SET, METHOD_DAEMON_AGENT_RUNTIME_GET,
     METHOD_DAEMON_AGENT_RUNTIME_PROFILE_PATCH, METHOD_DAEMON_APPROVAL_DECIDE,
     METHOD_DAEMON_APPROVAL_LIST, METHOD_DAEMON_ARTIFACT_GET, METHOD_DAEMON_ARTIFACT_LIST,
+    METHOD_DAEMON_BROWSER_ACTION, METHOD_DAEMON_BROWSER_CLEAR_DATA, METHOD_DAEMON_BROWSER_PROFILE,
     METHOD_DAEMON_CODE_HOST_ACCOUNT_CONNECT, METHOD_DAEMON_CODE_HOST_ACCOUNT_DISCONNECT,
     METHOD_DAEMON_CODE_HOST_ACCOUNT_LIST, METHOD_DAEMON_CODE_HOST_PULL_REQUEST_ACTIVITY,
     METHOD_DAEMON_CODE_HOST_PULL_REQUEST_CHECKS,
@@ -874,6 +875,37 @@ pub(super) async fn handle_request(
                 .uninstall_plugin(&principal_id, &params)
                 .map_err(map_app_service_error)?;
             json_result(serde_json::json!({}))
+        }
+        DaemonRpcRequest::BrowserProfile(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_BROWSER_PROFILE)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_BROWSER_PROFILE)?;
+            json_result(
+                state
+                    .app
+                    .browser_profile(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::BrowserAction(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_BROWSER_ACTION)?;
+            let principal_id = require_principal_id(session_state, METHOD_DAEMON_BROWSER_ACTION)?;
+            json_result(
+                state
+                    .app
+                    .decide_browser_action(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
+        }
+        DaemonRpcRequest::BrowserClearData(params) => {
+            ensure_initialized(session_state, METHOD_DAEMON_BROWSER_CLEAR_DATA)?;
+            let principal_id =
+                require_principal_id(session_state, METHOD_DAEMON_BROWSER_CLEAR_DATA)?;
+            json_result(
+                state
+                    .app
+                    .clear_browser_data(&principal_id, &params)
+                    .map_err(map_app_service_error)?,
+            )
         }
         DaemonRpcRequest::WorkflowLoad(params) => {
             ensure_initialized(session_state, METHOD_WORKFLOW_LOAD)?;
