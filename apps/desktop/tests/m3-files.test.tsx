@@ -49,6 +49,7 @@ describe("M3 files and artifact workbench", () => {
     expect(layoutPanels(defaultWorkspaceLayout).sort()).toEqual([
       "activity",
       "artifacts",
+      "browser",
       "conversation",
       "diff",
       "files",
