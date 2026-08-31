@@ -1,6 +1,6 @@
 import type { DaemonDiagnostics } from "@taugentic/desktop-protocol"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 
 type DiagnosticsPanelState = "loading" | "unavailable" | "error" | "ready"
 
@@ -12,7 +12,7 @@ export function DiagnosticsPanel(props: {
   const diagnostics = props.diagnostics
   return <div testId="system-diagnostics-panel" accessibilityRole="dialog" accessibilityName="System Diagnostics" style={panelStyle()}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <text style={{ color: palette.text, fontSize: 15, fontWeight: 700 }}>System Diagnostics</text><div style={{ flexGrow: 1 }} />
+      <text style={{ color: palette.text, fontSize: fontSize(15), fontWeight: 700 }}>System Diagnostics</text><div style={{ flexGrow: 1 }} />
       <div testId="close-system-diagnostics" tabIndex={0} accessibilityRole="button" accessibilityName="Close System Diagnostics" onClick={props.onClose} onKeyDown={(event) => { if (activates(event)) props.onClose() }} style={buttonStyle()}><text>Close</text></div>
     </div>
     {props.state === "loading" && <text testId="system-diagnostics-loading" style={mutedStyle()}>Loading diagnostics…</text>}
@@ -48,12 +48,12 @@ function DiagnosticsFacts({ diagnostics }: { diagnostics: DaemonDiagnostics }) {
   </div>
 }
 
-function ProviderFact({ provider }: { provider: DaemonDiagnostics["providerHealth"][number] }) { return <div testId="system-diagnostics-provider" style={rowStyle()}><text style={{ color: palette.text, fontSize: 11 }}>{provider.displayName}</text><div style={{ flexGrow: 1 }} /><text style={mutedStyle()}>{provider.status}</text></div> }
-function Fact({ label, value }: { label: string; value: string }) { return <div style={rowStyle()}><text style={mutedStyle()}>{label}</text><div style={{ flexGrow: 1 }} /><text style={{ color: palette.text, fontSize: 11 }}>{value}</text></div> }
+function ProviderFact({ provider }: { provider: DaemonDiagnostics["providerHealth"][number] }) { return <div testId="system-diagnostics-provider" style={rowStyle()}><text style={{ color: palette.text, fontSize: fontSize(11) }}>{provider.displayName}</text><div style={{ flexGrow: 1 }} /><text style={mutedStyle()}>{provider.status}</text></div> }
+function Fact({ label, value }: { label: string; value: string }) { return <div style={rowStyle()}><text style={mutedStyle()}>{label}</text><div style={{ flexGrow: 1 }} /><text style={{ color: palette.text, fontSize: fontSize(11) }}>{value}</text></div> }
 function BooleanFact({ label, value }: { label: string; value: boolean }) { return <Fact label={label} value={value ? "Available" : "Unavailable"} /> }
 function activates(event: { key?: string }): boolean { return event.key === "enter" || event.key === "space" }
 function panelStyle() { return { position: "absolute" as const, right: 18, top: 50, width: 420, maxHeight: 740, overflow: "scroll" as const, display: "flex" as const, flexDirection: "column" as const, gap: 10, padding: 12, backgroundColor: palette.panel, borderWidth: 1, borderColor: palette.border, borderRadius: 8 } }
 function rowStyle() { return { display: "flex" as const, alignItems: "center" as const, gap: 8, padding: 7, backgroundColor: palette.canvas, borderRadius: 4 } }
 function buttonStyle() { return { cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised } }
-function headingStyle() { return { color: palette.textFaint, fontSize: 10, fontWeight: 700 } }
-function mutedStyle() { return { color: palette.textMuted, fontSize: 11 } }
+function headingStyle() { return { color: palette.textFaint, fontSize: fontSize(10), fontWeight: 700 } }
+function mutedStyle() { return { color: palette.textMuted, fontSize: fontSize(11) } }

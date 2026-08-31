@@ -1,7 +1,7 @@
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, useGpuixRequired } from "@regenrek/gpuix-react"
 import { Fragment, type RefObject, useMemo, useRef, useState } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import type { DesktopSettings } from "../../platform/settings/desktop-settings.js"
 import { Pressable } from "../../ui/pressable.js"
 import { commandRegistry, type CommandDispatcher, type CommandId } from "./registry.js"
@@ -84,7 +84,7 @@ function SettingsSurface({ settings, dispatcher, workspaceId, shortcutFeedback, 
       ? <><Pressable testId="confirm-reset-workspace-layout" name="Confirm reset workspace layout" disabled={!mutable} onPress={() => { if (mutable) { onResetWorkspaceLayout(); setResetPending(false) } }} style={mutableControlStyle(mutable)}><text>Confirm reset layout</text></Pressable><Pressable testId="cancel-reset-workspace-layout" name="Cancel reset workspace layout" onPress={() => setResetPending(false)} style={triggerStyle()}><text>Cancel</text></Pressable></>
       : <Pressable testId="reset-workspace-layout" name="Reset workspace layout" disabled={!mutable} onPress={() => { if (mutable) setResetPending(true) }} style={mutableControlStyle(mutable)}><text>Reset workspace layout</text></Pressable>
     }</div>}
-    <text style={{ color: palette.textMuted, padding: 4, fontSize: 11 }}>Global shortcuts</text>
+    <text style={{ color: palette.textMuted, padding: 4, fontSize: fontSize(11) }}>Global shortcuts</text>
     {commandRegistry.map((command) => <Fragment key={command.id}><div style={{ display: "flex", gap: 8, padding: 3 }}><text style={{ width: 160 }}>{command.title}</text><input testId={`shortcut-${command.id}`} tabIndex={mutable ? 0 : -1} readOnly={!mutable} accessibilityRole="textbox" accessibilityName={`${command.title} shortcut`} accessibilityDisabled={!mutable} value={dispatcher.shortcutFor(command.id) ?? ""} onKeyDown={(event) => { if (mutable && event.key === "escape") onClose() }} onChange={(event) => { if (mutable) setShortcutFeedback(settings.saveShortcut(command.id, event.value ?? "") === "conflict" ? "Shortcut is already assigned." : "") }} style={inputStyle(mutable)} /></div></Fragment>)}
     {!!shortcutFeedback && <text testId="shortcut-conflict" accessibilityRole="alert" accessibilityName={shortcutFeedback}>{shortcutFeedback}</text>}
   </ComboboxContent></Combobox>

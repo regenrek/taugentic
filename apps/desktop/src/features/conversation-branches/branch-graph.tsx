@@ -1,6 +1,6 @@
 import type { RunLineageGraphResult, RunListEntry } from "@taugentic/desktop-protocol"
 import { Fragment, useState } from "react"
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import { Pressable } from "../../ui/pressable.js"
 
 type CortexState = "loading" | "offline" | "error" | "ready"
@@ -45,11 +45,11 @@ export function ConversationBranchGraph(props: { graph?: RunLineageGraphResult; 
   const { nodes, commands } = mapCortexGraph(graph)
   const open = (runId: string) => { setSelectedRunId(runId); props.onOpen(runId) }
   return <div testId="cortex" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderWidth: 1, borderColor: palette.accentDim, borderRadius: 8, backgroundColor: palette.panelRaised }}>
-    <text style={{ color: palette.text, fontSize: 11, fontWeight: 650 }}>Cortex</text>
+    <text style={{ color: palette.text, fontSize: fontSize(11), fontWeight: 650 }}>Cortex</text>
     <canvas testId="cortex-canvas" visible={props.visible} motion="paused" commands={commands} style={{ width: 288, height: 164 }} />
-    {graph.truncated && <text testId="cortex-truncated" style={{ color: palette.warning, fontSize: 10 }}>Showing {nodes.length} of {graph.totalCount} runs.</text>}
-    {!!graph.orphanRunIds.length && <text testId="cortex-orphans" style={{ color: palette.warning, fontSize: 10 }}>Missing parent for {graph.orphanRunIds.length} run(s).</text>}
-    {graph.cycleBroken && <text testId="cortex-cycle" style={{ color: palette.warning, fontSize: 10 }}>A lineage cycle was safely broken.</text>}
-    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><Pressable testId={`branch-node-${node.id}`} role="treeitem" name={`${label(node)} ${node.id}. Open`} selected={selectedRunId === node.id} onPress={() => open(node.id)} style={{ display: "flex", flexDirection: "column", gap: 3, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><div style={{ display: "flex", gap: 6 }}><text style={{ color: palette.textMuted, fontSize: 10 }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{node.status}</text></div>{routeIdentity(node) && <text testId={`branch-route-${node.id}`} style={{ color: palette.textFaint, fontSize: 10 }}>{routeIdentity(node)}</text>}</Pressable></Fragment>)}</div>
+    {graph.truncated && <text testId="cortex-truncated" style={{ color: palette.warning, fontSize: fontSize(10) }}>Showing {nodes.length} of {graph.totalCount} runs.</text>}
+    {!!graph.orphanRunIds.length && <text testId="cortex-orphans" style={{ color: palette.warning, fontSize: fontSize(10) }}>Missing parent for {graph.orphanRunIds.length} run(s).</text>}
+    {graph.cycleBroken && <text testId="cortex-cycle" style={{ color: palette.warning, fontSize: fontSize(10) }}>A lineage cycle was safely broken.</text>}
+    <div testId="conversation-branch-graph" accessibilityRole="tree" accessibilityName="Cortex run tree" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{nodes.map((node) => <Fragment key={node.id}><Pressable testId={`branch-node-${node.id}`} role="treeitem" name={`${label(node)} ${node.id}. Open`} selected={selectedRunId === node.id} onPress={() => open(node.id)} style={{ display: "flex", flexDirection: "column", gap: 3, cursor: "pointer", padding: 5, borderRadius: 5, backgroundColor: selectedRunId === node.id ? palette.panelRaised : palette.panel }}><div style={{ display: "flex", gap: 6 }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>{label(node)} · {node.id}</text><text style={{ color: palette.textFaint, fontSize: fontSize(10) }}>{node.status}</text></div>{routeIdentity(node) && <text testId={`branch-route-${node.id}`} style={{ color: palette.textFaint, fontSize: fontSize(10) }}>{routeIdentity(node)}</text>}</Pressable></Fragment>)}</div>
   </div>
 }

@@ -1,7 +1,7 @@
 import type { EventPayload } from "@regenrek/gpuix-react"
 import { Fragment, useCallback } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import { Pressable } from "../../ui/pressable.js"
 import type { WorkbenchTerminalState } from "./use-workbench-terminal.js"
 
@@ -19,10 +19,10 @@ export function TerminalPanel({ terminal }: { terminal: WorkbenchTerminalState }
           <Pressable testId={`close-terminal-${session.id}`} name={`Close Terminal ${index + 1}`} disabled={terminal.busy || session.status !== "running"} onPress={() => { void terminal.close(session.id) }} style={{ padding: 5, color: palette.textMuted, cursor: !terminal.busy && session.status === "running" ? "pointer" : "default" }}><text>×</text></Pressable>
         </div></Fragment>)}
       </div>
-      {terminal.viewport && <text testId="terminal-viewport" style={{ color: palette.textFaint, fontSize: 10 }}>{`${terminal.viewport.cols}×${terminal.viewport.rows}`}</text>}
+      {terminal.viewport && <text testId="terminal-viewport" style={{ color: palette.textFaint, fontSize: fontSize(10) }}>{`${terminal.viewport.cols}×${terminal.viewport.rows}`}</text>}
     </div>
-    {terminal.error && <text testId="terminal-error" style={{ color: "#f08080", fontSize: 11, padding: 7 }}>{terminal.error}</text>}
-    {terminal.snapshotTruncated && <text testId="terminal-history-truncated" style={{ color: palette.warning, fontSize: 10, padding: 7 }}>Earlier terminal output is not available.</text>}
+    {terminal.error && <text testId="terminal-error" style={{ color: "#f08080", fontSize: fontSize(11), padding: 7 }}>{terminal.error}</text>}
+    {terminal.snapshotTruncated && <text testId="terminal-history-truncated" style={{ color: palette.warning, fontSize: fontSize(10), padding: 7 }}>Earlier terminal output is not available.</text>}
     <terminal
       ref={surfaceRef}
       testId="terminal-surface"
@@ -31,6 +31,6 @@ export function TerminalPanel({ terminal }: { terminal: WorkbenchTerminalState }
       onTerminalResize={(event: EventPayload) => terminal.resize(event.rows, event.cols)}
       style={{ flexGrow: 1, minWidth: 0, minHeight: 0, width: "100%", height: "100%" }}
     />
-    {!terminal.selectedTerminal && <div style={{ position: "absolute", left: 18, bottom: 18 }}><text style={{ color: palette.textFaint, fontSize: 11 }}>{terminal.viewport ? "Create or select a terminal session." : "Measuring terminal viewport…"}</text></div>}
+    {!terminal.selectedTerminal && <div style={{ position: "absolute", left: 18, bottom: 18 }}><text style={{ color: palette.textFaint, fontSize: fontSize(11) }}>{terminal.viewport ? "Create or select a terminal session." : "Measuring terminal viewport…"}</text></div>}
   </div>
 }

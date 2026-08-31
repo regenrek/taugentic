@@ -2,7 +2,7 @@ import { Combobox, ComboboxContent, VirtualList, useGpuixRequired, type DockPane
 import type { AgentTurnRow, ArtifactSummary, BoundedFileContent, CapsuleRecipe, JoinRunResult, NativeImagePreview, RunLineageGraphResult, RunListEntry, RunStatus, RuntimeLanePendingState, SessionId, WorkspaceFileAttachmentRequest } from "@taugentic/desktop-protocol"
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import { CopyTextButton } from "../../ui/copy-text-button.js"
 import { Pressable } from "../../ui/pressable.js"
 import { ArtifactsPanel, artifactDisplayName, type ArtifactPanelState } from "../artifacts/artifacts-panel.js"
@@ -214,10 +214,10 @@ export function ConversationPanel(props: ConversationPanelProps) {
   const closeSlash = () => { props.onObjectiveChange(""); if (composer.current) renderer.focusElement?.(composer.current.id) }
   return <div testId="conversation-panel" style={{ display: "flex", flexDirection: "column", height: "100%", padding: 24, gap: 14, minWidth: 0 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <text style={{ color: palette.text, fontSize: 21, fontWeight: 650 }}>{props.title}</text>
-      {props.runStatus && <text testId="run-status" style={{ color: props.runStatus === "failed" || props.runStatus === "budgetExceeded" ? "#f08080" : props.runStatus === "running" ? palette.accent : palette.textMuted, fontSize: 11 }}>{runStatusLabel(props.runStatus)}</text>}
+      <text style={{ color: palette.text, fontSize: fontSize(21), fontWeight: 650 }}>{props.title}</text>
+      {props.runStatus && <text testId="run-status" style={{ color: props.runStatus === "failed" || props.runStatus === "budgetExceeded" ? "#f08080" : props.runStatus === "running" ? palette.accent : palette.textMuted, fontSize: fontSize(11) }}>{runStatusLabel(props.runStatus)}</text>}
     </div>
-    {props.error && <text testId="daemon-error" style={{ color: "#f08080", fontSize: 12 }}>{props.error}</text>}
+    {props.error && <text testId="daemon-error" style={{ color: "#f08080", fontSize: fontSize(12) }}>{props.error}</text>}
     <VoicePanel {...(props.voice ?? { visible: false, permission: "restricted", onRequestPermission: () => {} })} />
     <div style={{ display: "flex", flexGrow: 1, minHeight: 0, gap: 12 }}>
       <Transcript
@@ -244,7 +244,7 @@ export function ConversationPanel(props: ConversationPanelProps) {
         </div>}
       </div>
     </div>
-    {!!props.attachments.length && <div testId="run-attachments" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{props.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.expectedRevision}`}><div style={{ display: "flex", alignItems: "center", gap: 6, padding: 6, borderWidth: 1, borderColor: palette.border, borderRadius: 6 }}><text style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>{attachment.path}</text><Pressable testId={`remove-attachment-${attachment.path}`} name={`Remove attachment ${attachment.path}`} onPress={() => props.onRemoveAttachment(attachment.path)} style={{ cursor: "pointer" }}><text style={{ color: palette.textFaint, fontSize: 10 }}>×</text></Pressable></div></Fragment>)}</div>}
+    {!!props.attachments.length && <div testId="run-attachments" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{props.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.expectedRevision}`}><div style={{ display: "flex", alignItems: "center", gap: 6, padding: 6, borderWidth: 1, borderColor: palette.border, borderRadius: 6 }}><text style={{ color: palette.textMuted, fontSize: fontSize(10), userSelect: "text" }}>{attachment.path}</text><Pressable testId={`remove-attachment-${attachment.path}`} name={`Remove attachment ${attachment.path}`} onPress={() => props.onRemoveAttachment(attachment.path)} style={{ cursor: "pointer" }}><text style={{ color: palette.textFaint, fontSize: fontSize(10) }}>×</text></Pressable></div></Fragment>)}</div>}
     <RecipeComposer recipes={props.recipes} loading={props.recipesLoading} error={props.recipesError} selectedRecipeId={props.selectedRecipeId} onSelectRecipe={props.onSelectRecipe} />
     <Combobox open={slashOpen} onOpenChange={(open) => { if (!open) closeSlash() }} items={[]}><textarea ref={composer} testId="run-objective" autoFocus value={props.objective} placeholder="Describe the work to run" minRows={2} maxRows={8} onKeyDown={(event) => { if (event.key === "escape" && slashOpen) closeSlash() }} onChange={(event) => props.onObjectiveChange(event.value ?? "")} style={{ minHeight: 54, padding: 10, borderWidth: 1, borderColor: palette.border, borderRadius: 8, color: palette.text, backgroundColor: palette.panel }} />
       {slashOpen && <ComboboxContent testId="composer-slash-completion" side="top" onMouseDownOutside={closeSlash} onKeyDown={(event) => { if (event.key === "escape") closeSlash() }} accessibilityRole="menu" accessibilityName="Composer slash commands" style={{ padding: 4, backgroundColor: palette.panelRaised }}>{slashCommands.map((command) => { const enabled = props.commands.enabled(command.id); const dispatch = () => { if (enabled && props.commands.dispatch(command.id)) closeSlash() }; return <Fragment key={command.id}><Pressable testId={`composer-command-${command.id}`} role="menuitem" name={command.title} disabled={!enabled} onPress={dispatch} style={{ padding: 6, cursor: enabled ? "pointer" : "default" }}><text>{command.title}</text></Pressable></Fragment> })}</ComboboxContent>}
@@ -270,15 +270,15 @@ function RecipeComposer(props: {
   const canClear = props.selectedRecipeId !== undefined && canSelect
   return <div testId="recipe-composer" style={{ display: "flex", flexDirection: "column", gap: 5, padding: 8, borderWidth: 1, borderColor: palette.border, borderRadius: 8, backgroundColor: palette.panel }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <text style={{ color: palette.textMuted, fontSize: 10 }}>Recipe</text>
-      <Pressable testId="recipe-picker" name="Choose run recipe" expanded={open} disabled={!canSelect} onPress={() => { if (canSelect) setOpen((value) => !value) }} style={{ flexGrow: 1, minWidth: 0, cursor: canSelect ? "pointer" : "default", padding: 5, backgroundColor: palette.panelRaised }}><text style={{ color: selected ? palette.text : unavailableSelection ? "#f0b060" : palette.textMuted, fontSize: 11 }}>{selected?.name ?? (unavailableSelection ? `Unavailable recipe: ${props.selectedRecipeId}` : "No recipe")}</text></Pressable>
+      <text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Recipe</text>
+      <Pressable testId="recipe-picker" name="Choose run recipe" expanded={open} disabled={!canSelect} onPress={() => { if (canSelect) setOpen((value) => !value) }} style={{ flexGrow: 1, minWidth: 0, cursor: canSelect ? "pointer" : "default", padding: 5, backgroundColor: palette.panelRaised }}><text style={{ color: selected ? palette.text : unavailableSelection ? "#f0b060" : palette.textMuted, fontSize: fontSize(11) }}>{selected?.name ?? (unavailableSelection ? `Unavailable recipe: ${props.selectedRecipeId}` : "No recipe")}</text></Pressable>
       <Pressable testId="clear-recipe" name="Clear recipe" disabled={!canClear} onPress={() => { if (canClear) props.onSelectRecipe?.(undefined) }} style={{ cursor: canClear ? "pointer" : "default", padding: 5, backgroundColor: canClear ? palette.panelRaised : palette.panel, color: canClear ? palette.textMuted : palette.textFaint }}><text>Clear</text></Pressable>
     </div>
-    {open && <div testId="recipe-options" accessibilityRole="listbox" accessibilityName="Run recipes" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{recipes.map((recipe) => <Fragment key={recipe.id}><Pressable testId={`recipe-option-${recipe.id}`} role="option" name={recipe.name} selected={recipe.id === props.selectedRecipeId} onPress={() => { props.onSelectRecipe?.(recipe.id); setOpen(false) }} style={{ cursor: "pointer", padding: 5, backgroundColor: recipe.id === props.selectedRecipeId ? palette.accentDim : palette.panelRaised }}><text style={{ color: palette.text, fontSize: 11 }}>{recipe.name}</text></Pressable></Fragment>)}</div>}
-    {props.loading && <text testId="recipe-loading" style={{ color: palette.textFaint, fontSize: 10 }}>Loading recipes...</text>}
-    {props.error && <text testId="recipe-error" accessibilityRole="alert" accessibilityName={props.error} style={{ color: "#f08080", fontSize: 10 }}>{props.error}</text>}
-    {unavailableSelection && <text testId="recipe-unavailable" accessibilityRole="alert" accessibilityName={`Selected recipe ${props.selectedRecipeId} is unavailable`} style={{ color: "#f0b060", fontSize: 10 }}>The selected recipe is unavailable. Clear it or choose a listed recipe.</text>}
-    {selected && <div testId="selected-recipe" style={{ display: "flex", flexDirection: "column", gap: 2 }}><text style={{ color: palette.text, fontSize: 11 }}>{selected.name}</text>{selected.description && <text style={{ color: palette.textMuted, fontSize: 10 }}>{selected.description}</text>}<text testId="selected-recipe-contract" style={{ color: palette.textFaint, fontSize: 10 }}>Contract: {selected.contract}</text></div>}
+    {open && <div testId="recipe-options" accessibilityRole="listbox" accessibilityName="Run recipes" style={{ display: "flex", flexDirection: "column", gap: 3 }}>{recipes.map((recipe) => <Fragment key={recipe.id}><Pressable testId={`recipe-option-${recipe.id}`} role="option" name={recipe.name} selected={recipe.id === props.selectedRecipeId} onPress={() => { props.onSelectRecipe?.(recipe.id); setOpen(false) }} style={{ cursor: "pointer", padding: 5, backgroundColor: recipe.id === props.selectedRecipeId ? palette.accentDim : palette.panelRaised }}><text style={{ color: palette.text, fontSize: fontSize(11) }}>{recipe.name}</text></Pressable></Fragment>)}</div>}
+    {props.loading && <text testId="recipe-loading" style={{ color: palette.textFaint, fontSize: fontSize(10) }}>Loading recipes...</text>}
+    {props.error && <text testId="recipe-error" accessibilityRole="alert" accessibilityName={props.error} style={{ color: "#f08080", fontSize: fontSize(10) }}>{props.error}</text>}
+    {unavailableSelection && <text testId="recipe-unavailable" accessibilityRole="alert" accessibilityName={`Selected recipe ${props.selectedRecipeId} is unavailable`} style={{ color: "#f0b060", fontSize: fontSize(10) }}>The selected recipe is unavailable. Clear it or choose a listed recipe.</text>}
+    {selected && <div testId="selected-recipe" style={{ display: "flex", flexDirection: "column", gap: 2 }}><text style={{ color: palette.text, fontSize: fontSize(11) }}>{selected.name}</text>{selected.description && <text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>{selected.description}</text>}<text testId="selected-recipe-contract" style={{ color: palette.textFaint, fontSize: fontSize(10) }}>Contract: {selected.contract}</text></div>}
   </div>
 }
 
@@ -324,7 +324,7 @@ const Transcript = memo(function Transcript(props: {
   const renderItem = useCallback((index: number) => {
     if (props.hasOlder && index === 0) {
       return <Fragment key="load-older"><Pressable testId="load-older-transcript" name="Load earlier messages" disabled={props.loadingOlder} onPress={() => { if (!props.loadingOlder) props.onLoadOlder() }} style={{ display: "flex", justifyContent: "center", padding: 12, cursor: props.loadingOlder ? "default" : "pointer" }}>
-        <text style={{ color: palette.textMuted, fontSize: 11 }}>{props.loadingOlder ? "Loading earlier messages..." : "Load earlier messages"}</text>
+        <text style={{ color: palette.textMuted, fontSize: fontSize(11) }}>{props.loadingOlder ? "Loading earlier messages..." : "Load earlier messages"}</text>
       </Pressable></Fragment>
     }
     const item = rows[index - loadOlderOffset]
@@ -334,7 +334,7 @@ const Transcript = memo(function Transcript(props: {
   if (!props.sessionId) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text style={{ color: palette.textMuted }}>Select a conversation to see its transcript.</text></div>
   if (props.loading && !rows.length) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text style={{ color: palette.textMuted }}>Loading conversation...</text></div>
   if (props.error && !rows.length) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text style={{ color: "#f08080" }}>{props.error}</text></div>
-  if (!rows.length) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text testId="conversation-placeholder" style={{ color: palette.textMuted, fontSize: 13, userSelect: "text" }}>Start a run to begin this conversation.</text></div>
+  if (!rows.length) return <div testId="conversation" style={{ display: "flex", flexGrow: 1, alignItems: "center", justifyContent: "center" }}><text testId="conversation-placeholder" style={{ color: palette.textMuted, fontSize: fontSize(13), userSelect: "text" }}>Start a run to begin this conversation.</text></div>
 
   return <div testId="conversation" style={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, position: "relative" }}>
     <VirtualList
@@ -350,39 +350,39 @@ const Transcript = memo(function Transcript(props: {
       }}
       style={{ flexGrow: 1, minHeight: 0, width: "100%" }}
     />
-    {!followTail && <Pressable testId="jump-to-latest" name="Jump to latest" onPress={() => setFollowTail(true)} style={{ position: "absolute", right: 14, bottom: 10, padding: 7, borderRadius: 7, backgroundColor: palette.panelRaised, cursor: "pointer" }}><text style={{ color: palette.text, fontSize: 11 }}>Jump to latest</text></Pressable>}
+    {!followTail && <Pressable testId="jump-to-latest" name="Jump to latest" onPress={() => setFollowTail(true)} style={{ position: "absolute", right: 14, bottom: 10, padding: 7, borderRadius: 7, backgroundColor: palette.panelRaised, cursor: "pointer" }}><text style={{ color: palette.text, fontSize: fontSize(11) }}>Jump to latest</text></Pressable>}
   </div>
 })
 
 function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWorkspace, copyText }: { item: TranscriptViewRow; onOpenSideChat?(parentRunId: string, parentEventSeq: string): void; onOpenFreshSpawn?(parentRunId: string): void; onPinThreadWorkspace?(runId: string, cursor: string): void; copyText?(text: string): void }) {
   if (item.kind === "liveAssistant") {
     return <div testId={`assistant-message-${item.message.id}`} style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12, paddingBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
-      <text style={{ color: palette.accent, fontSize: 10 }}>ASSISTANT · STREAMING</text>
+      <text style={{ color: palette.accent, fontSize: fontSize(10) }}>ASSISTANT · STREAMING</text>
       <markdown source={item.message.text} />
     </div>
   }
   const row = item.row
   const sideChat = onOpenSideChat
-    ? <Pressable testId={`side-chat-${row.cursor.sequence}`} name="Open side chat" onPress={() => onOpenSideChat(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Side Chat</text></Pressable>
+    ? <Pressable testId={`side-chat-${row.cursor.sequence}`} name="Open side chat" onPress={() => onOpenSideChat(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Side Chat</text></Pressable>
     : null
   const freshSpawn = onOpenFreshSpawn
-    ? <Pressable testId={`fresh-spawn-${row.cursor.sequence}`} name="Create fresh spawn" onPress={() => onOpenFreshSpawn(row.runId)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Fresh Spawn</text></Pressable>
+    ? <Pressable testId={`fresh-spawn-${row.cursor.sequence}`} name="Create fresh spawn" onPress={() => onOpenFreshSpawn(row.runId)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Fresh Spawn</text></Pressable>
     : null
   const pin = onPinThreadWorkspace
-    ? <Pressable testId={`pin-thread-workspace-${row.cursor.sequence}`} name="Pin to thread workspace" onPress={() => onPinThreadWorkspace(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Pin</text></Pressable>
+    ? <Pressable testId={`pin-thread-workspace-${row.cursor.sequence}`} name="Pin to thread workspace" onPress={() => onPinThreadWorkspace(row.runId, row.cursor.sequence)} style={{ cursor: "pointer", padding: 6, borderRadius: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Pin</text></Pressable>
     : null
   if (row.kind === "user") {
     return <div testId={`user-message-${row.cursor.sequence}`} style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, paddingBottom: 12, paddingLeft: 56, paddingRight: 8 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 760, padding: 12, borderRadius: 12, backgroundColor: palette.panelRaised }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}><text style={{ color: palette.text, fontSize: 13, userSelect: "text" }}>{row.text}</text><CopyTextButton testId={`copy-transcript-${row.cursor.sequence}`} text={row.text} copyText={copyText} label="Copy" /></div>
-        {!!row.attachments.length && <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{row.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.revision}`}><div style={{ padding: 6, borderRadius: 6, borderWidth: 1, borderColor: palette.border }}><text style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>{attachment.kind === "image" ? `Image · ${attachment.path}` : attachment.path}</text></div></Fragment>)}</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}><text style={{ color: palette.text, fontSize: fontSize(13), userSelect: "text" }}>{row.text}</text><CopyTextButton testId={`copy-transcript-${row.cursor.sequence}`} text={row.text} copyText={copyText} label="Copy" /></div>
+        {!!row.attachments.length && <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{row.attachments.map((attachment) => <Fragment key={`${attachment.path}:${attachment.revision}`}><div style={{ padding: 6, borderRadius: 6, borderWidth: 1, borderColor: palette.border }}><text style={{ color: palette.textMuted, fontSize: fontSize(10), userSelect: "text" }}>{attachment.kind === "image" ? `Image · ${attachment.path}` : attachment.path}</text></div></Fragment>)}</div>}
       </div>
       {sideChat}{freshSpawn}{pin}
     </div>
   }
   if (row.kind === "assistant") {
     return <div testId={`assistant-message-${row.cursor.sequence}`} style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 12, paddingBottom: 12, paddingLeft: 8, paddingRight: 8 }}>
-      <text style={{ color: palette.textFaint, fontSize: 10 }}>ASSISTANT</text>
+      <text style={{ color: palette.textFaint, fontSize: fontSize(10) }}>ASSISTANT</text>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}><markdown source={row.text} /><CopyTextButton testId={`copy-transcript-${row.cursor.sequence}`} text={row.text} copyText={copyText} label="Copy" /></div>
       {sideChat}{freshSpawn}{pin}
     </div>
@@ -390,7 +390,7 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
   if (row.kind === "toolCall") {
     const outputIsDiff = isUnifiedDiff(row.output)
     return <div testId={`tool-call-${row.cursor.sequence}`} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, marginBottom: 8, padding: 12, borderWidth: 1, borderColor: palette.border, borderRadius: 9, backgroundColor: palette.panel }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><text style={{ color: palette.text, fontSize: 12, fontWeight: 600 }}>{row.toolName}</text><text style={{ color: palette.textFaint, fontSize: 10 }}>{String(row.outcome).toUpperCase()}</text></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><text style={{ color: palette.text, fontSize: fontSize(12), fontWeight: 600 }}>{row.toolName}</text><text style={{ color: palette.textFaint, fontSize: fontSize(10) }}>{String(row.outcome).toUpperCase()}</text></div>
       {row.input && <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}><code code={row.input} language="json" showHeader={false} /><CopyTextButton testId={`copy-tool-input-${row.cursor.sequence}`} text={row.input} copyText={copyText} label="Copy input" /></div>}
       {row.output && (outputIsDiff
         ? <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}><diff patch={row.output} wordDiff maxLines={240} /><CopyTextButton testId={`copy-tool-output-${row.cursor.sequence}`} text={row.output} copyText={copyText} label="Copy output" /></div>
@@ -399,7 +399,7 @@ function TranscriptRow({ item, onOpenSideChat, onOpenFreshSpawn, onPinThreadWork
     </div>
   }
   return <div testId={`pending-state-${row.cursor.sequence}`} style={{ display: "flex", justifyContent: "center", gap: 8, padding: 8 }}>
-    <text style={{ color: palette.warning, fontSize: 10 }}>{pendingStateLabel(row.state)}</text>
+    <text style={{ color: palette.warning, fontSize: fontSize(10) }}>{pendingStateLabel(row.state)}</text>
     {sideChat}{freshSpawn}{pin}
   </div>
 }
@@ -413,11 +413,11 @@ function FreshSpawnComposer(props: { parentRunId: string; onDismiss(): void; onS
     void props.onSpawn(props.parentRunId, objective).then(() => { setDraft(""); props.onDismiss() })
   }
   return <div testId={`fresh-spawn-composer-${props.parentRunId}`} style={{ display: "flex", flexDirection: "column", gap: 7, padding: 10, borderWidth: 1, borderColor: palette.accentDim, borderRadius: 8, backgroundColor: palette.panel }}>
-    <text style={{ color: palette.textMuted, fontSize: 10 }}>Fresh Spawn from {props.parentRunId}</text>
+    <text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Fresh Spawn from {props.parentRunId}</text>
     <input testId={`fresh-spawn-objective-${props.parentRunId}`} value={draft} onChange={(event) => setDraft(event.value ?? "")} placeholder="Independent task with fresh context" />
     <div style={{ display: "flex", gap: 6 }}>
-      <Pressable testId={`spawn-fresh-run-${props.parentRunId}`} name="Spawn fresh run" disabled={!enabled} onPress={spawn} style={{ cursor: enabled ? "pointer" : "default", padding: 6, backgroundColor: enabled ? palette.accentDim : palette.panelRaised }}><text style={{ color: enabled ? palette.text : palette.textFaint, fontSize: 10 }}>Spawn</text></Pressable>
-      <Pressable testId={`dismiss-fresh-spawn-${props.parentRunId}`} name="Cancel fresh spawn" onPress={props.onDismiss} style={{ cursor: "pointer", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Cancel</text></Pressable>
+      <Pressable testId={`spawn-fresh-run-${props.parentRunId}`} name="Spawn fresh run" disabled={!enabled} onPress={spawn} style={{ cursor: enabled ? "pointer" : "default", padding: 6, backgroundColor: enabled ? palette.accentDim : palette.panelRaised }}><text style={{ color: enabled ? palette.text : palette.textFaint, fontSize: fontSize(10) }}>Spawn</text></Pressable>
+      <Pressable testId={`dismiss-fresh-spawn-${props.parentRunId}`} name="Cancel fresh spawn" onPress={props.onDismiss} style={{ cursor: "pointer", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Cancel</text></Pressable>
     </div>
   </div>
 }
@@ -431,14 +431,14 @@ function FreshSpawnPanel(props: { run: RunListEntry; onJoin?(parentRunId: string
     void props.onJoin(parentRunId, props.run.id).then((result) => { if (result) setJoined(result) })
   }
   return <div testId={`fresh-spawn-panel-${props.run.id}`} style={{ display: "flex", flexDirection: "column", gap: 6, padding: 10, borderWidth: 1, borderColor: palette.border, borderRadius: 8, backgroundColor: palette.panel }}>
-    <text style={{ color: palette.text, fontSize: 11, fontWeight: 650 }}>Fresh Spawn</text>
-    <text testId={`fresh-spawn-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Status: {runStatusLabel(props.run.status)}</text>
-    <Pressable testId={`join-fresh-run-${props.run.id}`} name="Join fresh run" disabled={!props.onJoin} onPress={join} style={{ cursor: props.onJoin ? "pointer" : "default", padding: 6, backgroundColor: props.onJoin ? palette.accentDim : palette.panelRaised }}><text style={{ color: props.onJoin ? palette.text : palette.textFaint, fontSize: 10 }}>Join</text></Pressable>
+    <text style={{ color: palette.text, fontSize: fontSize(11), fontWeight: 650 }}>Fresh Spawn</text>
+    <text testId={`fresh-spawn-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Status: {runStatusLabel(props.run.status)}</text>
+    <Pressable testId={`join-fresh-run-${props.run.id}`} name="Join fresh run" disabled={!props.onJoin} onPress={join} style={{ cursor: props.onJoin ? "pointer" : "default", padding: 6, backgroundColor: props.onJoin ? palette.accentDim : palette.panelRaised }}><text style={{ color: props.onJoin ? palette.text : palette.textFaint, fontSize: fontSize(10) }}>Join</text></Pressable>
     {joined && <div testId={`fresh-join-links-${props.run.id}`} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <text testId={`fresh-join-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Daemon status: {runStatusLabel(joined.run.status)}</text>
-      <text testId={`fresh-join-result-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>{joined.result ? "Result available" : "Result pending"}</text>
-      {(joined.receipts ?? []).map((receipt) => <Fragment key={receipt.id}><text testId={`fresh-join-receipt-${receipt.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Receipt: {receipt.id}</text></Fragment>)}
-      {(joined.artifacts ?? []).map((artifact) => <Fragment key={artifact.id}><text testId={`fresh-join-artifact-${artifact.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>Artifact: {artifact.displayName}</text></Fragment>)}
+      <text testId={`fresh-join-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Daemon status: {runStatusLabel(joined.run.status)}</text>
+      <text testId={`fresh-join-result-${props.run.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>{joined.result ? "Result available" : "Result pending"}</text>
+      {(joined.receipts ?? []).map((receipt) => <Fragment key={receipt.id}><text testId={`fresh-join-receipt-${receipt.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Receipt: {receipt.id}</text></Fragment>)}
+      {(joined.artifacts ?? []).map((artifact) => <Fragment key={artifact.id}><text testId={`fresh-join-artifact-${artifact.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Artifact: {artifact.displayName}</text></Fragment>)}
     </div>}
   </div>
 }
@@ -454,17 +454,17 @@ function SideChatPanel(props: { run: RunListEntry; rows: readonly AgentTurnRow[]
     setDraft("")
   }
   return <div testId={`side-chat-panel-${props.run.id}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderWidth: 1, borderColor: palette.accentDim, borderRadius: 9, backgroundColor: palette.panel }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}><text style={{ color: palette.text, fontSize: 13, fontWeight: 650 }}>Side Chat</text><div style={{ flexGrow: 1 }} /><text testId={`side-chat-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10 }}>{runStatusLabel(props.run.status)}</text></div>
-    {props.run.relationship.kind === "fork" && <text testId={`side-chat-lineage-${props.run.id}`} style={{ color: palette.textMuted, fontSize: 10, userSelect: "text" }}>From {props.run.relationship.parentRunId} at turn {props.run.relationship.parentEventSeq}</text>}
-    {!props.rows.length && <text style={{ color: palette.textFaint, fontSize: 11 }}>Waiting for the daemon-projected child.</text>}
-    {props.rows.slice(-3).map((row) => <Fragment key={`${row.cursor.sequence}-${row.kind}`}><text style={{ color: palette.textMuted, fontSize: 11 }}>[{row.kind}]</text></Fragment>)}
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}><text style={{ color: palette.text, fontSize: fontSize(13), fontWeight: 650 }}>Side Chat</text><div style={{ flexGrow: 1 }} /><text testId={`side-chat-status-${props.run.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10) }}>{runStatusLabel(props.run.status)}</text></div>
+    {props.run.relationship.kind === "fork" && <text testId={`side-chat-lineage-${props.run.id}`} style={{ color: palette.textMuted, fontSize: fontSize(10), userSelect: "text" }}>From {props.run.relationship.parentRunId} at turn {props.run.relationship.parentEventSeq}</text>}
+    {!props.rows.length && <text style={{ color: palette.textFaint, fontSize: fontSize(11) }}>Waiting for the daemon-projected child.</text>}
+    {props.rows.slice(-3).map((row) => <Fragment key={`${row.cursor.sequence}-${row.kind}`}><text style={{ color: palette.textMuted, fontSize: fontSize(11) }}>[{row.kind}]</text></Fragment>)}
     {canContinue && <div style={{ display: "flex", gap: 8 }}>
       <input testId={`continue-side-chat-input-${props.run.id}`} value={draft} onChange={(event) => setDraft(event.value ?? "")} placeholder="Continue this side chat" style={{ flexGrow: 1, minWidth: 0 }} />
-      <Pressable testId={`continue-side-chat-${props.run.id}`} name="Send side chat message" disabled={!continuation} onPress={sendContinuation} style={{ cursor: continuation ? "pointer" : "default", padding: 6, backgroundColor: continuation ? palette.accentDim : palette.panelRaised }}><text style={{ color: continuation ? palette.text : palette.textFaint, fontSize: 10 }}>Send</text></Pressable>
+      <Pressable testId={`continue-side-chat-${props.run.id}`} name="Send side chat message" disabled={!continuation} onPress={sendContinuation} style={{ cursor: continuation ? "pointer" : "default", padding: 6, backgroundColor: continuation ? palette.accentDim : palette.panelRaised }}><text style={{ color: continuation ? palette.text : palette.textFaint, fontSize: fontSize(10) }}>Send</text></Pressable>
     </div>}
     <div style={{ display: "flex", gap: 8 }}>
-      <Pressable testId={`cancel-side-chat-${props.run.id}`} name="Cancel side chat" disabled={!canCancel || !props.onCancel} onPress={() => { if (canCancel && props.onCancel) props.onCancel(props.run.id) }} style={{ cursor: canCancel && props.onCancel ? "pointer" : "default", padding: 6, backgroundColor: canCancel && props.onCancel ? palette.accentDim : palette.panelRaised }}><text style={{ color: canCancel && props.onCancel ? palette.text : palette.textFaint, fontSize: 10 }}>Cancel</text></Pressable>
-      <Pressable testId={`close-side-chat-${props.run.id}`} name="Close side chat" disabled={!props.onClose} onPress={() => { if (props.onClose) props.onClose(props.run.id) }} style={{ cursor: props.onClose ? "pointer" : "default", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: props.onClose ? palette.textMuted : palette.textFaint, fontSize: 10 }}>Close</text></Pressable>
+      <Pressable testId={`cancel-side-chat-${props.run.id}`} name="Cancel side chat" disabled={!canCancel || !props.onCancel} onPress={() => { if (canCancel && props.onCancel) props.onCancel(props.run.id) }} style={{ cursor: canCancel && props.onCancel ? "pointer" : "default", padding: 6, backgroundColor: canCancel && props.onCancel ? palette.accentDim : palette.panelRaised }}><text style={{ color: canCancel && props.onCancel ? palette.text : palette.textFaint, fontSize: fontSize(10) }}>Cancel</text></Pressable>
+      <Pressable testId={`close-side-chat-${props.run.id}`} name="Close side chat" disabled={!props.onClose} onPress={() => { if (props.onClose) props.onClose(props.run.id) }} style={{ cursor: props.onClose ? "pointer" : "default", padding: 6, backgroundColor: palette.panelRaised }}><text style={{ color: props.onClose ? palette.textMuted : palette.textFaint, fontSize: fontSize(10) }}>Close</text></Pressable>
     </div>
   </div>
 }

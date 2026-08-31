@@ -1,6 +1,6 @@
 import { Fragment } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import { CopyTextButton } from "../../ui/copy-text-button.js"
 import { Pressable } from "../../ui/pressable.js"
 import type { ApprovalRequest } from "@taugentic/desktop-protocol"
@@ -19,12 +19,12 @@ export function approvalTargetLabel(target: ApprovalRequest["target"]): string {
 export function ApprovalsInboxPanel(props: { inbox: ApprovalsInboxState; onOpenRun(runId: string): void; copyText?(text: string): void }) {
   const { inbox } = props
   return <div testId="approvals-inbox" style={{ display: "flex", flexDirection: "column", gap: 7, padding: 8, borderWidth: 1, borderColor: palette.border, borderRadius: 6 }}>
-    <text style={{ color: palette.text, fontSize: 12, fontWeight: 600 }}>Approvals inbox</text>
+    <text style={{ color: palette.text, fontSize: fontSize(12), fontWeight: 600 }}>Approvals inbox</text>
     {inbox.loading && <text testId="approvals-loading" style={mutedStyle()}>Loading approvals…</text>}
-    {inbox.error && <text testId="approvals-error" accessibilityRole="alert" accessibilityName={inbox.error} style={{ color: "#f08080", fontSize: 10 }}>{inbox.error}</text>}
+    {inbox.error && <text testId="approvals-error" accessibilityRole="alert" accessibilityName={inbox.error} style={{ color: "#f08080", fontSize: fontSize(10) }}>{inbox.error}</text>}
     {!inbox.loading && !inbox.error && !inbox.approvals.length && <text testId="approvals-empty" style={mutedStyle()}>No pending approvals.</text>}
     {inbox.approvals.map((approval) => <Fragment key={approval.id}><div testId={`inbox-approval-${approval.id}`} style={{ display: "flex", flexDirection: "column", gap: 5, padding: 7, borderRadius: 4, backgroundColor: palette.panel }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}><text style={{ color: palette.text, fontSize: 11 }}>{approval.reason}</text><CopyTextButton testId={`copy-inbox-approval-${approval.id}`} text={approval.reason} copyText={props.copyText} label="Copy reason" /></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}><text style={{ color: palette.text, fontSize: fontSize(11) }}>{approval.reason}</text><CopyTextButton testId={`copy-inbox-approval-${approval.id}`} text={approval.reason} copyText={props.copyText} label="Copy reason" /></div>
       <text style={mutedStyle()}>Scope: {approval.scope} · Target: {approvalTargetLabel(approval.target)}</text>
       <text style={mutedStyle()}>Expires: {approval.expiresAtMs}</text>
       <text style={mutedStyle()}>Originating run: {approval.runId}</text>
@@ -34,4 +34,4 @@ export function ApprovalsInboxPanel(props: { inbox: ApprovalsInboxState; onOpenR
 }
 
 function buttonStyle() { return { cursor: "pointer", padding: 6, backgroundColor: palette.accentDim, color: palette.textMuted, borderRadius: 4 } }
-function mutedStyle() { return { color: palette.textMuted, fontSize: 10 } }
+function mutedStyle() { return { color: palette.textMuted, fontSize: fontSize(10) } }

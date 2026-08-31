@@ -1,7 +1,7 @@
 import type { AgentRuntimeSelection, AgentRuntimeSnapshot, AuthProfilePreferences } from "@taugentic/desktop-protocol"
 import { Fragment, useState, type ReactNode } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 
 function activates(event: { key?: string }): boolean { return event.key === "enter" || event.key === "space" }
 
@@ -33,8 +33,8 @@ function Action({ testId, name, selected, expanded, role = "button", onActivate,
 
 function RouteSection({ title, detail, children }: { title: string; detail: string; children: ReactNode }) {
   return <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 8, borderRadius: 6, backgroundColor: palette.panel }}>
-    <text style={{ color: palette.textMuted, fontSize: 10, fontWeight: 700 }}>{title}</text>
-    <text style={{ color: palette.textFaint, fontSize: 11 }}>{detail}</text>
+    <text style={{ color: palette.textMuted, fontSize: fontSize(10), fontWeight: 700 }}>{title}</text>
+    <text style={{ color: palette.textFaint, fontSize: fontSize(11) }}>{detail}</text>
     {children}
   </div>
 }
@@ -57,13 +57,13 @@ export function RuntimeRoutePicker(props: RuntimeRoutePickerProps) {
 
   return <div testId="runtime-route-picker" style={{ display: "flex", flexDirection: "column", gap: expanded ? 9 : 0, padding: 12, backgroundColor: palette.panelRaised, borderBottomWidth: 1, borderColor: palette.border }}>
     <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 28 }}>
-      <text style={{ color: palette.textFaint, fontSize: 10, fontWeight: 700 }}>RUN ROUTE</text>
-      <text testId="runtime-route-summary" style={{ color: routeSummary ? palette.textMuted : palette.warning, fontSize: 11 }}>{routeSummary || readiness}</text>
+      <text style={{ color: palette.textFaint, fontSize: fontSize(10), fontWeight: 700 }}>RUN ROUTE</text>
+      <text testId="runtime-route-summary" style={{ color: routeSummary ? palette.textMuted : palette.warning, fontSize: fontSize(11) }}>{routeSummary || readiness}</text>
       <div style={{ flexGrow: 1 }} />
       <Action testId="runtime-route-toggle" name="Change run route" expanded={expanded} onActivate={() => setExpanded((value) => !value)}>{expanded ? "Done" : "Change"}</Action>
     </div>
     {expanded && <div testId="runtime-route-options" accessibilityRole="group" accessibilityName="Run route editor" style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-      <text testId="runtime-route-readiness" accessibilityRole="status" accessibilityName={`Run route: ${readiness}`} style={{ color: readiness === "Ready to run." ? palette.accent : palette.warning, fontSize: 11 }}>{readiness}</text>
+      <text testId="runtime-route-readiness" accessibilityRole="status" accessibilityName={`Run route: ${readiness}`} style={{ color: readiness === "Ready to run." ? palette.accent : palette.warning, fontSize: fontSize(11) }}>{readiness}</text>
       <RouteSection title="1. RUNTIME PROFILE" detail={runtimeProfile ? `Selected: ${runtimeProfile.displayName}${provider?.health?.message ? ` · ${provider.health.message}` : ""}` : "Choose the runtime profile for this run."}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {props.snapshot?.runtimeProfiles?.map((profile) => <Action key={profile.id} testId={`runtime-profile-${profile.id}`} role="radio" name={`Use runtime profile ${profile.displayName}`} selected={props.draft?.runtimeProfileId === profile.id} onActivate={() => props.onDraft({ runtimeProfileId: profile.id })}>{profile.displayName}</Action>)}
@@ -74,7 +74,7 @@ export function RuntimeRoutePicker(props: RuntimeRoutePickerProps) {
           {accountProfiles.map((profile, index) => <Fragment key={profile.profile.id}><div style={{ display: "flex", flexDirection: "column", gap: 5, padding: 6, borderRadius: 5, backgroundColor: palette.panelRaised }}>
             {profile.connectionState === "connected"
               ? <Action testId={`auth-profile-${profile.profile.id}`} role="radio" name={`Use account ${profile.preferences.label}`} selected={props.draft?.authProfileId === profile.profile.id} onActivate={() => props.onDraft({ authProfileId: profile.profile.id })}>{accountSummary(profile)}</Action>
-              : <text testId={`auth-profile-unavailable-${profile.profile.id}`} accessibilityRole="status" accessibilityName={`${profile.preferences.label} unavailable: ${unavailableAccountCause(profile)}`} style={{ color: palette.warning, fontSize: 11 }}>{profile.preferences.label} · unavailable · {unavailableAccountCause(profile)}</text>}
+              : <text testId={`auth-profile-unavailable-${profile.profile.id}`} accessibilityRole="status" accessibilityName={`${profile.preferences.label} unavailable: ${unavailableAccountCause(profile)}`} style={{ color: palette.warning, fontSize: fontSize(11) }}>{profile.preferences.label} · unavailable · {unavailableAccountCause(profile)}</text>}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <input testId={`auth-profile-label-${profile.profile.id}`} accessibilityName={`Account label for ${profile.preferences.label}`} value={labels[profile.profile.id] ?? profile.preferences.label} onChange={(event) => setLabels((current) => ({ ...current, [profile.profile.id]: event.value ?? "" }))} />
               <Action testId={`save-auth-profile-${profile.profile.id}`} name={`Save ${profile.preferences.label}`} onActivate={() => props.onPreferences(profile.profile.id, { ...profile.preferences, label: labels[profile.profile.id] ?? profile.preferences.label })}>Save account</Action>

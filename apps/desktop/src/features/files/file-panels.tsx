@@ -2,7 +2,7 @@ import { VirtualList } from "@regenrek/gpuix-react"
 import type { BoundedFileContent, NativeImagePreview, WorkspaceFileEntry } from "@taugentic/desktop-protocol"
 import { Fragment, useMemo, useState } from "react"
 
-import { palette } from "../../app/theme.js"
+import { fontSize, palette } from "../../app/theme.js"
 import { CopyTextButton } from "../../ui/copy-text-button.js"
 import { Pressable } from "../../ui/pressable.js"
 
@@ -46,7 +46,7 @@ type PreviewSource = {
 function PanelFrame(props: { testId: string; title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return <div testId={props.testId} style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, minWidth: 0, backgroundColor: palette.canvas }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 40, paddingLeft: 12, paddingRight: 8, borderBottomWidth: 1, borderColor: palette.border }}>
-      <text style={{ color: palette.text, fontSize: 12, fontWeight: 650 }}>{props.title}</text>
+      <text style={{ color: palette.text, fontSize: fontSize(12), fontWeight: 650 }}>{props.title}</text>
       <div style={{ flexGrow: 1 }} />
       {props.actions}
     </div>
@@ -56,11 +56,11 @@ function PanelFrame(props: { testId: string; title: string; actions?: React.Reac
 
 function Action(props: { testId: string; label: string; disabled?: boolean; active?: boolean; onClick(): void }) {
   const enabled = !props.disabled
-  return <Pressable testId={props.testId} name={props.label} disabled={!enabled} selected={props.active} onPress={props.onClick} style={{ padding: 6, borderRadius: 5, cursor: enabled ? "pointer" : "default", color: enabled ? palette.text : palette.textFaint, backgroundColor: props.active ? palette.accentDim : palette.panelRaised }}><text style={{ fontSize: 10 }}>{props.label}</text></Pressable>
+  return <Pressable testId={props.testId} name={props.label} disabled={!enabled} selected={props.active} onPress={props.onClick} style={{ padding: 6, borderRadius: 5, cursor: enabled ? "pointer" : "default", color: enabled ? palette.text : palette.textFaint, backgroundColor: props.active ? palette.accentDim : palette.panelRaised }}><text style={{ fontSize: fontSize(10) }}>{props.label}</text></Pressable>
 }
 
 function Message(props: { children: string; error?: boolean }) {
-  return <div style={{ padding: 16 }}><text style={{ color: props.error ? "#F08080" : palette.textMuted, fontSize: 11 }}>{props.children}</text></div>
+  return <div style={{ padding: 16 }}><text style={{ color: props.error ? "#F08080" : palette.textMuted, fontSize: fontSize(11) }}>{props.children}</text></div>
 }
 
 function parentDirectories(path: string): string[] {
@@ -103,8 +103,8 @@ export function FileTreePanel(props: FilePanelState) {
           style={{ display: "flex", alignItems: "center", minHeight: 28, paddingLeft: 8 + depth * 14, paddingRight: 8, cursor: entry.isSymlink ? "default" : "pointer", backgroundColor: selected ? palette.panelRaised : palette.canvas, color: entry.isSymlink ? palette.textFaint : palette.text }}
         >
           <text style={{ width: 18, color: palette.textMuted }}>{directory ? (collapsed.has(entry.path) ? "▸" : "▾") : entry.kind === "image" ? "◫" : entry.kind === "pdf" ? "PDF" : "·"}</text>
-          <text style={{ fontSize: 11 }}>{entry.name}</text>
-          {entry.isSymlink && <text style={{ marginLeft: 8, color: palette.warning, fontSize: 9 }}>symlink</text>}
+          <text style={{ fontSize: fontSize(11) }}>{entry.name}</text>
+          {entry.isSymlink && <text style={{ marginLeft: 8, color: palette.warning, fontSize: fontSize(9) }}>symlink</text>}
         </Pressable></Fragment>
       }}
       style={{ flexGrow: 1, minHeight: 0, width: "100%" }}
@@ -132,7 +132,7 @@ export function SourcePanel(props: FilePanelState) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 44, padding: 8, borderTopWidth: 1, borderColor: palette.border }}>
         <Action testId="save-file" label={props.saving ? "Saving…" : "Save"} disabled={!props.dirty || props.saving} onClick={props.save} />
         <Action testId="discard-file" label="Discard" disabled={!props.dirty || props.saving} onClick={props.discard} />
-        {props.dirty && <text style={{ color: palette.warning, fontSize: 10 }}>Unsaved changes</text>}
+        {props.dirty && <text style={{ color: palette.warning, fontSize: fontSize(10) }}>Unsaved changes</text>}
       </div>
     </>}
     {text && !editing && <div style={{ flexGrow: 1, minHeight: 0, overflow: "scroll" }}><code code={text.text} language={text.language ?? undefined} path={props.selectedPath} showLineNumbers showHeader={false} style={{ minWidth: "100%" }} /></div>}
@@ -175,7 +175,7 @@ export function PdfPanel(props: PreviewSource & { onOpenExternal?: () => void })
     {props.error && <Message error>{props.error}</Message>}
     {!props.loading && !props.error && !pdf && <Message>Select a PDF.</Message>}
     {pdf && <>
-      <div style={{ display: "flex", justifyContent: "center", minHeight: 28, padding: 6 }}><text style={{ color: palette.textMuted, fontSize: 10 }}>Page {pdf.pageIndex + 1} of {pdf.pageCount}</text></div>
+      <div style={{ display: "flex", justifyContent: "center", minHeight: 28, padding: 6 }}><text style={{ color: palette.textMuted, fontSize: fontSize(10) }}>Page {pdf.pageIndex + 1} of {pdf.pageCount}</text></div>
       <div style={{ display: "flex", flexGrow: 1, minHeight: 0, alignItems: "flex-start", justifyContent: "center", overflow: "scroll", padding: 12 }}><img src={pdf.previewDataUri} alt={`PDF page ${pdf.pageIndex + 1}`} objectFit="contain" style={{ width: "100%", minHeight: 1 }} /></div>
     </>}
   </PanelFrame>

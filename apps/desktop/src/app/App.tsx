@@ -33,7 +33,7 @@ import { transcriptQuery, transcriptRows } from "../platform/daemon/transcript-q
 import { conversationBranchesQuery, conversationBranchRows } from "../platform/daemon/conversation-branches-query.js"
 import { desktopSettings } from "../platform/settings/desktop-settings.js"
 
-import { applyDesktopAppearance, metrics, palette } from "./theme.js"
+import { applyDesktopAppearance, fontSize, metrics, palette } from "./theme.js"
 import { ProductState } from "./product-state.js"
 import { ProjectTrustConfirmation } from "./project-trust-confirmation.js"
 
@@ -332,11 +332,11 @@ export function App() {
 
   return <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", backgroundColor: palette.canvas, color: palette.text }}>
     <div style={{ display: "flex", alignItems: "center", height: metrics.titlebarHeight, paddingLeft: 86, paddingRight: 18, userSelect: "none" }}>
-      <text style={{ color: palette.text, fontSize: 13, fontWeight: 650 }}>TAUGENTIC</text><div style={{ flexGrow: 1 }} />
+      <text style={{ color: palette.text, fontSize: fontSize(13), fontWeight: 650 }}>TAUGENTIC</text><div style={{ flexGrow: 1 }} />
       <div testId="open-system-diagnostics" tabIndex={0} accessibilityRole="button" accessibilityName="Open System Diagnostics" onClick={() => setDiagnosticsOpen(true)} onKeyDown={(event) => { if (activates(event)) setDiagnosticsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Diagnostics</text></div>
       <div testId="open-plugins" tabIndex={0} accessibilityRole="button" accessibilityName="Open Plugins" onClick={() => setPluginsOpen(true)} onKeyDown={(event) => { if (activates(event)) setPluginsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Plugins</text></div>
       {commands && <CommandSurface dispatcher={commands} settings={desktopSettings} workspaceId={selectedWorkspaceId} settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} onResetWorkspaceLayout={() => { if (selectedWorkspaceId) resetWorkspaceLayout(selectedWorkspaceId) }} />}
-      <text testId="daemon-status" style={{ color: shell.context.phase === "ready" ? palette.accent : shell.context.phase === "unavailable" ? palette.warning : palette.textMuted, fontSize: 11 }}>{shellStatus(shell.context.phase)}</text>
+      <text testId="daemon-status" style={{ color: shell.context.phase === "ready" ? palette.accent : shell.context.phase === "unavailable" ? palette.warning : palette.textMuted, fontSize: fontSize(11) }}>{shellStatus(shell.context.phase)}</text>
     </div>
     <div style={{ height: 1, backgroundColor: palette.border }} />
     {settingsError && <div testId="desktop-settings-error" accessibilityRole="alert" accessibilityName={settingsError} style={{ padding: 8, backgroundColor: "#401c24", color: "#f08080" }}><text>{settingsError}</text></div>}

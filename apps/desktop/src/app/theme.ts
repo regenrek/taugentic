@@ -9,6 +9,11 @@ export const palette = {
 
 export const metrics = { titlebarHeight: 54, sidebarWidth: 276, panelRadius: 10, fontScale: 1, reducedMotion: false }
 
+/** Resolves a semantic text size through the one desktop appearance scale. */
+export function fontSize(base: number): number {
+  return base * metrics.fontScale
+}
+
 export function applyDesktopAppearance(appearance: DesktopAppearance): void {
   const light = appearance.theme === "light"
   const high = appearance.contrast === "high"
