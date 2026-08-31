@@ -1,6 +1,6 @@
 import { createTestRoot } from "@regenrek/gpuix-react/testing"
 import { describe, expect, it } from "bun:test"
-import React from "react"
+import React, { act } from "react"
 
 import { BrowserPanel } from "../src/features/browser/browser-panel.js"
 import { useWorkbenchBrowser, type WorkbenchBrowserRuntime } from "../src/features/browser/use-workbench-browser.js"
@@ -61,13 +61,11 @@ describe("M4 Browser", () => {
 
   it("emits native clear data only after the daemon allows the exact request", async () => {
     const clearRequests: Array<{ requestId: string; profileId: string }> = []
+    const clearResponses = [Promise.withResolvers<{ requestId: string; decision: "allow" }>(), Promise.withResolvers<{ requestId: string; decision: "allow" }>()]
     const runtime = createBrowserRuntime({
-      async clearBrowserData(request: { requestId: string; profileId: string }) {
+      clearBrowserData(request: { requestId: string; profileId: string }) {
         clearRequests.push(request)
-        return {
-          requestId: clearRequests.length === 1 ? `${request.requestId}-wrong` : request.requestId,
-          decision: "allow" as const,
-        }
+        return clearResponses[clearRequests.length - 1]!.promise
       },
     })
     let browser!: ReturnType<typeof useWorkbenchBrowser>
@@ -77,16 +75,28 @@ describe("M4 Browser", () => {
     }
     const root = createTestRoot()
     try {
-      root.render(<Harness />)
-      await settle()
-      browser.clearData()
-      await settle()
+      await act(async () => { root.render(<Harness />) })
+      root.renderer.flush()
+      await act(async () => { browser.clearData() })
+      root.renderer.flush()
       expect(clearRequests).toHaveLength(1)
+
+      await act(async () => {
+        clearResponses[0]!.resolve({ requestId: `${clearRequests[0]!.requestId}-wrong`, decision: "allow" })
+        await clearResponses[0]!.promise
+      })
+      root.renderer.flush()
       expect(browser.clearDataRequestId).toBeUndefined()
 
-      browser.clearData()
-      await settle()
+      await act(async () => { browser.clearData() })
+      root.renderer.flush()
       expect(clearRequests).toHaveLength(2)
+
+      await act(async () => {
+        clearResponses[1]!.resolve({ requestId: clearRequests[1]!.requestId, decision: "allow" })
+        await clearResponses[1]!.promise
+      })
+      root.renderer.flush()
       expect(browser.clearDataRequestId).toBe(clearRequests[1]?.requestId)
     } finally {
       root.unmount()
