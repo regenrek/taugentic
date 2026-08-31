@@ -11,7 +11,7 @@ import { RuntimeRoutePicker } from "../src/features/auth-profiles/auth-profiles.
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
 import { App, Workbench, workbenchSelection } from "../src/app/App.js"
 import { workspaceShellMachine } from "../src/features/runtime/workspace-shell-machine.js"
-import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, openProject, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, triggerWorkItem, workspaceShell } from "../src/features/runtime/workspace-shell.js"
+import { archiveConversation, closeTemporaryConversation, createProjectConversation, createSpace, createStandaloneConversation, createTemporaryConversation, desktopRuntime, openProject, retryWorkspaceShell, selectConversation, setConversationPinned, setProjectSpace, startSelectedRun, startWorkspaceShell, triggerWorkItem, workspaceShell } from "../src/features/runtime/workspace-shell.js"
 import { defaultWorkspaceLayout, workspacePresentation } from "../src/features/workspace-layout/layout-store.js"
 import { archivedProjectConversations, projectConversations, sidebarReduce, Sidebar, standaloneConversations, temporaryConversations, type SidebarState } from "../src/features/sidebar/sidebar.js"
 import { createDesktopRuntime } from "../src/platform/daemon/desktop-runtime.js"
@@ -51,6 +51,51 @@ function runStatusDelta(seq: string, status: RunStatus): RunEventDelta {
 }
 
 describe("M2 run lifecycle", () => {
+  it("retries one unavailable connection by serial close and reopen while ignoring stale lifecycle delivery", async () => {
+    const runtime = desktopRuntime as unknown as {
+      start(): Promise<void>
+      close(): Promise<void>
+      subscribeLifecycle(listener: (projection: DesktopDaemonLifecycleProjection) => void): Promise<DesktopDaemonLifecycleProjection>
+      voicePermissionState(): "notDetermined"
+      subscribeVoiceState(listener: () => void): void
+    }
+    const originalStart = runtime.start
+    const originalClose = runtime.close
+    const originalSubscribe = runtime.subscribeLifecycle
+    const originalVoicePermission = runtime.voicePermissionState
+    const originalVoiceSubscription = runtime.subscribeVoiceState
+    const subscriptions: ((projection: DesktopDaemonLifecycleProjection) => void)[] = []
+    const calls: string[] = []
+    runtime.start = async () => { calls.push("start") }
+    runtime.close = async () => { calls.push("close") }
+    runtime.voicePermissionState = () => "notDetermined"
+    runtime.subscribeVoiceState = () => {}
+    runtime.subscribeLifecycle = async (listener) => {
+      calls.push("subscribe")
+      subscriptions.push(listener)
+      listener(lifecycle("disconnected"))
+      return lifecycle("disconnected")
+    }
+    try {
+      await startWorkspaceShell()
+      expect(workspaceShell.getSnapshot().context.phase).toBe("unavailable")
+
+      await retryWorkspaceShell()
+      expect(calls).toEqual(["start", "subscribe", "close", "start", "subscribe"])
+      expect(subscriptions).toHaveLength(2)
+
+      subscriptions[0]?.(lifecycle("ready", false))
+      expect(workspaceShell.getSnapshot().context.phase).toBe("unavailable")
+    } finally {
+      runtime.start = originalStart
+      runtime.close = originalClose
+      runtime.subscribeLifecycle = originalSubscribe
+      runtime.voicePermissionState = originalVoicePermission
+      runtime.subscribeVoiceState = originalVoiceSubscription
+      workspaceShell.stop()
+    }
+  })
+
   it("delivers initial lifecycle before an early disconnected callback", async () => {
     let deliver: ((projectionJson: string) => void) | undefined
     let resolveInitial!: (projectionJson: string) => void

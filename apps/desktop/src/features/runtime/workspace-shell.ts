@@ -42,6 +42,9 @@ export const desktopRuntime = createDesktopRuntime()
 export const workspaceShell = createActor(workspaceShellMachine)
 let started = false
 let closing = false
+let recoveryInFlight = false
+let lifecycleGeneration = 0
+let voiceObservationStarted = false
 let navigationRequestId = 0
 let workItemTriggerInFlight = false
 let organizationMutationInFlight = false
@@ -55,26 +58,34 @@ export async function startWorkspaceShell(): Promise<void> {
   started = true
   workspaceShell.start()
   navigationRecovery.applyStoredSidebarPresentation()
+  await openWorkspaceConnection()
+}
+async function openWorkspaceConnection(): Promise<void> {
+  const generation = ++lifecycleGeneration
   try {
     await desktopRuntime.start()
   } catch {
-    workspaceShell.send({ type: "NATIVE_START_REJECTED" })
+    if (generation === lifecycleGeneration) workspaceShell.send({ type: "NATIVE_START_REJECTED" })
     return
   }
-  observeVoice(
-    desktopRuntime,
-    (permission) => workspaceShell.send({ type: "VOICE_PERMISSION", permission }),
-    (voice) => workspaceShell.send({ type: "VOICE_STATE", voice }),
-  )
+  if (!voiceObservationStarted) {
+    voiceObservationStarted = true
+    observeVoice(
+      desktopRuntime,
+      (permission) => workspaceShell.send({ type: "VOICE_PERMISSION", permission }),
+      (voice) => workspaceShell.send({ type: "VOICE_STATE", voice }),
+    )
+  }
   try {
     await desktopRuntime.subscribeLifecycle((projection) => {
-      void receiveLifecycle(projection)
+      void receiveLifecycle(projection, generation)
     })
   } catch {
-    workspaceShell.send({ type: "ERROR", message: "The desktop connection could not be started safely." })
+    if (generation === lifecycleGeneration) workspaceShell.send({ type: "NATIVE_START_REJECTED" })
   }
 }
-async function receiveLifecycle(projection: DesktopDaemonLifecycleProjection): Promise<void> {
+async function receiveLifecycle(projection: DesktopDaemonLifecycleProjection, generation: number): Promise<void> {
+  if (generation !== lifecycleGeneration) return
   const previousNavigation = workspaceShell.getSnapshot().context.navigation
   workspaceShell.send({ type: "LIFECYCLE", projection })
   if (projection.status === "disconnected") {
@@ -743,6 +754,7 @@ export function openSideChatPanel(runId: string): void {
 export async function closeWorkspaceShell(): Promise<void> {
   if (closing || workspaceShell.getSnapshot().context.phase === "closed") return
   closing = true
+  lifecycleGeneration += 1
   try {
     await desktopRuntime.close()
     navigationRequestId += 1
@@ -750,5 +762,20 @@ export async function closeWorkspaceShell(): Promise<void> {
   } catch {
     closing = false
     workspaceShell.send({ type: "ERROR", message: "The desktop connection could not be closed safely." })
+  }
+}
+/** Explicit user recovery. This remains the sole close/start/subscribe owner. */
+export async function retryWorkspaceShell(): Promise<void> {
+  if (recoveryInFlight || workspaceShell.getSnapshot().context.phase !== "unavailable") return
+  recoveryInFlight = true
+  lifecycleGeneration += 1
+  try {
+    await desktopRuntime.close()
+    workspaceShell.send({ type: "RETRY" })
+    await openWorkspaceConnection()
+  } catch {
+    workspaceShell.send({ type: "ERROR", message: "The desktop connection could not be closed safely." })
+  } finally {
+    recoveryInFlight = false
   }
 }

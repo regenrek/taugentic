@@ -3,6 +3,7 @@ import { describe, expect, it } from "bun:test"
 import type { AgentRuntimeSnapshot } from "@taugentic/desktop-protocol"
 
 import { ProductState } from "../src/app/product-state.js"
+import { OfflineConnectionState } from "../src/app/App.js"
 import { ProjectTrustConfirmation } from "../src/app/project-trust-confirmation.js"
 import { RuntimeRoutePicker } from "../src/features/auth-profiles/auth-profiles.js"
 import { Sidebar } from "../src/features/sidebar/sidebar.js"
@@ -11,6 +12,20 @@ import { createCommandDispatcher } from "../src/features/commands/registry.js"
 import { DesktopSettings } from "../src/platform/settings/desktop-settings.js"
 
 describe("M8 desktop accessibility", () => {
+  it("renders one terminal offline recovery action without workspace controls", () => {
+    let retries = 0
+    const { render, renderer, unmount } = createTestRoot()
+    try {
+      render(<OfflineConnectionState onRetry={() => { retries += 1 }} />)
+      expect(renderer.getAutomationTree()).toContain("The connection is offline. Retry only when you are ready to reconnect.")
+      expect(renderer.getAutomationTree()).toContain('"name":"Retry connection"')
+      expect(renderer.findByTestId("workspace-shell")).toBeUndefined()
+      expect(renderer.findByTestId("close-daemon")).toBeUndefined()
+      renderer.nativeSimulateKeystrokes(renderer.findByTestId("retry-daemon")!.id, "space")
+      expect(retries).toBe(1)
+    } finally { unmount() }
+  })
+
   it("renders canonical product facts with native semantic roles and actionable detail", () => {
     const { render, renderer, unmount } = createTestRoot()
     try {

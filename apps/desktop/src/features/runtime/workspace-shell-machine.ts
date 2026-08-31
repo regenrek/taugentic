@@ -47,6 +47,7 @@ export type ShellContext = {
 type ShellEvent =
   | { type: "LIFECYCLE"; projection: DesktopDaemonLifecycleProjection }
   | { type: "NATIVE_START_REJECTED" }
+  | { type: "RETRY" }
   | { type: "NAVIGATION_READY" }
   | { type: "NAVIGATION_ERROR" }
   | { type: "CLOSED" }
@@ -131,6 +132,7 @@ export const workspaceShellMachine = createMachine({
       }),
     },
     NATIVE_START_REJECTED: { guard: ({ context }) => context.phase === "connecting", actions: assign({ phase: "unavailable", error: () => undefined }) },
+    RETRY: { guard: ({ context }) => context.phase === "unavailable", actions: assign({ phase: "connecting", navigation: () => "idle", navigationError: () => undefined, error: () => undefined }) },
     NAVIGATION_READY: { guard: ({ context }) => context.phase === "ready", actions: assign({ navigation: "ready", navigationError: () => undefined }) },
     NAVIGATION_ERROR: { guard: ({ context }) => context.phase === "ready", actions: assign({ navigation: "error", navigationError: "Navigation could not be refreshed. Your connection is still available." }) },
     CLOSED: { actions: assign({ phase: "closed", activeRun: () => undefined, transcriptRunId: () => undefined, error: () => undefined, navigationError: () => undefined }) },
