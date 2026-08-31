@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::ExecutionError;
 use ta_protocol::wire::{
     AgentRuntimeModelId, AgentRuntimeStrategyId, AgentStreamTurnId, ApprovalResolution,
-    AuthProfileId, CapsuleRecipe, ExecutionContext, OutputContractKind, RunId, RunStatus,
-    RuntimeExtensionState, RuntimeProfileId, SessionId, WorkspaceFileAttachment, WorkspaceMode,
-    WorktreeCleanupPolicy,
+    ApprovalScope, AuthProfileId, CapsuleRecipe, ExecutionContext, OutputContractKind, RunId,
+    RunStatus, RuntimeExtensionState, RuntimeProfileId, SessionId, WorkspaceFileAttachment,
+    WorkspaceMode, WorktreeCleanupPolicy,
 };
 use ta_provider_acp::descriptor::AcpProviderSpec;
 use ta_provider_llm::client::StreamMessage;
@@ -33,15 +33,20 @@ pub enum AgentExecutionHarnessOwnership {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentExecutionHarness {
     NativeLoop,
-    Acp { provider: AcpProviderSpec },
+    Acp {
+        provider: AcpProviderSpec,
+    },
     CodexAppServer,
+    /// Direct, version-pinned DeepSeek Harness bridge. The bridge owns only
+    /// the external process protocol; the daemon remains the durable owner.
+    DeepSeekHarness,
 }
 
 impl AgentExecutionHarness {
     pub fn ownership_kind(&self) -> AgentExecutionHarnessOwnership {
         match self {
             Self::NativeLoop => AgentExecutionHarnessOwnership::Native,
-            Self::Acp { .. } | Self::CodexAppServer => {
+            Self::Acp { .. } | Self::CodexAppServer | Self::DeepSeekHarness => {
                 AgentExecutionHarnessOwnership::ExternalIntegration
             }
         }
@@ -84,6 +89,9 @@ pub struct ExecutionRequest {
     /// Immutable, revision-validated workspace attachments. The orchestrator
     /// owns validation; harnesses only receive this bound execution input.
     pub attachments: Vec<WorkspaceFileAttachment>,
+    /// Immutable daemon-owned DSH permission facts. External integration may
+    /// exact-match this map but cannot add defaults or policy.
+    pub dsh_tool_approval_manifest: BTreeMap<String, ApprovalScope>,
 }
 
 impl ExecutionRequest {

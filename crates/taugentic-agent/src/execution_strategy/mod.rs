@@ -1,5 +1,6 @@
 pub mod acp;
 pub mod codex_app_server;
+pub mod deepseek_harness;
 pub mod native_loop;
 
 use std::sync::Arc;
@@ -16,5 +17,6 @@ pub(crate) async fn dispatch(
         AgentExecutionHarness::NativeLoop => native_loop::dispatch(request, sink).await,
         AgentExecutionHarness::Acp { provider } => acp::dispatch(request, sink, provider).await,
         AgentExecutionHarness::CodexAppServer => codex_app_server::dispatch(request, sink).await,
+        AgentExecutionHarness::DeepSeekHarness => deepseek_harness::dispatch(request, sink).await,
     }
 }

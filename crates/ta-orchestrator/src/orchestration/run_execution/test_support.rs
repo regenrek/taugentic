@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     path::PathBuf,
     sync::{
         Arc, Mutex,
@@ -459,6 +459,7 @@ mod tests {
             output_contract: None,
             subagent_recipes: Vec::new(),
             attachments: Vec::new(),
+            dsh_tool_approval_manifest: BTreeMap::new(),
         }
     }
 

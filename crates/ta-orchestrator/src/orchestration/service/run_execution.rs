@@ -273,6 +273,7 @@ impl RunExecutionRuntime {
         }
         let system_prompt =
             system_prompt_for_execution_request(&execution_harness, subagent_recipes.len());
+        let dsh_tool_approval_manifest = dsh_tool_approval_manifest(&execution_context);
         Ok(ExecutionRequest {
             session_id: session_id.clone(),
             run_id: run_id.clone(),
@@ -290,6 +291,7 @@ impl RunExecutionRuntime {
             output_contract,
             subagent_recipes,
             attachments,
+            dsh_tool_approval_manifest,
         })
     }
 
@@ -780,6 +782,14 @@ impl RunExecutionRuntime {
             .lock()
             .expect("budget policy should not be poisoned") = policy;
     }
+}
+
+fn dsh_tool_approval_manifest(
+    _context: &Arc<ta_protocol::wire::ExecutionContext>,
+) -> BTreeMap<String, ta_protocol::wire::ApprovalScope> {
+    // No DSH tool is implicitly permitted. Packaging or a later daemon-owned
+    // tool binding must supply an exact manifest entry before it can run.
+    BTreeMap::new()
 }
 
 fn system_prompt_for_execution_request(

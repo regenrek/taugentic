@@ -238,6 +238,13 @@ fn provider_run_request_uses_registry_profile_provider_and_harness() {
                 provider: AcpProviderSpec::from_builtin(AcpLaunchKind::Codex),
             },
         ),
+        (
+            "runtime-deepseek-safe",
+            "deepseek",
+            "deepseek-v4-pro",
+            None,
+            AgentExecutionHarness::DeepSeekHarness,
+        ),
     ] {
         let profile = execution
             .runtime_profile(

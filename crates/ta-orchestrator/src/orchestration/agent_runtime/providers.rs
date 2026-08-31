@@ -18,6 +18,7 @@ pub(crate) fn built_in_agent_runtime_strategies() -> Vec<RegisteredStrategy> {
         .expect("built-in ACP descriptors are unique");
     strategies.extend(acp_registry.providers().into_iter().map(acp_strategy));
     strategies.extend(declarative_strategies());
+    strategies.push(deepseek_harness_strategy());
     strategies
 }
 
@@ -123,6 +124,7 @@ fn anthropic_strategy() -> RegisteredStrategy {
 fn declarative_strategies() -> Vec<RegisteredStrategy> {
     ta_provider_llm::declarative::specs()
         .iter()
+        .filter(|spec| spec.id.as_ref() != "deepseek")
         .map(|spec| {
             let provider_id = strategy_id(spec.id.as_ref());
             let auth_method_id = auth_method_id(&format!("{}-api-key", spec.id.as_ref()));
@@ -147,6 +149,19 @@ fn declarative_strategies() -> Vec<RegisteredStrategy> {
             registered_strategy(descriptor, StrategyKind::OpenAiCompatible { env_var })
         })
         .collect()
+}
+
+fn deepseek_harness_strategy() -> RegisteredStrategy {
+    let provider_id = strategy_id("deepseek");
+    registered_strategy(
+        strategy_descriptor(
+            provider_id.clone(),
+            "DeepSeek Harness",
+            Vec::new(),
+            default_runtime_profiles(&provider_id, None, "runtime-deepseek", "DeepSeek Harness"),
+        ),
+        StrategyKind::DeepSeekHarness,
+    )
 }
 
 fn acp_strategy(provider: AcpProviderSpec) -> RegisteredStrategy {

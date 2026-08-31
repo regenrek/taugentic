@@ -180,6 +180,7 @@ pub enum RunHarnessKind {
     Native,
     Acp,
     CodexAppServer,
+    DeepSeekHarness,
     RealtimeVoice,
 }
 

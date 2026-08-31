@@ -22,6 +22,18 @@ pub struct ApprovalBridge {
     cancellation: CancellationToken,
 }
 
+/// A pending approval which has a durable Taugentic id but has not yet been
+/// published to the execution sink. Keeping this borrowed makes the bridge
+/// the only owner of the pending entry from id allocation through
+/// publication. Dropping an unpublished reservation removes that entry.
+pub struct ApprovalReservation<'a> {
+    bridge: &'a ApprovalBridge,
+    id: ApprovalId,
+    request: Option<ApprovalRequest>,
+    tool_call_id: AgentStreamItemId,
+    cleanup_required: bool,
+}
+
 struct PendingApprovalEntry {
     descriptor: ApprovalDescriptor,
     sender: watch::Sender<Option<ApprovalOutcome>>,
@@ -48,6 +60,15 @@ impl ApprovalBridge {
         scope: ApprovalScope,
         descriptor: &ApprovalDescriptor,
     ) -> Result<ApprovalId, ExecutionError> {
+        self.reserve_request(scope, descriptor)?.publish()
+    }
+
+    #[instrument(skip(self, descriptor), fields(run_id = %self.run_id.as_str(), tool_call_id = %descriptor.call_id, tool = %descriptor.tool_name, scope = ?scope))]
+    pub fn reserve_request(
+        &self,
+        scope: ApprovalScope,
+        descriptor: &ApprovalDescriptor,
+    ) -> Result<ApprovalReservation<'_>, ExecutionError> {
         let tool_call_id = item_id(&descriptor.call_id)?;
         let id = ApprovalId::new(format!("approval-{}", Uuid::new_v4().simple()))
             .map_err(|error| ExecutionError::ProcessFailed(error.to_string()))?;
@@ -69,16 +90,13 @@ impl ApprovalBridge {
         let (sender, _receiver) = watch::channel(None);
 
         self.insert_pending(id.clone(), descriptor.clone(), sender)?;
-        if let Err(error) = self.sink.request_approval(request) {
-            self.remove_pending(&id)?;
-            return Err(error);
-        }
-        if let Err(error) = self.emit_waiting_for_approval(tool_call_id) {
-            self.remove_pending(&id)?;
-            return Err(error);
-        }
-
-        Ok(id)
+        Ok(ApprovalReservation {
+            bridge: self,
+            id,
+            request: Some(request),
+            tool_call_id,
+            cleanup_required: true,
+        })
     }
 
     #[instrument(skip(self), fields(approval_id = %id.as_str(), run_id = %self.run_id.as_str()))]
@@ -316,6 +334,55 @@ impl ApprovalBridge {
         )
         .with_tool_call_id(tool_call_id);
         self.sink.resolve_approval(resolution)
+    }
+}
+
+impl ApprovalReservation<'_> {
+    pub fn approval_id(&self) -> &ApprovalId {
+        &self.id
+    }
+
+    /// Publish the already-reserved request. The consuming API prevents a
+    /// second publication; failures leave the reservation unpublished so Drop
+    /// removes only the bridge's in-memory pending entry.
+    pub fn publish(mut self) -> Result<ApprovalId, ExecutionError> {
+        let request = self
+            .request
+            .take()
+            .expect("approval reservation request must exist before publish");
+        if let Err(error) = self.bridge.sink.request_approval(request) {
+            self.rollback()?;
+            return Err(error);
+        }
+        if let Err(error) = self
+            .bridge
+            .emit_waiting_for_approval(self.tool_call_id.clone())
+        {
+            self.rollback()?;
+            return Err(error);
+        }
+        let id = self.id.clone();
+        // Disarm Drop only after both externally-visible publications succeed.
+        self.cleanup_required = false;
+        Ok(id)
+    }
+
+    fn rollback(&mut self) -> Result<(), ExecutionError> {
+        if self.cleanup_required {
+            self.bridge.remove_pending(&self.id)?;
+            self.cleanup_required = false;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for ApprovalReservation<'_> {
+    fn drop(&mut self) {
+        if self.cleanup_required {
+            if let Err(error) = self.bridge.remove_pending(&self.id) {
+                error!(approval_id = %self.id.as_str(), error = %error, "approval reservation rollback failed");
+            }
+        }
     }
 }
 

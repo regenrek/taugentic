@@ -44,6 +44,7 @@ pub(crate) enum StrategyKind {
     AnthropicApiKey { env_var: &'static str },
     OpenAiCompatible { env_var: Option<&'static str> },
     AcpChildProcess { provider: AcpProviderSpec },
+    DeepSeekHarness,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -196,6 +197,9 @@ impl StrategyRegistry {
                     .iter()
                     .any(|model| model.id == *model_id),
                 StrategyKind::AcpChildProcess { .. } => true,
+                StrategyKind::DeepSeekHarness => {
+                    dsh_models().iter().any(|model| model.id == *model_id)
+                }
                 _ => catalog.contains_model(provider_id, model_id),
             })
     }
@@ -259,7 +263,9 @@ impl StrategyRegistry {
                     .map_err(execution_error_from_llm_client)
                     .map_err(map_execution_error)
             }
-            StrategyKind::AnthropicApiKey { .. } | StrategyKind::OpenAiCompatible { .. } => {
+            StrategyKind::AnthropicApiKey { .. }
+            | StrategyKind::OpenAiCompatible { .. }
+            | StrategyKind::DeepSeekHarness => {
                 Err(AgentRuntimeServiceError::ProviderExecutionFailed(format!(
                     "{} does not support managed auth profiles",
                     strategy.descriptor.display_name
@@ -290,12 +296,12 @@ impl StrategyRegistry {
                 .await
                 .map_err(execution_error_from_llm_client)
                 .map_err(map_execution_error),
-            StrategyKind::AnthropicApiKey { .. } | StrategyKind::OpenAiCompatible { .. } => {
-                Ok(AuthProfileLogoutResult {
-                    auth_profile_id: profile.id.clone(),
-                    disconnected: false,
-                })
-            }
+            StrategyKind::AnthropicApiKey { .. }
+            | StrategyKind::OpenAiCompatible { .. }
+            | StrategyKind::DeepSeekHarness => Ok(AuthProfileLogoutResult {
+                auth_profile_id: profile.id.clone(),
+                disconnected: false,
+            }),
             StrategyKind::AcpChildProcess { .. } => {
                 Err(AgentRuntimeServiceError::ProviderExecutionFailed(format!(
                     "{} delegates logout to the vendor CLI",
@@ -428,6 +434,17 @@ fn observe_strategy(
                 catalog.models(strategy.descriptor.id.as_str()),
             ),
         },
+        StrategyKind::DeepSeekHarness => observed_with_health(
+            strategy,
+            AgentRuntimeStrategyHealth {
+                status: AgentRuntimeStrategyHealthStatus::Unavailable,
+                message: Some(format!(
+                    "sealed {} runtime asset is unavailable",
+                    ta_provider_dsh::DSH_RUNTIME_VERSION
+                )),
+            },
+            dsh_models(),
+        ),
     }
 }
 
@@ -461,8 +478,34 @@ impl StrategyKind {
             StrategyKind::AcpChildProcess { provider } => AgentExecutionHarness::Acp {
                 provider: provider.clone(),
             },
+            StrategyKind::DeepSeekHarness => AgentExecutionHarness::DeepSeekHarness,
         }
     }
+}
+
+fn dsh_models() -> Vec<AgentRuntimeModelRef> {
+    [
+        ("deepseek-v4-flash", "DeepSeek V4 Flash"),
+        ("deepseek-v4-pro", "DeepSeek V4 Pro"),
+    ]
+    .into_iter()
+    .map(|(id, display_name)| AgentRuntimeModelRef {
+        id: AgentRuntimeModelId::new(id).expect("fixed DSH model id"),
+        display_name: display_name.to_string(),
+        context_limit: None,
+        input_cost_per_million_micros: None,
+        output_cost_per_million_micros: None,
+        reasoning: true,
+        tool_call: true,
+        structured_output: false,
+        media_capabilities: ta_protocol::wire::AgentRuntimeMediaCapabilities {
+            image_input: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+            image_output: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+            voice_input: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+            voice_output: ta_protocol::wire::AgentRuntimeMediaCapability::Unsupported,
+        },
+    })
+    .collect()
 }
 
 fn ready_strategy(strategy: &RegisteredStrategy, catalog: &ModelCatalog) -> StrategyObservedState {

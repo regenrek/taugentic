@@ -402,6 +402,7 @@ pub(crate) fn run_harness_kind(harness: &AgentExecutionHarness) -> RunHarnessKin
         AgentExecutionHarness::NativeLoop => RunHarnessKind::Native,
         AgentExecutionHarness::Acp { .. } => RunHarnessKind::Acp,
         AgentExecutionHarness::CodexAppServer => RunHarnessKind::CodexAppServer,
+        AgentExecutionHarness::DeepSeekHarness => RunHarnessKind::DeepSeekHarness,
     }
 }
 

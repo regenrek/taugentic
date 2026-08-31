@@ -87,11 +87,14 @@ pub struct TestSink {
     pub streams: Mutex<Vec<StreamEmission>>,
     pub activities: Mutex<Vec<String>>,
     pub approval_requests: Mutex<Vec<ApprovalRequest>>,
+    approval_signal: Condvar,
     pub approval_resolutions: Mutex<Vec<ApprovalResolution>>,
     pub artifacts: Mutex<Vec<(ArtifactKind, String)>>,
     pub completed: Mutex<Vec<String>>,
     completion_signal: Condvar,
     pub failed: Mutex<Vec<ExecutionError>>,
+    failure_signal: Condvar,
+    stream_signal: Condvar,
     fail_approval_resolution: AtomicBool,
 }
 
@@ -150,6 +153,49 @@ impl TestSink {
         }
     }
 
+    /// Wait for the next approval fact without polling implementation state.
+    pub fn wait_for_approval(&self) -> ApprovalRequest {
+        let mut approvals = self
+            .approval_requests
+            .lock()
+            .expect("approval sink lock should not be poisoned");
+        while approvals.is_empty() {
+            approvals = self
+                .approval_signal
+                .wait(approvals)
+                .expect("approval sink lock should not be poisoned");
+        }
+        approvals[0].clone()
+    }
+
+    /// Wait for a terminal failure emitted by the execution boundary.
+    pub fn wait_for_failure(&self) {
+        let mut failures = self
+            .failed
+            .lock()
+            .expect("failure sink lock should not be poisoned");
+        while failures.is_empty() {
+            failures = self
+                .failure_signal
+                .wait(failures)
+                .expect("failure sink lock should not be poisoned");
+        }
+    }
+
+    /// Wait until the harness has accepted a streamed event.
+    pub fn wait_for_stream(&self) {
+        let mut streams = self
+            .streams
+            .lock()
+            .expect("stream sink lock should not be poisoned");
+        while streams.is_empty() {
+            streams = self
+                .stream_signal
+                .wait(streams)
+                .expect("stream sink lock should not be poisoned");
+        }
+    }
+
     pub fn set_approval_resolution_failure(&self, fail: bool) {
         self.fail_approval_resolution.store(fail, Ordering::SeqCst);
     }
@@ -161,6 +207,7 @@ impl ExecutionSink for TestSink {
             .lock()
             .map_err(|_| ExecutionError::ProcessFailed("stream lock poisoned".to_string()))?
             .push(emission);
+        self.stream_signal.notify_all();
         Ok(())
     }
 
@@ -190,6 +237,7 @@ impl ExecutionSink for TestSink {
                 ExecutionError::ProcessFailed("approval request lock poisoned".to_string())
             })?
             .push(request);
+        self.approval_signal.notify_all();
         Ok(())
     }
 
@@ -247,6 +295,7 @@ impl ExecutionSink for TestSink {
             .lock()
             .map_err(|_| ExecutionError::ProcessFailed("fail lock poisoned".to_string()))?
             .push(error);
+        self.failure_signal.notify_all();
         Ok(())
     }
 }
@@ -501,6 +550,7 @@ pub fn request() -> ExecutionRequest {
         output_contract: None,
         subagent_recipes: Vec::new(),
         attachments: Vec::new(),
+        dsh_tool_approval_manifest: std::collections::BTreeMap::new(),
     }
 }
 

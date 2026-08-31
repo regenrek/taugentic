@@ -3453,6 +3453,7 @@ dependencies = [
  "ta-policy",
  "ta-protocol",
  "ta-provider-acp",
+ "ta-provider-dsh",
  "ta-provider-llm",
  "ta-store",
  "ta-work-source",
@@ -3518,6 +3519,17 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "ta-provider-dsh"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
@@ -3626,6 +3638,7 @@ dependencies = [
  "ta-policy",
  "ta-protocol",
  "ta-provider-acp",
+ "ta-provider-dsh",
  "ta-provider-llm",
  "tempfile",
  "thiserror 2.0.18",
