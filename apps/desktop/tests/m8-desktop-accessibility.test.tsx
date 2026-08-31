@@ -53,7 +53,7 @@ describe("M8 desktop accessibility", () => {
     let closed = 0
     const { render, renderer, unmount } = createTestRoot()
     try {
-      const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+      const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
       render(<CommandSurface dispatcher={dispatcher} settings={settings} workspaceId="workspace-malformed" settingsOpen onSettingsOpenChange={(open) => { if (!open) closed += 1 }} onResetWorkspaceLayout={() => resets.push("reset")} />)
       const reset = renderer.findByTestId("reset-workspace-layout")!
       expect(renderer.getAutomationTree()).toContain('"name":"Reset workspace layout","disabled":true')

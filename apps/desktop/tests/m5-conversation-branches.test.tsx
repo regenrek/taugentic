@@ -63,7 +63,7 @@ function conversation(props: Partial<WorkbenchPanelProps>) {
     attachments: [],
     onObjectiveChange: () => {},
     onRemoveAttachment: () => {},
-    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
+    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
     onDecideApproval: () => {},
     files: {},
     artifacts: {},

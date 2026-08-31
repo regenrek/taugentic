@@ -15,6 +15,9 @@ describe("M2 command surface", () => {
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: true, canCancel: true }), {
       openSettings: () => calls.push("settings"),
+      openProject: () => calls.push("project"),
+      openDiagnostics: () => calls.push("diagnostics"),
+      openPlugins: () => calls.push("plugins"),
       openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`),
       toggleTheme: () => calls.push("theme"),
@@ -24,16 +27,37 @@ describe("M2 command surface", () => {
 
     expect(dispatcher.commandForShortcut(eventShortcut({ key: "1", modifiers: { cmd: true, ctrl: false, shift: false } }))).toBe("focus-conversation")
     expect(dispatcher.dispatch("focus-conversation")).toBe(true)
+    expect(dispatcher.dispatch("open-project")).toBe(true)
+    expect(dispatcher.dispatch("open-diagnostics")).toBe(true)
+    expect(dispatcher.dispatch("open-plugins")).toBe(true)
     expect(dispatcher.dispatch("open-browser")).toBe(true)
     expect(dispatcher.dispatch("start-run")).toBe(true)
     expect(dispatcher.dispatch("cancel-run")).toBe(true)
-    expect(calls).toEqual(["focus:conversation", "browser", "start", "cancel"])
+    expect(calls).toEqual(["focus:conversation", "project", "diagnostics", "plugins", "browser", "start", "cancel"])
+  })
+
+  it("keeps global commands operable while workspace-bound commands are disabled", () => {
+    const calls: string[] = []
+    const dispatcher = createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false, hasWorkspace: false }), {
+      openSettings: () => calls.push("settings"), openProject: () => calls.push("project"), openDiagnostics: () => calls.push("diagnostics"), openPlugins: () => calls.push("plugins"), openBrowser: () => calls.push("browser"), focusPanel: () => calls.push("focus"), toggleTheme: () => calls.push("theme"), startRun: () => calls.push("start"), cancelRun: () => calls.push("cancel"),
+    })
+
+    expect(dispatcher.enabled("open-project")).toBe(true)
+    expect(dispatcher.enabled("open-diagnostics")).toBe(true)
+    expect(dispatcher.enabled("open-plugins")).toBe(true)
+    expect(dispatcher.enabled("open-browser")).toBe(false)
+    expect(dispatcher.enabled("focus-conversation")).toBe(false)
+    expect(dispatcher.dispatch("open-project")).toBe(true)
+    expect(dispatcher.dispatch("open-diagnostics")).toBe(true)
+    expect(dispatcher.dispatch("open-plugins")).toBe(true)
+    expect(dispatcher.dispatch("open-browser")).toBe(false)
+    expect(calls).toEqual(["project", "diagnostics", "plugins"])
   })
 
   it("keeps shortcut overrides device-local presentation settings", () => {
     const settings = new DesktopSettings()
     settings.saveShortcut("focus-git", "mod+g")
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
 
     expect(dispatcher.shortcutFor("focus-git")).toBe("mod+g")
     expect(dispatcher.commandForShortcut("mod+g")).toBe("focus-git")
@@ -53,7 +77,7 @@ describe("M2 command surface", () => {
     const calls: string[] = []
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), {
-      openSettings: () => calls.push("settings"),
+      openSettings: () => calls.push("settings"), openProject: () => calls.push("project"), openDiagnostics: () => calls.push("diagnostics"), openPlugins: () => calls.push("plugins"),
       openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => calls.push("start"), cancelRun: () => calls.push("cancel"),
     })
@@ -70,7 +94,7 @@ describe("M2 command surface", () => {
     const calls: string[] = []
     const settings = new DesktopSettings()
     const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), {
-      openSettings: () => calls.push("settings"),
+      openSettings: () => calls.push("settings"), openProject: () => calls.push("project"), openDiagnostics: () => calls.push("diagnostics"), openPlugins: () => calls.push("plugins"),
       openBrowser: () => calls.push("browser"),
       focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => calls.push("start"), cancelRun: () => calls.push("cancel"),
     })
@@ -91,12 +115,23 @@ describe("M2 command surface", () => {
       renderer.nativeSimulateInput(paletteInput.id, "focus")
       renderer.simulateKeystrokes("down enter")
       expect(calls).toEqual(["settings", "focus:activity"])
+      const dispatchPaletteQuery = (query: string, title: string) => {
+        renderer.nativeSimulateKeystrokes(renderer.findByTestId("command-palette-toggle")!.id, "enter")
+        const input = renderer.findByTestId("command-palette-input")!
+        renderer.nativeSimulateInput(input.id, query)
+        expect(renderer.getAutomationTree()).toContain(title)
+        renderer.nativeSimulateKeystrokes(input.id, "enter")
+      }
+      dispatchPaletteQuery("project", "Open project")
+      dispatchPaletteQuery("diagnostics", "Open diagnostics")
+      dispatchPaletteQuery("plugins", "Open plugins")
+      expect(calls).toEqual(["settings", "focus:activity", "project", "diagnostics", "plugins"])
       const menuTrigger = renderer.findByTestId("command-menu")!
       renderer.nativeSimulateKeystrokes(menuTrigger.id, "enter")
       expect(renderer.findByTestId("visible-command-menu")).toBeDefined()
       const visibleCommand = renderer.findByTestId("visible-command-focus-activity")!
       renderer.nativeSimulateKeystrokes(visibleCommand.id, "enter")
-      expect(calls).toEqual(["settings", "focus:activity", "focus:activity"])
+      expect(calls).toEqual(["settings", "focus:activity", "project", "diagnostics", "plugins", "focus:activity"])
       expect(renderer.findByTestId("visible-command-menu")).toBeUndefined()
       renderer.simulateKeystrokes("enter")
       expect(renderer.findByTestId("visible-command-menu")).toBeDefined()
@@ -105,7 +140,7 @@ describe("M2 command surface", () => {
       expect(renderer.getAutomationTree()).toContain("disabled")
       click("visible-command-start-run")
       renderer.nativeSimulateKeystrokes(disabledCommand.id, "enter")
-      expect(calls).toEqual(["settings", "focus:activity", "focus:activity"])
+      expect(calls).toEqual(["settings", "focus:activity", "project", "diagnostics", "plugins", "focus:activity"])
       render(<CommandSurface dispatcher={dispatcher} settings={settings} settingsOpen onSettingsOpenChange={() => {}} />)
       const shortcut = renderer.findByTestId("shortcut-focus-git")!
       renderer.nativeSimulateKeystrokes(shortcut.id, "cmd-a")
@@ -118,7 +153,7 @@ describe("M2 command surface", () => {
   it("derives every mutable settings control from the settings error while Close remains available", async () => {
     const settings = new DesktopSettings()
     await settings.initialize({ read: async () => "{", write: async () => {} })
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const { render, renderer, unmount } = createTestRoot()
     const click = (testId: string) => { const element = renderer.findByTestId(testId)!; const [x = 0, y = 0, width = 0, height = 0] = renderer.getElementBounds(element.id)!; renderer.nativeSimulateClick(x + width / 2, y + height / 2) }
     let closed = 0
@@ -145,7 +180,7 @@ describe("M2 command surface", () => {
 
   it("keeps settings controls native-operable when settings are healthy", () => {
     const settings = new DesktopSettings()
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const { render, renderer, unmount } = createTestRoot()
     try {
       render(<CommandSurface dispatcher={dispatcher} settings={settings} settingsOpen onSettingsOpenChange={() => {}} />)
@@ -163,7 +198,7 @@ describe("M2 command surface", () => {
 
   it("requires confirmation before resetting only the selected workspace layout", () => {
     const settings = new DesktopSettings()
-    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
+    const dispatcher = createCommandDispatcher(settings, () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} })
     const resets: string[] = []
     const { render, renderer, unmount } = createTestRoot()
     const click = (testId: string) => { const element = renderer.findByTestId(testId)!; const [x = 0, y = 0, width = 0, height = 0] = renderer.getElementBounds(element.id)!; renderer.nativeSimulateClick(x + width / 2, y + height / 2) }
@@ -187,7 +222,7 @@ describe("M2 command surface", () => {
         const [objective, setObjective] = useState("/focus")
         const [canStart, setCanStart] = useState(true)
         const dispatcher = useMemo(() => createCommandDispatcher(new DesktopSettings(), () => ({ canStart, canCancel: !canStart }), {
-          openSettings: () => calls.push("settings"),
+          openSettings: () => calls.push("settings"), openProject: () => calls.push("project"), openDiagnostics: () => calls.push("diagnostics"), openPlugins: () => calls.push("plugins"),
           openBrowser: () => calls.push("browser"),
           focusPanel: (panel) => calls.push(`focus:${panel}`), toggleTheme: () => calls.push("theme"), startRun: () => { calls.push("start"); setCanStart(false) }, cancelRun: () => { calls.push("cancel"); setCanStart(true) },
         }), [canStart])

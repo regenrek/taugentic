@@ -59,7 +59,7 @@ describe("M2 desktop shell ownership", () => {
     const firstProject = createTestRoot()
     const workspaceId = "workspace-presentation-first-native-render"
     const commands = createCommandDispatcher(desktopSettings, () => ({ canStart: false, canCancel: false }), {
-      openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
+      openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
     })
 
     try {
@@ -334,7 +334,7 @@ describe("M2 desktop shell ownership", () => {
     expect(desktopSettings.presentation(workspaceId)).toBeUndefined()
     desktopSettings.saveLayout(workspaceId, { kind: "tabs", id: "root", panels: ["conversation"], active: "conversation" })
     expect(desktopSettings.presentation(workspaceId)?.layout.kind).toBe("tabs")
-    expect(commandRegistry.map((command) => command.id)).toEqual(["open-settings", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "open-browser", "toggle-theme", "start-run", "cancel-run"])
+    expect(commandRegistry.map((command) => command.id)).toEqual(["open-settings", "open-project", "open-diagnostics", "open-plugins", "focus-conversation", "focus-activity", "focus-thread-workspace", "focus-git", "focus-pull-requests", "focus-terminal", "open-browser", "toggle-theme", "start-run", "cancel-run"])
   })
 
   it("stores project selection explicitly instead of deriving it from navigation order", () => {

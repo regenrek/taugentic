@@ -70,7 +70,7 @@ function workbenchProps(overrides: Partial<WorkbenchPanelProps> = {}): Workbench
     attachments: [],
     onObjectiveChange: () => {},
     onRemoveAttachment: () => {},
-    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
+    commands: createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), { openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {} }),
     onDecideApproval: () => {},
     files: {} as WorkbenchPanelProps["files"],
     artifacts: {} as WorkbenchPanelProps["artifacts"],

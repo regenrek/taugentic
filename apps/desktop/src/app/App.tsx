@@ -1,6 +1,6 @@
 import { DockWorkspace, useGpuixRequired } from "@regenrek/gpuix-react"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
-import { useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import type { NavigationSnapshot, ProjectId, RunId, SessionId } from "@taugentic/desktop-protocol"
 
 import { CommandSurface } from "../features/commands/command-surface.js"
@@ -141,14 +141,34 @@ export function App() {
         modelId: shell.context.pendingSelection.modelId,
       }
     : undefined
-  const commands = useMemo(() => selectedWorkspaceId ? createCommandDispatcher(desktopSettings, () => ({ canStart, canCancel }), {
+  const chooseProjectDirectory = useCallback(async (): Promise<void> => {
+    try {
+      const path = await renderer.promptForDirectory()
+      if (path === null) return
+      pendingProjectPath.current = path
+      setConfirmingProjectTrust(true)
+    } catch {
+      workspaceShell.send({ type: "ERROR", message: "The folder picker could not be opened." })
+    }
+  }, [renderer])
+  const finishProjectTrust = async (acknowledged: boolean): Promise<void> => {
+    const path = pendingProjectPath.current
+    pendingProjectPath.current = null
+    setConfirmingProjectTrust(false)
+    if (!acknowledged || path === null) return
+    await openProject(path, true)
+  }
+  const commands = useMemo(() => shell.context.phase === "ready" ? createCommandDispatcher(desktopSettings, () => ({ canStart, canCancel, hasWorkspace: Boolean(selectedWorkspaceId) }), {
     openSettings: () => setSettingsOpen(true),
-    openBrowser: () => saveWorkspaceLayout(selectedWorkspaceId, openDockPanel(workspacePresentation(selectedWorkspaceId).layout, "browser", "workspace-primary")),
+    openProject: () => { void chooseProjectDirectory() },
+    openDiagnostics: () => setDiagnosticsOpen(true),
+    openPlugins: () => setPluginsOpen(true),
+    openBrowser: () => saveWorkspaceLayout(selectedWorkspaceId!, openDockPanel(workspacePresentation(selectedWorkspaceId!).layout, "browser", "workspace-primary")),
     focusPanel: (panelId) => workspaceShell.send({ type: "FOCUS_PANEL", panelId }),
     toggleTheme: () => saveDesktopTheme(desktopSettings.appearance().theme === "dark" ? "light" : "dark"),
     startRun: () => void startSelectedRun(desktopRuntime, workspaceShell, selectedRecipeId),
     cancelRun: () => void cancelSelectedRun(),
-  }) : undefined, [canCancel, canStart, selectedRecipeId, selectedWorkspaceId])
+  }) : undefined, [canCancel, canStart, chooseProjectDirectory, selectedRecipeId, selectedWorkspaceId, shell.context.phase])
   const recipeList = useQuery({ ...recipesQuery(desktopRuntime), enabled: shell.context.phase === "ready" })
   const diagnosticsSnapshot = useQuery({
     ...diagnosticsQuery(desktopRuntime),
@@ -318,30 +338,12 @@ export function App() {
     openUrl: (url) => renderer.openUrl(url),
     copyText: (text) => renderer.writeClipboardText(text),
   })
-  const chooseProjectDirectory = async (): Promise<void> => {
-    try {
-      const path = await renderer.promptForDirectory()
-      if (path === null) return
-      pendingProjectPath.current = path
-      setConfirmingProjectTrust(true)
-    } catch {
-      workspaceShell.send({ type: "ERROR", message: "The folder picker could not be opened." })
-    }
-  }
-  const finishProjectTrust = async (acknowledged: boolean): Promise<void> => {
-    const path = pendingProjectPath.current
-    pendingProjectPath.current = null
-    setConfirmingProjectTrust(false)
-    if (!acknowledged || path === null) return
-    await openProject(path, true)
-  }
-
   return <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", backgroundColor: palette.canvas, color: palette.text }}>
     <div style={{ display: "flex", alignItems: "center", height: metrics.titlebarHeight, paddingLeft: 86, paddingRight: 18, userSelect: "none" }}>
       <text style={{ color: palette.text, fontSize: fontSize(13), fontWeight: 650 }}>TAUGENTIC</text><div style={{ flexGrow: 1 }} />
-      {shell.context.phase === "ready" && <><div testId="open-system-diagnostics" tabIndex={0} accessibilityRole="button" accessibilityName="Open System Diagnostics" onClick={() => setDiagnosticsOpen(true)} onKeyDown={(event) => { if (activates(event)) setDiagnosticsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Diagnostics</text></div>
-      <div testId="open-plugins" tabIndex={0} accessibilityRole="button" accessibilityName="Open Plugins" onClick={() => setPluginsOpen(true)} onKeyDown={(event) => { if (activates(event)) setPluginsOpen(true) }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Plugins</text></div>
-      {commands && <CommandSurface dispatcher={commands} settings={desktopSettings} workspaceId={selectedWorkspaceId} settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} onResetWorkspaceLayout={() => { if (selectedWorkspaceId) resetWorkspaceLayout(selectedWorkspaceId) }} />}</>}
+      {shell.context.phase === "ready" && <><div testId="open-system-diagnostics" tabIndex={0} accessibilityRole="button" accessibilityName="Open System Diagnostics" onClick={() => commands!.dispatch("open-diagnostics")} onKeyDown={(event) => { if (activates(event)) commands!.dispatch("open-diagnostics") }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Diagnostics</text></div>
+      <div testId="open-plugins" tabIndex={0} accessibilityRole="button" accessibilityName="Open Plugins" onClick={() => commands!.dispatch("open-plugins")} onKeyDown={(event) => { if (activates(event)) commands!.dispatch("open-plugins") }} style={{ cursor: "pointer", padding: 7, backgroundColor: palette.panelRaised, marginRight: 8 }}><text>Plugins</text></div>
+      <CommandSurface dispatcher={commands!} settings={desktopSettings} workspaceId={selectedWorkspaceId} settingsOpen={settingsOpen} onSettingsOpenChange={setSettingsOpen} onResetWorkspaceLayout={() => { if (selectedWorkspaceId) resetWorkspaceLayout(selectedWorkspaceId) }} /></>}
       <text testId="daemon-status" style={{ color: shell.context.phase === "ready" ? palette.accent : shell.context.phase === "unavailable" ? palette.warning : palette.textMuted, fontSize: fontSize(11) }}>{shellStatus(shell.context.phase)}</text>
     </div>
     <div style={{ height: 1, backgroundColor: palette.border }} />
@@ -368,12 +370,12 @@ export function App() {
         applySidebarAction(action)
         if (action.type === "selectConversation") void selectConversation(action.sessionId)
         if (action.type === "selectProject") selectProject(action.projectId)
-        if (action.type === "openProject") void chooseProjectDirectory()
+        if (action.type === "openProject") commands!.dispatch("open-project")
       }} />
       <div style={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}>
         {selectedWorkspaceId && commands
           ? <Workbench workspaceId={selectedWorkspaceId} presentation={presentation} panels={panels} focusPanelId={shell.context.focusPanelId} commands={commands} />
-          : <div testId="workspace-awaiting-project" style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", justifyContent: "center", height: "100%" }}><ProductState kind="empty" title="Select a project to open the workbench." action={<div testId="open-project" tabIndex={0} accessibilityRole="button" accessibilityName="Open project" onClick={() => void chooseProjectDirectory()} onKeyDown={(event) => { if (activates(event)) void chooseProjectDirectory() }} style={{ cursor: "pointer", padding: 9, backgroundColor: palette.panelRaised }}><text>Open project</text></div>} /></div>}
+          : <div testId="workspace-awaiting-project" style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", justifyContent: "center", height: "100%" }}><ProductState kind="empty" title="Select a project to open the workbench." action={<div testId="open-project" tabIndex={0} accessibilityRole="button" accessibilityName="Open project" onClick={() => commands!.dispatch("open-project")} onKeyDown={(event) => { if (activates(event)) commands!.dispatch("open-project") }} style={{ cursor: "pointer", padding: 9, backgroundColor: palette.panelRaised }}><text>Open project</text></div>} /></div>}
       </div>
     </div>
     {confirmingProjectTrust && <ProjectTrustConfirmation onDecision={(acknowledged) => void finishProjectTrust(acknowledged)} />}

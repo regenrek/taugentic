@@ -36,7 +36,7 @@ describe("M3 Recipe Composer", () => {
       function Harness() {
         const [recipeId, setRecipeId] = useState<string>()
         const dispatcher = useMemo(() => createCommandDispatcher(new DesktopSettings(), () => ({ canStart: true, canCancel: false }), {
-          openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() { starts.push(recipeId) }, cancelRun() {},
+          openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() { starts.push(recipeId) }, cancelRun() {},
         }), [recipeId])
         return <div style={{ width: 900, height: 700 }}><ConversationPanel
           title="Recipe test"
@@ -125,7 +125,7 @@ describe("M3 Recipe Composer", () => {
     const root = createTestRoot()
     try {
       const dispatcher = createCommandDispatcher(new DesktopSettings(), () => ({ canStart: false, canCancel: false }), {
-        openSettings() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
+        openSettings() {}, openProject() {}, openDiagnostics() {}, openPlugins() {}, openBrowser() {}, focusPanel() {}, toggleTheme() {}, startRun() {}, cancelRun() {},
       })
       root.render(<div style={{ width: 900, height: 700 }}><ConversationPanel title="Unavailable recipe" selectedConversationId="session-recipe-unavailable" transcriptRows={[]} transcriptLoading={false} hasOlderTranscript={false} loadingOlderTranscript={false} onLoadOlderTranscript={() => {}} messages={[]} objective="" attachments={[]} onObjectiveChange={() => {}} onRemoveAttachment={() => {}} recipes={[]} recipesLoading={false} selectedRecipeId="removed-by-daemon" onSelectRecipe={() => {}} commands={dispatcher} /></div>)
       expect(root.renderer.findByTestId("recipe-unavailable")).toBeDefined()
