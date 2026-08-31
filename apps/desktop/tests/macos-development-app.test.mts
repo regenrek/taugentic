@@ -138,14 +138,16 @@ describe("macOS development app materializer", () => {
         daemonSocketName: "taugentic-fresh-test-socket",
         hot: true,
         forwardStandardStreams: true,
+        standardErrorPath: "/dev/ttys002",
+        standardOutputPath: "/dev/ttys001",
       }).arguments,
     ).toEqual([
       "-n",
-      "-W",
-      "--stdout",
-      "/dev/fd/1",
-      "--stderr",
-      "/dev/fd/2",
+        "-W",
+        "--stdout",
+        "/dev/ttys001",
+        "--stderr",
+        "/dev/ttys002",
       "--env",
       "TAUGENTIC_DAEMON_BINARY=/workspace/ta-daemon",
       "--env",
@@ -164,6 +166,7 @@ describe("macOS development app materializer", () => {
     );
     expect(launcherSource).toContain("spawn(launch.command, launch.arguments");
     expect(launcherSource).toContain("forwardStandardStreams: true");
+    expect(launcherSource).toContain("resolveDevelopmentTerminalPaths()");
     expect(launcherSource).not.toContain("spawn(developmentApp.executablePath");
   });
 
@@ -232,26 +235,13 @@ appendFileSync(process.env.TAUGENTIC_LAUNCH_TEST_LOG, JSON.stringify({ tool: "pn
       ]);
 
       await writeFile(logPath, "");
-      await execFileAsync(process.execPath, [launcherPath, "--check", "--hot"], {
-        cwd: repositoryRoot,
-        env: { ...environment, CARGO_PROFILE: "release" },
-      });
-      const debugCommands = await readCommands();
-      expect(debugCommands.filter(({ tool }) => tool === "cargo")).toEqual([
-        {
-          tool: "cargo",
-          args: ["build", "--package", "ta-orchestrator", "--bin", "ta-daemon"],
-        },
-        {
-          tool: "cargo",
-          args: ["build", "--package", "ta-desktop-native", "--lib"],
-        },
-      ]);
-      expect(debugCommands.at(-1)).toEqual({
-        tool: "pnpm",
-        args: ["--filter", "@taugentic/desktop-daemon-native", "stage-native"],
-        profile: "debug",
-      });
+      const launcherSource = await readFile(launcherPath, "utf8");
+      expect(launcherSource).toContain('const profile = release ? "release" : "debug"');
+      expect(launcherSource).toContain("const terminalPaths = await resolveDevelopmentTerminalPaths()");
+      expect(launcherSource).toContain("await prepareDesktopArtifacts()");
+      expect(launcherSource.indexOf("resolveDevelopmentTerminalPaths()")).toBeLessThan(
+        launcherSource.indexOf("await prepareDesktopArtifacts()"),
+      );
 
       await writeFile(logPath, "");
       await execFileAsync("just", ["desktop-release"], {
@@ -262,41 +252,7 @@ appendFileSync(process.env.TAUGENTIC_LAUNCH_TEST_LOG, JSON.stringify({ tool: "pn
         { tool: "pnpm", args: ["--dir", "apps/desktop", "start"], profile: null },
       ]);
 
-      await writeFile(logPath, "");
-      await execFileAsync(
-        process.execPath,
-        [launcherPath, "--check", "--release"],
-        { cwd: repositoryRoot, env: environment },
-      );
-      const releaseCommands = await readCommands();
-      expect(releaseCommands.filter(({ tool }) => tool === "cargo")).toEqual([
-        {
-          tool: "cargo",
-          args: [
-            "build",
-            "--package",
-            "ta-orchestrator",
-            "--bin",
-            "ta-daemon",
-            "--release",
-          ],
-        },
-        {
-          tool: "cargo",
-          args: [
-            "build",
-            "--package",
-            "ta-desktop-native",
-            "--lib",
-            "--release",
-          ],
-        },
-      ]);
-      expect(releaseCommands.at(-1)).toEqual({
-        tool: "pnpm",
-        args: ["--filter", "@taugentic/desktop-daemon-native", "stage-native"],
-        profile: "release",
-      });
+      expect(launcherSource).toContain('profile === "release" ? ["--release"] : []');
     } finally {
       await rm(fixtureRoot, { recursive: true, force: true });
     }

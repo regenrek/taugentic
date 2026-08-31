@@ -10,6 +10,7 @@ import {
   materializeMacosDevelopmentApp,
   resolveBunExecutable,
 } from "./macos-development-app.mjs";
+import { resolveDevelopmentTerminalPaths } from "./development-terminal.mjs";
 
 const desktopRoot = resolve(import.meta.dirname, "..");
 const repositoryRoot = resolve(desktopRoot, "../..");
@@ -21,6 +22,7 @@ if (hot && release) {
 }
 
 const profile = release ? "release" : "debug";
+const terminalPaths = await resolveDevelopmentTerminalPaths();
 
 const { stdout } = await promisify(execFile)(
   "cargo",
@@ -79,6 +81,8 @@ if (!process.argv.includes("--check")) {
     daemonSocketName: process.env.TAUGENTIC_DAEMON_SOCKET_NAME,
     hot,
     forwardStandardStreams: true,
+    standardErrorPath: terminalPaths.stderrPath,
+    standardOutputPath: terminalPaths.stdoutPath,
   });
   const desktop = spawn(launch.command, launch.arguments, {
     cwd: desktopRoot,
