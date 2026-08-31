@@ -8689,6 +8689,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -9730,6 +9731,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -27791,6 +27793,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -27846,6 +27849,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -28089,6 +28093,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -28409,6 +28414,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -28771,6 +28777,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -30781,6 +30788,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
     "native",
     "acp",
     "codexAppServer",
+    "deepSeekHarness",
     "realtimeVoice"
   ],
   "title": "RunHarnessKind",
@@ -32338,6 +32346,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -33259,6 +33268,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -34172,6 +34182,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -35053,6 +35064,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -35959,6 +35971,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -36931,6 +36944,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
@@ -38398,6 +38412,7 @@ export const PROTOCOL_JSON_SCHEMAS = {
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"

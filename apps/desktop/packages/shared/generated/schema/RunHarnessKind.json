@@ -5,6 +5,7 @@
     "native",
     "acp",
     "codexAppServer",
+    "deepSeekHarness",
     "realtimeVoice"
   ],
   "title": "RunHarnessKind",

@@ -269,6 +269,7 @@
         "native",
         "acp",
         "codexAppServer",
+        "deepSeekHarness",
         "realtimeVoice"
       ],
       "type": "string"
